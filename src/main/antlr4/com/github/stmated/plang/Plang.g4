@@ -47,11 +47,16 @@ Trait: 'trait';
 Val: 'val';
 Var: 'var';
 
+With: 'with';
+
 For: 'for';
 Impl: 'impl';
 
 Ref: 'ref';
 Return: 'return';
+
+Capability: 'capability';
+As: 'as';
 
 Bang: '!';
 
@@ -199,38 +204,74 @@ fragment IdentifierStart
     | '\\' UnicodeEscapeSequence
     ;
 
-identifier
-    : Identifier
+root
+    : statement*
+    ;
+
+statement
+    : assignment SemiColon
+    | implDeclaration
+    | expression SemiColon
+    | fieldDeclaration SemiColon
+    | block
+    | withScope
+    ;
+
+withScope
+    : With Identifier As expression block
+    ;
+
+capability
+    : Capability type
+    ;
+
+parameter
+    : accessLevel? valVar? identifier typeSpecifier?
+    ;
+
+parameterList
+    : parameter (Comma parameter)*
+    ;
+
+functionSignature
+    : OpenPara parameterList? ClosePara typeSpecifier
+    ;
+
+// NOTE: Goal is to make EVERYTHING an expression -- everything should return a value
+//          Should make it easier to create common patterns for things
+expression
+    : lhs=expression operator rhs=expression                            # binaryExpression
+    | owner=expression OpenBracket accessor=expression CloseBracket     # expressionAccessor
+    | from=expression DoubleDot to=expression                           # rangeExpression
+    | OpenBracket expressionList? CloseBracket                          # arrayCreationExpression
+    | owner=expression Dot member=expression                            # dotExpression
+    | construction                                                      # constructionExression
+    | call                                                              # callExpression
+    | function                                                          # functionExpression
+    | functionSignature                                                 # functionSignatureExpression
+    | OpenPara expression ClosePara                                     # groupedExpression
+    | Bang expression                                                   # notExpression
+    | Return expression                                                 # returnExpression
+    | Then expression                                                   # thenExpression
+    | ifStatement                                                       # ifStatementExpression
+    | struct                                                            # structExpression
+    | trait                                                             # traitExpression
+    | capability                                                        # capabilityExpression
+    | literal                                                           # literalExpression
+    | identifier                                                        # identifierExpression
+    | type                                                              # typeExpression
     ;
 
 valVar
-    : Val
-    | Var
+    : (Val | Var)
     ;
 
 typeSpecifier
     : Colon type
     ;
 
-fieldSignature
-    : valVar? identifier typeSpecifier?
-    ;
-
-// TODO: Remove the .*? and make it only match what could actually be there!
-//fieldDeclaration
-//    : fieldSignature Equals .*?
-//    ;
-
 accessLevel
     : Ref
-    ;
-
-parameter
-    : accessLevel? valVar? identifier
-    ;
-
-parameterList
-    : parameter (Comma parameter)*
     ;
 
 argument
@@ -260,7 +301,7 @@ assignment
 
 // Remove this and just make it optional in 'assignment'?
 // The lexing/parsing should be lenient, and up to next stage to validate
-unitializedAssignment
+fieldDeclaration
     : valVar? identifier typeSpecifier
     ;
 
@@ -268,13 +309,9 @@ expressionList
     : expression (Comma expression)*
     ;
 
-expressions
-    : expression+
-    ;
-
 block
-    : OpenBrace expressions? CloseBrace
-    | Then expressions? End
+    // Faster parsing, but should be illegal to mix when validated
+    : (OpenBrace | Then) statement* (End | CloseBrace)
     ;
 
 ifStatement
@@ -315,10 +352,6 @@ construction
     : type OpenBrace quickConstructorEntryList? CloseBrace
     ;
 
-functionSignature
-    : OpenPara parameterList? ClosePara typeSpecifier
-    ;
-
 functionBody
     : OpenBrace statement* CloseBrace
     | expression
@@ -328,31 +361,6 @@ function
     // If no signature, it is assumed no-args
     : OpenPara parameterList? ClosePara typeSpecifier? ArrowDouble functionBody
     | parameter? ArrowDouble functionBody
-    ;
-
-// NOTE: Goal is to make EVERYTHING an expression -- everything should return a value
-//          Should make it easier to create common patterns for things
-expression
-    : OpenPara expression ClosePara                                     # groupedExpression
-    | owner=expression Dot member=expression                            # dotExpression
-    | lhs=expression operator rhs=expression                            # binaryExpression
-    | owner=expression OpenBracket accessor=expression CloseBracket     # expressionAccessor
-    | from=expression DoubleDot to=expression                           # rangeExpression
-    | OpenBracket expressionList? CloseBracket                          # arrayCreationExpression
-    | construction                        # constructionExression
-    | call                                # callExpression
-    | function                            # functionExpression
-    | functionSignature                   # functionSignatureExpression
-    | Bang expression                     # notExpression
-    | Return expression                   # returnExpression
-    | block                               # blockExpression
-    | Then expression                     # thenExpression
-    | ifStatement                         # ifStatementExpression
-    | struct                              # structExpression
-    | trait                               # traitExpression
-    | literal                             # literalExpression
-    | identifier                          # identifierExpression
-    | type                                # typeExpression
     ;
 
 literal
@@ -368,8 +376,20 @@ trait
     : Trait OpenBrace (statement)* CloseBrace
     ;
 
+implContextParameter
+    : parameter
+    ;
+
+implContextParameterList
+    : implContextParameter (Comma implContextParameter)*
+    ;
+
+implContextDeclaration
+    : With implContextParameterList
+    ;
+
 implDeclaration
-    : Impl identifier For type OpenBrace statement* CloseBrace
+    : Impl identifier For type implContextDeclaration? OpenBrace statement* CloseBrace
     ;
 
 type
@@ -383,14 +403,8 @@ type
     | NumericLiteral                  # numericalType
     ;
 
-statement
-    : assignment SemiColon
-    | unitializedAssignment SemiColon
-    | implDeclaration
-    | expression SemiColon
+identifier
+    : Identifier
     ;
 
-root
-    : statement*
-    ;
 

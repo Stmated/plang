@@ -1,0 +1,30 @@
+
+A = struct {
+    v1: uin32;
+};
+
+B = struct {
+    v2: uin32;
+};
+
+// This is wrong and stupid, needs other syntax
+C = capability B;
+
+T = trait {
+    val call = (x: uint32): uint64;
+};
+
+impl A for T
+    with C
+{
+    call = (self, x: uint32) => {
+      return self.v1 + x + C.v2;
+    };
+}
+
+val f = () => {
+    val a = A { 1 };
+    with C as B {v2 = 10} {
+        a.call(100); // Should be 111
+    }
+};
