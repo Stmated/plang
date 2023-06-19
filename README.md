@@ -16,8 +16,8 @@ Features/ideas that will be attempted:
 * No nulls
 * Meta-programming, able to reference your own code in other parts of the code
 * No-overhead context variables that can be moved through unknown pipeline
+  * Can also be used as language-level dependency injection
 * No thrown exceptions, but forced and natural error handling
 * Simple data structures that can be easily copied
 * Types are structurally compared
   * ```val x = struct {a: uint8}``` == ```val y = struct {a: uint8}```
-

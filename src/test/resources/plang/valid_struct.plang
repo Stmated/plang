@@ -1,0 +1,14 @@
+val Foo = struct {
+  a: uint32;
+  val b: uint32;
+};
+
+val Bar = struct {
+  c: uint32;
+  val d: uint32;
+};
+
+val Baz = struct {
+  var d: uint32;
+  val e: uint32;
+};

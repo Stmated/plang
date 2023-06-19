@@ -7,27 +7,28 @@ B = struct {
     v2: uin32;
 };
 
-// This says "C is the nominal type of B, it is unique"
+// This says "Q is a nominal type, it is unique"
 // Which means that it can be used as a qualifier.
 // Much like a "A: nominal uint8" and "B: nominal uint8"
 // would be considered different types (but subtype of uint8)
-C = nominal B;
+Q = nominal uint8;
 
 T = trait {
     val call = (x: uint32): uint64;
 };
 
 impl A for T
-    with c: C
+    with b: B, uniqueNumber: Q
 {
     call = (self, x: uint32) => {
-      return self.v1 + x + c.v2;
+      return self.v1 + x + b.v2 + uniqueNumber;
     };
 }
 
 val f = () => {
-    val a = A { 1 };
-    with C as B {v2 = 10}, Q as 1 {
-        a.call(100); // Should be 111
+    val a = A { 1 }; // Should work since only 1 value, would also work if called "value"
+
+    with B {v2 = 10}, 1: Q {
+        a.call(100); // Should be 112
     }
 };

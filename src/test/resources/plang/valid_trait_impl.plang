@@ -1,0 +1,34 @@
+val Foo = struct {
+  a: uint32;
+  val b: uint32;
+};
+
+val Bar = struct {
+  c: uint32;
+  val d: uint32;
+};
+
+val Baz = struct {
+  var d: uint32;
+  val e: uint32;
+};
+
+val FooTrait = trait {
+  val calculate1 = (ref val self): uint32;
+  val calculate2 = (self): uint32;
+  calculate3 = (): uint32 | uint64;
+};
+
+impl FooTrait for Foo + Bar {
+  val calculate1 = (ref val self) => self.a + self.b;
+  calculate2 = (self) => self.a + self.c;
+  val calculate3 = () => self.b + self.d;
+}
+
+val aNewType = (Foo | Bar) - Baz;
+
+impl SomethingFunny for aNewType {
+  val toggle1 = (self): 0 | 1 => !self;
+  val toggle2 = (self): (if self 0 else 1) => !self;
+  val toggle3 = (self): (if self then 0 else 1) => !self;
+}

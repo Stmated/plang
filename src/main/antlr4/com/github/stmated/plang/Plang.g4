@@ -220,16 +220,12 @@ statement
     ;
 
 withScopeEntry
-    : Identifier As expression
+    : expression (Colon Identifier)?
     ;
 
 withScope
-    : With withScopeEntry (Comma withScopeEntry)* block
+    : With OpenPara? withScopeEntry (Comma withScopeEntry)* ClosePara? block
     ;
-
-//qualifier
-//    : Qualifier type?
-//    ;
 
 parameter
     : accessLevel? valVar? identifier typeSpecifier?
@@ -246,11 +242,11 @@ functionSignature
 // NOTE: Goal is to make EVERYTHING an expression -- everything should return a value
 //          Should make it easier to create common patterns for things
 expression
-    : lhs=expression operator rhs=expression                            # binaryExpression
+    : owner=expression Dot member=expression                            # dotExpression
+    | lhs=expression operator rhs=expression                            # binaryExpression
     | owner=expression OpenBracket accessor=expression CloseBracket     # expressionAccessor
     | from=expression DoubleDot to=expression                           # rangeExpression
     | OpenBracket expressionList? CloseBracket                          # arrayCreationExpression
-    | owner=expression Dot member=expression                            # dotExpression
     | construction                                                      # constructionExression
     | call                                                              # callExpression
     | function                                                          # functionExpression
@@ -262,11 +258,11 @@ expression
     | ifStatement                                                       # ifStatementExpression
     | struct                                                            # structExpression
     | trait                                                             # traitExpression
-//    | qualifier                                                         # qualifierExpression
     | literal                                                           # literalExpression
-    | identifier                                                        # identifierExpression
+    | Identifier                                                        # identifierExpression
     | type                                                              # typeExpression
     ;
+
 
 valVar
     : (Val | Var)

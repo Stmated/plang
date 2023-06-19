@@ -1,0 +1,6 @@
+
+// Valid when parsing, but should be invalid when validated
+val Foo = struct {
+  a = () => {
+  };
+};
