@@ -17,3 +17,4 @@ Features/ideas that will be attempted:
 * Meta-programming, able to reference your own code in other parts of the code
 * No-overhead context variables that can be moved through unknown pipeline
 * No thrown exceptions, but forced and natural error handling
+* Simple data structures that can be easily copied
