@@ -1,21 +1,33 @@
 package com.github.stmated.plang;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.stream.Stream;
 
 class ParseAllExamplesTest {
 
-  @Test
-  void parseAllExamples() throws IOException {
+  private static Stream<Arguments> testShouldSucceedSource() throws IOException {
+
+    final var paths = new ArrayList<Path>();
+    PlangCompiler.find(Paths.get("src/test/resources/plang/valid_parse"), paths);
+
+    return paths.stream().map(Arguments::of);
+  }
+
+  @ParameterizedTest
+  @MethodSource("testShouldSucceedSource")
+  void testShouldSucceed(Path path) throws IOException {
 
     final var compiler = new PlangCompiler();
 
-    final var path = Paths.get("src/test/resources/plang").toAbsolutePath();
     final var files = new HashMap<Path, ByteArrayOutputStream>();
 
     compiler.compileDirectory(path, sourceFilePath -> {
@@ -23,7 +35,5 @@ class ParseAllExamplesTest {
       files.put(sourceFilePath, os);
       return os;
     });
-
-    var i = 0;
   }
 }

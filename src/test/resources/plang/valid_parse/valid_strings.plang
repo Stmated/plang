@@ -1,0 +1,10 @@
+
+
+var s1 = "some 'string' here";
+
+var s2 = 'some "string" here';
+
+var s3 = `some 'string' "here"`;
+
+var v = 10;
+var s4 = `some value: ${v}`;

@@ -4,7 +4,6 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
-import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.RuleNode;
 
 import java.io.IOException;
@@ -14,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.ArrayList;
+import java.util.Collection;
 
 public class PlangCompiler {
 
@@ -22,22 +22,27 @@ public class PlangCompiler {
 
   public void compileDirectory(Path sourceDirectory, StreamCreator streamCreator) throws IOException {
 
-    this.find(sourceDirectory, streamCreator);
+    final var paths = new ArrayList<Path>();
+    PlangCompiler.find(sourceDirectory, paths);
+
+    for (final var path : paths) {
+      this.compile(path, streamCreator);
+    }
   }
 
-  private void find(Path fileOrDirectory, StreamCreator streamCreator) throws IOException {
+  public static void find(Path fileOrDirectory, Collection<Path> target) throws IOException {
 
     if (Files.isDirectory(fileOrDirectory)) {
 
       try (final var children = Files.list(fileOrDirectory)) {
         for (final var child : children.toList()) {
-          this.find(child, streamCreator);
+          PlangCompiler.find(child, target);
         }
       }
 
     } else {
       if (plangPatchMatcher.matches(fileOrDirectory.getFileName())) {
-        this.compile(fileOrDirectory, streamCreator);
+        target.add(fileOrDirectory);
       }
     }
   }
@@ -50,7 +55,7 @@ public class PlangCompiler {
 
     final var tokenStream = new CommonTokenStream(lexer);
     final var parser = new PlangParser(tokenStream);
-    parser.addParseListener(new PlangBaseListener() {
+    parser.addParseListener(new PlangParserBaseListener() {
 
       @Override
       public void enterEveryRule(ParserRuleContext ctx) {
@@ -68,7 +73,7 @@ public class PlangCompiler {
     try (var os = streamCreator.create(file)) {
 
       final var path = new ArrayList<RuleNode>();
-      final var visitor = new PlangBaseVisitor<Void>() {
+      final var visitor = new PlangParserBaseVisitor<Void>() {
 
         @Override
         public Void visitChildren(RuleNode node) {
@@ -123,7 +128,7 @@ public class PlangCompiler {
 
           errorMessage.append("ErrorNode: ").append(node.toString()).append(System.lineSeparator());
 
-          throw new RuntimeException(errorMessage.toString());
+          throw new RuntimeException(file + ": " + errorMessage.toString());
         }
       };
 

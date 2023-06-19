@@ -30,6 +30,13 @@
       <scope>test</scope>
     </dependency>
 
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-params</artifactId>
+      <version>5.9.2</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -47,7 +54,11 @@
             </goals>
             <configuration>
               <visitor>true</visitor>
-<!--              <outputDirectory>${project.build.directory}/generated-sources/antlr4</outputDirectory>-->
+              <outputDirectory>${project.build.directory}/generated-sources/com/github/stmated/plang</outputDirectory>
+              <includes>
+                <include>**/PlangLexer.g4</include>
+                <include>**/PlangParser.g4</include>
+              </includes>
             </configuration>
           </execution>
         </executions>
