@@ -7,9 +7,9 @@ Person = struct {
 /*
 This is a multiline comment
 */
-val quickObject = Person { FamilyName = 'Eliason', /* will be set to 'value' */ "198706046615" };
+val quickObject = Person { FamilyName = 'Eliason', /* next will be set to 'value' */ "198706046615" };
 
-val quickObject = Person {
+val quickObject2 = Person {
   FamilyName = 'Eliazon',
   // below has no key, so will set property "value"
   "191212121212"
