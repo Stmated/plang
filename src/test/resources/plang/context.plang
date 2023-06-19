@@ -7,24 +7,27 @@ B = struct {
     v2: uin32;
 };
 
-// This is wrong and stupid, needs other syntax
-C = capability B;
+// This says "C is the nominal type of B, it is unique"
+// Which means that it can be used as a qualifier.
+// Much like a "A: nominal uint8" and "B: nominal uint8"
+// would be considered different types (but subtype of uint8)
+C = nominal B;
 
 T = trait {
     val call = (x: uint32): uint64;
 };
 
 impl A for T
-    with C
+    with c: C
 {
     call = (self, x: uint32) => {
-      return self.v1 + x + C.v2;
+      return self.v1 + x + c.v2;
     };
 }
 
 val f = () => {
     val a = A { 1 };
-    with C as B {v2 = 10} {
+    with C as B {v2 = 10}, Q as 1 {
         a.call(100); // Should be 111
     }
 };

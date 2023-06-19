@@ -18,3 +18,6 @@ Features/ideas that will be attempted:
 * No-overhead context variables that can be moved through unknown pipeline
 * No thrown exceptions, but forced and natural error handling
 * Simple data structures that can be easily copied
+* Types are structurally compared
+  * ```val x = struct {a: uint8}``` == ```val y = struct {a: uint8}```
+

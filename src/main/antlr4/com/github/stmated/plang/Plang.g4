@@ -55,8 +55,10 @@ Impl: 'impl';
 Ref: 'ref';
 Return: 'return';
 
-Capability: 'capability';
+Qualifier: 'qualifier';
 As: 'as';
+
+Nominal: 'nominal';
 
 Bang: '!';
 
@@ -217,13 +219,17 @@ statement
     | withScope
     ;
 
-withScope
-    : With Identifier As expression block
+withScopeEntry
+    : Identifier As expression
     ;
 
-capability
-    : Capability type
+withScope
+    : With withScopeEntry (Comma withScopeEntry)* block
     ;
+
+//qualifier
+//    : Qualifier type?
+//    ;
 
 parameter
     : accessLevel? valVar? identifier typeSpecifier?
@@ -256,7 +262,7 @@ expression
     | ifStatement                                                       # ifStatementExpression
     | struct                                                            # structExpression
     | trait                                                             # traitExpression
-    | capability                                                        # capabilityExpression
+//    | qualifier                                                         # qualifierExpression
     | literal                                                           # literalExpression
     | identifier                                                        # identifierExpression
     | type                                                              # typeExpression
@@ -377,7 +383,7 @@ trait
     ;
 
 implContextParameter
-    : parameter
+    : Identifier Colon Identifier
     ;
 
 implContextParameterList
@@ -401,6 +407,7 @@ type
     | type genericSignature           # genericType
     | Identifier                      # typeName
     | NumericLiteral                  # numericalType
+    | Nominal type                    # nominalType
     ;
 
 identifier
