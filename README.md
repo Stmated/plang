@@ -1,7 +1,9 @@
 
 # Plang
 
-Experimental language based on learning to write a programming language.
+Example code snippets in `/src/test/resources/plang`
+
+Experimental language for learning purposes
 
 Features/ideas that will be attempted:
 * As few different syntax for things as possible
