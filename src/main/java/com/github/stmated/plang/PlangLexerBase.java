@@ -1,0 +1,163 @@
+package com.github.stmated.plang;
+
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.Lexer;
+import org.antlr.v4.runtime.Token;
+
+import java.util.Stack;
+
+/**
+ * All lexer methods that used in grammar (IsStrictMode)
+ * should start with Upper Case Char similar to Lexer rules.
+ */
+public abstract class PlangLexerBase extends Lexer {
+
+  /**
+   * Stores values of nested modes. By default mode is strict or
+   * defined externally (useStrictDefault)
+   */
+  private final Stack<Boolean> scopeStrictModes = new Stack<>();
+
+  private Token lastToken = null;
+  /**
+   * Default value of strict mode
+   * Can be defined externally by setUseStrictDefault
+   */
+  private boolean useStrictDefault = false;
+  /**
+   * Current value of strict mode
+   * Can be defined during parsing, see StringFunctions.js and StringGlobal.js samples
+   */
+  private boolean useStrictCurrent = false;
+  /**
+   * Keeps track of the current depth of nested template string backticks.
+   * E.g. after the X in:
+   * <p>
+   * `${a ? `${X
+   * <p>
+   * templateDepth will be 2. This variable is needed to determine if a `}` is a
+   * plain CloseBrace, or one that closes an expression inside a template string.
+   */
+  private int templateDepth = 0;
+
+  /**
+   * Keeps track of the depth of open- and close-braces. Used for expressions like:
+   * <p>
+   * `${[1, 2, 3].map(x => { return x * 2;}).join("")}`
+   * <p>
+   * where the '}' from `return x * 2;}` should not become a `TemplateCloseBrace`
+   * token but rather a `CloseBrace` token.
+   */
+  private int bracesDepth = 0;
+
+  protected PlangLexerBase(CharStream input) {
+    super(input);
+  }
+
+  public boolean getStrictDefault() {
+    return useStrictDefault;
+  }
+
+  public void setUseStrictDefault(boolean value) {
+    useStrictDefault = value;
+    useStrictCurrent = value;
+  }
+
+  public boolean IsStrictMode() {
+    return useStrictCurrent;
+  }
+
+  public void StartTemplateString() {
+    this.bracesDepth = 0;
+  }
+
+  public boolean IsInTemplateString() {
+    return this.templateDepth > 0 && this.bracesDepth == 0;
+  }
+
+  /**
+   * Return the next token from the character stream and records this last
+   * token in case it resides on the default channel. This recorded token
+   * is used to determine when the lexer could possibly match a regex
+   * literal. Also changes scopeStrictModes stack if tokenize special
+   * string 'use strict';
+   *
+   * @return the next token from the character stream.
+   */
+  @Override
+  public Token nextToken() {
+    Token next = super.nextToken();
+
+    if (next.getChannel() == Token.DEFAULT_CHANNEL) {
+      // Keep track of the last token on the default channel.
+      this.lastToken = next;
+    }
+
+    return next;
+  }
+
+  protected void ProcessOpenBrace() {
+    bracesDepth++;
+    useStrictCurrent = !scopeStrictModes.isEmpty() && Boolean.TRUE.equals(scopeStrictModes.peek()) || useStrictDefault;
+    scopeStrictModes.push(useStrictCurrent);
+  }
+
+  protected void ProcessCloseBrace() {
+    bracesDepth--;
+    useStrictCurrent = !scopeStrictModes.isEmpty() ? scopeStrictModes.pop() : useStrictDefault;
+  }
+
+  protected void ProcessStringLiteral() {
+    if (lastToken == null || lastToken.getType() == PlangLexer.OpenBrace) {
+      String text = getText();
+      if (text.equals("\"use strict\"") || text.equals("'use strict'")) {
+        if (!scopeStrictModes.isEmpty())
+          scopeStrictModes.pop();
+        useStrictCurrent = true;
+        scopeStrictModes.push(useStrictCurrent);
+      }
+    }
+  }
+
+  protected void IncreaseTemplateDepth() {
+    this.templateDepth++;
+  }
+
+  protected void DecreaseTemplateDepth() {
+    this.templateDepth--;
+  }
+
+  /**
+   * Returns {@code true} if the lexer can match a regex literal.
+   */
+  protected boolean IsRegexPossible() {
+
+    if (this.lastToken == null) {
+      // No token has been produced yet: at the start of the input,
+      // no division is possible, so a regex literal _is_ possible.
+      return true;
+    }
+
+    return false;
+
+//    switch (this.lastToken.getType()) {
+//      case PlangParserLexer.Identifier:
+////      case PlangLexer.NullLiteral:
+//      case PlangParserLexer.BooleanLiteral:
+//      case PlangParserLexer.This:
+//      case PlangParserLexer.CloseBracket:
+//      case PlangParserLexer.CloseParen:
+//      case PlangParserLexer.OctalIntegerLiteral:
+//      case PlangParserLexer.DecimalLiteral:
+//      case PlangParserLexer.HexIntegerLiteral:
+//      case PlangParserLexer.StringLiteral:
+//      case PlangParserLexer.PlusPlus:
+//      case PlangParserLexer.MinusMinus:
+//        // After any of the tokens above, no regex literal can follow.
+//        return false;
+//      default:
+//        // In all other cases, a regex literal _is_ possible.
+//        return true;
+//    }
+  }
+}
