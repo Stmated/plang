@@ -44,16 +44,16 @@ public abstract class PlangParserBase extends Parser {
   }
 
   protected boolean notLineTerminator() {
-    return !here(PlangParser.LineTerminator);
+    return !here(PlangParserJava.LineTerminator);
   }
 
   protected boolean notOpenBraceAndNotFunction() {
     int nextTokenType = _input.LT(1).getType();
-    return nextTokenType != PlangParser.OpenBrace;
+    return nextTokenType != PlangParserJava.OpenBrace;
   }
 
   protected boolean closeBrace() {
-    return _input.LT(1).getType() == PlangParser.CloseBrace;
+    return _input.LT(1).getType() == PlangParserJava.CloseBrace;
   }
 
   /**
@@ -100,12 +100,12 @@ public abstract class PlangParserBase extends Parser {
       return false;
     }
 
-    if (ahead.getType() == PlangParser.LineTerminator) {
+    if (ahead.getType() == PlangParserJava.LineTerminator) {
       // There is definitely a line terminator ahead.
       return true;
     }
 
-    if (ahead.getType() == PlangParser.WhiteSpaces) {
+    if (ahead.getType() == PlangParserJava.WhiteSpaces) {
       // Get the token ahead of the current whitespaces.
       possibleIndexEosToken = this.getCurrentToken().getTokenIndex() - 2;
       ahead = _input.get(possibleIndexEosToken);
@@ -116,7 +116,7 @@ public abstract class PlangParserBase extends Parser {
     int type = ahead.getType();
 
     // Check if the token is, or contains a line terminator.
-    return (type == PlangParser.MultiLineComment && (text.contains("\r") || text.contains("\n"))) ||
-        (type == PlangParser.LineTerminator);
+    return (type == PlangParserJava.MultiLineComment && (text.contains("\r") || text.contains("\n"))) ||
+        (type == PlangParserJava.LineTerminator);
   }
 }

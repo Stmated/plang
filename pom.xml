@@ -56,8 +56,8 @@
               <visitor>true</visitor>
               <outputDirectory>${project.build.directory}/generated-sources/com/github/stmated/plang</outputDirectory>
               <includes>
-                <include>**/PlangLexer.g4</include>
-                <include>**/PlangParser.g4</include>
+                <include>**/*.g4</include>
+<!--                <include>**/PlangParser.g4</include>-->
               </includes>
             </configuration>
           </execution>

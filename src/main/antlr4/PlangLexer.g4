@@ -2,14 +2,6 @@ lexer grammar PlangLexer;
 
 channels { ERROR, COMMENT }
 
-@header {
-package com.github.stmated.plang;
-}
-
-options {
-    superClass=PlangLexerBase;
-}
-
 MultiLineComment
     : '/*' .*? '*/' -> channel(COMMENT)
     ;
@@ -23,9 +15,9 @@ CloseBracket: ']';
 OpenPara: '(';
 ClosePara: ')';
 
-OpenBrace: '{' {this.ProcessOpenBrace();};
-TemplateCloseBrace:  '}' {this.IsInTemplateString()}? -> popMode;
-CloseBrace: '}' {this.ProcessCloseBrace();};
+OpenBrace: '{';
+CloseBrace: '}';
+TemplateCloseBrace:  '}';
 
 SemiColon: ';';
 
@@ -125,12 +117,10 @@ BinaryIntegerLiteral
 // String literals
 
 StringLiteral
-    : ('"' DoubleStringCharacter* '"'
+    : ('`' BackTickStringCharacter* '`'
+    | '"' DoubleStringCharacter* '"'
     | '\'' SingleStringCharacter* '\'')
     ;
-
-BackTick
-    : '`' {this.IncreaseTemplateDepth();} -> pushMode(TEMPLATE);
 
 WhiteSpaces
     : [\t\u000B\u000C\u0020\u00A0]+ -> channel(HIDDEN)
@@ -143,13 +133,6 @@ LineTerminator
 UnexpectedCharacter
     : . -> channel(ERROR)
     ;
-
-mode TEMPLATE;
-
-TemplateStringEscapeAtom:       '\\' .;
-BackTickInside:                 '`' {this.DecreaseTemplateDepth();} -> type(BackTick), popMode;
-TemplateStringStartExpression:  '${' {this.StartTemplateString();} -> pushMode(DEFAULT_MODE);
-TemplateStringAtom:             ~[`\\];
 
 fragment TickStringCharacter
     : ~[`\\\r\n]
@@ -165,6 +148,12 @@ fragment DoubleStringCharacter
 
 fragment SingleStringCharacter
     : ~['\\\r\n]
+    | '\\' EscapeSequence
+    | LineContinuation
+    ;
+
+fragment BackTickStringCharacter
+    : ~[`\\\r\n]
     | '\\' EscapeSequence
     | LineContinuation
     ;

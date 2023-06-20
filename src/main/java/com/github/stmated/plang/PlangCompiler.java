@@ -51,11 +51,11 @@ public class PlangCompiler {
 
     final var charStream = CharStreams.fromPath(file, StandardCharsets.UTF_8);
 
-    final var lexer = new PlangLexer(charStream);
+    final var lexer = new PlangLexerJava(charStream);
 
     final var tokenStream = new CommonTokenStream(lexer);
-    final var parser = new PlangParser(tokenStream);
-    parser.addParseListener(new PlangParserBaseListener() {
+    final var parser = new PlangParserJava(tokenStream);
+    parser.addParseListener(new PlangParserJavaBaseListener() {
 
       @Override
       public void enterEveryRule(ParserRuleContext ctx) {
@@ -63,7 +63,7 @@ public class PlangCompiler {
       }
 
       @Override
-      public void enterRoot(PlangParser.RootContext ctx) {
+      public void enterRoot(PlangParserJava.RootContext ctx) {
         super.enterRoot(ctx);
       }
     });
@@ -73,7 +73,7 @@ public class PlangCompiler {
     try (var os = streamCreator.create(file)) {
 
       final var path = new ArrayList<RuleNode>();
-      final var visitor = new PlangParserBaseVisitor<Void>() {
+      final var visitor = new PlangParserJavaBaseVisitor<Void>() {
 
         @Override
         public Void visitChildren(RuleNode node) {
@@ -87,22 +87,22 @@ public class PlangCompiler {
         }
 
         @Override
-        public Void visitDotExpression(PlangParser.DotExpressionContext ctx) {
+        public Void visitDotExpression(PlangParserJava.DotExpressionContext ctx) {
           return super.visitDotExpression(ctx);
         }
 
         @Override
-        public Void visitRoot(PlangParser.RootContext ctx) {
+        public Void visitRoot(PlangParserJava.RootContext ctx) {
           return super.visitRoot(ctx);
         }
 
         @Override
-        public Void visitIdentifier(PlangParser.IdentifierContext ctx) {
+        public Void visitIdentifier(PlangParserJava.IdentifierContext ctx) {
           return super.visitIdentifier(ctx);
         }
 
         @Override
-        public Void visitTypeName(PlangParser.TypeNameContext ctx) {
+        public Void visitTypeName(PlangParserJava.TypeNameContext ctx) {
           return super.visitTypeName(ctx);
         }
 

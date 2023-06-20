@@ -1,12 +1,7 @@
 parser grammar PlangParser;
 
-@header {
-package com.github.stmated.plang;
-}
-
 options {
     tokenVocab=PlangLexer;
-    superClass=PlangParserBase;
 }
 
 root
@@ -170,19 +165,13 @@ function
     ;
 
 literal
-    : templateStringLiteral # stringLiteralTemplate
-    | StringLiteral     # stringLiteral
+    : StringLiteral     # stringLiteral
+    | templateStringLiteral # stringLiteralTemplate
     | NumericLiteral    # numericLiteral
     ;
 
 templateStringLiteral
-    : BackTick templateStringAtom* BackTick
-    ;
-
-templateStringAtom
-    : TemplateStringAtom
-    | TemplateStringStartExpression expression TemplateCloseBrace
-    | TemplateStringEscapeAtom
+    : StringLiteral
     ;
 
 struct
