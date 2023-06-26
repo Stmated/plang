@@ -1,0 +1,21 @@
+
+val a = if (1 == 2) then 1 else 2;
+
+if (1 == 2) {
+    return true;
+}
+
+val b = if a > b then 1 else 2;
+
+if (1 == 2) {
+    return true;
+} else {
+    if (1 > 10) return true;
+    return false;
+}
+
+val c = if (1 == 2) {
+    return true;
+} else {
+    return false;
+}

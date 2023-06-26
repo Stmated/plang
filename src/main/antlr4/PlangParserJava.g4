@@ -10,6 +10,12 @@ options {
 
 import PlangParser;
 
+literal
+    : StringLiteral     # stringLiteral
+    | templateStringLiteral # stringLiteralTemplate
+    | NumericLiteral    # numericLiteral
+    ;
+
 templateStringLiteral
     : BackTick templateStringAtom* BackTick
     ;

@@ -17,7 +17,7 @@ T = trait {
     val call = (x: uint32): uint64;
 };
 
-impl A for T
+val A = impl for T
     with b: B, uniqueNumber: Q
 {
     call = (self, x: uint32) => {

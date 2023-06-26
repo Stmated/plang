@@ -1,0 +1,8 @@
+
+val fn = <T1: Add, T2: Add = T1, T3: Add = T1 | T2>(t: (T1, T2)): T3 => {
+    return t[0] + t[1];
+};
+
+fn<uint8>((1, 2));
+fn<T1 = uint8>((1, 2));
+fn<uint8, T3 = uint64>((1, 2));

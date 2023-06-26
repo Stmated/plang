@@ -1,0 +1,16 @@
+
+val t = (10, 10, 10);
+
+val fn = (a: uint8): (uint8, uint8) => {
+    return (1, 2);
+};
+
+val fn2 = (): (1, 2) => {
+    return (1, 2);
+};
+
+val fn3 = (t: (uint8, uint8)): uint16 => {
+    return t[0] + t[1];
+};
+
+fn3((1, 2));

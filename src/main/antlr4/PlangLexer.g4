@@ -26,8 +26,6 @@ Tilde: '~';
 DoubleDot: '..';
 Dot: '.';
 
-Equals: '=';
-
 Then: 'then';
 End: 'end';
 
@@ -40,6 +38,8 @@ Multiply: '*';
 Divide: '/';
 Modulus: '%';
 
+QuestionMark: '?';
+
 Struct: 'struct';
 Trait: 'trait';
 Val: 'val';
@@ -48,6 +48,12 @@ Var: 'var';
 With: 'with';
 
 For: 'for';
+ForEach: 'foreach';
+While: 'while';
+Do: 'do';
+In: 'in';
+Of: 'of';
+
 Impl: 'impl';
 
 Ref: 'ref';
@@ -57,6 +63,10 @@ Qualifier: 'qualifier';
 As: 'as';
 
 Nominal: 'nominal';
+Symbol: 'symbol';
+
+Export: 'export';
+Default: 'default';
 
 Bang: '!';
 
@@ -68,14 +78,18 @@ New: 'new';
 LTE: '<=';
 GTE: '>=';
 
+ArrowDouble: '=>';
+ArrowSingle: '->';
+
 LT: '<';
 GT: '>';
 
+Equals: '==';
+
+Assign: '=';
+
 If: 'if';
 Else: 'else';
-
-ArrowDouble: '=>';
-ArrowSingle: '->';
 
 Identifier
     : IdentifierStart IdentifierPart*

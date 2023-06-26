@@ -8,13 +8,28 @@ root
     : statement* EOF
     ;
 
-statement
-    : assignment SemiColon
-    | implDeclaration
-    | expression SemiColon
-    | fieldDeclaration SemiColon
-    | block
+block
+    : OpenBrace statement* CloseBrace
+    ;
+
+standaloneExecutableStatement
+    : block
     | withScope
+    | iterationStatement
+    | ifStatement
+    ;
+
+statement
+    : standaloneExecutableStatement
+    | expression eos
+    | variableDeclaration eos
+    | Export Default? statement
+    ;
+
+eos
+    // This should be possible to be EOF or close brace or other contextual to get rid of ";" eventually
+    : SemiColon
+    | End
     ;
 
 withScopeEntry
@@ -37,28 +52,56 @@ functionSignature
     : OpenPara parameterList? ClosePara typeSpecifier
     ;
 
+ownerMember
+    : (identifier | call);
+
+iterationStatement
+    : Do (standaloneExecutableStatement | expression) While OpenPara? expression ClosePara? eos                     # DoStatement
+    | While OpenPara? expression ClosePara? (statement | expression)                                                # WhileStatement
+    | For OpenPara variableDeclarationList? SemiColon expression? SemiColon expressionList? ClosePara statement     # ForEachStatement
+    | ForEach OpenPara? (expression | variableDeclaration) (In | Of) expression ClosePara? statement                # ForInStatement
+    ;
+
+thener
+    : Then expression
+    ;
+
+tuple
+    : OpenPara expression (Comma expression)+ ClosePara
+    ;
+
+mapEntryPair
+    : expression Assign expression
+    ;
+
+mapEntryList
+    : mapEntryPair (Comma mapEntryPair)*
+    ;
+
 // NOTE: Goal is to make EVERYTHING an expression -- everything should return a value
 //          Should make it easier to create common patterns for things
 expression
-    : owner=expression Dot member=expression                            # dotExpression
+    : function                                                          # functionExpression
+    | tuple                                                             # tupleExpression
+    | call                                                              # callExpression
+    | OpenPara expression ClosePara                                     # groupedExpression
+    | owner=expression Dot QuestionMark? member=ownerMember             # dotExpression
     | lhs=expression operator rhs=expression                            # binaryExpression
     | owner=expression OpenBracket accessor=expression CloseBracket     # expressionAccessor
     | from=expression DoubleDot to=expression                           # rangeExpression
+    | OpenBracket mapEntryList CloseBracket                             # mapCreationExpression
     | OpenBracket expressionList? CloseBracket                          # arrayCreationExpression
     | construction                                                      # constructionExression
-    | call                                                              # callExpression
-    | function                                                          # functionExpression
     | functionSignature                                                 # functionSignatureExpression
-    | OpenPara expression ClosePara                                     # groupedExpression
     | Bang expression                                                   # notExpression
     | Return expression                                                 # returnExpression
-    | Then expression                                                   # thenExpression
+    | thener                                                            # thenExpression
     | ifStatement                                                       # ifStatementExpression
     | struct                                                            # structExpression
     | trait                                                             # traitExpression
+    | impl                                                              # implExpression
     | literal                                                           # literalExpression
     | Identifier                                                        # identifierExpression
-    | type                                                              # typeExpression
     ;
 
 
@@ -67,7 +110,9 @@ valVar
     ;
 
 typeSpecifier
-    : Colon type
+    // TODO: This is too forgiving, not any expression should be acceptable. It makes the parsing slow.
+    // TODO: Up to later parsing to decide if the expression is legal or not (must be constant, etc)
+    : Colon (type | expression)
     ;
 
 accessLevel
@@ -75,7 +120,7 @@ accessLevel
     ;
 
 argument
-    : identifier Equals expression  # namedArgument
+    : identifier Assign expression  # namedArgument
     | expression                    # indexedArgument
     ;
 
@@ -85,7 +130,8 @@ argumentList
     ;
 
 operator
-    : Plus
+    : Equals
+    | Plus
     | Minus
     | Multiply
     | Divide
@@ -94,50 +140,73 @@ operator
     | GTE
     | LT
     | GT
+    | QuestionMark QuestionMark
     ;
 
-assignment
-    : valVar? identifier typeSpecifier? Equals expression
+initializer
+    : Assign (type | expression)
     ;
 
-// Remove this and just make it optional in 'assignment'?
-// The lexing/parsing should be lenient, and up to next stage to validate
-fieldDeclaration
-    : valVar? identifier typeSpecifier
+variableDeclaration
+    : valVar? identifier typeSpecifier? initializer?
+    ;
+
+variableDeclarationList
+    : variableDeclaration (Comma variableDeclaration)*
     ;
 
 expressionList
     : expression (Comma expression)*
     ;
 
-block
-    // Faster parsing, but should be illegal to mix when validated
-    : (OpenBrace | Then) statement* (End | CloseBrace)
+elseStatement
+    : Else (expression | statement)
     ;
 
 ifStatement
-    : If expression expression (Else expression)?
+    : If predicate=expression (thener | statement)? elseStatement?
+    ;
+
+genericSignatureTypeNarrower
+    : Colon type
+    ;
+
+genericSignatureTypeDefault
+    : Assign type
     ;
 
 // TODO: This should be so much more, like "extends" or "super" or other conditions
-genericListEntry
-    : type
+genericSignatureType
+    : Identifier genericSignatureTypeNarrower? genericSignatureTypeDefault?
     ;
 
-genericList
-    : genericListEntry (Comma genericListEntry)*
+genericSignatureTypeList
+    : genericSignatureType (Comma genericSignatureType)*
     ;
 
 genericSignature
-    : LT genericList? GT
+    : LT genericSignatureTypeList GT
+    ;
+
+genericArgument
+    : identifier Assign type        # namedGenericArgument
+    | type                          # indexedGenericArgument
+    ;
+
+genericArguments
+    : genericArgument (Comma genericArgument)*
+    ;
+
+genericArgumentSupplier
+    : LT genericArguments GT
     ;
 
 call
-    : Tilde? Identifier genericSignature? OpenPara argumentList? ClosePara
+    : Tilde? Identifier genericArgumentSupplier? OpenPara argumentList? ClosePara
     ;
 
 keyValuePair
-    : Identifier Equals expression
+    : Identifier Assign expression
     ;
 
 quickConstructorEntry
@@ -160,18 +229,13 @@ functionBody
 
 function
     // If no signature, it is assumed no-args
-    : OpenPara parameterList? ClosePara typeSpecifier? ArrowDouble functionBody
+    : genericSignature? OpenPara parameterList? ClosePara typeSpecifier? ArrowDouble functionBody
     | parameter? ArrowDouble functionBody
     ;
 
 literal
     : StringLiteral     # stringLiteral
-    | templateStringLiteral # stringLiteralTemplate
     | NumericLiteral    # numericLiteral
-    ;
-
-templateStringLiteral
-    : StringLiteral
     ;
 
 struct
@@ -194,7 +258,7 @@ implContextDeclaration
     : With implContextParameterList
     ;
 
-implDeclaration
+impl
     : Impl identifier For type implContextDeclaration? OpenBrace statement* CloseBrace
     ;
 
@@ -203,11 +267,12 @@ type
     | type '|' type                   # intersectionType
     | type Minus type                 # notType
     | OpenPara type ClosePara         # groupedType
-    | ifStatement                     # conditionalType // Up to parser to decide if it is legal
     | type genericSignature           # genericType
     | Identifier                      # typeName
     | NumericLiteral                  # numericalType
     | Nominal type                    # nominalType
+    | Symbol identifier               # symbolType
+    | tuple                           # tupleType
     ;
 
 identifier

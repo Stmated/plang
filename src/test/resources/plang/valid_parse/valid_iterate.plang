@@ -1,0 +1,41 @@
+
+val array1 = [1, 2, 3];
+
+do {
+} while (1 == 1);
+
+do eat() while hungry();
+do then eat() while hungry();
+
+while (hungry()) { eat(); }
+while hungry() eat();
+while hungry() then eat();
+while hungry() eatAnd() end
+while hungry() then eat()
+
+for (var i = 0; i < 10; i.increment()) { }
+for (var i = 0, n = i; i < 10; i.increment()) { }
+
+foreach (var a in array1[0..1]) print(a);
+
+foreach (var a in array1) { print(a); }
+foreach (var a in array1) print(a);
+foreach (var a in array1) then print(a);
+foreach (var a in array1) then print(a); end // TODO: Should be possible to be without ";"
+foreach a in array1 print(a);
+foreach a in array1 then print(a);
+foreach a in array1 print(a);
+foreach a in array1 then print(a);
+foreach (var a in array1) {
+    print(a);
+}
+
+foreach (var a of array1) { print(a); }
+foreach (var a of array1) print(a);
+foreach (var a of array1) then print(a);
+
+foreach (var a of array1) then print(a); end
+foreach (var a of array1) then print(a) end
+foreach (var a of array1) {
+    print(a);
+}
