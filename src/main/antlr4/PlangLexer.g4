@@ -23,6 +23,7 @@ SemiColon: ';';
 
 Tilde: '~';
 
+TripleDot: '...';
 DoubleDot: '..';
 Dot: '.';
 
@@ -32,13 +33,31 @@ End: 'end';
 BitOr: '|';
 BitAnd: '&';
 
+ArrowDouble: '=>';
+ArrowSingle: '->';
+
 Plus: '+';
 Minus: '-';
 Multiply: '*';
 Divide: '/';
-Modulus: '%';
+Modulus: '%%';
+Remainder: '%';
+BitShiftLeft: '<<';
+BitShiftRight: '>>';
+LTE: '<=';
+GTE: '>=';
+Equals: '==';
+LT: '<';
+GT: '>';
 
 QuestionMark: '?';
+
+Assign: '=';
+
+Bang: '!';
+
+Comma: ',';
+Colon: ':';
 
 Struct: 'struct';
 Trait: 'trait';
@@ -52,41 +71,33 @@ ForEach: 'foreach';
 While: 'while';
 Do: 'do';
 In: 'in';
+Out: 'out';
 Of: 'of';
+
+Infer: 'infer';
+Derive: 'derive';
+
+Super: 'super';
 
 Impl: 'impl';
 
 Ref: 'ref';
 Return: 'return';
+Yield: 'yield';
 
 Qualifier: 'qualifier';
+Is: 'is';
 As: 'as';
 
+Type: 'type';
 Nominal: 'nominal';
 Symbol: 'symbol';
 
+Import: 'import';
 Export: 'export';
 Default: 'default';
 
-Bang: '!';
-
-Comma: ',';
-Colon: ':';
-
 New: 'new';
-
-LTE: '<=';
-GTE: '>=';
-
-ArrowDouble: '=>';
-ArrowSingle: '->';
-
-LT: '<';
-GT: '>';
-
-Equals: '==';
-
-Assign: '=';
 
 If: 'if';
 Else: 'else';

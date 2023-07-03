@@ -12,18 +12,54 @@ block
     : OpenBrace statement* CloseBrace
     ;
 
-standaloneExecutableStatement
+standaloneStatement
     : block
     | withScope
     | iterationStatement
     | ifStatement
+    | Export Default? statement
+    ;
+
+simplePathSegment
+    : identifier
+    | '*'
+    ;
+
+simplePath
+    : simplePathSegment (Dot simplePathSegment)*
+    ;
+
+importGroup
+    : OpenBrace importTree (delimiter importTree)* delimiter? CloseBrace
+    ;
+
+groupedImport
+    : simplePath Dot importGroup
+    ;
+
+aliasedImport
+    : identifier Colon simplePath
+    ;
+
+importTree
+    : simplePath
+    | groupedImport
+    | aliasedImport
+    ;
+
+importDeclaration
+    : Import importTree
+    ;
+
+eosStatement
+    : expression
+    | variableDeclaration
+    | importDeclaration
     ;
 
 statement
-    : standaloneExecutableStatement
-    | expression eos
-    | variableDeclaration eos
-    | Export Default? statement
+    : standaloneStatement
+    | eosStatement eos
     ;
 
 eos
@@ -37,7 +73,7 @@ withScopeEntry
     ;
 
 withScope
-    : With OpenPara? withScopeEntry (Comma withScopeEntry)* ClosePara? block
+    : With OpenPara? withScopeEntry (Comma withScopeEntry)* Comma? ClosePara? block
     ;
 
 parameter
@@ -45,18 +81,15 @@ parameter
     ;
 
 parameterList
-    : parameter (Comma parameter)*
+    : parameter (Comma parameter)* Comma?
     ;
 
 functionSignature
     : OpenPara parameterList? ClosePara typeSpecifier
     ;
 
-ownerMember
-    : (identifier | call);
-
 iterationStatement
-    : Do (standaloneExecutableStatement | expression) While OpenPara? expression ClosePara? eos                     # DoStatement
+    : Do (standaloneStatement | expression) While OpenPara? expression ClosePara? eos                     # DoStatement
     | While OpenPara? expression ClosePara? (statement | expression)                                                # WhileStatement
     | For OpenPara variableDeclarationList? SemiColon expression? SemiColon expressionList? ClosePara statement     # ForEachStatement
     | ForEach OpenPara? (expression | variableDeclaration) (In | Of) expression ClosePara? statement                # ForInStatement
@@ -67,7 +100,7 @@ thener
     ;
 
 tuple
-    : OpenPara expression (Comma expression)+ ClosePara
+    : OpenPara expression (Comma expression)+ Comma? ClosePara
     ;
 
 mapEntryPair
@@ -75,7 +108,12 @@ mapEntryPair
     ;
 
 mapEntryList
-    : mapEntryPair (Comma mapEntryPair)*
+    : mapEntryPair (Comma mapEntryPair)* Comma?
+    ;
+
+typeSpec
+    : Type genericSignature? OpenBrace type CloseBrace
+    | Type genericSignature? type
     ;
 
 // NOTE: Goal is to make EVERYTHING an expression -- everything should return a value
@@ -85,9 +123,10 @@ expression
     | tuple                                                             # tupleExpression
     | call                                                              # callExpression
     | OpenPara expression ClosePara                                     # groupedExpression
-    | owner=expression Dot QuestionMark? member=ownerMember             # dotExpression
+    | owner=expression Dot QuestionMark? member=expression              # dotExpression
     | lhs=expression operator rhs=expression                            # binaryExpression
     | owner=expression OpenBracket accessor=expression CloseBracket     # expressionAccessor
+    | TripleDot expression                                              # destructureExpression
     | from=expression DoubleDot to=expression                           # rangeExpression
     | OpenBracket mapEntryList CloseBracket                             # mapCreationExpression
     | OpenBracket expressionList? CloseBracket                          # arrayCreationExpression
@@ -95,6 +134,8 @@ expression
     | functionSignature                                                 # functionSignatureExpression
     | Bang expression                                                   # notExpression
     | Return expression                                                 # returnExpression
+    | Yield expression                                                  # yieldExpression
+    | typeSpec                                                          # typeSpecExpression
     | thener                                                            # thenExpression
     | ifStatement                                                       # ifStatementExpression
     | struct                                                            # structExpression
@@ -126,21 +167,29 @@ argument
 
 // TODO: Support named arguments
 argumentList
-    : argument (Comma argument)*
+    : argument (Comma argument)* Comma?
     ;
 
-operator
+basicOperatorSpec
     : Equals
     | Plus
     | Minus
     | Multiply
     | Divide
     | Modulus
+    | Remainder
+    | BitShiftLeft
+    | BitShiftRight
     | LTE
     | GTE
     | LT
     | GT
-    | QuestionMark QuestionMark
+    | Is
+    ;
+
+operator
+    : basicOperatorSpec Tilde       # safeOperator
+    | basicOperatorSpec             # basicOperator
     ;
 
 initializer
@@ -152,11 +201,11 @@ variableDeclaration
     ;
 
 variableDeclarationList
-    : variableDeclaration (Comma variableDeclaration)*
+    : variableDeclaration (Comma variableDeclaration)* Comma?
     ;
 
 expressionList
-    : expression (Comma expression)*
+    : expression (delimiter expression)* delimiter?
     ;
 
 elseStatement
@@ -168,7 +217,9 @@ ifStatement
     ;
 
 genericSignatureTypeNarrower
-    : Colon type
+    // If super, then restrict incoming type to that supertype.
+    // Argument of type Iterable<Number> does not allow an Iterable<uint32>
+    : Colon Super? type
     ;
 
 genericSignatureTypeDefault
@@ -177,15 +228,27 @@ genericSignatureTypeDefault
 
 // TODO: This should be so much more, like "extends" or "super" or other conditions
 genericSignatureType
-    : Identifier genericSignatureTypeNarrower? genericSignatureTypeDefault?
+    : (In | Out)? Identifier hktGenericSignature? genericSignatureTypeNarrower? genericSignatureTypeDefault?
     ;
 
 genericSignatureTypeList
-    : genericSignatureType (Comma genericSignatureType)*
+    : genericSignatureType (Comma genericSignatureType)* Comma?
     ;
 
 genericSignature
     : LT genericSignatureTypeList GT
+    ;
+
+hktGenericSignatureType
+    : (Infer | Derive) Identifier hktGenericSignature? genericSignatureTypeNarrower? genericSignatureTypeDefault?
+    ;
+
+hktGenericSignatureTypeList
+    : hktGenericSignatureType (Comma hktGenericSignatureType)* Comma?
+    ;
+
+hktGenericSignature
+    : LT hktGenericSignatureTypeList GT
     ;
 
 genericArgument
@@ -194,7 +257,7 @@ genericArgument
     ;
 
 genericArguments
-    : genericArgument (Comma genericArgument)*
+    : genericArgument (Comma genericArgument)* Comma?
     ;
 
 genericArgumentSupplier
@@ -215,11 +278,12 @@ quickConstructorEntry
     ;
 
 quickConstructorEntryList
-    : quickConstructorEntry (Comma quickConstructorEntry)*
+    : quickConstructorEntry (delimiter quickConstructorEntry)* delimiter?
+//    | quickConstructorEntry (SemiColon quickConstructorEntry)* SemiColon?
     ;
 
 construction
-    : type OpenBrace quickConstructorEntryList? CloseBrace
+    : type? OpenBrace quickConstructorEntryList? CloseBrace
     ;
 
 functionBody
@@ -238,12 +302,20 @@ literal
     | NumericLiteral    # numericLiteral
     ;
 
+delimiter
+    : (Comma | SemiColon)
+    ;
+
+eosStatementList
+    : eosStatement (delimiter eosStatement)* delimiter?
+    ;
+
 struct
-    : Struct OpenBrace statement* CloseBrace
+    : Struct OpenBrace eosStatementList? CloseBrace
     ;
 
 trait
-    : Trait OpenBrace (statement)* CloseBrace
+    : Trait OpenBrace eosStatementList? CloseBrace
     ;
 
 implContextParameter
@@ -251,7 +323,7 @@ implContextParameter
     ;
 
 implContextParameterList
-    : implContextParameter (Comma implContextParameter)*
+    : implContextParameter (Comma implContextParameter)* Comma?
     ;
 
 implContextDeclaration
@@ -262,17 +334,26 @@ impl
     : Impl identifier For type implContextDeclaration? OpenBrace statement* CloseBrace
     ;
 
-type
-    : type Plus type                  # unionType
-    | type '|' type                   # intersectionType
-    | type Minus type                 # notType
-    | OpenPara type ClosePara         # groupedType
-    | type genericSignature           # genericType
-    | Identifier                      # typeName
+singleTypeSpec
+    : Identifier                      # typeName
     | NumericLiteral                  # numericalType
-    | Nominal type                    # nominalType
-    | Symbol identifier               # symbolType
-    | tuple                           # tupleType
+    | Nominal Identifier              # nominalType
+    | Symbol                          # symbolType
+    | Identifier genericSignature     # genericType
+    ;
+
+tupleTypeSpec
+    : OpenPara type (Comma type)* Comma? ClosePara
+    ;
+
+type
+    : lhs=type BitOr rhs=type           # unionType
+    | lhs=type Plus rhs=type            # intersectionType
+    | lhs=type Minus rhs=type           # excludedType
+    | tupleTypeSpec                     # tupleType // or groupedType if only has one type
+    | Identifier Colon type             # taggedType
+    | Type type                         # explicitType
+    | singleTypeSpec                    # singleType
     ;
 
 identifier

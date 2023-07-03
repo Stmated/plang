@@ -2,35 +2,8 @@
 // uint8: Backed by a number, kept in runtime
 // symbol: Backed by compile-time symbol, removed in runtime
 
-// Alternative 1, specific enum:
-val Result = enum<T> {
-    A: uint8,
-    B: struct {value: T},
-    C: symbol
-};
-
-
-// Alternative 2: named unions + generic group (parenthesis with generic type)
-// NOTE: This would require support for all unions to be able to be named
-//          Either none or all must be named in a union, and all must be in same generic group
-val Result = <T>(A: uint8 | B: T | C: symbol);
-
-
-// Alternative 3: union-izable structs
-val ResultStruct = struct<T> {
-    A: uint8;
-    B: T;
-    C: symbol;
-};
-val Result = union<T> ResultStruct<T>;
-
-
-// Alternative 2 seems odd, but maybe also a bit cool? As a very generic way to specify types
-        // Maybe it can be used elsewhere too?
-// Alternative 3 would only be good if it was more "generic" (pun intended)
-//      Like if
-
+val Enum = type<T> { A: uint8 | B: T | C: symbol };
 
 // They must all be callable in this fashion:
-val r1 = Result.B { 1 };
-val r2 = Result.C;
+val e1 = Enum.B { 1 };
+val e2 = Enum.C;

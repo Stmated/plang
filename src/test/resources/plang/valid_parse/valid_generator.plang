@@ -1,0 +1,21 @@
+
+// Below will be a 'Generator<uint32>' which will implement 'Iterable<uint32>'
+val generator = () => {
+    yield 1;
+    yield 2;
+    if (System.getTime().getHour() > 12) {
+        yield break;
+    }
+    yield 3;
+};
+
+val consumer = () => {
+    foreach v in generator() {
+        System.println(`No-cost iterable: ${v}`);
+    }
+};
+
+// Should it be possible somehow to have "labels" for what to yield back to
+// How could we make this typesafe and call-safe, to *ensure* someone is listening to the yielded data?
+// Or is that just stupid and it should be up to each caller to propagate the data further up?
+// Or is this something that can be used together with the context parameters to point to what to send to?

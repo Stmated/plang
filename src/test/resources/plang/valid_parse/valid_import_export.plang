@@ -1,0 +1,16 @@
+
+import a.b.Struct;
+import a.b.{x: Something, y: SomethingElse};
+import z1: a.b; // Usable as z1.Something
+import z2: a.b.*; // Same thing as above
+import a.b; // Usable as b.Something
+import a.b.{ self, StructA, function }; // a.b.{self} is same as above: b.Something
+
+export z2; // exported as 'z'
+export default y; // exported as 'default'
+export val a = 10; // exported as 'a'
+export default val a = 20; // exported as 'default'
+
+export import a.b.c; // exported as 'default'
+export import d: a.b.c; // exported as 'd'
+export default import d: a.b.c; // exported as 'default'
