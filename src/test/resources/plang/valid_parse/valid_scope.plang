@@ -1,0 +1,16 @@
+
+val array1 = [1, 2, 3];
+val array2 = [3, 4, 5];
+
+// Arguments implicitly named 'it', since it is a single argument
+// By saying 'identifier'@'identifier' you can specify the owner
+// TODO: Should there be a "magical" name for the second as well? "other"?
+
+val result = array1.filter(=> {
+    return array2.any(=> {
+        return it == it@array1;
+    });
+});
+
+val result = array1[=> array2.any(=> it == it@array1)];
+

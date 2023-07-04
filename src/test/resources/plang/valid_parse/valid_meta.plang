@@ -1,0 +1,21 @@
+
+val value = 10;
+
+val fn = () => {
+    System.println('Variable name: ' + @value.name + '!');
+};
+
+val fn2 = (arg: uint32): uint64 => {
+    return arg + 1;
+};
+
+val v: @fn2.return.type = 32;
+
+val fn3 = (arg: uint32): @fn2.return.type => {
+    return arg * 2;
+};
+
+// This is stupid, having "dynamic" parameter name, but we will allow it
+val fn3 = (@fn2.args[0].name: @fn2.args[0].type): @fn2.return.type => {
+    return arg * 2;
+};

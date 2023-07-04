@@ -1,0 +1,11 @@
+
+// Tail Call Elimination
+// "local" will be dropped BEFORE calling fn "recursively"
+// Stack will simply be re-used, effectively turning the code from recursion -> loop
+
+val fn = (value: Container) => {
+
+    val local = 123;
+    value.inner = value.inner + 1;
+    become fn(value);
+};

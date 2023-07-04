@@ -1,0 +1,6 @@
+
+if (val a = load(), val b = a.something() where a.value < 10 && a.value > 5, val c = a.foo) {
+    // All operations succeeded, all values will be unwrapped away from "Result" -> Ok(T)
+} else {
+    // A, B, C is an "Ok" or "Error" of tagged type (enum) "Result" or something else
+}

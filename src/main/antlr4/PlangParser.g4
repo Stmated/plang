@@ -77,7 +77,7 @@ withScope
     ;
 
 parameter
-    : accessLevel? valVar? identifier typeSpecifier?
+    : accessLevel? valVar? (metaSpec | identifier) typeSpecifier?
     ;
 
 parameterList
@@ -99,7 +99,7 @@ thener
     : Then expression
     ;
 
-tuple
+tupleCreator
     : OpenPara expression (Comma expression)+ Comma? ClosePara
     ;
 
@@ -116,24 +116,132 @@ typeSpec
     | Type genericSignature? type
     ;
 
+dotMember
+    : identifier
+    | call
+    ;
+
+groupedExpressionSpec
+    : OpenPara expression ClosePara
+    ;
+
+singleExpression
+    : groupedExpressionSpec
+    | Identifier
+    | call
+    | tupleCreator
+    | function
+    ;
+
+keyword
+    : Return
+    | Type
+    ;
+
+metaIdentifier
+    // TODO: Not care while parsing, or including only allowed meta words?
+    : (keyword | Identifier) OpenBracket NumericLiteral CloseBracket        # indexedMetaIdentifier
+    | (keyword | Identifier)                                                # simpleMetaIdentifier
+    ;
+
+metaSpec
+    : Meta metaIdentifier (Dot metaIdentifier)*
+    ;
+
+tupleDeclarationItem
+    : identifier Colon type
+    ;
+
+singleStandaloneExpressionSpec
+    : literal
+    | groupedExpressionSpec
+    | identifier
+    | call
+    ;
+
+rangeSpec
+    : from=singleStandaloneExpressionSpec DoubleDot to=singleStandaloneExpressionSpec
+    ;
+
+matchTupleItem
+    : tupleDeclarationItem          # matchTupleDeclaration
+    | type                          # matchTypeExpression
+    | DoubleDot                     # matchTupleSpacer
+    ;
+
+matchTuple
+    : OpenPara matchTupleItem (Comma matchTupleItem)+ Comma? ClosePara
+    ;
+
+namedMatchArrayItemSpec
+    : identifier Colon matchArrayItem
+    ;
+
+matchArrayItem
+    : matchCase                             # matchCaseArrayItemEntry
+    | DoubleDot                             # matchCaseSpacer
+    | namedMatchArrayItemSpec               # namedMatchArrayItem
+    ;
+
+matchArrayItemList
+    : matchArrayItem (delimiter matchArrayItem)* delimiter?
+    ;
+
+matchArrayItemsSpec
+    : OpenBracket matchArrayItemList? CloseBracket
+    ;
+
+matchCase
+    //: tupleDeclaration
+    : matchTuple
+    | matchArrayItemsSpec
+    // The standalone expression must be a constant. Parsing might be well-formed but not-valid.
+    | singleStandaloneExpressionSpec
+    | rangeSpec
+    | Underscore
+    ;
+
+matchItem
+    //: Else ArrowDouble expression                                          # exhaustiveMatch
+    : matchCase ArrowDouble (standaloneStatement | expression)             # standardMatch
+    ;
+
+matchList
+    : matchItem (Comma matchItem)*
+    ;
+
+matchSpec
+    : Match expression OpenBrace matchList CloseBrace
+    ;
+
+arrayItemsSpec
+    : OpenBracket expressionList? CloseBracket
+    ;
+
+
 // NOTE: Goal is to make EVERYTHING an expression -- everything should return a value
 //          Should make it easier to create common patterns for things
 expression
     : function                                                          # functionExpression
-    | tuple                                                             # tupleExpression
+    | tupleCreator                                                      # tupleInstantiationExpression
     | call                                                              # callExpression
-    | OpenPara expression ClosePara                                     # groupedExpression
-    | owner=expression Dot QuestionMark? member=expression              # dotExpression
-    | lhs=expression operator rhs=expression                            # binaryExpression
-    | owner=expression OpenBracket accessor=expression CloseBracket     # expressionAccessor
+    | matchSpec                                                         # matchExpression
+    | groupedExpressionSpec                                             # groupedExpression
+    | lhs=expression booleanOperator rhs=expression                     # binaryExpression
+    | lhs=expression logicalOperator rhs=expression                     # binaryExpression
+    | lhs=expression mathOperator Tilde? rhs=expression                 # binaryExpression
+    | owner=singleExpression Dot member=dotMember                       # dotExpression
+    | owner=singleExpression OpenBracket accessor=expression CloseBracket     # expressionAccessor
     | TripleDot expression                                              # destructureExpression
-    | from=expression DoubleDot to=expression                           # rangeExpression
+    | rangeSpec                                                         # rangeExpression
     | OpenBracket mapEntryList CloseBracket                             # mapCreationExpression
-    | OpenBracket expressionList? CloseBracket                          # arrayCreationExpression
+    | arrayItemsSpec                                                 # arrayCreationExpression
     | construction                                                      # constructionExression
     | functionSignature                                                 # functionSignatureExpression
     | Bang expression                                                   # notExpression
+    | metaSpec                                                          # metaExpression
     | Return expression                                                 # returnExpression
+    | Become call                                                       # becomeExpression
     | Yield expression                                                  # yieldExpression
     | typeSpec                                                          # typeSpecExpression
     | thener                                                            # thenExpression
@@ -141,7 +249,8 @@ expression
     | struct                                                            # structExpression
     | trait                                                             # traitExpression
     | impl                                                              # implExpression
-    | literal                                                           # literalExpression
+    | singleStandaloneExpressionSpec                                    # singleStandaloneExpression
+    | explicitVariableDeclarationList                                   # variableDeclarationListExpression
     | Identifier                                                        # identifierExpression
     ;
 
@@ -153,7 +262,7 @@ valVar
 typeSpecifier
     // TODO: This is too forgiving, not any expression should be acceptable. It makes the parsing slow.
     // TODO: Up to later parsing to decide if the expression is legal or not (must be constant, etc)
-    : Colon (type | expression)
+    : Colon (metaSpec | type | expression)
     ;
 
 accessLevel
@@ -170,9 +279,13 @@ argumentList
     : argument (Comma argument)* Comma?
     ;
 
-basicOperatorSpec
-    : Equals
-    | Plus
+logicalOperator
+    : And
+    | Or
+    ;
+
+mathOperator
+    : Plus
     | Minus
     | Multiply
     | Divide
@@ -180,6 +293,12 @@ basicOperatorSpec
     | Remainder
     | BitShiftLeft
     | BitShiftRight
+    | BitAnd
+    | BitOr
+    ;
+
+booleanOperator
+    : Equals
     | LTE
     | GTE
     | LT
@@ -187,21 +306,32 @@ basicOperatorSpec
     | Is
     ;
 
-operator
-    : basicOperatorSpec Tilde       # safeOperator
-    | basicOperatorSpec             # basicOperator
-    ;
-
 initializer
     : Assign (type | expression)
     ;
 
+variableDeclarationFilter
+    : Where expression
+    ;
+
+variableDeclarationBase
+    : identifier typeSpecifier? initializer? variableDeclarationFilter?
+    ;
+
 variableDeclaration
-    : valVar? identifier typeSpecifier? initializer?
+    : valVar? variableDeclarationBase
+    ;
+
+explicitVariableDeclaration
+    : valVar variableDeclarationBase
     ;
 
 variableDeclarationList
     : variableDeclaration (Comma variableDeclaration)* Comma?
+    ;
+
+explicitVariableDeclarationList
+    : explicitVariableDeclaration (Comma explicitVariableDeclaration)* Comma?
     ;
 
 expressionList
@@ -209,7 +339,7 @@ expressionList
     ;
 
 elseStatement
-    : Else (expression | statement)
+    : Else (thener | expression | statement)
     ;
 
 ifStatement

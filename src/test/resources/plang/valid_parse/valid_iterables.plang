@@ -17,3 +17,5 @@ val array1_filtered1 = array1[v => v > 2];
 
 // "it" is the default implicit name for single-argument lambdas
 val array1_filtered2 = array1[=> it > 2];
+
+val array1_sorted = array1.sort(=> it.compareTo(other));

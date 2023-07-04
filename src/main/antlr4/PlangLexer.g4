@@ -25,13 +25,11 @@ Tilde: '~';
 
 TripleDot: '...';
 DoubleDot: '..';
+Underscore: '_';
 Dot: '.';
 
 Then: 'then';
 End: 'end';
-
-BitOr: '|';
-BitAnd: '&';
 
 ArrowDouble: '=>';
 ArrowSingle: '->';
@@ -50,6 +48,12 @@ Equals: '==';
 LT: '<';
 GT: '>';
 
+Or: '||';
+And: '&&';
+
+BitOr: '|';
+BitAnd: '&';
+
 QuestionMark: '?';
 
 Assign: '=';
@@ -64,6 +68,7 @@ Trait: 'trait';
 Val: 'val';
 Var: 'var';
 
+Where: 'where';
 With: 'with';
 
 For: 'for';
@@ -84,6 +89,9 @@ Impl: 'impl';
 Ref: 'ref';
 Return: 'return';
 Yield: 'yield';
+Become: 'become';
+
+Meta: '@';
 
 Qualifier: 'qualifier';
 Is: 'is';
@@ -98,6 +106,8 @@ Export: 'export';
 Default: 'default';
 
 New: 'new';
+
+Match: 'match';
 
 If: 'if';
 Else: 'else';
