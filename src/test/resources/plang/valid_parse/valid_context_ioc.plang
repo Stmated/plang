@@ -23,7 +23,7 @@ val A = impl for T
     call = (self, x: uint32) => {
       return self.v1 + x + b.v2 + uniqueNumber;
     };
-}
+};
 
 val f = () => {
     val a = A { 1 }; // Should work since only 1 value, would also work if called "value"

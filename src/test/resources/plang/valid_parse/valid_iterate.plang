@@ -21,7 +21,7 @@ foreach (var a in array1[0..1]) print(a);
 foreach (var a in array1) { print(a); }
 foreach (var a in array1) print(a);
 foreach (var a in array1) then print(a);
-foreach (var a in array1) then print(a); end // TODO: Should be possible to be without ";"
+foreach (var a in array1) then print(a) end
 foreach a in array1 print(a);
 foreach a in array1 then print(a);
 foreach a in array1 print(a);
@@ -34,7 +34,8 @@ foreach (var a of array1) { print(a); }
 foreach (var a of array1) print(a);
 foreach (var a of array1) then print(a);
 
-foreach (var a of array1) then print(a); end
+foreach (var a of array1) then print(a);
+foreach (var a of array1) then print(a);
 foreach (var a of array1) then print(a) end
 foreach (var a of array1) {
     print(a);

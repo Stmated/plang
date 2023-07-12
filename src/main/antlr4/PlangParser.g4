@@ -22,7 +22,7 @@ standaloneStatement
 
 simplePathSegment
     : identifier
-    | '*'
+    | Multiply
     ;
 
 simplePath
@@ -53,7 +53,7 @@ importDeclaration
 
 eosStatement
     : expression
-    | variableDeclaration
+    | variableAssign
     | importDeclaration
     ;
 
@@ -77,7 +77,7 @@ withScope
     ;
 
 parameter
-    : accessLevel? valVar? (metaSpec | identifier) typeSpecifier?
+    : accessLevel? (Val | Var)? (metaSpec | identifier) typeSpecifier?
     ;
 
 parameterList
@@ -88,15 +88,31 @@ functionSignature
     : OpenPara parameterList? ClosePara typeSpecifier
     ;
 
+doWhileStatementSpec
+    : Do (standaloneStatement | expression) While OpenPara? expression ClosePara? eos
+    ;
+
+whileStatementSpec
+    : While OpenPara? expression ClosePara? (statement | expression)
+    ;
+
+forEachStatementSpec
+    : For OpenPara variableDeclarationList? SemiColon expression? SemiColon expressionList? ClosePara statement
+    ;
+
+forInStatementSpec
+    : ForEach OpenPara? (expression | variableAssign) (In | Of) expression ClosePara? statement
+    ;
+
 iterationStatement
-    : Do (standaloneStatement | expression) While OpenPara? expression ClosePara? eos                     # DoStatement
-    | While OpenPara? expression ClosePara? (statement | expression)                                                # WhileStatement
-    | For OpenPara variableDeclarationList? SemiColon expression? SemiColon expressionList? ClosePara statement     # ForEachStatement
-    | ForEach OpenPara? (expression | variableDeclaration) (In | Of) expression ClosePara? statement                # ForInStatement
+    : doWhileStatementSpec      # DoStatement
+    | whileStatementSpec        # WhileStatement
+    | forEachStatementSpec      # ForEachStatement
+    | forInStatementSpec        # ForInStatement
     ;
 
 thener
-    : Then expression
+    : Then singleStandaloneExpressionSpec
     ;
 
 tupleCreator
@@ -116,11 +132,6 @@ typeSpec
     | Type genericSignature? type
     ;
 
-dotMember
-    : identifier
-    | call
-    ;
-
 groupedExpressionSpec
     : OpenPara expression ClosePara
     ;
@@ -131,6 +142,7 @@ singleExpression
     | call
     | tupleCreator
     | function
+    | literal
     ;
 
 keyword
@@ -157,6 +169,7 @@ singleStandaloneExpressionSpec
     | groupedExpressionSpec
     | identifier
     | call
+    | returnSpec
     ;
 
 rangeSpec
@@ -207,7 +220,7 @@ matchItem
     ;
 
 matchList
-    : matchItem (Comma matchItem)*
+    : matchItem (Comma matchItem)* Comma?
     ;
 
 matchSpec
@@ -218,6 +231,23 @@ arrayItemsSpec
     : OpenBracket expressionList? CloseBracket
     ;
 
+dotMember
+    : Identifier                # identifierDotMember
+    | call                      # callDotMember
+    | accessorSpec              # accessorDotMember
+    ;
+
+dotMemberPathSpec
+    : owner=singleExpression (Dot dotMember)+
+    ;
+
+accessorSpec
+    : owner=singleExpression OpenBracket accessor=expression CloseBracket
+    ;
+
+returnSpec
+    : Return expression
+    ;
 
 // NOTE: Goal is to make EVERYTHING an expression -- everything should return a value
 //          Should make it easier to create common patterns for things
@@ -226,21 +256,21 @@ expression
     | tupleCreator                                                      # tupleInstantiationExpression
     | call                                                              # callExpression
     | matchSpec                                                         # matchExpression
-    | groupedExpressionSpec                                             # groupedExpression
     | lhs=expression booleanOperator rhs=expression                     # binaryExpression
     | lhs=expression logicalOperator rhs=expression                     # binaryExpression
     | lhs=expression mathOperator Tilde? rhs=expression                 # binaryExpression
-    | owner=singleExpression Dot member=dotMember                       # dotExpression
-    | owner=singleExpression OpenBracket accessor=expression CloseBracket     # expressionAccessor
+    | dotMemberPathSpec                                                 # dotMemberPathExpression
+    | accessorSpec                                                      # expressionAccessor
     | TripleDot expression                                              # destructureExpression
     | rangeSpec                                                         # rangeExpression
     | OpenBracket mapEntryList CloseBracket                             # mapCreationExpression
-    | arrayItemsSpec                                                 # arrayCreationExpression
+    | arrayItemsSpec                                                    # arrayCreationExpression
     | construction                                                      # constructionExression
     | functionSignature                                                 # functionSignatureExpression
     | Bang expression                                                   # notExpression
     | metaSpec                                                          # metaExpression
-    | Return expression                                                 # returnExpression
+    | Identifier Meta Identifier                                        # scopeSpecificIdentifierExpression
+    | returnSpec                                                        # returnExpression
     | Become call                                                       # becomeExpression
     | Yield expression                                                  # yieldExpression
     | typeSpec                                                          # typeSpecExpression
@@ -252,11 +282,6 @@ expression
     | singleStandaloneExpressionSpec                                    # singleStandaloneExpression
     | explicitVariableDeclarationList                                   # variableDeclarationListExpression
     | Identifier                                                        # identifierExpression
-    ;
-
-
-valVar
-    : (Val | Var)
     ;
 
 typeSpecifier
@@ -307,27 +332,29 @@ booleanOperator
     ;
 
 initializer
-    : Assign (type | expression)
+    : Assign (expression | type)
     ;
 
 variableDeclarationFilter
     : Where expression
     ;
 
-variableDeclarationBase
+variableDeclare
     : identifier typeSpecifier? initializer? variableDeclarationFilter?
     ;
 
-variableDeclaration
-    : valVar? variableDeclarationBase
+variableAssign
+    : explicitVariableDeclaration
+    | dotMemberPathSpec initializer variableDeclarationFilter?
+    | variableDeclare
     ;
 
 explicitVariableDeclaration
-    : valVar variableDeclarationBase
+    : (Val | Var) variableDeclare
     ;
 
 variableDeclarationList
-    : variableDeclaration (Comma variableDeclaration)* Comma?
+    : variableAssign (Comma variableAssign)* Comma?
     ;
 
 explicitVariableDeclarationList
@@ -339,7 +366,8 @@ expressionList
     ;
 
 elseStatement
-    : Else (thener | expression | statement)
+    : Else statement // (thener | expression | statement)
+    | Else Then? singleStandaloneExpressionSpec
     ;
 
 ifStatement
@@ -395,7 +423,7 @@ genericArgumentSupplier
     ;
 
 call
-    : Tilde? Identifier genericArgumentSupplier? OpenPara argumentList? ClosePara
+    : Tilde? Identifier genericArgumentSupplier? OpenPara argumentList? ClosePara QuestionMark?
     ;
 
 keyValuePair
@@ -409,7 +437,6 @@ quickConstructorEntry
 
 quickConstructorEntryList
     : quickConstructorEntry (delimiter quickConstructorEntry)* delimiter?
-//    | quickConstructorEntry (SemiColon quickConstructorEntry)* SemiColon?
     ;
 
 construction
@@ -461,19 +488,27 @@ implContextDeclaration
     ;
 
 impl
-    : Impl identifier For type implContextDeclaration? OpenBrace statement* CloseBrace
+    : Impl identifier? For type implContextDeclaration? OpenBrace statement* CloseBrace
+    ;
+
+typeNameSpec
+    : Identifier (Dot Identifier)*
     ;
 
 singleTypeSpec
-    : Identifier                      # typeName
-    | NumericLiteral                  # numericalType
-    | Nominal Identifier              # nominalType
-    | Symbol                          # symbolType
-    | Identifier genericSignature     # genericType
+    : typeNameSpec                          # typeName
+    | NumericLiteral                        # numericalType
+    | Nominal typeNameSpec                  # nominalType
+    | Symbol                                # symbolType
+    | typeNameSpec genericArgumentSupplier  # genericType
     ;
 
 tupleTypeSpec
     : OpenPara type (Comma type)* Comma? ClosePara
+    ;
+
+typePathSpec
+    : type (Dot type)+
     ;
 
 type
@@ -484,6 +519,7 @@ type
     | Identifier Colon type             # taggedType
     | Type type                         # explicitType
     | singleTypeSpec                    # singleType
+    //| typePathSpec                      # typePath
     ;
 
 identifier

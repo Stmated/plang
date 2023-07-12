@@ -1,8 +1,8 @@
 package com.github.stmated.plang;
 
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.atn.ATNConfigSet;
+import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.RuleNode;
 
@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collection;
 
 public class PlangCompiler {
@@ -52,19 +53,63 @@ public class PlangCompiler {
     final var charStream = CharStreams.fromPath(file, StandardCharsets.UTF_8);
 
     final var lexer = new PlangLexerJava(charStream);
+    lexer.addErrorListener(new BaseErrorListener() {
+
+      @Override
+      public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
+        throw new RuntimeException("Syntax Error: " + offendingSymbol + " @ " + line + ":" + charPositionInLine + ": " + msg, e);
+      }
+    });
 
     final var tokenStream = new CommonTokenStream(lexer);
     final var parser = new PlangParserJava(tokenStream);
+    parser.addErrorListener(new BaseErrorListener() {
+
+      @Override
+      public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
+        throw new RuntimeException("Syntax Error: " + offendingSymbol + " @ " + line + ":" + charPositionInLine + ": " + msg, e);
+      }
+    });
+
+    final var path = new ArrayList<RuleNode>();
     parser.addParseListener(new PlangParserJavaBaseListener() {
 
       @Override
-      public void enterEveryRule(ParserRuleContext ctx) {
-        super.enterEveryRule(ctx);
+      public void enterEveryRule(ParserRuleContext node) {
+
+        System.out.println(" ".repeat(node.getRuleContext().depth()) + node.getClass().getSimpleName() + " - " + node.getText());
+        try {
+          path.add(node);
+          super.enterEveryRule(node);
+        } finally {
+          path.remove(node);
+        }
       }
 
       @Override
-      public void enterRoot(PlangParserJava.RootContext ctx) {
-        super.enterRoot(ctx);
+      public void visitErrorNode(ErrorNode node) {
+        super.visitErrorNode(node);
+
+        final var errorMessage = new StringBuilder();
+        final var pathStrings = path.stream()
+            .map(it -> {
+              final var si = it.getSourceInterval();
+              final var rc = it.getRuleContext();
+
+              return rc.depth() + ": " + it.getClass().getSimpleName() + ": " + si.a + ":" + si.b;
+            })
+            .toList();
+
+        final var pathString = String.join(System.lineSeparator(), pathStrings);
+
+        errorMessage
+            .append(System.lineSeparator())
+            .append("Path: ").append(System.lineSeparator())
+            .append(pathString).append(System.lineSeparator());
+
+        errorMessage.append("ErrorNode: ").append(node.toString()).append(System.lineSeparator());
+
+        throw new RuntimeException(file + ": " + errorMessage);
       }
     });
 
@@ -72,63 +117,11 @@ public class PlangCompiler {
 
     try (var os = streamCreator.create(file)) {
 
-      final var path = new ArrayList<RuleNode>();
       final var visitor = new PlangParserJavaBaseVisitor<Void>() {
 
         @Override
-        public Void visitChildren(RuleNode node) {
-          System.out.println(" ".repeat(node.getRuleContext().depth()) + node.getClass().getSimpleName() + " - " + node.getText());
-          try {
-            path.add(node);
-            return super.visitChildren(node);
-          } finally {
-            path.remove(node);
-          }
-        }
-
-        @Override
-        public Void visitDotExpression(PlangParserJava.DotExpressionContext ctx) {
-          return super.visitDotExpression(ctx);
-        }
-
-        @Override
-        public Void visitRoot(PlangParserJava.RootContext ctx) {
-          return super.visitRoot(ctx);
-        }
-
-        @Override
-        public Void visitIdentifier(PlangParserJava.IdentifierContext ctx) {
-          return super.visitIdentifier(ctx);
-        }
-
-        @Override
-        public Void visitTypeName(PlangParserJava.TypeNameContext ctx) {
-          return super.visitTypeName(ctx);
-        }
-
-        @Override
         public Void visitErrorNode(ErrorNode node) {
-
-          final var errorMessage = new StringBuilder();
-          final var pathStrings = path.stream()
-              .map(it -> {
-                final var si = it.getSourceInterval();
-                final var rc = it.getRuleContext();
-
-                return rc.depth() + ": " + it.getClass().getSimpleName() + ": " + si.a + ":" + si.b;
-              })
-              .toList();
-
-          final var pathString = String.join(System.lineSeparator(), pathStrings);
-
-          errorMessage
-              .append(System.lineSeparator())
-              .append("Path: ").append(System.lineSeparator())
-              .append(pathString).append(System.lineSeparator());
-
-          errorMessage.append("ErrorNode: ").append(node.toString()).append(System.lineSeparator());
-
-          throw new RuntimeException(file + ": " + errorMessage.toString());
+          throw new RuntimeException(file + ": " + node.toString());
         }
       };
 

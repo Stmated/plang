@@ -1,2 +1,26 @@
 
 
+val fn = (): Result<(String, String), Error> => {
+    return Result.Ok(('Hello', 'World'));
+};
+
+val value = fn();
+
+val unwrapped1 = match value {
+    Ok(v1, v2) => (v1 + ', ' + v2),
+    Error(v) => v.reason,
+};
+
+val unwrapped1 = match value {
+    Ok => (it + ', ' + other),
+    Error => it.reason,
+};
+
+val fn2 = (): Result<(String, String), Error> => {
+    return fn()?;
+};
+
+val fn3 = (): String => {
+    return if val v = fn() then v else ('Failure: ' + v.reason);
+};
+
