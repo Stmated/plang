@@ -6,6 +6,8 @@ do {
 
 do eat() while hungry();
 do then eat() while hungry();
+do then eat() while (hungry());
+do then eat() while {hungry()};
 
 while (hungry()) { eat(); }
 while hungry() eat();
@@ -15,6 +17,8 @@ while hungry() then eat()
 
 for (var i = 0; i < 10; i.increment()) { }
 for (var i = 0, n = i; i < 10; i.increment()) { }
+
+foreach (var a in array1) print(a);
 
 foreach (var a in array1[0..1]) print(a);
 

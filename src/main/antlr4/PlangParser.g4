@@ -5,23 +5,11 @@ options {
 }
 
 root
-    : statement* EOF
-    ;
-
-block
-    : OpenBrace statement* CloseBrace
-    ;
-
-standaloneStatement
-    : block
-    | withScope
-    | iterationStatement
-    | ifStatement
-    | Export Default? statement
+    : expression* EOF
     ;
 
 simplePathSegment
-    : identifier
+    : Identifier
     | Multiply
     ;
 
@@ -47,24 +35,10 @@ importTree
     | aliasedImport
     ;
 
-importDeclaration
-    : Import importTree
-    ;
-
-eosStatement
-    : expression
-    | variableAssign
-    | importDeclaration
-    ;
-
-statement
-    : standaloneStatement
-    | eosStatement eos
-    ;
-
 eos
     // This should be possible to be EOF or close brace or other contextual to get rid of ";" eventually
     : SemiColon
+    | Comma
     | End
     ;
 
@@ -73,7 +47,7 @@ withScopeEntry
     ;
 
 withScope
-    : With OpenPara? withScopeEntry (Comma withScopeEntry)* Comma? ClosePara? block
+    : With OpenPara? withScopeEntry (Comma withScopeEntry)* Comma? ClosePara? expression
     ;
 
 parameter
@@ -84,38 +58,25 @@ parameterList
     : parameter (Comma parameter)* Comma?
     ;
 
-functionSignature
-    : OpenPara parameterList? ClosePara typeSpecifier
+forSpec
+    : For OpenPara expressionList? SemiColon expression? SemiColon expressionList? ClosePara expression
     ;
 
-doWhileStatementSpec
-    : Do (standaloneStatement | expression) While OpenPara? expression ClosePara? eos
+// TODO: Remove the varDeclareSpec !! It must be liked any other expression!
+//              It is a variable declaration whose type is inferred by external factors (this case from "in" source)
+forEachSpec
+    : ForEach OpenPara (expression | varDeclareSpec) (In | Of) expression ClosePara expression
+    | ForEach (expression | varDeclareSpec) (In | Of) expression expression
     ;
 
-whileStatementSpec
-    : While OpenPara? expression ClosePara? (statement | expression)
+iterationSpec
+    : Do expression While expression eos?        # doIteration
+    | While expression expression eos?           # whileIteration
+    | forEachSpec eos?                           # forEachIteration
+    | forSpec                               # forIteration
     ;
 
-forEachStatementSpec
-    : For OpenPara variableDeclarationList? SemiColon expression? SemiColon expressionList? ClosePara statement
-    ;
-
-forInStatementSpec
-    : ForEach OpenPara? (expression | variableAssign) (In | Of) expression ClosePara? statement
-    ;
-
-iterationStatement
-    : doWhileStatementSpec      # DoStatement
-    | whileStatementSpec        # WhileStatement
-    | forEachStatementSpec      # ForEachStatement
-    | forInStatementSpec        # ForInStatement
-    ;
-
-thener
-    : Then singleStandaloneExpressionSpec
-    ;
-
-tupleCreator
+tupleSpec
     : OpenPara expression (Comma expression)+ Comma? ClosePara
     ;
 
@@ -127,22 +88,8 @@ mapEntryList
     : mapEntryPair (Comma mapEntryPair)* Comma?
     ;
 
-typeSpec
-    : Type genericSignature? OpenBrace type CloseBrace
-    | Type genericSignature? type
-    ;
-
 groupedExpressionSpec
     : OpenPara expression ClosePara
-    ;
-
-singleExpression
-    : groupedExpressionSpec
-    | Identifier
-    | call
-    | tupleCreator
-    | function
-    | literal
     ;
 
 keyword
@@ -160,25 +107,9 @@ metaSpec
     : Meta metaIdentifier (Dot metaIdentifier)*
     ;
 
-tupleDeclarationItem
-    : identifier Colon type
-    ;
-
-singleStandaloneExpressionSpec
-    : literal
-    | groupedExpressionSpec
-    | identifier
-    | call
-    | returnSpec
-    ;
-
-rangeSpec
-    : from=singleStandaloneExpressionSpec DoubleDot to=singleStandaloneExpressionSpec
-    ;
-
 matchTupleItem
-    : tupleDeclarationItem          # matchTupleDeclaration
-    | type                          # matchTypeExpression
+    : identifier Colon expression   # matchTupleDeclaration
+    | expression                    # matchTupleItemExpression
     | DoubleDot                     # matchTupleSpacer
     ;
 
@@ -205,18 +136,16 @@ matchArrayItemsSpec
     ;
 
 matchCase
-    //: tupleDeclaration
     : matchTuple
     | matchArrayItemsSpec
     // The standalone expression must be a constant. Parsing might be well-formed but not-valid.
-    | singleStandaloneExpressionSpec
-    | rangeSpec
+    | expression
     | Underscore
     ;
 
 matchItem
     //: Else ArrowDouble expression                                          # exhaustiveMatch
-    : matchCase ArrowDouble (standaloneStatement | expression)             # standardMatch
+    : matchCase ArrowDouble expression             # standardMatch
     ;
 
 matchList
@@ -227,81 +156,81 @@ matchSpec
     : Match expression OpenBrace matchList CloseBrace
     ;
 
-arrayItemsSpec
-    : OpenBracket expressionList? CloseBracket
-    ;
-
-dotMember
-    : Identifier                # identifierDotMember
-    | call                      # callDotMember
-    | accessorSpec              # accessorDotMember
-    ;
-
-dotMemberPathSpec
-    : owner=singleExpression (Dot dotMember)+
-    ;
-
-accessorSpec
-    : owner=singleExpression OpenBracket accessor=expression CloseBracket
-    ;
-
-returnSpec
-    : Return expression
+ifSpec
+    : If predicate=expression expression (Else expression)?
     ;
 
 // NOTE: Goal is to make EVERYTHING an expression -- everything should return a value
 //          Should make it easier to create common patterns for things
 expression
-    : function                                                          # functionExpression
-    | tupleCreator                                                      # tupleInstantiationExpression
-    | call                                                              # callExpression
-    | matchSpec                                                         # matchExpression
-    | lhs=expression booleanOperator rhs=expression                     # binaryExpression
-    | lhs=expression logicalOperator rhs=expression                     # binaryExpression
-    | lhs=expression mathOperator Tilde? rhs=expression                 # binaryExpression
-    | dotMemberPathSpec                                                 # dotMemberPathExpression
-    | accessorSpec                                                      # expressionAccessor
-    | TripleDot expression                                              # destructureExpression
-    | rangeSpec                                                         # rangeExpression
-    | OpenBracket mapEntryList CloseBracket                             # mapCreationExpression
-    | arrayItemsSpec                                                    # arrayCreationExpression
-    | construction                                                      # constructionExression
-    | functionSignature                                                 # functionSignatureExpression
-    | Bang expression                                                   # notExpression
-    | metaSpec                                                          # metaExpression
-    | Identifier Meta Identifier                                        # scopeSpecificIdentifierExpression
-    | returnSpec                                                        # returnExpression
-    | Become call                                                       # becomeExpression
-    | Yield expression                                                  # yieldExpression
-    | typeSpec                                                          # typeSpecExpression
-    | thener                                                            # thenExpression
-    | ifStatement                                                       # ifStatementExpression
-    | struct                                                            # structExpression
-    | trait                                                             # traitExpression
-    | impl                                                              # implExpression
-    | singleStandaloneExpressionSpec                                    # singleStandaloneExpression
-    | explicitVariableDeclarationList                                   # variableDeclarationListExpression
-    | Identifier                                                        # identifierExpression
+
+    // First expressions with keywords
+    : Export Default? expression eos?                                                # exportExpression
+    | Import importTree eos?                                                        # importExpression
+
+    | Bang expression                                                           # notExpression
+    | Become callSpec                                                               # becomeExpression
+    | Yield expression eos?                                                          # yieldExpression
+    | Type genericSignature? expression                                         # typeSpecExpression
+    | Nominal identifierPath                                                    # nominalTypeExpression
+    | Symbol                                                                    # symbolTypeExpression
+    | Type expression                                                           # explicitTypeExpression
+    | Return expression eos?                                                         # returnExpression
+    | Then expression                                                           # thenExpression
+    | matchSpec                                                                 # matchExpression
+    | structSpec                                                                # structExpression
+    | traitSpec                                                                 # traitExpression
+    | implSpec eos?                                                                  # implExpression
+    | ifSpec                                                                    # ifExpression
+    | withScope                                                                 # withExpression
+    | iterationSpec                                                             # iterationExpression
+    | explicitVariableDeclarationList                                           # variableDeclarationListExpression
+
+    // Then expressions with special characters
+    | OpenBrace expression* eos? CloseBrace                                          # blockExpression
+    | expression genericArgumentSupplier                                        # genericSpecifierExpression
+    | genericSignature OpenPara parameterList? ClosePara typeSpecifier? ArrowDouble expression      # genericLambda
+    | ArrowDouble expression                                                                        # shortLambda
+    | parameter ArrowDouble expression                                                              # oneArgLambda
+    | OpenPara parameterList? ClosePara typeSpecifier? ArrowDouble expression                       # lambda
+    | OpenPara parameterList? ClosePara typeSpecifier                           # functionSignature
+    | tupleSpec                                                                 # tupleInstantiationExpression
+    | callSpec eos?                                                                      # callExpression
+    | expression OpenBrace constructionArgList? CloseBrace            # constructionExression
+
+    | TripleDot expression                                                      # destructureExpression
+
+    | lhs=expression Assign rhs=expression eos?                                      # assignExpression
+    | lhs=expression booleanOperator rhs=expression                             # binaryExpression
+    | lhs=expression logicalOperator rhs=expression                             # binaryExpression
+    | lhs=expression mathOperator Tilde? rhs=expression                         # binaryExpression
+    | owner=expression (Dot expression)+                                        # dotMemberPathExpression
+    | owner=expression OpenBracket accessor=expression CloseBracket             # expressionAccessor
+    | from=expression DoubleDot to=expression                                   # rangeExpression
+    | OpenBracket mapEntryList CloseBracket                                     # mapCreationExpression
+    | OpenBracket expressionList? CloseBracket                                  # arrayCreationExpression
+    | metaSpec                                                                  # metaExpression
+    | Identifier Meta Identifier                                                # scopeSpecificIdentifierExpression
+    | Identifier Colon expression                                               # taggedExpression
+    | literal                                                                   # literalExpression
+    | groupedExpressionSpec                                                     # groupedExpression
+    | identifier                                                                # identifierExpression
+    //| eos                                                                       # eosExpression
     ;
 
 typeSpecifier
     // TODO: This is too forgiving, not any expression should be acceptable. It makes the parsing slow.
     // TODO: Up to later parsing to decide if the expression is legal or not (must be constant, etc)
-    : Colon (metaSpec | type | expression)
+    : Colon (metaSpec | expression)
     ;
 
 accessLevel
     : Ref
     ;
 
-argument
-    : identifier Assign expression  # namedArgument
-    | expression                    # indexedArgument
-    ;
-
 // TODO: Support named arguments
 argumentList
-    : argument (Comma argument)* Comma?
+    : expression (Comma expression)* Comma?
     ;
 
 logicalOperator
@@ -332,56 +261,39 @@ booleanOperator
     ;
 
 initializer
-    : Assign (expression | type)
+    : Assign expression
     ;
 
 variableDeclarationFilter
     : Where expression
     ;
 
-variableDeclare
-    : identifier typeSpecifier? initializer? variableDeclarationFilter?
-    ;
-
-variableAssign
-    : explicitVariableDeclaration
-    | dotMemberPathSpec initializer variableDeclarationFilter?
-    | variableDeclare
-    ;
-
-explicitVariableDeclaration
-    : (Val | Var) variableDeclare
-    ;
-
-variableDeclarationList
-    : variableAssign (Comma variableAssign)* Comma?
+// TODO: Remove this! It should be a normal expression! It is a variable declaration with externally deciding type!
+varDeclareSpec
+    : Val (metaSpec | identifier) typeSpecifier? initializer? variableDeclarationFilter? eos?
+    | Var (metaSpec | identifier) typeSpecifier? initializer? variableDeclarationFilter? eos?
+//    | Var (metaSpec | identifier) typeSpecifier initializer? variableDeclarationFilter? eos?
+//    | Var (metaSpec | identifier) typeSpecifier? initializer variableDeclarationFilter? eos?
+//    | Val (metaSpec | identifier) eos?
+//    | Var (metaSpec | identifier) eos?
     ;
 
 explicitVariableDeclarationList
-    : explicitVariableDeclaration (Comma explicitVariableDeclaration)* Comma?
+    : varDeclareSpec (Comma varDeclareSpec)* Comma?
     ;
 
 expressionList
     : expression (delimiter expression)* delimiter?
     ;
 
-elseStatement
-    : Else statement // (thener | expression | statement)
-    | Else Then? singleStandaloneExpressionSpec
-    ;
-
-ifStatement
-    : If predicate=expression (thener | statement)? elseStatement?
-    ;
-
 genericSignatureTypeNarrower
     // If super, then restrict incoming type to that supertype.
     // Argument of type Iterable<Number> does not allow an Iterable<uint32>
-    : Colon Super? type
+    : Colon Super? expression
     ;
 
 genericSignatureTypeDefault
-    : Assign type
+    : Assign expression
     ;
 
 // TODO: This should be so much more, like "extends" or "super" or other conditions
@@ -390,7 +302,7 @@ genericSignatureType
     ;
 
 genericSignatureTypeList
-    : genericSignatureType (Comma genericSignatureType)* Comma?
+    : genericSignatureType (delimiter genericSignatureType)* delimiter?
     ;
 
 genericSignature
@@ -410,8 +322,8 @@ hktGenericSignature
     ;
 
 genericArgument
-    : identifier Assign type        # namedGenericArgument
-    | type                          # indexedGenericArgument
+    : identifier Assign expression        # namedGenericArgument
+    | expression                          # indexedGenericArgument
     ;
 
 genericArguments
@@ -422,57 +334,40 @@ genericArgumentSupplier
     : LT genericArguments GT
     ;
 
-call
-    : Tilde? Identifier genericArgumentSupplier? OpenPara argumentList? ClosePara QuestionMark?
+callSpec
+    : Tilde Identifier genericArgumentSupplier? OpenPara argumentList? ClosePara QuestionMark?  # partialCall
+    | Identifier genericArgumentSupplier? OpenPara argumentList? ClosePara QuestionMark?        # directCall
     ;
 
 keyValuePair
     : Identifier Assign expression
     ;
 
-quickConstructorEntry
+constructionArg
     : keyValuePair
     | expression
     ;
 
-quickConstructorEntryList
-    : quickConstructorEntry (delimiter quickConstructorEntry)* delimiter?
-    ;
-
-construction
-    : type? OpenBrace quickConstructorEntryList? CloseBrace
-    ;
-
-functionBody
-    : OpenBrace statement* CloseBrace
-    | expression
-    ;
-
-function
-    // If no signature, it is assumed no-args
-    : genericSignature? OpenPara parameterList? ClosePara typeSpecifier? ArrowDouble functionBody
-    | parameter? ArrowDouble functionBody
+constructionArgList
+    : constructionArg (delimiter constructionArg)* delimiter?
     ;
 
 literal
     : StringLiteral     # stringLiteral
     | NumericLiteral    # numericLiteral
+    | BooleanLiteral    # booleanLiteral
     ;
 
 delimiter
     : (Comma | SemiColon)
     ;
 
-eosStatementList
-    : eosStatement (delimiter eosStatement)* delimiter?
+structSpec
+    : Struct OpenBrace expressionList? CloseBrace
     ;
 
-struct
-    : Struct OpenBrace eosStatementList? CloseBrace
-    ;
-
-trait
-    : Trait OpenBrace eosStatementList? CloseBrace
+traitSpec
+    : Trait OpenBrace expressionList? CloseBrace
     ;
 
 implContextParameter
@@ -483,43 +378,12 @@ implContextParameterList
     : implContextParameter (Comma implContextParameter)* Comma?
     ;
 
-implContextDeclaration
-    : With implContextParameterList
-    ;
-
-impl
-    : Impl identifier? For type implContextDeclaration? OpenBrace statement* CloseBrace
-    ;
-
-typeNameSpec
+identifierPath
     : Identifier (Dot Identifier)*
     ;
 
-singleTypeSpec
-    : typeNameSpec                          # typeName
-    | NumericLiteral                        # numericalType
-    | Nominal typeNameSpec                  # nominalType
-    | Symbol                                # symbolType
-    | typeNameSpec genericArgumentSupplier  # genericType
-    ;
-
-tupleTypeSpec
-    : OpenPara type (Comma type)* Comma? ClosePara
-    ;
-
-typePathSpec
-    : type (Dot type)+
-    ;
-
-type
-    : lhs=type BitOr rhs=type           # unionType
-    | lhs=type Plus rhs=type            # intersectionType
-    | lhs=type Minus rhs=type           # excludedType
-    | tupleTypeSpec                     # tupleType // or groupedType if only has one type
-    | Identifier Colon type             # taggedType
-    | Type type                         # explicitType
-    | singleTypeSpec                    # singleType
-    //| typePathSpec                      # typePath
+implSpec
+    : Impl identifier? For expression (With implContextParameterList)? OpenBrace expression* CloseBrace
     ;
 
 identifier

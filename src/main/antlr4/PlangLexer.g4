@@ -101,6 +101,11 @@ Type: 'type';
 Nominal: 'nominal';
 Symbol: 'symbol';
 
+BooleanLiteral
+    : BooleanLiteralTrue
+    | BooleanLiteralFalse
+    ;
+
 Import: 'import';
 Export: 'export';
 Default: 'default';
@@ -262,4 +267,12 @@ fragment IdentifierStart
     : [\p{L}]
     | [$_]
     | '\\' UnicodeEscapeSequence
+    ;
+
+fragment BooleanLiteralTrue
+    : 'true'
+    ;
+
+fragment BooleanLiteralFalse
+    : 'false'
     ;
