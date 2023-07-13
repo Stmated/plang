@@ -8,38 +8,23 @@ root
     : expression* EOF
     ;
 
-simplePathSegment
-    : Identifier
-    | Multiply
+importSegment
+    : Multiply
+    | OpenBrace importPath (Comma importPath)* CloseBrace
+    | Identifier (Dot importSegment)?
     ;
 
-simplePath
-    : simplePathSegment (Dot simplePathSegment)*
+importAlias
+    : Identifier Colon
     ;
 
-importGroup
-    : OpenBrace importTree (delimiter importTree)* delimiter? CloseBrace
-    ;
-
-groupedImport
-    : simplePath Dot importGroup
-    ;
-
-aliasedImport
-    : identifier Colon simplePath
-    ;
-
-importTree
-    : simplePath
-    | groupedImport
-    | aliasedImport
+importPath
+    : importAlias? importSegment
     ;
 
 eos
     // This should be possible to be EOF or close brace or other contextual to get rid of ";" eventually
-    : SemiColon
-    | Comma
-    | End
+    : (SemiColon | Comma | End)
     ;
 
 withScopeEntry
@@ -62,18 +47,32 @@ forSpec
     : For OpenPara expressionList? SemiColon expression? SemiColon expressionList? ClosePara expression
     ;
 
+// TODO: Figure out if it's possible to abstract the foreach-lop and its variable declaration!
+//          Like make the "in/of expr" into an "iterator creator" for values/keys
+//          Then make foreach signature just an "expr" so could write things like:
+//          foreach array print(it);
+//iteratorSpec
+//    : (In | Of) expression
+//    ;
+
+//forEachSignatureSpec
+//    : (varDeclareSpec | metaSpec | identifier) (In | Of) expression
+//    ;
+
 // TODO: Remove the varDeclareSpec !! It must be liked any other expression!
 //              It is a variable declaration whose type is inferred by external factors (this case from "in" source)
 forEachSpec
-    : ForEach OpenPara (expression | varDeclareSpec) (In | Of) expression ClosePara expression
-    | ForEach (expression | varDeclareSpec) (In | Of) expression expression
+    : ForEach (metaSpec | identifier) In source=expression body=expression
+    | ForEach source=expression body=expression
+//    : ForEach OpenPara forEachSignatureSpec ClosePara expression
+//    | ForEach forEachSignatureSpec expression
     ;
 
 iterationSpec
-    : Do expression While expression eos?        # doIteration
-    | While expression expression eos?           # whileIteration
-    | forEachSpec eos?                           # forEachIteration
-    | forSpec                               # forIteration
+    : Do expression While expression       # doIteration
+    | While expression expression          # whileIteration
+    | forEachSpec                          # forEachIteration
+    | forSpec                                   # forIteration
     ;
 
 tupleSpec
@@ -97,10 +96,14 @@ keyword
     | Type
     ;
 
+metaIdentifierIndex
+    : OpenBracket NumericLiteral CloseBracket
+    ;
+
 metaIdentifier
     // TODO: Not care while parsing, or including only allowed meta words?
-    : (keyword | Identifier) OpenBracket NumericLiteral CloseBracket        # indexedMetaIdentifier
-    | (keyword | Identifier)                                                # simpleMetaIdentifier
+    : (keyword | Identifier) metaIdentifierIndex?        //# indexedMetaIdentifier
+    //| (keyword | Identifier)                                                # simpleMetaIdentifier
     ;
 
 metaSpec
@@ -108,7 +111,7 @@ metaSpec
     ;
 
 matchTupleItem
-    : identifier Colon expression   # matchTupleDeclaration
+    : Identifier Colon expression   # matchTupleDeclaration
     | expression                    # matchTupleItemExpression
     | DoubleDot                     # matchTupleSpacer
     ;
@@ -138,13 +141,12 @@ matchArrayItemsSpec
 matchCase
     : matchTuple
     | matchArrayItemsSpec
-    // The standalone expression must be a constant. Parsing might be well-formed but not-valid.
+    // Parsing might be a well-formed expression but not-valid.
     | expression
     | Underscore
     ;
 
 matchItem
-    //: Else ArrowDouble expression                                          # exhaustiveMatch
     : matchCase ArrowDouble expression             # standardMatch
     ;
 
@@ -160,62 +162,75 @@ ifSpec
     : If predicate=expression expression (Else expression)?
     ;
 
-// NOTE: Goal is to make EVERYTHING an expression -- everything should return a value
-//          Should make it easier to create common patterns for things
+funcSpec
+    : ArrowDouble expression
+    | OpenPara parameter ClosePara ArrowDouble expression
+    | parameter ArrowDouble expression
+    | genericSignature? OpenPara parameterList? ClosePara typeSpecifier? (ArrowDouble expression)?
+    ;
+
+dotExpressionSpec
+    : Dot expression
+    ;
+
+bracketExpressionSpec
+    : OpenBracket accessor=expression CloseBracket
+    ;
+
 expression
 
     // First expressions with keywords
-    : Export Default? expression eos?                                                # exportExpression
-    | Import importTree eos?                                                        # importExpression
+    : Export Default? expression eos?                                           # exportExpression
+    | Import importPath eos?                                                    # importExpression
 
     | Bang expression                                                           # notExpression
-    | Become callSpec                                                               # becomeExpression
-    | Yield expression eos?                                                          # yieldExpression
+    | Become callSpec                                                           # becomeExpression
+    | Yield expression eos?                                                     # yieldExpression
     | Type genericSignature? expression                                         # typeSpecExpression
     | Nominal identifierPath                                                    # nominalTypeExpression
     | Symbol                                                                    # symbolTypeExpression
     | Type expression                                                           # explicitTypeExpression
-    | Return expression eos?                                                         # returnExpression
+    | Return expression eos?                                                    # returnExpression
     | Then expression                                                           # thenExpression
+    | literal                                                                   # literalExpression
     | matchSpec                                                                 # matchExpression
     | structSpec                                                                # structExpression
     | traitSpec                                                                 # traitExpression
-    | implSpec eos?                                                                  # implExpression
+    | implSpec eos?                                                             # implExpression
     | ifSpec                                                                    # ifExpression
     | withScope                                                                 # withExpression
-    | iterationSpec                                                             # iterationExpression
-    | explicitVariableDeclarationList                                           # variableDeclarationListExpression
+    | iterationSpec eos?                                                        # iterationExpression
+    | varDeclareList eos?                                                       # variableDeclarationListExpression
+//    | iteratorSpec                                                              # iteratorExpression
+    | New expression OpenBrace constructionArgList? CloseBrace                  # constructionExression
 
     // Then expressions with special characters
-    | OpenBrace expression* eos? CloseBrace                                          # blockExpression
+    | OpenBrace expression* eos? CloseBrace                                     # blockExpression
     | expression genericArgumentSupplier                                        # genericSpecifierExpression
-    | genericSignature OpenPara parameterList? ClosePara typeSpecifier? ArrowDouble expression      # genericLambda
-    | ArrowDouble expression                                                                        # shortLambda
-    | parameter ArrowDouble expression                                                              # oneArgLambda
-    | OpenPara parameterList? ClosePara typeSpecifier? ArrowDouble expression                       # lambda
-    | OpenPara parameterList? ClosePara typeSpecifier                           # functionSignature
-    | tupleSpec                                                                 # tupleInstantiationExpression
-    | callSpec eos?                                                                      # callExpression
-    | expression OpenBrace constructionArgList? CloseBrace            # constructionExression
+    | funcSpec eos?                                                             # funcExpression
+
+    | tupleSpec                                                                 # tupleExpression
+    | callSpec eos?                                                             # callExpression
 
     | TripleDot expression                                                      # destructureExpression
 
-    | lhs=expression Assign rhs=expression eos?                                      # assignExpression
+    | lhs=expression Assign rhs=expression eos?                                 # assignExpression
     | lhs=expression booleanOperator rhs=expression                             # binaryExpression
     | lhs=expression logicalOperator rhs=expression                             # binaryExpression
     | lhs=expression mathOperator Tilde? rhs=expression                         # binaryExpression
-    | owner=expression (Dot expression)+                                        # dotMemberPathExpression
-    | owner=expression OpenBracket accessor=expression CloseBracket             # expressionAccessor
+
+    | owner=expression (dotExpressionSpec | bracketExpressionSpec)              # accessorExpression
+
     | from=expression DoubleDot to=expression                                   # rangeExpression
-    | OpenBracket mapEntryList CloseBracket                                     # mapCreationExpression
-    | OpenBracket expressionList? CloseBracket                                  # arrayCreationExpression
+
+    // Note: Will be a map if using AssignExpression inside
+    | OpenBracket expressionList? CloseBracket                                  # collectionExpression
     | metaSpec                                                                  # metaExpression
     | Identifier Meta Identifier                                                # scopeSpecificIdentifierExpression
     | Identifier Colon expression                                               # taggedExpression
-    | literal                                                                   # literalExpression
+
     | groupedExpressionSpec                                                     # groupedExpression
-    | identifier                                                                # identifierExpression
-    //| eos                                                                       # eosExpression
+    | Identifier                                                                # identifierExpression
     ;
 
 typeSpecifier
@@ -270,20 +285,19 @@ variableDeclarationFilter
 
 // TODO: Remove this! It should be a normal expression! It is a variable declaration with externally deciding type!
 varDeclareSpec
-    : Val (metaSpec | identifier) typeSpecifier? initializer? variableDeclarationFilter? eos?
-    | Var (metaSpec | identifier) typeSpecifier? initializer? variableDeclarationFilter? eos?
-//    | Var (metaSpec | identifier) typeSpecifier initializer? variableDeclarationFilter? eos?
-//    | Var (metaSpec | identifier) typeSpecifier? initializer variableDeclarationFilter? eos?
-//    | Val (metaSpec | identifier) eos?
-//    | Var (metaSpec | identifier) eos?
+    : (Val | Var) (metaSpec | identifier) typeSpecifier? initializer? variableDeclarationFilter?
     ;
 
-explicitVariableDeclarationList
+varDeclareList
     : varDeclareSpec (Comma varDeclareSpec)* Comma?
     ;
 
 expressionList
-    : expression (delimiter expression)* delimiter?
+    : expression (Comma expression)* Comma?
+    ;
+
+delimitedExpressionList
+    : expression (SemiColon expression)* SemiColon?
     ;
 
 genericSignatureTypeNarrower
@@ -292,13 +306,9 @@ genericSignatureTypeNarrower
     : Colon Super? expression
     ;
 
-genericSignatureTypeDefault
-    : Assign expression
-    ;
-
 // TODO: This should be so much more, like "extends" or "super" or other conditions
 genericSignatureType
-    : (In | Out)? Identifier hktGenericSignature? genericSignatureTypeNarrower? genericSignatureTypeDefault?
+    : (In | Out)? Identifier hktGenericSignature? genericSignatureTypeNarrower? initializer?
     ;
 
 genericSignatureTypeList
@@ -310,7 +320,7 @@ genericSignature
     ;
 
 hktGenericSignatureType
-    : (Infer | Derive) Identifier hktGenericSignature? genericSignatureTypeNarrower? genericSignatureTypeDefault?
+    : (Infer | Derive) Identifier hktGenericSignature? genericSignatureTypeNarrower? initializer?
     ;
 
 hktGenericSignatureTypeList
@@ -339,17 +349,8 @@ callSpec
     | Identifier genericArgumentSupplier? OpenPara argumentList? ClosePara QuestionMark?        # directCall
     ;
 
-keyValuePair
-    : Identifier Assign expression
-    ;
-
-constructionArg
-    : keyValuePair
-    | expression
-    ;
-
 constructionArgList
-    : constructionArg (delimiter constructionArg)* delimiter?
+    : expression (delimiter expression)* delimiter?
     ;
 
 literal
@@ -363,11 +364,11 @@ delimiter
     ;
 
 structSpec
-    : Struct OpenBrace expressionList? CloseBrace
+    : Struct OpenBrace delimitedExpressionList? CloseBrace
     ;
 
 traitSpec
-    : Trait OpenBrace expressionList? CloseBrace
+    : Trait OpenBrace delimitedExpressionList? CloseBrace
     ;
 
 implContextParameter
