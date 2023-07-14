@@ -2,5 +2,5 @@
 val FooTrait = trait {
   val calculate1 = (ref val self): uint32;
   val calculate2 = (self): uint32;
-  calculate3 = (): uint32 | uint64;
+  val calculate3 = (): uint32 | uint64;
 };

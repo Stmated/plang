@@ -1,7 +1,7 @@
 
-Person = struct {
-  GivenName: string = 'Pontus';
-  value: string;
+val Person = struct {
+  val GivenName: string = 'Pontus';
+  val value: string;
 };
 
 /*

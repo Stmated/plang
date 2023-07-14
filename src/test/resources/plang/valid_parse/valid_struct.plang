@@ -1,10 +1,10 @@
 val Foo = struct {
-  a: uint32;
+  val a: uint32;
   val b: uint32;
 };
 
 val Bar = struct {
-  c: uint32;
+  val c: uint32;
   val d: uint32;
 };
 

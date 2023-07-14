@@ -1,6 +1,6 @@
 
-// Valid when parsing, but should be invalid when validated
+// Valid when parsing, but should be invalid when validated (or should it?)
 val Foo = struct {
-  a = () => {
+  val a = () => {
   };
 };

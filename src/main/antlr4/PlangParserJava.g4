@@ -10,10 +10,9 @@ options {
 
 import PlangParser;
 
-literal
-    : StringLiteral     # stringLiteral
-    | templateStringLiteral # stringLiteralTemplate
-    | NumericLiteral    # numericLiteral
+stringLiteralSpec
+    : StringLiteral
+    | templateStringLiteral
     ;
 
 templateStringLiteral
@@ -22,6 +21,6 @@ templateStringLiteral
 
 templateStringAtom
     : TemplateStringAtom
-    | TemplateStringStartExpression expression TemplateCloseBrace
+    | TemplateStringStartExpression expr TemplateCloseBrace
     | TemplateStringEscapeAtom
     ;

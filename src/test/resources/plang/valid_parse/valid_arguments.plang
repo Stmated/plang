@@ -1,22 +1,22 @@
 
-Holder = struct {
-  value: uint32;
+val Holder = struct {
+  val value: uint32;
 };
 
-Tr = trait {
-    add = (a: uint32, b: uin32): uin64;
+val Tr = trait {
+    val add = (a: uint32, b: uin32): uin64;
 };
 
-Tr = impl for Person {
-    add = (self, a, b) => {
+val Tr = impl for Person {
+    val add = (self, a, b) => {
         return a + b + self.value;
     };
 };
 
-main = () => {
+val main = () => {
 
-    val p = Person { 1 };
-    val partial = p.~fn(b = 10);
+    val p = new Person { 1 };
+    val partial = p.fn~(b = 10);
 
     // will call with a=1, b=10
     val result = partial(100); // should be 111

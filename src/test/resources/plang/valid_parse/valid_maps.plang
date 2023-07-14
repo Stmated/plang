@@ -1,6 +1,6 @@
 
-val StructABC = struct {A: uint8; B: uint8; C: uint8; };
-val StructADE = struct {A: uint8, D: uint8; E: uint8 };
+val StructABC = struct {val A: uint8; val B: uint8; val C: uint8; };
+val StructADE = struct {val A: uint8; val D: uint8; val E: uint8 };
 
 val v = agg.A + agg.B + agg.D; // = 4 + 2 + 5 = 11
 

@@ -4,8 +4,8 @@ options {
     tokenVocab=PlangLexer;
 }
 
-root
-    : expression* EOF
+program
+    : expr* EOF
     ;
 
 importSegment
@@ -28,72 +28,26 @@ eos
     ;
 
 withScopeEntry
-    : expression (Colon Identifier)?
+    : rtChain (Colon Identifier)?
+    | newSpec
     ;
 
 withScope
-    : With OpenPara? withScopeEntry (Comma withScopeEntry)* Comma? ClosePara? expression
-    ;
-
-parameter
-    : accessLevel? (Val | Var)? (metaSpec | identifier) typeSpecifier?
-    ;
-
-parameterList
-    : parameter (Comma parameter)* Comma?
-    ;
-
-forSpec
-    : For OpenPara expressionList? SemiColon expression? SemiColon expressionList? ClosePara expression
-    ;
-
-// TODO: Figure out if it's possible to abstract the foreach-lop and its variable declaration!
-//          Like make the "in/of expr" into an "iterator creator" for values/keys
-//          Then make foreach signature just an "expr" so could write things like:
-//          foreach array print(it);
-//iteratorSpec
-//    : (In | Of) expression
-//    ;
-
-//forEachSignatureSpec
-//    : (varDeclareSpec | metaSpec | identifier) (In | Of) expression
-//    ;
-
-// TODO: Remove the varDeclareSpec !! It must be liked any other expression!
-//              It is a variable declaration whose type is inferred by external factors (this case from "in" source)
-forEachSpec
-    : ForEach (metaSpec | identifier) In source=expression body=expression
-    | ForEach source=expression body=expression
-//    : ForEach OpenPara forEachSignatureSpec ClosePara expression
-//    | ForEach forEachSignatureSpec expression
+    : With OpenParen? withScopeEntry (Comma withScopeEntry)* Comma? CloseParen? expr
     ;
 
 iterationSpec
-    : Do expression While expression       # doIteration
-    | While expression expression          # whileIteration
-    | forEachSpec                          # forEachIteration
-    | forSpec                                   # forIteration
-    ;
-
-tupleSpec
-    : OpenPara expression (Comma expression)+ Comma? ClosePara
-    ;
-
-mapEntryPair
-    : expression Assign expression
-    ;
-
-mapEntryList
-    : mapEntryPair (Comma mapEntryPair)* Comma?
-    ;
-
-groupedExpressionSpec
-    : OpenPara expression ClosePara
+    : Do expr While conditionalPredicate                                                                    # doIteration
+    | While conditionalPredicate expr                                                                       # whileIteration
+    | ForEach identifier In source=expr body=expr                                           # forEachIteration
+    | ForEach source=expr body=expr                                                         # forEachIteration
+    | For OpenParen expressionList? SemiColon conditionalPredicate? SemiColon expressionList? CloseParen expr # forIteration
     ;
 
 keyword
     : Return
     | Type
+    | It
     ;
 
 metaIdentifierIndex
@@ -102,8 +56,7 @@ metaIdentifierIndex
 
 metaIdentifier
     // TODO: Not care while parsing, or including only allowed meta words?
-    : (keyword | Identifier) metaIdentifierIndex?        //# indexedMetaIdentifier
-    //| (keyword | Identifier)                                                # simpleMetaIdentifier
+    : (keyword | Identifier) metaIdentifierIndex?
     ;
 
 metaSpec
@@ -111,13 +64,13 @@ metaSpec
     ;
 
 matchTupleItem
-    : Identifier Colon expression   # matchTupleDeclaration
-    | expression                    # matchTupleItemExpression
+    : Identifier Colon expr   # matchTupleDeclaration
+    | expr                    # matchTupleItemExpression
     | DoubleDot                     # matchTupleSpacer
     ;
 
 matchTuple
-    : OpenPara matchTupleItem (Comma matchTupleItem)+ Comma? ClosePara
+    : OpenParen matchTupleItem (Comma matchTupleItem)+ Comma? CloseParen
     ;
 
 namedMatchArrayItemSpec
@@ -142,12 +95,12 @@ matchCase
     : matchTuple
     | matchArrayItemsSpec
     // Parsing might be a well-formed expression but not-valid.
-    | expression
+    | expr
     | Underscore
     ;
 
 matchItem
-    : matchCase ArrowDouble expression             # standardMatch
+    : matchCase ArrowDouble expr             # standardMatch
     ;
 
 matchList
@@ -155,164 +108,269 @@ matchList
     ;
 
 matchSpec
-    : Match expression OpenBrace matchList CloseBrace
-    ;
-
-ifSpec
-    : If predicate=expression expression (Else expression)?
-    ;
-
-funcSpec
-    : ArrowDouble expression
-    | OpenPara parameter ClosePara ArrowDouble expression
-    | parameter ArrowDouble expression
-    | genericSignature? OpenPara parameterList? ClosePara typeSpecifier? (ArrowDouble expression)?
-    ;
-
-dotExpressionSpec
-    : Dot expression
-    ;
-
-bracketExpressionSpec
-    : OpenBracket accessor=expression CloseBracket
-    ;
-
-expression
-
-    // First expressions with keywords
-    : Export Default? expression eos?                                           # exportExpression
-    | Import importPath eos?                                                    # importExpression
-
-    | Bang expression                                                           # notExpression
-    | Become callSpec                                                           # becomeExpression
-    | Yield expression eos?                                                     # yieldExpression
-    | Type genericSignature? expression                                         # typeSpecExpression
-    | Nominal identifierPath                                                    # nominalTypeExpression
-    | Symbol                                                                    # symbolTypeExpression
-    | Type expression                                                           # explicitTypeExpression
-    | Return expression eos?                                                    # returnExpression
-    | Then expression                                                           # thenExpression
-    | literal                                                                   # literalExpression
-    | matchSpec                                                                 # matchExpression
-    | structSpec                                                                # structExpression
-    | traitSpec                                                                 # traitExpression
-    | implSpec eos?                                                             # implExpression
-    | ifSpec                                                                    # ifExpression
-    | withScope                                                                 # withExpression
-    | iterationSpec eos?                                                        # iterationExpression
-    | varDeclareList eos?                                                       # variableDeclarationListExpression
-//    | iteratorSpec                                                              # iteratorExpression
-    | New expression OpenBrace constructionArgList? CloseBrace                  # constructionExression
-
-    // Then expressions with special characters
-    | OpenBrace expression* eos? CloseBrace                                     # blockExpression
-    | expression genericArgumentSupplier                                        # genericSpecifierExpression
-    | funcSpec eos?                                                             # funcExpression
-
-    | tupleSpec                                                                 # tupleExpression
-    | callSpec eos?                                                             # callExpression
-
-    | TripleDot expression                                                      # destructureExpression
-
-    | lhs=expression Assign rhs=expression eos?                                 # assignExpression
-    | lhs=expression booleanOperator rhs=expression                             # binaryExpression
-    | lhs=expression logicalOperator rhs=expression                             # binaryExpression
-    | lhs=expression mathOperator Tilde? rhs=expression                         # binaryExpression
-
-    | owner=expression (dotExpressionSpec | bracketExpressionSpec)              # accessorExpression
-
-    | from=expression DoubleDot to=expression                                   # rangeExpression
-
-    // Note: Will be a map if using AssignExpression inside
-    | OpenBracket expressionList? CloseBracket                                  # collectionExpression
-    | metaSpec                                                                  # metaExpression
-    | Identifier Meta Identifier                                                # scopeSpecificIdentifierExpression
-    | Identifier Colon expression                                               # taggedExpression
-
-    | groupedExpressionSpec                                                     # groupedExpression
-    | Identifier                                                                # identifierExpression
-    ;
-
-typeSpecifier
-    // TODO: This is too forgiving, not any expression should be acceptable. It makes the parsing slow.
-    // TODO: Up to later parsing to decide if the expression is legal or not (must be constant, etc)
-    : Colon (metaSpec | expression)
-    ;
-
-accessLevel
-    : Ref
-    ;
-
-// TODO: Support named arguments
-argumentList
-    : expression (Comma expression)* Comma?
-    ;
-
-logicalOperator
-    : And
-    | Or
-    ;
-
-mathOperator
-    : Plus
-    | Minus
-    | Multiply
-    | Divide
-    | Modulus
-    | Remainder
-    | BitShiftLeft
-    | BitShiftRight
-    | BitAnd
-    | BitOr
-    ;
-
-booleanOperator
-    : Equals
-    | LTE
-    | GTE
-    | LT
-    | GT
-    | Is
-    ;
-
-initializer
-    : Assign expression
-    ;
-
-variableDeclarationFilter
-    : Where expression
-    ;
-
-// TODO: Remove this! It should be a normal expression! It is a variable declaration with externally deciding type!
-varDeclareSpec
-    : (Val | Var) (metaSpec | identifier) typeSpecifier? initializer? variableDeclarationFilter?
+    : Match expr OpenBrace matchList CloseBrace
     ;
 
 varDeclareList
-    : varDeclareSpec (Comma varDeclareSpec)* Comma?
+    : variablePrefix variableDeclarationBody (Comma variablePrefix? variableDeclarationBody)* Comma?
+    ;
+
+conditionalPredicate
+    : expr
+    ;
+
+conditionalElse
+    : Else expr
+    ;
+
+conditional
+    //: If varDeclareList expr (Else expr)?
+    : If expr expr conditionalElse?
+    ;
+
+bracketExpressionSpec
+    : OpenBracket accessor=expr CloseBracket
+    ;
+
+collectionItem
+    : expr (Assign expr)?
+    ;
+
+collectionItemList
+    : collectionItem (Comma collectionItem)* Comma?
+    ;
+
+parenExprList
+    : OpenParen expr (Comma expr)* Comma? CloseParen
+    ;
+
+word
+    : identifier
+    | literal
+    | It
+    ;
+
+newSpec
+    : New expr OpenBrace constructionArgList? CloseBrace
+    ;
+
+funcBody
+    : expr
+    ;
+
+funcImpl
+    : ArrowDouble funcBody
+    ;
+
+expr
+    : OpenBrace expr* CloseBrace                        # blockExpr
+    | Export Default? expr                              # exportExpression
+    | Import importPath                                 # importExpression
+    | Bang expr                                         # notExpression
+    | Become callSpec                                   # becomeExpression
+    | Yield expr                                        # yieldExpression
+    | Type genericSignature? expr                       # typeSpecExpression
+    | Nominal expr                                      # nominalTypeExpression
+    | Symbol                                            # symbolTypeExpression
+    | typeSpec                                          # typeExpr
+    | Return expr                                       # returnExpression
+    | Then expr                                         # thenExpression
+    | funcImpl                                          # shorthandFuncExpr
+    | newSpec                                           # newExpr
+    | matchSpec                                         # matchExpression
+    | structSpec                                        # structExpression
+    | traitSpec                                         # traitExpression
+    | implSpec                                          # implExpression
+    | conditional                                       # conditionalExpr
+    | withScope                                         # withExpr
+    | iterationSpec                                     # iterationExpr
+    | varDeclareList                                    # varDeclareExpr
+
+    | functionality                                     # functionalityExpr
+
+    | eos                                               # eosExpr
+    ;
+
+typeTarget
+    : expr
+    ;
+
+// TODO: "Path" is too generic. Need to versions of it
+//          One path that is for specifying compile-time constants, and one for runtime and one for both
+compPath
+    : word
+    | metaSpec
+    | owner=compPath Dot child=compPath
+    | owner=compPath genericArgumentSupplier
+    ;
+
+rtChain
+    : word
+    | owner=rtChain (Dot member=thing | bracketExpressionSpec | genericArgumentSupplier)
+    ;
+
+scopeVariable
+    : Identifier
+    | It
+    ;
+
+scopeOwner
+    : Identifier
+    ;
+
+scopeTarget
+    : scopeVariable Meta scopeOwner
+    ;
+
+thing
+    : callSpec
+    | scopeTarget
+    | rtChain
+    ;
+
+thingOrParen
+    : thing
+    | OpenParen thingOrParen CloseParen
+    ;
+
+functionality
+    : lhs=binaryAssignOrLogicalOrMath (Assign rhs=binaryAssignOrLogicalOrMath)*
+    ;
+
+binaryAssignOrLogicalOrMath
+    : lhs=binaryOpLogicalOrMath ((Equals | LTE | GTE | LT | GT | Is) rhs=binaryOpLogicalOrMath)*
+    ;
+
+binaryOpLogicalOrMath
+    : lhs=binaryOpMath ((And | Or) rhs=binaryOpMath)*
+    ;
+
+binaryOpMath
+    : lhs=binaryOpMulDiv ((Plus | Minus) Tilde? rhs=binaryOpMulDiv)*
+    ;
+
+binaryOpMulDiv
+    : lhs=binaryOpOther ((Multiply | Divide) Tilde? rhs=binaryOpOther)*
+    ;
+
+binaryOpOther
+    : lhs=binaryRange ((Pow | Modulus | Remainder | BitShiftLeft | BitShiftRight | BitAnd | BitOr) Tilde? rhs=binaryDot)*
+    ;
+
+binaryRange
+    : lhs=binaryDot (DoubleDot rhs=binaryDot)*
+    ;
+
+binaryDot
+    : lhs=binaryCall (Dot QuestionMark? rhs=binaryCall)*
+    ;
+
+binaryCall
+    : lhs=binaryBracketAccessor (callBody QuestionMark?)*
+    ;
+
+binaryBracketAccessor
+    : lhs=primaryExpr collectionExpr*
+    ;
+
+primaryExpr
+    : literal
+    | metaSpec
+    | identifierExpr
+    | primaryFuncDeclaration
+    | parenExprList
+    | escapedKeyword
+    | collectionExpr
+    ;
+
+primaryFuncDeclaration
+    : funcSignature funcImpl?
+    | funcSignatureParameter funcImpl
+    ;
+
+identifierScopeSpecifierExpr
+    : Meta Identifier
+    ;
+
+identifierExpr
+    : (It | GenericIdentifier | Identifier | metaSpec) identifierScopeSpecifierExpr? genericArgumentSupplier?
+    ;
+
+collectionExpr
+    : OpenBracket collectionItemList? CloseBracket
+    ;
+
+funcSignatureParameter
+    : Ref? (Val | Var)? identifierExpr typeSpecifier?
+    ;
+
+ funcSignatureParameters
+    : funcSignatureParameter (Comma funcSignatureParameter)*
+    ;
+
+funcGenericRequirements
+    : Where genericSignatureTypeList
+    ;
+
+funcSignature
+    : OpenParen funcSignatureParameters? CloseParen typeSpecifier? funcGenericRequirements?
+    ;
+
+escapedKeyword
+    : OpenBracket keyword CloseBracket
+    ;
+
+argumentItem
+    : (identifierExpr Assign)? expr
+    ;
+
+argumentList
+    : argumentItem (Comma argumentItem)* Comma?
+    ;
+
+typeSpecifier
+    : Colon Super? typeTarget
+    ;
+
+initializer
+    : Assign expr
+    ;
+
+whereSpec
+    : Where conditionalPredicate
+    ;
+
+variablePrefix
+    : Val
+    | Var
+    ;
+
+// TODO: Move the "whereSpec" to some expression that signifies "creation"
+//          That way it can be abstracted away from this specific place and used
+//          anywhere for anything that creates or return something, to use as a filter of sorts.
+variableDeclarationBody
+    : identifier typeSpecifier? (initializer whereSpec?)?
+    ;
+
+varDeclareSpec
+    : variablePrefix variableDeclarationBody
     ;
 
 expressionList
-    : expression (Comma expression)* Comma?
+    : expr (Comma expr)* Comma?
     ;
 
 delimitedExpressionList
-    : expression (SemiColon expression)* SemiColon?
-    ;
-
-genericSignatureTypeNarrower
-    // If super, then restrict incoming type to that supertype.
-    // Argument of type Iterable<Number> does not allow an Iterable<uint32>
-    : Colon Super? expression
+    : expr (SemiColon expr)* SemiColon?
     ;
 
 // TODO: This should be so much more, like "extends" or "super" or other conditions
 genericSignatureType
-    : (In | Out)? Identifier hktGenericSignature? genericSignatureTypeNarrower? initializer?
+    : (In | Out)? GenericIdentifier hktGenericSignature? typeSpecifier? initializer?
     ;
 
 genericSignatureTypeList
-    : genericSignatureType (delimiter genericSignatureType)* delimiter?
+    : genericSignatureType (Comma genericSignatureType)* Comma?
     ;
 
 genericSignature
@@ -320,7 +378,7 @@ genericSignature
     ;
 
 hktGenericSignatureType
-    : (Infer | Derive) Identifier hktGenericSignature? genericSignatureTypeNarrower? initializer?
+    : (Infer | Derive) GenericIdentifier hktGenericSignature? typeSpecifier? initializer?
     ;
 
 hktGenericSignatureTypeList
@@ -331,30 +389,38 @@ hktGenericSignature
     : LT hktGenericSignatureTypeList GT
     ;
 
-genericArgument
-    : identifier Assign expression        # namedGenericArgument
-    | expression                          # indexedGenericArgument
-    ;
-
-genericArguments
-    : genericArgument (Comma genericArgument)* Comma?
-    ;
-
 genericArgumentSupplier
-    : LT genericArguments GT
+    : LT argumentItem (Comma argumentItem)* Comma? GT
+    ;
+
+callBody
+    : genericArgumentSupplier? Tilde? OpenParen argumentList? CloseParen
     ;
 
 callSpec
-    : Tilde Identifier genericArgumentSupplier? OpenPara argumentList? ClosePara QuestionMark?  # partialCall
-    | Identifier genericArgumentSupplier? OpenPara argumentList? ClosePara QuestionMark?        # directCall
+    : identifierExpr callBody
+    ;
+
+assignSpec
+    : identifier Assign expr
+    ;
+
+constructionArg
+    : assignSpec
+    | expr
     ;
 
 constructionArgList
-    : expression (delimiter expression)* delimiter?
+    : constructionArg (delimiter constructionArg)* delimiter?
+    ;
+
+// NOTE: This is overriden by PlangParserJava to support ${placeholders}
+stringLiteralSpec
+    : StringLiteral
     ;
 
 literal
-    : StringLiteral     # stringLiteral
+    : stringLiteralSpec     # stringLiteral
     | NumericLiteral    # numericLiteral
     | BooleanLiteral    # booleanLiteral
     ;
@@ -367,8 +433,24 @@ structSpec
     : Struct OpenBrace delimitedExpressionList? CloseBrace
     ;
 
+traitChild
+    : varDeclareSpec
+    ;
+
 traitSpec
-    : Trait OpenBrace delimitedExpressionList? CloseBrace
+    : Trait OpenBrace traitChild (SemiColon traitChild)* SemiColon? CloseBrace
+    ;
+
+// TODO: This seems really bad! It does not "blend" well with the rest of the language
+//          Need some way of representing enums that is just another type, and some way of declaring types
+typeChild
+    : identifierExpr typeSpecifier?
+    ;
+typeChildren
+    : typeChild (BitOr typeChild)* BitOr?
+    ;
+typeSpec
+    : Type OpenBrace typeChildren? CloseBrace funcGenericRequirements?
     ;
 
 implContextParameter
@@ -379,14 +461,16 @@ implContextParameterList
     : implContextParameter (Comma implContextParameter)* Comma?
     ;
 
-identifierPath
-    : Identifier (Dot Identifier)*
+implFor
+    : expr
     ;
 
 implSpec
-    : Impl identifier? For expression (With implContextParameterList)? OpenBrace expression* CloseBrace
+    : Impl identifier? For implFor (With implContextParameterList)? OpenBrace expr* CloseBrace
     ;
 
 identifier
-    : Identifier
+    : GenericIdentifier
+    | Identifier
+    | metaSpec
     ;

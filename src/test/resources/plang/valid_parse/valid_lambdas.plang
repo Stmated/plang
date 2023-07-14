@@ -14,4 +14,4 @@ val globalFunction6 = () => 1 + 1;
 val globalFunction7 = => 1 + 1;
 val globalFunction8 = () => then return 1 + 1;
 val globalFunction9 = => then 1 + 1;
-globalFunction8 = => 1 + 1;
+val globalFunction8 = => 1 + 1;

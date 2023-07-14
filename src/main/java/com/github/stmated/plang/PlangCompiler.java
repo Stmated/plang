@@ -1,8 +1,6 @@
 package com.github.stmated.plang;
 
 import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.atn.ATNConfigSet;
-import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.RuleNode;
 
@@ -13,7 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Collection;
 
 public class PlangCompiler {
@@ -113,7 +110,7 @@ public class PlangCompiler {
       }
     });
 
-    final var rootContext = parser.root();
+    final var rootContext = parser.program();
 
     try (var os = streamCreator.create(file)) {
 

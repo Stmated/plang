@@ -1,10 +1,10 @@
 val Foo = struct {
-  a: uint32;
+  val a: uint32;
   val b: uint32;
 };
 
 val Bar = struct {
-  c: uint32;
+  val c: uint32;
   val d: uint32;
 };
 
@@ -16,12 +16,12 @@ val Baz = struct {
 val FooTrait = trait {
   val calculate1 = (ref val self): uint32;
   val calculate2 = (self): uint32;
-  calculate3 = (): uint32 | uint64;
+  val calculate3 = (): uint32 | uint64;
 };
 
 export val SpecificImplName = impl FooTrait for Foo + Bar {
   val calculate1 = (ref val self) => self.a + self.b;
-  calculate2 = (self) => self.a + self.c;
+  val calculate2 = (self) => self.a + self.c;
   val calculate3 = () => self.b + self.d;
 };
 

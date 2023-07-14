@@ -1,5 +1,5 @@
 
 val one = 1.toString();
 var number = 12.13;
-number_also_val = 14.15;
-number_decimal: float = 16.17;
+val number_also_val = 14.15;
+val number_decimal: float = 16.17;

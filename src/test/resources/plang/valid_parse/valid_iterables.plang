@@ -1,11 +1,11 @@
 
-val array1 = [1; 2, 3];
-array2 = [1, 2, 3];
+val array1 = [1, 2, 3];
+val array2 = [1, 2, 3];
 // Quick creation without property keys should go to field "value"
 // If there are several entries without property keys, it is expected that "value" is an array
-val array3 = Array { 1, 2, 3 };
-val array4 = Array { initial = 6, 1, 2, 3 };
-val array5 = Array<float> { initial = 6, 1, 2, 3 };
+val array3 = new Array { 1, 2, 3 };
+val array4 = new Array { initial = 6, 1, 2, 3 };
+val array5 = new Array<float> { initial = 6, 1, 2, 3 };
 
 // Vec = pointer, capacity, length
 val vec1 = Vector { 1, 2, 3 }; // Variable-sized array where memory is consecutive

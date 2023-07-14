@@ -1,13 +1,15 @@
 
-val fn = <T1: Add, T2: Add = T1, T3: Add = T1 | T2>(t: (T1, T2)): T3 => {
+val fn = (t: ($T1, $T2)): $T3
+    where $T1: Add, $T2: Add = $T1, $T3: Add = $T1 | $T2 => {
     return t[0] + t[1];
 };
 
 fn<uint8>((1, 2));
-fn<T1 = uint8>((1, 2));
-fn<uint8, T3 = uint64>((1, 2));
+fn<$T1 = uint8>((1, 2));
+fn<uint8, $T3 = uint64>((1, 2));
 
 // Also support Higher Kind Types
-val fn2 = <T1<infer TT: super Number>: Iterable<TT>, T2: Number>(t: T1): T2 => {
+val fn2 = (t: $T1): $T2
+    where $T1<infer $TT: super Number>: Iterable<$TT>, $T2: Number => {
     // ... do something to turn Iterable of T1 into T2
 };

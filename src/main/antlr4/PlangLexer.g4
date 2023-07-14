@@ -12,8 +12,8 @@ SingleLineComment
 OpenBracket: '[';
 CloseBracket: ']';
 
-OpenPara: '(';
-ClosePara: ')';
+OpenParen: '(';
+CloseParen: ')';
 
 OpenBrace: '{';
 CloseBrace: '}';
@@ -40,6 +40,7 @@ Multiply: '*';
 Divide: '/';
 Modulus: '%%';
 Remainder: '%';
+Pow: '^';
 BitShiftLeft: '<<';
 BitShiftRight: '>>';
 LTE: '<=';
@@ -68,6 +69,7 @@ Trait: 'trait';
 Val: 'val';
 Var: 'var';
 
+Given: 'given';
 Where: 'where';
 With: 'with';
 
@@ -91,6 +93,7 @@ Return: 'return';
 Yield: 'yield';
 Become: 'become';
 
+Dollar: '$';
 Meta: '@';
 
 Qualifier: 'qualifier';
@@ -114,8 +117,14 @@ New: 'new';
 
 Match: 'match';
 
+It: 'it';
+
 If: 'if';
 Else: 'else';
+
+GenericIdentifier
+    : Dollar Identifier
+    ;
 
 Identifier
     : IdentifierStart IdentifierPart*
