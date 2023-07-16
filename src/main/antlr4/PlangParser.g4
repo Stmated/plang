@@ -63,44 +63,44 @@ metaSpec
     : Meta metaIdentifier (Dot metaIdentifier)*
     ;
 
-matchTupleItem
-    : Identifier Colon expr   # matchTupleDeclaration
-    | expr                    # matchTupleItemExpression
-    | DoubleDot                     # matchTupleSpacer
-    ;
+//matchTupleItem
+//    : Identifier Colon expr   # matchTupleDeclaration
+//    | expr                    # matchTupleItemExpression
+//    | DoubleDot                     # matchTupleSpacer
+//    ;
 
-matchTuple
-    : OpenParen matchTupleItem (Comma matchTupleItem)+ Comma? CloseParen
-    ;
+//matchTuple
+//    : OpenParen matchTupleItem (Comma matchTupleItem)+ Comma? CloseParen
+//    ;
 
-namedMatchArrayItemSpec
-    : identifier Colon matchArrayItem
-    ;
+//namedMatchArrayItemSpec
+//    : identifier Colon matchArrayItem
+//    ;
 
-matchArrayItem
-    : matchCase                             # matchCaseArrayItemEntry
-    | DoubleDot                             # matchCaseSpacer
-    | namedMatchArrayItemSpec               # namedMatchArrayItem
-    ;
+//matchArrayItem
+//    : matchCase                             # matchCaseArrayItemEntry
+//    | DoubleDot                             # matchCaseSpacer
+//    | namedMatchArrayItemSpec               # namedMatchArrayItem
+//    ;
 
-matchArrayItemList
-    : matchArrayItem (delimiter matchArrayItem)* delimiter?
-    ;
+//matchArrayItemList
+//    : matchArrayItem (delimiter matchArrayItem)* delimiter?
+//    ;
 
-matchArrayItemsSpec
-    : OpenBracket matchArrayItemList? CloseBracket
-    ;
+//matchArrayItemsSpec
+//    : OpenBracket matchArrayItemList? CloseBracket
+//    ;
 
-matchCase
-    : matchTuple
-    | matchArrayItemsSpec
-    // Parsing might be a well-formed expression but not-valid.
-    | expr
-    | Underscore
-    ;
+//matchCase
+//    : matchTuple
+//    | matchArrayItemsSpec
+//    // Parsing might be a well-formed expression but not-valid.
+//    | expr
+//    | Underscore
+//    ;
 
 matchItem
-    : matchCase ArrowDouble expr             # standardMatch
+    : expr ArrowDouble expr
     ;
 
 matchList
@@ -133,16 +133,16 @@ bracketExpressionSpec
     ;
 
 collectionItem
-    : expr (Assign expr)?
+    : (Identifier Colon)? expr (Assign expr)?
     ;
 
 collectionItemList
     : collectionItem (Comma collectionItem)* Comma?
     ;
 
-parenExprList
-    : OpenParen expr (Comma expr)* Comma? CloseParen
-    ;
+//parenExprList
+//    : OpenParen collectionItemList CloseParen
+//    ;
 
 word
     : identifier
@@ -154,12 +154,8 @@ newSpec
     : New expr OpenBrace constructionArgList? CloseBrace
     ;
 
-funcBody
-    : expr
-    ;
-
 funcImpl
-    : ArrowDouble funcBody
+    : ArrowDouble expr
     ;
 
 expr
@@ -172,7 +168,7 @@ expr
     | Type genericSignature? expr                       # typeSpecExpression
     | Nominal expr                                      # nominalTypeExpression
     | Symbol                                            # symbolTypeExpression
-    | typeSpec                                          # typeExpr
+    | typeSpec                                          # explicitTypeExpr
     | Return expr                                       # returnExpression
     | Then expr                                         # thenExpression
     | funcImpl                                          # shorthandFuncExpr
@@ -192,7 +188,7 @@ expr
     ;
 
 typeTarget
-    : expr
+    : typeExpr
     ;
 
 // TODO: "Path" is too generic. Need to versions of it
@@ -275,17 +271,115 @@ binaryBracketAccessor
 
 primaryExpr
     : literal
+    | DoubleDot
+    | Underscore
     | metaSpec
     | identifierExpr
-    | primaryFuncDeclaration
-    | parenExprList
+    | tupleOrFunc
+    //| parenExprList
     | escapedKeyword
     | collectionExpr
     ;
 
-primaryFuncDeclaration
-    : funcSignature funcImpl?
-    | funcSignatureParameter funcImpl
+// Start of type main expression tree
+// - This should mimic and share as much as possible with regular 'expr'
+// - But there is a need to limit what can be written in type specifiers, or ambiguity arises
+
+typeExpr
+    : conditional // TODO: This needs to be a typeConditional that only allow type stuff inside it
+    | typeFunctionality
+    ;
+
+//typeFunctionality
+//    : lhs=typeBinaryAssignOrLogicalOrMath (Assign rhs=typeBinaryAssignOrLogicalOrMath)*
+//    ;
+
+typeFunctionality
+    : lhs=typeBinaryOpMath ((Equals | Is) rhs=typeBinaryOpMath)*
+    ;
+
+typeBinaryOpMath
+    : lhs=typeBinaryOpOther ((Plus | Minus) rhs=typeBinaryOpOther)*
+    ;
+
+typeBinaryOpOther
+    : lhs=typeBinaryRange ((BitAnd | BitOr) rhs=typeBinaryDot)*
+    ;
+
+typeBinaryRange
+    : lhs=typeBinaryDot (DoubleDot rhs=typeBinaryDot)*
+    ;
+
+typeBinaryDot
+    : lhs=typeBinaryBracketAccessor (Dot rhs=typeBinaryBracketAccessor)*
+    ;
+
+typeBinaryBracketAccessor
+    : lhs=typePrimaryExpr typeCollectionExpr*
+    ;
+
+typeCollectionItem
+    : (Identifier Colon)? expr (Assign expr)?
+    ;
+
+typeCollectionItemList
+    : typeCollectionItem (Comma typeCollectionItem)* Comma?
+    ;
+
+//parenTypeExprList
+//    : OpenParen typeCollectionItemList CloseParen
+//    ;
+
+typeCollectionExpr
+    : OpenBracket typeCollectionItemList? CloseBracket
+    ;
+
+typePrimaryExpr
+    : literal
+    | DoubleDot
+    | Underscore
+    | metaSpec
+    | identifierExpr
+    | tupleOrFuncSignature
+    | escapedKeyword
+    | typeCollectionExpr
+    ;
+
+
+// End of type main expression tree
+
+// TODO: Work on this! Need to abstract the parsing so that the paranthesized part is just that
+//          Then it becomes a func if it has ArrowDouble, or a signature if items inside have type specifiers.
+//          Will make it easier to create syntax where we can pattern match lhs to rhs
+
+// TODO: Remove this? And just have the "parenthesized collection" or whatever it is parse the content.
+//          We're trying to parse fast here, and give meaning to it later.
+
+// TODO: A "func" should just be a tuple with a typeSpecifier and/or ArrowDouble
+// TODO: And a tuple is just a parenthesized expr collection where the entries are all types or tagged expressions
+
+funcParameter
+    : Ref? (Val | Var)? identifierExpr typeSpecifier? initializer?
+    ;
+
+tupleItem
+    : funcParameter
+    | literal
+    | conditional
+    //| expr
+    ;
+
+ tupleItemList
+    : tupleItem (Comma tupleItem)* Comma?
+    ;
+
+tupleOrFuncSignature
+    : OpenParen tupleItemList? CloseParen typeSpecifier? funcGenericRequirements?
+    ;
+
+tupleOrFunc
+    : tupleOrFuncSignature funcImpl?
+    //| funcParameter funcImpl
     ;
 
 identifierScopeSpecifierExpr
@@ -300,20 +394,8 @@ collectionExpr
     : OpenBracket collectionItemList? CloseBracket
     ;
 
-funcSignatureParameter
-    : Ref? (Val | Var)? identifierExpr typeSpecifier?
-    ;
-
- funcSignatureParameters
-    : funcSignatureParameter (Comma funcSignatureParameter)*
-    ;
-
 funcGenericRequirements
     : Where genericSignatureTypeList
-    ;
-
-funcSignature
-    : OpenParen funcSignatureParameters? CloseParen typeSpecifier? funcGenericRequirements?
     ;
 
 escapedKeyword
