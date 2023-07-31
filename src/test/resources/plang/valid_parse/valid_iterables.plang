@@ -16,6 +16,7 @@ val array1_slice = array1[0..1]; // Slice is a view into original -- mutable or 
 val array1_filtered1 = array1[v => v > 2];
 
 // "it" is the default implicit name for single-argument lambdas
-val array1_filtered2 = array1[=> it > 2];
+// (which is not supported yet, removed it because of a lack of good ways to parse it)
+val array1_filtered2 = array1[it => it > 2];
 
-val array1_sorted = array1.sort(=> it.compareTo(other));
+val array1_sorted = array1.sort((it, other) => it.compareTo(other));

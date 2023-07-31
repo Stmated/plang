@@ -8,10 +8,10 @@ var globalFunction2 = () => {
 val globalFunction3 = () => {
   then return 1 + 1;
 };
-val globalFunction4 = () => return 1 + 1;
+val globalFunction4 = () => { return 1 + 1; };
 val globalFunction5 = () => 1 + 1;
 val globalFunction6 = () => 1 + 1;
-val globalFunction7 = => 1 + 1;
-val globalFunction8 = () => then return 1 + 1;
-val globalFunction9 = => then 1 + 1;
-val globalFunction8 = => 1 + 1;
+val globalFunction7 = _ => 1 + 1;
+val globalFunction8 = () => { return 1 + 1; }
+val globalFunction9 = _ => { then 1 + 1; }
+val globalFunction8 = _ => 1 + 1;

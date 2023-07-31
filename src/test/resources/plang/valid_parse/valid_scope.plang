@@ -6,11 +6,14 @@ val array2 = [3, 4, 5];
 // By saying 'identifier'@'identifier' you can specify the owner
 // TODO: Should there be a "magical" name for the second as well? "other"?
 
-val result = array1.filter(=> {
-    return array2.any(=> {
+val result = array1.filter(it => {
+    return array2.any(it => {
         return it == it@array1;
     });
 });
 
-val result = array1[=> array2.any(=> it == it@array1)];
+// Or maybe this should be it' which is used in math to say "the other it"
+// Then you would also be able to say it'' to mean "the second other it"
+// Or is it better to be explicit like the example below?
+val result = array1[it => array2.any(it => it == it@array1)];
 

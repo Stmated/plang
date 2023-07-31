@@ -3,8 +3,6 @@ package com.github.stmated.plang;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.Lexer;
 
-import java.util.EmptyStackException;
-
 public abstract class PlangLexerBase extends Lexer {
 
   /**
@@ -55,16 +53,5 @@ public abstract class PlangLexerBase extends Lexer {
   protected void DecreaseTemplateDepth() {
     this.templateDepth--;
 
-  }
-
-  @Override
-  public int popMode() {
-    try {
-      return super.popMode();
-    } catch (Exception ex) {
-      System.out.println("Wtf? " + this._mode);
-      System.out.println(ex.getStackTrace());
-      return this._mode;
-    }
   }
 }
