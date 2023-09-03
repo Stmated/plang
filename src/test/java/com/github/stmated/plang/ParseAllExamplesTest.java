@@ -1,5 +1,6 @@
 package com.github.stmated.plang;
 
+import com.github.stmated.plang.parser.PlangTestUtil;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -14,12 +15,8 @@ import java.util.stream.Stream;
 
 class ParseAllExamplesTest {
 
-  private static Stream<Arguments> testShouldSucceedSource() throws IOException {
-
-    final var paths = new ArrayList<Path>();
-    PlangCompiler.find(Paths.get("src/test/resources/plang/valid_parse"), paths);
-
-    return paths.stream().map(Arguments::of);
+  public static Stream<Arguments> testShouldSucceedSource() throws IOException {
+    return PlangTestUtil.testShouldSucceedSource();
   }
 
   @ParameterizedTest

@@ -62,7 +62,7 @@ iterationForEachItSpec
     ;
 
 iterationForSpec
-    : For OpenParen expressionList? SemiColon conditionalPredicate? SemiColon expressionList? CloseParen expr
+    : For OpenParen exprList? SemiColon conditionalPredicate? SemiColon exprList? CloseParen expr
     ;
 
 iterationSpec
@@ -93,7 +93,7 @@ metaSpec
     ;
 
 matchSpec
-    : Match expr OpenBrace expressionList CloseBrace
+    : Match expr OpenBrace exprList CloseBrace
     ;
 
 varDeclareList
@@ -118,7 +118,7 @@ bracketExpressionSpec
     ;
 
 parenExprList
-    : OpenParen expressionList? CloseParen
+    : OpenParen exprList? CloseParen
     ;
 
 word
@@ -128,7 +128,7 @@ word
     ;
 
 newSpec
-    : New expr OpenBrace constructionArgList? CloseBrace
+    : New expr OpenBrace exprList? CloseBrace
     ;
 
 notExpr
@@ -136,6 +136,11 @@ notExpr
     ;
 
 expr
+    : inlineExpr
+    | eos
+    ;
+
+inlineExpr
     : blockSpec                                         # blockExpr
     | Export Default? expr                              # exportExpression
     | Import importPath                                 # importExpression
@@ -149,7 +154,6 @@ expr
     | Then expr                                         # thenExpression
     | newSpec                                           # newExpr
     | matchSpec                                         # matchExpression
-    | structSpec                                        # structExpression
     | traitSpec                                         # traitExpression
     | implSpec                                          # implExpression
     | conditional                                       # conditionalExpr
@@ -158,8 +162,6 @@ expr
     | varDeclareList                                    # varDeclareExpr
 
     | functionality                                     # functionalityExpr
-
-    | eos                                               # eosExpr
     ;
 
 // TODO: "Path" is too generic. Need to versions of it
@@ -231,38 +233,35 @@ binaryOpMulDiv
     ;
 
 binaryOpOther
-    : lhs=binaryRange ((Pow | Modulus | Remainder | BitShiftLeft | BitShiftRight | BitAnd | BitOr) Tilde? rhs=binaryDot)*
+    : lhs=binaryRange ((Pow | Modulus | Remainder | BitShiftLeft | BitShiftRight | BitAnd | BitOr) Tilde? rhs=binaryRange)*
     ;
 
 binaryRange
-    : lhs=binaryDot (DoubleDot rhs=binaryDot)*
+    : lhs=dotMember (DoubleDot rhs=dotMember)*
     ;
 
-binaryDot
-    : lhs=binaryCall (Dot QuestionMark? rhs=binaryCall)*
+dotMember
+    : lhs=primaryExpr (Dot rhs=primaryExpr)?
     ;
 
-binaryCall
-    : lhs=binaryBracketAccessor (callBody QuestionMark?)*
-    ;
-
-binaryBracketAccessor
-    : lhs=primaryExpr collectionExpr*
+postfix
+    : parenExprList postfix?
+    | bracketExprList postfix?
+    | Dot identifierExpr postfix?
     ;
 
 primaryExpr
     : literal
     | DoubleDot
     | Underscore
-    //| shorthandFunc
     | notExpr
-    | metaSpec
-    | identifierExpr
+    | parenExprList postfix?
+    | bracketExprList postfix?
+    | identifierExpr postfix?
     | escapedKeyword
-    | collectionExpr
     | blockSpec
-    | parenExprList
     ;
+
 
 blockSpec
     : OpenBrace expr* CloseBrace
@@ -326,18 +325,28 @@ typePrimaryExpr
     ;
 
 
+//| structSpec                                        # structExpression
+//
+//structSpec
+//    : Struct OpenBrace delimitedExpressionList? CloseBrace
+//    ;
+
 // End of type main expression tree
 
 identifierScopeSpecifierExpr
     : Meta Identifier
     ;
 
-identifierExpr
-    : (It | GenericIdentifier | Identifier | metaSpec) identifierScopeSpecifierExpr? genericArgumentSupplier?
+possiblyGenericIdentifier
+    : Dollar? Identifier
     ;
 
-collectionExpr
-    : OpenBracket expressionList? CloseBracket
+identifierExpr
+    : (It | possiblyGenericIdentifier | metaSpec) identifierScopeSpecifierExpr? genericArgumentSupplier?
+    ;
+
+bracketExprList
+    : OpenBracket exprList? CloseBracket
     ;
 
 funcGenericRequirements
@@ -379,13 +388,13 @@ varDeclareSpec
     : variablePrefix variableDeclarationBody
     ;
 
-expressionList
-    : expr (Comma expr)* Comma?
+exprList
+    : inlineExpr (delimiter inlineExpr)* delimiter?
     ;
 
-delimitedExpressionList
-    : expr (SemiColon expr)* SemiColon?
-    ;
+//delimitedExpressionList
+//    : expr (SemiColon expr)* SemiColon?
+//    ;
 
 // TODO: This should be so much more, like "extends" or "super" or other conditions
 genericSignatureType
@@ -413,11 +422,11 @@ hktGenericSignature
     ;
 
 genericArgumentSupplier
-    : LT expressionList GT
+    : LT exprList GT
     ;
 
 callBody
-    : genericArgumentSupplier? Tilde? OpenParen expressionList? CloseParen
+    : genericArgumentSupplier? Tilde? OpenParen exprList? CloseParen
     ;
 
 callSpec
@@ -450,10 +459,6 @@ literal
 
 delimiter
     : (Comma | SemiColon)
-    ;
-
-structSpec
-    : Struct OpenBrace delimitedExpressionList? CloseBrace
     ;
 
 traitChild

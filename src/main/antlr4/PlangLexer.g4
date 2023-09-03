@@ -64,7 +64,6 @@ Bang: '!';
 Comma: ',';
 Colon: ':';
 
-Struct: 'struct';
 Trait: 'trait';
 Val: 'val';
 Var: 'var';

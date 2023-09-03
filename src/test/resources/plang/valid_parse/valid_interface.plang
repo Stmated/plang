@@ -1,0 +1,22 @@
+
+val Point = (
+  x: uint32;
+  y: uint64;
+);
+
+val p1 = new Point { 10, 20 };
+val p2 = new Point { y = 20, x = 10 };
+
+val implicit_p1 = (
+    x = 10,
+    y = 20
+);
+
+val fn = (p: Point) => {
+    return p.x * p.x + p.y * p.y;
+};
+
+// Both should work, because type declarations are interfaces.
+// And interfaces use duck-typing, so as long as the declarations overlap, they are valid
+val res1 = fn(p1);
+val res1 = fn(implicit_p1);
