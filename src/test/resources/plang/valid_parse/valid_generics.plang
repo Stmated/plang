@@ -8,8 +8,8 @@ fn<uint8>((1, 2));
 fn<$T1 = uint8>((1, 2));
 fn<uint8, $T3 = uint64>((1, 2));
 
-// Also support Higher Kind Types
-val fn2 = (t: $T1): $T2
-    where $T1<$TT: super Number>: Iterable<$TT>, $T2: Number => {
-    // ... do something to turn Iterable of T1 into T2
-};
+// Also support Higher Kind Types. TODO: Implement this later -- for now, move forward with simpler stuff
+//val fn2 = (t: $T1): $T2
+//    where $T1<$TT: super Number>: Iterable<$TT>, $T2: Number => {
+//    // ... do something to turn Iterable of T1 into T2
+//};

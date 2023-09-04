@@ -2,6 +2,7 @@ package com.github.stmated.plang.parser;
 
 import com.github.stmated.plang.hir.MutabilityKind;
 import com.github.stmated.plang.ipr.InitialAssignment;
+import com.github.stmated.plang.ipr.InitialBecome;
 import com.github.stmated.plang.ipr.InitialBinaryOperation;
 import com.github.stmated.plang.ipr.InitialBinaryOperationType;
 import com.github.stmated.plang.ipr.InitialBlock;
@@ -16,6 +17,7 @@ import com.github.stmated.plang.ipr.InitialDotAccess;
 import com.github.stmated.plang.ipr.InitialExport;
 import com.github.stmated.plang.ipr.InitialExpression;
 import com.github.stmated.plang.ipr.InitialIdentifier;
+import com.github.stmated.plang.ipr.InitialIdentifierGeneric;
 import com.github.stmated.plang.ipr.InitialImpl;
 import com.github.stmated.plang.ipr.InitialImport;
 import com.github.stmated.plang.ipr.InitialImportCapable;
@@ -26,8 +28,10 @@ import com.github.stmated.plang.ipr.InitialImportPathIdentifier;
 import com.github.stmated.plang.ipr.InitialImportPathWildcard;
 import com.github.stmated.plang.ipr.InitialLabeling;
 import com.github.stmated.plang.ipr.InitialLiteral;
+import com.github.stmated.plang.ipr.InitialLoopDoWhile;
 import com.github.stmated.plang.ipr.InitialLoopFor;
 import com.github.stmated.plang.ipr.InitialLoopForEach;
+import com.github.stmated.plang.ipr.InitialLoopWhile;
 import com.github.stmated.plang.ipr.InitialMatch;
 import com.github.stmated.plang.ipr.InitialMeta;
 import com.github.stmated.plang.ipr.InitialMetaScope;
@@ -51,8 +55,6 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Queue;
-import java.util.Stack;
 
 public class PlangInitialParser {
 
@@ -68,8 +70,14 @@ public class PlangInitialParser {
 
     final var children = new ArrayList<InitialExpression>();
 
-    while (hasNext()) {
-      children.add(parseLevel0());
+    try {
+      while (hasNext()) {
+        children.add(parseLevel0());
+      }
+    } catch (Exception ex) {
+
+      final var expressionStrings = String.join("\n", children.stream().map(Object::toString).toList());
+      throw new IllegalArgumentException("Exception '%s' after parsed:\n%s".formatted(ex.getMessage(), expressionStrings), ex);
     }
 
     return new InitialProgram(children.toArray(new InitialExpression[0]));
@@ -328,12 +336,12 @@ public class PlangInitialParser {
 
       final var t = token.type();
       if (t == TokenType.POW
-          || t == TokenType.MODULUS
-          || t == TokenType.REMAINDER
-          || t == TokenType.BIT_SHIFT_LEFT
-          || t == TokenType.BIT_SHIFT_RIGHT
-          || t == TokenType.BIT_AND
-          || t == TokenType.BIT_OR) {
+        || t == TokenType.MODULUS
+        || t == TokenType.REMAINDER
+        || t == TokenType.BIT_SHIFT_LEFT
+        || t == TokenType.BIT_SHIFT_RIGHT
+        || t == TokenType.BIT_AND
+        || t == TokenType.BIT_OR) {
         final var rhs = parseLevel8(); // Recursive
         if (rhs != null) {
           return new InitialBinaryOperation(lhs, InitialBinaryOperationType.fromTokenType(t), rhs);
@@ -427,12 +435,8 @@ public class PlangInitialParser {
   }
 
   private InitialExpression parseExpression() {
-    return this.parseExpression(null);
-  }
 
-  private InitialExpression parseExpression(TokenType stayIf) {
-
-    final var token = (stayIf == null) ? next() : stayOrNext(stayIf);
+    final var token = next();
     if (token == null) {
       return null;
     }
@@ -461,17 +465,20 @@ public class PlangInitialParser {
       case THEN -> parseThen();
       case RETURN -> parseReturn();
       case NEW -> parseNew();
-      case SEMI_COLON -> new InitialNoOp();
+      case SEMI_COLON, END -> new InitialNoOp();
       case COMMA -> new InitialCollectionDelimiter();
       case IDENTIFIER -> parseIdentifierLike();
+      case IDENTIFIER_GENERIC -> new InitialIdentifierGeneric(token.content());
       case EXPORT -> parseExport();
       case IMPORT -> parseImport();
+      case BECOME -> parseBecome();
       case META -> parseMeta();
-      case COMMENT_SINGLE_LINE,
-          COMMENT_MULTI_LINE -> new InitialComment(token.content());
+      case COMMENT_SINGLE_LINE, COMMENT_MULTI_LINE -> new InitialComment(token.content());
       case YIELD -> parseYield();
       case FOREACH -> parseForEach();
       case FOR -> parseFor();
+      case DO -> parseDo();
+      case WHILE -> parseWhile();
       case MATCH -> parseMatch();
       default -> {
         throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
@@ -496,10 +503,10 @@ public class PlangInitialParser {
     }
 
     final var declaration = new InitialVariableDeclaration(
-        identifier,
-        mutabilityKind,
-        type,
-        false
+      identifier,
+      mutabilityKind,
+      type,
+      false
     );
 
     final var potentialAssign = next();
@@ -570,26 +577,32 @@ public class PlangInitialParser {
 
     final var expressions = new ArrayList<InitialExpression>();
 
-    Token token;
-    while ((token = next()) != null) {
+    try {
+      Token token;
+      while ((token = next()) != null) {
 
-      if (token.type() == tt) {
+        if (token.type() == tt) {
 
-        // We have found out stop. Let's exit.
-        break;
+          // We have found out stop. Let's exit.
+          break;
+        }
+
+        // Let's stay on our current token.
+        // TODO: This pattern seems strange. We should set HARD rules on when to read next or not.
+        queuedTokens.add(token);
+
+        final var expression = this.parseExpression();
+        if (expression != null) {
+          expressions.add(expression);
+        } else {
+          throw new IllegalArgumentException("Encountered EOF before %s".formatted(tt));
+        }
       }
+    } catch (Exception ex) {
 
-      // Let's stay on our current token.
-      // TODO: This pattern seems strange. We should set HARD rules on when to read next or not.
-      queuedTokens.add(token);
-
-      final var expression = this.parseExpression();
-      if (expression != null) {
-
-        expressions.add(expression);
-      } else {
-        throw new IllegalArgumentException("Encountered EOF before %s".formatted(tt));
-      }
+      final var expressionStrings = expressions.stream().map(Object::toString).toList();
+      final var expressionsString = "\n    " + String.join("\n    ", expressionStrings);
+      throw new IllegalArgumentException("Failed parsing after found 'until'-expressions %s".formatted(expressionsString), ex);
     }
 
     return expressions;
@@ -597,7 +610,6 @@ public class PlangInitialParser {
 
   private InitialExpression parseIdentifierLike() {
 
-    //final var prefix = next();
     // TODO: Goes against other code -- usually calls next()
     //        Need to always work the same way. Always assume read?
     //        Maybe have different methods "readXyz" and "parseXyz"?
@@ -619,8 +631,15 @@ public class PlangInitialParser {
     var n = next();
     if (n != null) {
 
+      List<InitialExpression> generics = null;
+      if (n.type() == TokenType.LT) {
+
+        generics = parseGenerics();
+        n = next();
+      }
+
       boolean partial = false;
-      if (n.type() == TokenType.TILDE) {
+      if (n != null && n.type() == TokenType.TILDE) {
         partial = true;
         n = next();
       }
@@ -640,7 +659,11 @@ public class PlangInitialParser {
             }
           }
 
-          return new InitialCall(identifier, paren, bubbleUp, partial);
+          final var genericArray = (generics == null) ? null : generics.toArray(new InitialExpression[0]);
+          return new InitialCall(identifier, paren, genericArray, bubbleUp, partial);
+
+        } else if (partial) {
+          throw new IllegalArgumentException("Tilde (partial call indicator) must be followed by an opening parenthesis");
         } else {
           queuedTokens.add(n);
         }
@@ -648,6 +671,53 @@ public class PlangInitialParser {
     }
 
     return identifier;
+  }
+
+  private List<InitialExpression> parseGenerics() {
+
+    final var expressions = new ArrayList<InitialExpression>();
+
+    stayOrNext(TokenType.LT);
+
+    // TODO: Would be nice if this could be abstracted somehow; reuse code from other places more.
+
+    Token t;
+    while ((t = next()) != null) {
+
+      if (t.type() == TokenType.GT) {
+
+        // We have found our stop. Let's exit.
+        break;
+      } else if (t.type() ==TokenType.COMMA) {
+
+        // We add this since we do in other places that deal with collections.
+        expressions.add(new InitialCollectionDelimiter());
+      } else if (t.type() == TokenType.IDENTIFIER) {
+
+        // If this, then it is the type to use for that positional generic.
+        expressions.add(new InitialIdentifier(t.content()));
+
+      } else if (t.type() == TokenType.IDENTIFIER_GENERIC) {
+
+        // If this, then it is an assignment for a named generic.
+        final var maybeAssign = next();
+        if (maybeAssign == null || maybeAssign.type() != TokenType.ASSIGN) {
+          throw new IllegalArgumentException("Excepted the named generic to be assigned from another type");
+        }
+
+        final var identifierAssignRhs = parseIdentifierLike();
+        if (identifierAssignRhs == null) {
+          throw new IllegalArgumentException("Excepted the named generic to be assigned from another type");
+        }
+
+        expressions.add(new InitialAssignment(
+          new InitialIdentifierGeneric(t.content()),
+          identifierAssignRhs
+        ));
+      }
+    }
+
+    return expressions;
   }
 
   private InitialIdentifier parseIdentifier() {
@@ -812,10 +882,10 @@ public class PlangInitialParser {
         }
 
         return new InitialVariableDeclaration(
-            varDec.identifier(),
-            varDec.mutabilityKind(),
-            varDec.type(),
-            true
+          varDec.identifier(),
+          varDec.mutabilityKind(),
+          varDec.type(),
+          true
         );
 
       } else if (token.type() == TokenType.IDENTIFIER) {
@@ -823,10 +893,10 @@ public class PlangInitialParser {
         final var identifier = this.parseIdentifier();
 
         return new InitialVariableDeclaration(
-            identifier,
-            MutabilityKind.Immutable,
-            null,
-            true
+          identifier,
+          MutabilityKind.Immutable,
+          null,
+          true
         );
       }
     }
@@ -836,12 +906,24 @@ public class PlangInitialParser {
 
   private InitialExport parseExport() {
 
+    stayOrNext(TokenType.EXPORT);
+
+    var isDefault = false;
+    final var maybeDefault = next();
+    if (maybeDefault != null) {
+      if (maybeDefault.type() == TokenType.DEFAULT) {
+        isDefault = true;
+      } else {
+        queuedTokens.push(maybeDefault);
+      }
+    }
+
     final var exported = this.parseLevel0();
     if (exported == null) {
       throw new IllegalArgumentException("The export must export something");
     }
 
-    return new InitialExport(exported);
+    return new InitialExport(exported, isDefault);
   }
 
   private InitialImportCapable parseImportPath_level0() {
@@ -951,6 +1033,19 @@ public class PlangInitialParser {
     return new InitialImport(importPath);
   }
 
+  private InitialBecome parseBecome() {
+
+    stayOrNext(TokenType.BECOME);
+
+    next();
+    final var identifierLike = parseIdentifierLike();
+    if (identifierLike instanceof InitialCall ic) {
+      return new InitialBecome(ic);
+    }
+
+    throw new IllegalArgumentException("Become can only become another function by a regular call");
+  }
+
   private InitialMeta parseMeta() {
 
     final var target = this.parseLevel10();
@@ -967,7 +1062,7 @@ public class PlangInitialParser {
 
     final var token_id1 = this.next();
     if (token_id1 == null || token_id1.type() != TokenType.IDENTIFIER) {
-      throw new IllegalArgumentException("Impl must have a for-target or identifier");
+      throw new IllegalArgumentException("Impl must have a for-target or identifier not a %s".formatted(token_id1));
     }
 
     final var id1 = this.parseIdentifier();
@@ -977,20 +1072,36 @@ public class PlangInitialParser {
       throw new IllegalArgumentException("There must be further tokens for the impl");
     }
 
+    InitialIdentifier traitIdentifier;
+    InitialExpression forExpression;
+
     if (token2.type() == TokenType.FOR) {
 
       final var target = this.parseLevel0(); // Maybe be more restrictive
-      final var block = this.parseBlock();
-      return new InitialImpl(id1, target, block);
 
+      traitIdentifier = id1;
+      forExpression = target;
     } else if (token2.type() == TokenType.OPEN_BRACE) {
-
-      final var block = this.parseBlock();
-      return new InitialImpl(null, id1, block);
-
+      traitIdentifier = null;
+      forExpression = id1;
     } else {
       throw new IllegalArgumentException("Impl must have a for-target or identifier, not %s".formatted(token_id1));
     }
+
+    final var maybeWith = next();
+    if (maybeWith != null) {
+      if (maybeWith.type() == TokenType.WITH) {
+
+        // TODO: Implement 'with' for impl
+        throw new IllegalStateException("Not yet implemented to have 'with' on impl!");
+
+      } else {
+        queuedTokens.push(maybeWith);
+      }
+    }
+
+    final var block = this.parseBlock();
+    return new InitialImpl(traitIdentifier, forExpression, block);
   }
 
   private InitialConditional parseIf() {
@@ -1058,34 +1169,65 @@ public class PlangInitialParser {
 
   private InitialLoopForEach parseForEach() {
 
+    var parenthesized = false;
     var token1 = next();
-    if (token1 != null && token1.type() == TokenType.OPEN_PAREN) {
-      next();
+    if (token1 != null) {
+      if (token1.type() == TokenType.OPEN_PAREN) {
+        next();
+        parenthesized = true;
+      } else {
+        queuedTokens.push(token1);
+      }
     }
 
-    final var varVal = this.parseVarOrValOrIdentifier();
-    InitialVariableDeclaration varDec;
-    if (varVal instanceof InitialVariableDeclaration ivd) {
-      varDec = ivd;
-    } else {
-      throw new IllegalArgumentException("Not supported var dec");
+    var target = parseLevel0();
+
+    InitialExpression source = null;
+
+    final var maybeIn = next();
+    if (maybeIn != null) {
+      if (maybeIn.type() == TokenType.IN) {
+        source = this.parseLevel0();
+      } else {
+
+        source = target;
+        target = null;
+      }
     }
 
-    this.stayOrNext(TokenType.IN);
-    final var source = this.parseLevel0();
+    if (parenthesized) {
 
-    // TODO: The source should be a method call!
-    //          Need a good way of figure out when it is one!
-    //          Lexer or parser?
+      var token2 = next();
+      if (token2 == null || token2.type() != TokenType.CLOSE_PAREN) {
+        throw new IllegalArgumentException("If foreach loop opens with parenthesis, it must close with one not %s".formatted(token2));
+      }
 
-    var token2 = next();
-    if (token2 != null && token2.type() != TokenType.CLOSE_PAREN) {
       queuedTokens.add(token2);
+    }
+
+    if (target instanceof InitialIdentifier ii) {
+      target = new InitialVariableDeclaration(ii, MutabilityKind.Immutable, null, false);
     }
 
     final var block = this.parseLevel0();
 
-    return new InitialLoopForEach(source, varDec, block);
+    return new InitialLoopForEach(source, target, block);
+  }
+
+  private InitialLoopDoWhile parseDo() {
+
+    final var body = parseLevel0();
+    final var predicate = parseLevel0();
+
+    return new InitialLoopDoWhile(body, predicate);
+  }
+
+  private InitialLoopWhile parseWhile() {
+
+    final var predicate = parseLevel0();
+    final var body = parseLevel0();
+
+    return new InitialLoopWhile(predicate, body);
   }
 
   private InitialLoopFor parseFor() {
@@ -1093,6 +1235,8 @@ public class PlangInitialParser {
     var t = next();
     if (t != null && t.type() == TokenType.OPEN_PAREN) {
       t = next();
+    } else {
+      throw new IllegalArgumentException("A for-loop must have parenthesis");
     }
 
     final var assignments = new ArrayList<InitialAssignment>();
@@ -1116,16 +1260,15 @@ public class PlangInitialParser {
 
     final var predicate = this.parseLevel0();
 
-    final var predicateDelimiter = next();
-    if (predicateDelimiter == null || predicateDelimiter.type() != TokenType.SEMI_COLON) {
+    t = next();
+    if (t == null || t.type() != TokenType.SEMI_COLON) {
       throw new IllegalArgumentException("There must be a semi-colon after the predicate");
     }
 
     final var steppers = new ArrayList<InitialExpression>();
-    while (t != null && t.type() != TokenType.SEMI_COLON) {
+    do {
 
       if (t.type() == TokenType.COMMA) {
-        t = next();
         continue;
       }
 
@@ -1134,18 +1277,13 @@ public class PlangInitialParser {
         steppers.add(step);
       }
 
-      t = next();
-    }
-
-    t = next();
-    if (t != null && t.type() != TokenType.CLOSE_PAREN) {
-      queuedTokens.add(t);
-    }
+      // TODO: This is probably bad -- since it could end up eating up all the rest of the file.
+    } while ((t = next()) != null && t.type() != TokenType.CLOSE_PAREN);
 
     return new InitialLoopFor(
-        assignments.toArray(new InitialAssignment[0]),
-        predicate,
-        steppers.toArray(new InitialExpression[0])
+      assignments.toArray(new InitialAssignment[0]),
+      predicate,
+      steppers.toArray(new InitialExpression[0])
     );
   }
 }

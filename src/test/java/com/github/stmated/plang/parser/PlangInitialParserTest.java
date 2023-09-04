@@ -85,6 +85,35 @@ class PlangInitialParserTest {
     });
   }
 
+  @Test
+  @SneakyThrows
+  void testImportExport() {
+
+    final var program = this.parseProgram("a < 1 && b > 2 || x == 3");
+
+    Assertions.assertNotNull(program);
+    Assertions.assertEquals(1, program.children().length);
+
+    assertStructure(program.children()[0], InitialBinaryOperation.class, ibo -> {
+
+      assertStructure(ibo.lhs(), InitialBinaryOperation.class, lhs -> {
+        Assertions.assertEquals(InitialBinaryOperationType.LT, lhs.type());
+      });
+
+      assertStructure(ibo.rhs(), InitialBinaryOperation.class, rhs -> {
+        Assertions.assertEquals(InitialBinaryOperationType.OR, rhs.type());
+
+        assertStructure(rhs.lhs(), InitialBinaryOperation.class, rhs_lhs -> {
+          Assertions.assertEquals(InitialBinaryOperationType.GT, rhs_lhs.type());
+        });
+
+        assertStructure(rhs.rhs(), InitialBinaryOperation.class, rhs_rhs -> {
+          Assertions.assertEquals(InitialBinaryOperationType.Equals, rhs_rhs.type());
+        });
+      });
+    });
+  }
+
   public static Stream<Arguments> allValidTestFiles() throws IOException {
     return PlangTestUtil.testShouldSucceedSource();
   }
@@ -100,8 +129,8 @@ class PlangInitialParserTest {
     try (final var tokens = new PlangLexer(Files.newInputStream(path))) {
       final var transformed = pass2.transform(tokens);
       final var parser = new PlangInitialParser(transformed);
-
       final var program = parser.parse();
+      Assertions.assertNotNull(program);
     }
   }
 
