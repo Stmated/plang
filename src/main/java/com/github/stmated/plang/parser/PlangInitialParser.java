@@ -15,11 +15,19 @@ import com.github.stmated.plang.ipr.InitialDiamond;
 import com.github.stmated.plang.ipr.InitialDotAccess;
 import com.github.stmated.plang.ipr.InitialExport;
 import com.github.stmated.plang.ipr.InitialExpression;
-import com.github.stmated.plang.ipr.InitialForEach;
 import com.github.stmated.plang.ipr.InitialIdentifier;
 import com.github.stmated.plang.ipr.InitialImpl;
+import com.github.stmated.plang.ipr.InitialImport;
+import com.github.stmated.plang.ipr.InitialImportCapable;
+import com.github.stmated.plang.ipr.InitialImportPath;
+import com.github.stmated.plang.ipr.InitialImportPathAlias;
+import com.github.stmated.plang.ipr.InitialImportPathGroup;
+import com.github.stmated.plang.ipr.InitialImportPathIdentifier;
+import com.github.stmated.plang.ipr.InitialImportPathWildcard;
 import com.github.stmated.plang.ipr.InitialLabeling;
 import com.github.stmated.plang.ipr.InitialLiteral;
+import com.github.stmated.plang.ipr.InitialLoopFor;
+import com.github.stmated.plang.ipr.InitialLoopForEach;
 import com.github.stmated.plang.ipr.InitialMatch;
 import com.github.stmated.plang.ipr.InitialMeta;
 import com.github.stmated.plang.ipr.InitialMetaScope;
@@ -40,9 +48,11 @@ import com.github.stmated.plang.ipr.InitialWhere;
 import com.github.stmated.plang.ipr.InitialYield;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
+import java.util.Stack;
 
 public class PlangInitialParser {
 
@@ -96,14 +106,14 @@ public class PlangInitialParser {
    */
   private InitialExpression parseLevel1() {
 
-    final var lhs = parseLevel1_2();
+    final var lhs = parseLevel2();
     final var token = next();
 
     if (token != null) {
 
       final var t = token.type();
       if (t == TokenType.ARROW_DOUBLE) {
-        final var rhs = parseLevel1_2();
+        final var rhs = parseLevel2();
         if (rhs != null) {
           return new InitialCallable(lhs, rhs);
         } else {
@@ -120,16 +130,16 @@ public class PlangInitialParser {
   /**
    * WHERE
    */
-  private InitialExpression parseLevel1_2() {
+  private InitialExpression parseLevel2() {
 
-    final var lhs = parseLevel2();
+    final var lhs = parseLevel3();
     final var token = next();
 
     if (token != null) {
 
       final var t = token.type();
       if (t == TokenType.WHERE) {
-        final var rhs = parseLevel2();
+        final var rhs = parseLevel3();
         if (rhs != null) {
           return new InitialWhere(lhs, rhs);
         } else {
@@ -146,16 +156,16 @@ public class PlangInitialParser {
   /**
    * COLON
    */
-  private InitialExpression parseLevel2() {
+  private InitialExpression parseLevel3() {
 
-    final var lhs = parseLevel3();
+    final var lhs = parseLevel4();
     final var token = next();
 
     if (token != null) {
 
       final var t = token.type();
       if (t == TokenType.COLON) {
-        final var rhs = parseLevel2Rhs();
+        final var rhs = parseLevel3Rhs();
         if (rhs != null) {
           return new InitialLabeling(lhs, rhs);
         } else {
@@ -173,7 +183,7 @@ public class PlangInitialParser {
    * RHS of level 1 (Colon labeling) is more restrictive.
    * Identifier or conditional.
    */
-  private InitialExpression parseLevel2Rhs() {
+  private InitialExpression parseLevel3Rhs() {
 
     final var token = next();
     if (token != null) {
@@ -191,7 +201,7 @@ public class PlangInitialParser {
         // Many options as invalid as label RHS. But that is for later stages to decide.
         // But first add token back for next step to find.
         queuedTokens.add(token);
-        final var expression = parseLevel5();
+        final var expression = parseLevel6();
         if (expression != null) {
           return expression;
         }
@@ -204,16 +214,16 @@ public class PlangInitialParser {
   /**
    * AND | OR
    */
-  private InitialExpression parseLevel3() {
+  private InitialExpression parseLevel4() {
 
-    final var lhs = parseLevel4();
+    final var lhs = parseLevel5();
     final var token = next();
 
     if (token != null) {
 
       final var t = token.type();
       if (t == TokenType.AND || t == TokenType.OR) {
-        final var rhs = parseLevel3();
+        final var rhs = parseLevel4();
         if (rhs != null) {
           return new InitialBinaryOperation(lhs, InitialBinaryOperationType.fromTokenType(t), rhs);
         } else {
@@ -230,16 +240,16 @@ public class PlangInitialParser {
   /**
    * EQUALS | LTE | GTE | LT | GT | IS
    */
-  private InitialExpression parseLevel4() {
+  private InitialExpression parseLevel5() {
 
-    final var lhs = parseLevel5();
+    final var lhs = parseLevel6();
     final var token = next();
 
     if (token != null) {
 
       final var t = token.type();
       if (t == TokenType.EQUALS || t == TokenType.LTE || t == TokenType.GTE || t == TokenType.LT || t == TokenType.GT || t == TokenType.IS) {
-        final var rhs = parseLevel5();
+        final var rhs = parseLevel6();
         if (rhs != null) {
           return new InitialBinaryOperation(lhs, InitialBinaryOperationType.fromTokenType(t), rhs);
         } else {
@@ -254,20 +264,19 @@ public class PlangInitialParser {
   }
 
 
-
   /**
    * PLUS | MINUS
    */
-  private InitialExpression parseLevel5() {
+  private InitialExpression parseLevel6() {
 
-    final var lhs = parseLevel6();
+    final var lhs = parseLevel7();
     final var token = next();
 
     if (token != null) {
 
       final var t = token.type();
       if (t == TokenType.PLUS || t == TokenType.MINUS) {
-        final var rhs = parseLevel5(); // Recursive to same level
+        final var rhs = parseLevel6(); // Recursive to same level
         if (rhs != null) {
           return new InitialBinaryOperation(lhs, InitialBinaryOperationType.fromTokenType(t), rhs);
         } else {
@@ -284,16 +293,16 @@ public class PlangInitialParser {
   /**
    * MULTIPLY | DIVIDE
    */
-  private InitialExpression parseLevel6() {
+  private InitialExpression parseLevel7() {
 
-    final var lhs = parseLevel7();
+    final var lhs = parseLevel8();
     final var token = next();
 
     if (token != null) {
 
       final var t = token.type();
       if (t == TokenType.MULTIPLY || t == TokenType.DIVIDE) {
-        final var rhs = parseLevel7();
+        final var rhs = parseLevel8();
         if (rhs != null) {
           return new InitialBinaryOperation(lhs, InitialBinaryOperationType.fromTokenType(t), rhs);
         } else {
@@ -310,9 +319,9 @@ public class PlangInitialParser {
   /**
    * Pow | Modulus | Remainder | BitShiftLeft | BitShiftRight | BitAnd | BitOr
    */
-  private InitialExpression parseLevel7() {
+  private InitialExpression parseLevel8() {
 
-    final var lhs = parseLevel8();
+    final var lhs = parseLevel9();
     final var token = next();
 
     if (token != null) {
@@ -325,7 +334,7 @@ public class PlangInitialParser {
           || t == TokenType.BIT_SHIFT_RIGHT
           || t == TokenType.BIT_AND
           || t == TokenType.BIT_OR) {
-        final var rhs = parseLevel7(); // Recursive
+        final var rhs = parseLevel8(); // Recursive
         if (rhs != null) {
           return new InitialBinaryOperation(lhs, InitialBinaryOperationType.fromTokenType(t), rhs);
         } else {
@@ -342,16 +351,16 @@ public class PlangInitialParser {
   /**
    * DoubleDot
    */
-  private InitialExpression parseLevel8() {
+  private InitialExpression parseLevel9() {
 
-    final var lhs = parseLevel9();
+    final var lhs = parseLevel10();
     final var token = next();
 
     if (token != null) {
 
       final var t = token.type();
       if (t == TokenType.DOUBLE_DOT) {
-        final var rhs = parseLevel9();
+        final var rhs = parseLevel10();
         if (rhs != null) {
           return new InitialRange(lhs, rhs);
         } else {
@@ -368,16 +377,16 @@ public class PlangInitialParser {
   /**
    * Dot
    */
-  private InitialExpression parseLevel9() {
+  private InitialExpression parseLevel10() {
 
-    final var lhs = parseLevel10();
+    final var lhs = parseLevel11();
     final var token = next();
 
     if (token != null) {
 
       final var t = token.type();
       if (t == TokenType.DOT) {
-        final var rhs = parseLevel9(); // Recursive
+        final var rhs = parseLevel10(); // Recursive
         if (rhs != null) {
           return new InitialDotAccess(lhs, rhs);
         } else {
@@ -394,7 +403,7 @@ public class PlangInitialParser {
   /**
    * Meta
    */
-  private InitialExpression parseLevel10() {
+  private InitialExpression parseLevel11() {
 
     final var lhs = parseExpression();
     final var token = next();
@@ -403,7 +412,7 @@ public class PlangInitialParser {
 
       final var t = token.type();
       if (t == TokenType.META) {
-        final var rhs = parseLevel10(); // Recursive
+        final var rhs = parseLevel11(); // Recursive
         if (rhs != null) {
           return new InitialMetaScope(lhs, rhs);
         } else {
@@ -456,11 +465,13 @@ public class PlangInitialParser {
       case COMMA -> new InitialCollectionDelimiter();
       case IDENTIFIER -> parseIdentifierLike();
       case EXPORT -> parseExport();
+      case IMPORT -> parseImport();
       case META -> parseMeta();
       case COMMENT_SINGLE_LINE,
           COMMENT_MULTI_LINE -> new InitialComment(token.content());
       case YIELD -> parseYield();
       case FOREACH -> parseForEach();
+      case FOR -> parseFor();
       case MATCH -> parseMatch();
       default -> {
         throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
@@ -513,12 +524,12 @@ public class PlangInitialParser {
     return iterator.hasNext();
   }
 
-  private final Queue<Token> queuedTokens = new ArrayDeque<>();
+  private final Deque<Token> queuedTokens = new ArrayDeque<>();
 
   private Token next() {
 
     if (!queuedTokens.isEmpty()) {
-      return queuedTokens.poll();
+      return (current = queuedTokens.pop());
     }
 
     if (!iterator.hasNext()) {
@@ -593,7 +604,7 @@ public class PlangInitialParser {
     if (current != null) {
       if (current.type() == TokenType.META) {
 
-        final var target = parseLevel9();
+        final var target = parseLevel10();
         if (target == null) {
           throw new IllegalArgumentException("There must be a meta target");
         }
@@ -605,26 +616,34 @@ public class PlangInitialParser {
 
     final var identifier = this.parseIdentifier();
 
-    final var n = next();
+    var n = next();
     if (n != null) {
 
-      if (n.type() == TokenType.OPEN_PAREN) {
+      boolean partial = false;
+      if (n.type() == TokenType.TILDE) {
+        partial = true;
+        n = next();
+      }
 
-        final var paren = this.parseParen();
+      if (n != null) {
+        if (n.type() == TokenType.OPEN_PAREN) {
 
-        boolean bubbleUp = false;
-        final var t2 = next();
-        if (t2 != null) {
-          if (t2.type() == TokenType.QUESTION_MARK) {
-            bubbleUp = true;
-          } else {
-            queuedTokens.add(t2);
+          final var paren = this.parseParen();
+
+          boolean bubbleUp = false;
+          final var t2 = next();
+          if (t2 != null) {
+            if (t2.type() == TokenType.QUESTION_MARK) {
+              bubbleUp = true;
+            } else {
+              queuedTokens.add(t2);
+            }
           }
-        }
 
-        return new InitialCall(identifier, paren, bubbleUp);
-      } else {
-        queuedTokens.add(n);
+          return new InitialCall(identifier, paren, bubbleUp, partial);
+        } else {
+          queuedTokens.add(n);
+        }
       }
     }
 
@@ -651,12 +670,8 @@ public class PlangInitialParser {
 
     if (current != null && current.type() == t) {
 
-//      if (skip) {
-//        skip = false;
-//      }
-
-      if (queuedTokens.peek() == current) {
-        queuedTokens.poll();
+      if (!queuedTokens.isEmpty() && queuedTokens.peek() == current) {
+        queuedTokens.pop();
       }
 
       return current;
@@ -829,9 +844,116 @@ public class PlangInitialParser {
     return new InitialExport(exported);
   }
 
+  private InitialImportCapable parseImportPath_level0() {
+
+    final var lhs = parseImportPath_level1();
+    final var token = next();
+
+    if (token != null) {
+
+      final var t = token.type();
+      if (t == TokenType.DOT) {
+        final var rhs = parseImportPath_level0();
+        return new InitialImportPath(lhs, rhs);
+      } else {
+        queuedTokens.add(token);
+      }
+    }
+
+    return lhs;
+  }
+
+  private InitialImportCapable parseImportPath_level1() {
+
+    var t = next();
+    if (t != null) {
+      if (t.type() == TokenType.OPEN_BRACE) {
+
+        final var paths = new ArrayList<InitialImportCapable>();
+        while ((t = next()) != null && t.type() != TokenType.CLOSE_BRACE) {
+
+          if (t.type() != TokenType.COMMA) {
+
+            // Simply skip commas, any incorrect import path member will throw exception.
+            queuedTokens.push(t);
+
+            final var alias = parseImportAliasOrBacktrack();
+            if (alias != null) {
+              paths.add(alias);
+            } else {
+              paths.add(parseImportPath_level0());
+            }
+          }
+        }
+
+        return new InitialImportPathGroup(paths.toArray(new InitialImportCapable[0]));
+
+      } else {
+        queuedTokens.push(t);
+        return this.parseImportPath_level2();
+      }
+    }
+
+    throw new IllegalArgumentException("Invalid import path, no token after import");
+  }
+
+  private InitialImportCapable parseImportPath_level2() {
+
+    var t = next();
+    if (t != null) {
+      if (t.type() == TokenType.MULTIPLY) {
+        return new InitialImportPathWildcard();
+      } else if (t.type() == TokenType.IDENTIFIER) {
+
+        final var id = parseIdentifier();
+        return new InitialImportPathIdentifier(id);
+      }
+    }
+
+    throw new IllegalArgumentException("Invalid import path %s".formatted(t));
+  }
+
+  private InitialImportPathAlias parseImportAliasOrBacktrack() {
+
+    final var maybeIdentifier = next();
+    if (maybeIdentifier != null) {
+      if (maybeIdentifier.type() == TokenType.IDENTIFIER) {
+        final var ii = parseIdentifier();
+        final var maybeColon = next();
+        if (maybeColon != null) {
+          if (maybeColon.type() == TokenType.COLON) {
+
+            final var importPath = this.parseImportPath_level0();
+            return new InitialImportPathAlias(ii, importPath);
+          } else {
+            queuedTokens.push(maybeColon);
+            queuedTokens.push(maybeIdentifier);
+          }
+        }
+      } else {
+        queuedTokens.add(maybeIdentifier);
+      }
+    }
+
+    return null;
+  }
+
+  private InitialImport parseImport() {
+
+    stayOrNext(TokenType.IMPORT);
+
+    final var alias = parseImportAliasOrBacktrack();
+    if (alias != null) {
+      return new InitialImport(alias);
+    }
+
+    final var importPath = this.parseImportPath_level0();
+    return new InitialImport(importPath);
+  }
+
   private InitialMeta parseMeta() {
 
-    final var target = this.parseLevel9();
+    final var target = this.parseLevel10();
     if (target == null) {
       throw new IllegalArgumentException("The meta must target something");
     }
@@ -841,16 +963,34 @@ public class PlangInitialParser {
 
   private InitialImpl parseImpl() {
 
-    final var traitIdentifier = this.parseIdentifier();
-    final var forToken = this.next();
-    if (forToken == null || forToken.type() != TokenType.FOR) {
-      throw new IllegalArgumentException("Impl must have a for-target");
+    this.stayOrNext(TokenType.IMPL);
+
+    final var token_id1 = this.next();
+    if (token_id1 == null || token_id1.type() != TokenType.IDENTIFIER) {
+      throw new IllegalArgumentException("Impl must have a for-target or identifier");
     }
 
-    final var forExpression = this.parseLevel0();
-    final var block = this.parseBlock();
+    final var id1 = this.parseIdentifier();
 
-    return new InitialImpl(traitIdentifier, forExpression, block);
+    final var token2 = this.next();
+    if (token2 == null) {
+      throw new IllegalArgumentException("There must be further tokens for the impl");
+    }
+
+    if (token2.type() == TokenType.FOR) {
+
+      final var target = this.parseLevel0(); // Maybe be more restrictive
+      final var block = this.parseBlock();
+      return new InitialImpl(id1, target, block);
+
+    } else if (token2.type() == TokenType.OPEN_BRACE) {
+
+      final var block = this.parseBlock();
+      return new InitialImpl(null, id1, block);
+
+    } else {
+      throw new IllegalArgumentException("Impl must have a for-target or identifier, not %s".formatted(token_id1));
+    }
   }
 
   private InitialConditional parseIf() {
@@ -916,7 +1056,7 @@ public class PlangInitialParser {
     return this.parseVarVal(current);
   }
 
-  private InitialForEach parseForEach() {
+  private InitialLoopForEach parseForEach() {
 
     var token1 = next();
     if (token1 != null && token1.type() == TokenType.OPEN_PAREN) {
@@ -945,6 +1085,67 @@ public class PlangInitialParser {
 
     final var block = this.parseLevel0();
 
-    return new InitialForEach(source, varDec, block);
+    return new InitialLoopForEach(source, varDec, block);
+  }
+
+  private InitialLoopFor parseFor() {
+
+    var t = next();
+    if (t != null && t.type() == TokenType.OPEN_PAREN) {
+      t = next();
+    }
+
+    final var assignments = new ArrayList<InitialAssignment>();
+
+    while (t != null && t.type() != TokenType.SEMI_COLON) {
+
+      if (t.type() == TokenType.COMMA) {
+        t = next();
+        continue;
+      }
+
+      final var dec = parseVarVal(t);
+      if (dec instanceof InitialAssignment ia) {
+        assignments.add(ia);
+      } else {
+        throw new IllegalArgumentException("Only assignments are allowed in first for-loop part");
+      }
+
+      t = next();
+    }
+
+    final var predicate = this.parseLevel0();
+
+    final var predicateDelimiter = next();
+    if (predicateDelimiter == null || predicateDelimiter.type() != TokenType.SEMI_COLON) {
+      throw new IllegalArgumentException("There must be a semi-colon after the predicate");
+    }
+
+    final var steppers = new ArrayList<InitialExpression>();
+    while (t != null && t.type() != TokenType.SEMI_COLON) {
+
+      if (t.type() == TokenType.COMMA) {
+        t = next();
+        continue;
+      }
+
+      final var step = parseLevel0();
+      if (step != null) {
+        steppers.add(step);
+      }
+
+      t = next();
+    }
+
+    t = next();
+    if (t != null && t.type() != TokenType.CLOSE_PAREN) {
+      queuedTokens.add(t);
+    }
+
+    return new InitialLoopFor(
+        assignments.toArray(new InitialAssignment[0]),
+        predicate,
+        steppers.toArray(new InitialExpression[0])
+    );
   }
 }

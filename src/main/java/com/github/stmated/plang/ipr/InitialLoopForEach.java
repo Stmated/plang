@@ -1,6 +1,6 @@
 package com.github.stmated.plang.ipr;
 
-public record InitialForEach(
+public record InitialLoopForEach(
     InitialExpression source,
     InitialVariableDeclaration item,
     InitialExpression body

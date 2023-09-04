@@ -7,7 +7,13 @@ val Tr = trait {
     val add = (a: uint32, b: uin32): uin64;
 };
 
-val Tr = impl for Person {
+val HolderImpl = impl Holder {
+    val something = (self) => {
+        // This does not do something. Fooled ya ;)
+    };
+}
+
+val TrImpl = impl Tr for Holder {
     val add = (self, a, b) => {
         return a + b + self.value;
     };
@@ -15,9 +21,11 @@ val Tr = impl for Person {
 
 val main = () => {
 
-    val p = new Person { 1 };
-    val partial = p.fn~(b = 10);
+    val h = new Holder { 1 };
+    val partial = h.fn~(b = 10);
 
     // will call with a=1, b=10
     val result = partial(100); // should be 111
+
+    h.something(); // Do nothing
 };
