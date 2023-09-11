@@ -247,7 +247,12 @@ public class PlangLexer implements Iterator<Token>, AutoCloseable {
     }
 
     skip = true;
-    return this.newToken(TokenType.IDENTIFIER);
+    final var token = this.newToken(TokenType.IDENTIFIER);
+    if ("_".equals(token.content())) {
+      return new Token(TokenType.UNDERSCORE, token.start(), token.end(), token.content());
+    }
+
+    return token;
   }
 
   private static boolean isNotLetter(final int t) {

@@ -1,55 +1,7 @@
 package com.github.stmated.plang.parser;
 
 import com.github.stmated.plang.hir.MutabilityKind;
-import com.github.stmated.plang.ipr.InitialAssignment;
-import com.github.stmated.plang.ipr.InitialBecome;
-import com.github.stmated.plang.ipr.InitialBinaryOperation;
-import com.github.stmated.plang.ipr.InitialBinaryOperationType;
-import com.github.stmated.plang.ipr.InitialBlock;
-import com.github.stmated.plang.ipr.InitialBracket;
-import com.github.stmated.plang.ipr.InitialCall;
-import com.github.stmated.plang.ipr.InitialCallable;
-import com.github.stmated.plang.ipr.InitialCollectionDelimiter;
-import com.github.stmated.plang.ipr.InitialComment;
-import com.github.stmated.plang.ipr.InitialConditional;
-import com.github.stmated.plang.ipr.InitialDiamond;
-import com.github.stmated.plang.ipr.InitialDotAccess;
-import com.github.stmated.plang.ipr.InitialExport;
-import com.github.stmated.plang.ipr.InitialExpression;
-import com.github.stmated.plang.ipr.InitialIdentifier;
-import com.github.stmated.plang.ipr.InitialIdentifierGeneric;
-import com.github.stmated.plang.ipr.InitialImpl;
-import com.github.stmated.plang.ipr.InitialImport;
-import com.github.stmated.plang.ipr.InitialImportCapable;
-import com.github.stmated.plang.ipr.InitialImportPath;
-import com.github.stmated.plang.ipr.InitialImportPathAlias;
-import com.github.stmated.plang.ipr.InitialImportPathGroup;
-import com.github.stmated.plang.ipr.InitialImportPathIdentifier;
-import com.github.stmated.plang.ipr.InitialImportPathWildcard;
-import com.github.stmated.plang.ipr.InitialLabeling;
-import com.github.stmated.plang.ipr.InitialLiteral;
-import com.github.stmated.plang.ipr.InitialLoopDoWhile;
-import com.github.stmated.plang.ipr.InitialLoopFor;
-import com.github.stmated.plang.ipr.InitialLoopForEach;
-import com.github.stmated.plang.ipr.InitialLoopWhile;
-import com.github.stmated.plang.ipr.InitialMatch;
-import com.github.stmated.plang.ipr.InitialMeta;
-import com.github.stmated.plang.ipr.InitialMetaScope;
-import com.github.stmated.plang.ipr.InitialNew;
-import com.github.stmated.plang.ipr.InitialNoOp;
-import com.github.stmated.plang.ipr.InitialNot;
-import com.github.stmated.plang.ipr.InitialParen;
-import com.github.stmated.plang.ipr.InitialProgram;
-import com.github.stmated.plang.ipr.InitialRange;
-import com.github.stmated.plang.ipr.InitialReturn;
-import com.github.stmated.plang.ipr.InitialStruct;
-import com.github.stmated.plang.ipr.InitialThen;
-import com.github.stmated.plang.ipr.InitialTrait;
-import com.github.stmated.plang.ipr.InitialType;
-import com.github.stmated.plang.ipr.InitialVariableDeclaration;
-import com.github.stmated.plang.ipr.InitialVariableSink;
-import com.github.stmated.plang.ipr.InitialWhere;
-import com.github.stmated.plang.ipr.InitialYield;
+import com.github.stmated.plang.ipr.*;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -84,9 +36,36 @@ public class PlangInitialParser {
   }
 
   /**
-   * ASSIGN
+   * COMMA
    */
   private InitialExpression parseLevel0() {
+
+    final var lhs = parseLevel0_1();
+    final var token = next();
+
+    if (token != null) {
+
+      final var t = token.type();
+      if (t == TokenType.COMMA) {
+        final var rhs = parseLevel0();
+        if (rhs != null) {
+          return new InitialCollectionItem(lhs, rhs);
+          //return new InitialAssignment(lhs, rhs);
+        } else {
+          throw new IllegalArgumentException("No RHS for assignment");
+        }
+      } else {
+        queuedTokens.push(token);
+      }
+    }
+
+    return lhs;
+  }
+
+  /**
+   * ASSIGN
+   */
+  private InitialExpression parseLevel0_1() {
 
     final var lhs = parseLevel1();
     final var token = next();
@@ -102,7 +81,7 @@ public class PlangInitialParser {
           throw new IllegalArgumentException("No RHS for assignment");
         }
       } else {
-        queuedTokens.add(token);
+        queuedTokens.push(token);
       }
     }
 
@@ -128,7 +107,7 @@ public class PlangInitialParser {
           throw new IllegalArgumentException("No RHS for Double Arrow");
         }
       } else {
-        queuedTokens.add(token);
+        queuedTokens.push(token);
       }
     }
 
@@ -154,7 +133,7 @@ public class PlangInitialParser {
           throw new IllegalArgumentException("No RHS for where");
         }
       } else {
-        queuedTokens.add(token);
+        queuedTokens.push(token);
       }
     }
 
@@ -180,7 +159,7 @@ public class PlangInitialParser {
           throw new IllegalArgumentException("No RHS for labeling");
         }
       } else {
-        queuedTokens.add(token);
+        queuedTokens.push(token);
       }
     }
 
@@ -208,7 +187,7 @@ public class PlangInitialParser {
         // Go past LT, GT.
         // Many options as invalid as label RHS. But that is for later stages to decide.
         // But first add token back for next step to find.
-        queuedTokens.add(token);
+        queuedTokens.push(token);
         final var expression = parseLevel6();
         if (expression != null) {
           return expression;
@@ -238,7 +217,7 @@ public class PlangInitialParser {
           throw new IllegalArgumentException("No RHS for binary boolean logical operator");
         }
       } else {
-        queuedTokens.add(token);
+        queuedTokens.push(token);
       }
     }
 
@@ -264,7 +243,7 @@ public class PlangInitialParser {
           throw new IllegalArgumentException("No RHS for binary boolean comparison operator");
         }
       } else {
-        queuedTokens.add(token);
+        queuedTokens.push(token);
       }
     }
 
@@ -291,7 +270,7 @@ public class PlangInitialParser {
           throw new IllegalArgumentException("No RHS for binary boolean logical operator");
         }
       } else {
-        queuedTokens.add(token);
+        queuedTokens.push(token);
       }
     }
 
@@ -317,7 +296,7 @@ public class PlangInitialParser {
           throw new IllegalArgumentException("No RHS for binary boolean logical operator");
         }
       } else {
-        queuedTokens.add(token);
+        queuedTokens.push(token);
       }
     }
 
@@ -349,7 +328,7 @@ public class PlangInitialParser {
           throw new IllegalArgumentException("No RHS for math operator");
         }
       } else {
-        queuedTokens.add(token);
+        queuedTokens.push(token);
       }
     }
 
@@ -375,7 +354,7 @@ public class PlangInitialParser {
           throw new IllegalArgumentException("No RHS for range expression");
         }
       } else {
-        queuedTokens.add(token);
+        queuedTokens.push(token);
       }
     }
 
@@ -401,7 +380,7 @@ public class PlangInitialParser {
           throw new IllegalArgumentException("No RHS for range expression");
         }
       } else {
-        queuedTokens.add(token);
+        queuedTokens.push(token);
       }
     }
 
@@ -427,7 +406,7 @@ public class PlangInitialParser {
           throw new IllegalArgumentException("No RHS for meta");
         }
       } else {
-        queuedTokens.add(token);
+        queuedTokens.push(token);
       }
     }
 
@@ -466,7 +445,7 @@ public class PlangInitialParser {
       case RETURN -> parseReturn();
       case NEW -> parseNew();
       case SEMI_COLON, END -> new InitialNoOp();
-      case COMMA -> new InitialCollectionDelimiter();
+//      case COMMA -> new InitialCollectionDelimiter();
       case IDENTIFIER -> parseIdentifierLike();
       case IDENTIFIER_GENERIC -> new InitialIdentifierGeneric(token.content());
       case EXPORT -> parseExport();
@@ -480,6 +459,7 @@ public class PlangInitialParser {
       case DO -> parseDo();
       case WHILE -> parseWhile();
       case MATCH -> parseMatch();
+      case TRIPLE_DOT -> new InitialVarargs();
       default -> {
         throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
       }
@@ -626,6 +606,7 @@ public class PlangInitialParser {
       }
     }
 
+    final var identifierToken = current;
     final var identifier = this.parseIdentifier();
 
     var n = next();
@@ -634,7 +615,7 @@ public class PlangInitialParser {
       List<InitialExpression> generics = null;
       if (n.type() == TokenType.LT) {
 
-        generics = parseGenerics();
+        generics = parseGenericArguments(identifierToken);
         n = next();
       }
 
@@ -673,7 +654,66 @@ public class PlangInitialParser {
     return identifier;
   }
 
-  private List<InitialExpression> parseGenerics() {
+  private InitialExpression parseGenericType_level0() {
+
+    final var lhs = parseGenericType_expression();
+    final var token = next();
+
+    if (token != null) {
+
+      final var t = token.type();
+      if (t == TokenType.ASSIGN) {
+        final var rhs = parseGenericType_expression();
+        if (rhs != null) {
+          return new InitialAssignment(lhs, rhs);
+        } else {
+          throw new IllegalArgumentException("No RHS for type assignment");
+        }
+      } else {
+        queuedTokens.add(token);
+      }
+    }
+
+    return lhs;
+  }
+
+//  private InitialExpression parseGenericType_level1() {
+//
+//  }
+
+  private InitialExpression parseGenericType_expression() {
+
+    final var token = next();
+    if (token == null) {
+      return null;
+    }
+
+    return switch (token.type()) {
+      case LITERAL_INTEGER -> new InitialLiteral(Integer.parseInt(token.content()));
+      case LITERAL_DECIMAL -> new InitialLiteral(Double.parseDouble(token.content()));
+      case LITERAL_BOOLEAN_FALSE -> new InitialLiteral(false);
+      case LITERAL_BOOLEAN_TRUE -> new InitialLiteral(true);
+      case LITERAL_STRING -> new InitialLiteral(token.content());
+      case LITERAL_STRING_TEMPLATE -> new InitialLiteral(token.content());
+      case LITERAL_INTEGER_BINARY -> new InitialLiteral(Integer.parseInt(token.content(), 2));
+      case LITERAL_INTEGER_HEX -> new InitialLiteral(Integer.parseInt(token.content(), 16));
+      case LITERAL_INTEGER_OCTAL -> new InitialLiteral(Integer.parseInt(token.content(), 8));
+      case UNDERSCORE -> new InitialVariableSink();
+      case BANG -> new InitialNot(parseExpression());
+      case OPEN_PAREN -> parseParen();
+      case IF -> parseIf();
+      case COMMA -> new InitialCollectionDelimiter();
+      case IDENTIFIER -> parseIdentifierLike();
+      case IDENTIFIER_GENERIC -> new InitialIdentifierGeneric(token.content());
+      case META -> parseMeta();
+      case COMMENT_SINGLE_LINE, COMMENT_MULTI_LINE -> new InitialComment(token.content());
+      default -> {
+        throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
+      }
+    };
+  }
+
+  private List<InitialExpression> parseGenericArguments(Token previousToken) {
 
     final var expressions = new ArrayList<InitialExpression>();
 
@@ -681,39 +721,26 @@ public class PlangInitialParser {
 
     // TODO: Would be nice if this could be abstracted somehow; reuse code from other places more.
 
+    if (current.start() != previousToken.end()) {
+
+      // Generic arguments are whitespace-sensitive. They must be followed right after the previous token.
+      queuedTokens.push(current);
+      return null;
+    }
+
     Token t;
     while ((t = next()) != null) {
-
       if (t.type() == TokenType.GT) {
 
         // We have found our stop. Let's exit.
         break;
-      } else if (t.type() ==TokenType.COMMA) {
+      } else {
 
-        // We add this since we do in other places that deal with collections.
-        expressions.add(new InitialCollectionDelimiter());
-      } else if (t.type() == TokenType.IDENTIFIER) {
-
-        // If this, then it is the type to use for that positional generic.
-        expressions.add(new InitialIdentifier(t.content()));
-
-      } else if (t.type() == TokenType.IDENTIFIER_GENERIC) {
-
-        // If this, then it is an assignment for a named generic.
-        final var maybeAssign = next();
-        if (maybeAssign == null || maybeAssign.type() != TokenType.ASSIGN) {
-          throw new IllegalArgumentException("Excepted the named generic to be assigned from another type");
-        }
-
-        final var identifierAssignRhs = parseIdentifierLike();
-        if (identifierAssignRhs == null) {
-          throw new IllegalArgumentException("Excepted the named generic to be assigned from another type");
-        }
-
-        expressions.add(new InitialAssignment(
-          new InitialIdentifierGeneric(t.content()),
-          identifierAssignRhs
-        ));
+        // All other expressions should just be added to the list of generic items.
+        // All kinds of garbage could be placed here, but that is for later stages to handle.
+        queuedTokens.push(t);
+        final var expression = parseGenericType_level0();
+        expressions.add(expression);
       }
     }
 
@@ -737,8 +764,12 @@ public class PlangInitialParser {
   }
 
   private Token stayOrNext(TokenType t) {
+    return this.stayOrNext(t, t);
+  }
 
-    if (current != null && current.type() == t) {
+  private Token stayOrNext(TokenType stayIf, TokenType expectNext) {
+
+    if (current != null && current.type() == stayIf) {
 
       if (!queuedTokens.isEmpty() && queuedTokens.peek() == current) {
         queuedTokens.pop();
@@ -748,22 +779,20 @@ public class PlangInitialParser {
     }
 
     if (hasNext()) {
-
       final var token = next();
       if (token != null) {
-        if (token.type() == t) {
+        if (expectNext == null || token.type() == expectNext) {
 
           // All is well.
           return token;
         } else {
-          throw new IllegalArgumentException("Next token '%s' is not a '%s'".formatted(token, t));
+          throw new IllegalArgumentException("Next token '%s' is not a '%s'".formatted(token, expectNext));
         }
       } else {
-        throw new IllegalArgumentException("There is no '%s' after '%s'".formatted(t, current));
+        throw new IllegalArgumentException("There is no '%s' after '%s'".formatted(expectNext, current));
       }
-
     } else {
-      throw new IllegalArgumentException("There is no '%s' after '%s'".formatted(t, current));
+      throw new IllegalArgumentException("There is no '%s' after '%s'".formatted(expectNext, current));
     }
   }
 
@@ -802,20 +831,9 @@ public class PlangInitialParser {
 
   private InitialMatch parseMatch() {
 
-    var t = next();
-    if (t != null && t.type() != TokenType.OPEN_PAREN) {
-      queuedTokens.add(t);
-    }
+    this.stayOrNext(TokenType.MATCH);
 
     final var target = this.parseLevel0();
-
-    if (t != null && t.type() == TokenType.OPEN_PAREN) {
-      t = next();
-      if (t != null && t.type() != TokenType.CLOSE_PAREN) {
-        queuedTokens.add(t);
-      }
-    }
-
     final var block = this.parseBlock();
 
     return new InitialMatch(target, block);
@@ -834,7 +852,7 @@ public class PlangInitialParser {
         break;
       }
 
-      queuedTokens.add(token);
+      queuedTokens.push(token);
       children.add(this.parseLevel0());
     }
 
@@ -1084,6 +1102,7 @@ public class PlangInitialParser {
     } else if (token2.type() == TokenType.OPEN_BRACE) {
       traitIdentifier = null;
       forExpression = id1;
+      queuedTokens.push(token2);
     } else {
       throw new IllegalArgumentException("Impl must have a for-target or identifier, not %s".formatted(token_id1));
     }
@@ -1230,6 +1249,16 @@ public class PlangInitialParser {
     return new InitialLoopWhile(predicate, body);
   }
 
+  private InitialBlock parseOptionallyEnclosedBlock() {
+
+    if (current.type() != TokenType.OPEN_BRACE) {
+      queuedTokens.add(current);
+      return new InitialBlock(new InitialExpression[] { this.parseLevel0() });
+    }
+
+    return this.parseBlock();
+  }
+
   private InitialLoopFor parseFor() {
 
     var t = next();
@@ -1280,10 +1309,14 @@ public class PlangInitialParser {
       // TODO: This is probably bad -- since it could end up eating up all the rest of the file.
     } while ((t = next()) != null && t.type() != TokenType.CLOSE_PAREN);
 
+    stayOrNext(TokenType.OPEN_BRACE, null);
+    final var block = this.parseOptionallyEnclosedBlock();
+
     return new InitialLoopFor(
       assignments.toArray(new InitialAssignment[0]),
       predicate,
-      steppers.toArray(new InitialExpression[0])
+      steppers.toArray(new InitialExpression[0]),
+      block
     );
   }
 }

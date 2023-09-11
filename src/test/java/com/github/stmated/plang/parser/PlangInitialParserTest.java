@@ -2,14 +2,20 @@ package com.github.stmated.plang.parser;
 
 import com.github.stmated.plang.ipr.InitialBinaryOperation;
 import com.github.stmated.plang.ipr.InitialBinaryOperationType;
+import com.github.stmated.plang.ipr.InitialCall;
+import com.github.stmated.plang.ipr.InitialDotAccess;
 import com.github.stmated.plang.ipr.InitialExpression;
+import com.github.stmated.plang.ipr.InitialIdentifier;
 import com.github.stmated.plang.ipr.InitialLiteral;
+import com.github.stmated.plang.ipr.InitialLoopFor;
 import com.github.stmated.plang.ipr.InitialProgram;
+import com.github.stmated.plang.ipr.InitialVariableDeclaration;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Assertions;
@@ -56,6 +62,34 @@ class PlangInitialParserTest {
     Assertions.assertEquals(InitialBinaryOperationType.GT, rhs.type());
   }
 
+  // TODO: Create tests that checks exact result of:
+  //        * Result<(String, String), Error>
+  //        * something<unit8>(2)
+
+  @Test
+  @SneakyThrows
+  void testForLoop() {
+
+    final var program = this.parseProgram("for (var i = 0; i < 10; i.increment()) { }");
+
+    as(program.children()[0], InitialLoopFor.class, loop -> {
+      is(loop.assignments()[0].lhs(), InitialVariableDeclaration.class, it -> it.identifier().name(), "i");
+
+      as(loop.predicate(), InitialBinaryOperation.class, pred -> {
+        isIdentifier(pred.lhs(), "i");
+        Assertions.assertEquals(InitialBinaryOperationType.LT, pred.type());
+        isLiteral(pred.rhs(), 10);
+      });
+
+      as(loop.steppers()[0], InitialDotAccess.class, stepper_0 -> {
+        isIdentifier(stepper_0.lhs(), "i");
+        as(stepper_0.rhs(), InitialCall.class, call -> {
+          isIdentifier(call.target(), "increment");
+        });
+      });
+    });
+  }
+
   @Test
   @SneakyThrows
   void testOperatorPrecedence3() {
@@ -65,20 +99,20 @@ class PlangInitialParserTest {
     Assertions.assertNotNull(program);
     Assertions.assertEquals(1, program.children().length);
 
-    assertStructure(program.children()[0], InitialBinaryOperation.class, ibo -> {
+    as(program.children()[0], InitialBinaryOperation.class, ibo -> {
 
-      assertStructure(ibo.lhs(), InitialBinaryOperation.class, lhs -> {
+      as(ibo.lhs(), InitialBinaryOperation.class, lhs -> {
         Assertions.assertEquals(InitialBinaryOperationType.LT, lhs.type());
       });
 
-      assertStructure(ibo.rhs(), InitialBinaryOperation.class, rhs -> {
+      as(ibo.rhs(), InitialBinaryOperation.class, rhs -> {
         Assertions.assertEquals(InitialBinaryOperationType.OR, rhs.type());
 
-        assertStructure(rhs.lhs(), InitialBinaryOperation.class, rhs_lhs -> {
+        as(rhs.lhs(), InitialBinaryOperation.class, rhs_lhs -> {
           Assertions.assertEquals(InitialBinaryOperationType.GT, rhs_lhs.type());
         });
 
-        assertStructure(rhs.rhs(), InitialBinaryOperation.class, rhs_rhs -> {
+        as(rhs.rhs(), InitialBinaryOperation.class, rhs_rhs -> {
           Assertions.assertEquals(InitialBinaryOperationType.Equals, rhs_rhs.type());
         });
       });
@@ -94,20 +128,20 @@ class PlangInitialParserTest {
     Assertions.assertNotNull(program);
     Assertions.assertEquals(1, program.children().length);
 
-    assertStructure(program.children()[0], InitialBinaryOperation.class, ibo -> {
+    as(program.children()[0], InitialBinaryOperation.class, ibo -> {
 
-      assertStructure(ibo.lhs(), InitialBinaryOperation.class, lhs -> {
+      as(ibo.lhs(), InitialBinaryOperation.class, lhs -> {
         Assertions.assertEquals(InitialBinaryOperationType.LT, lhs.type());
       });
 
-      assertStructure(ibo.rhs(), InitialBinaryOperation.class, rhs -> {
+      as(ibo.rhs(), InitialBinaryOperation.class, rhs -> {
         Assertions.assertEquals(InitialBinaryOperationType.OR, rhs.type());
 
-        assertStructure(rhs.lhs(), InitialBinaryOperation.class, rhs_lhs -> {
+        as(rhs.lhs(), InitialBinaryOperation.class, rhs_lhs -> {
           Assertions.assertEquals(InitialBinaryOperationType.GT, rhs_lhs.type());
         });
 
-        assertStructure(rhs.rhs(), InitialBinaryOperation.class, rhs_rhs -> {
+        as(rhs.rhs(), InitialBinaryOperation.class, rhs_rhs -> {
           Assertions.assertEquals(InitialBinaryOperationType.Equals, rhs_rhs.type());
         });
       });
@@ -151,7 +185,7 @@ class PlangInitialParserTest {
     System.out.println();
   }
 
-  private <T> void assertStructure(InitialExpression exp, Class<T> clazz, Consumer<T> then) {
+  private <T> void as(InitialExpression exp, Class<T> clazz, Consumer<T> then) {
 
     Assertions.assertInstanceOf(clazz, exp);
 
@@ -164,6 +198,26 @@ class PlangInitialParserTest {
 
     Assertions.assertInstanceOf(clazz, exp);
     return (T) exp;
+  }
+
+  private void isIdentifier(InitialExpression exp, String expected) {
+
+    Assertions.assertInstanceOf(InitialIdentifier.class, exp);
+    Assertions.assertEquals(expected, ((InitialIdentifier)exp).name());
+  }
+
+  private void isLiteral(InitialExpression exp, Object expected) {
+
+    Assertions.assertInstanceOf(InitialLiteral.class, exp);
+    Assertions.assertEquals(expected, ((InitialLiteral)exp).value());
+  }
+
+  private <T, R> void is(InitialExpression exp, Class<T> clazz, Function<T, R> mapper, Object expected) {
+
+    Assertions.assertInstanceOf(clazz, exp);
+
+    final var res = mapper.apply((T) exp);
+    Assertions.assertEquals(expected, res);
   }
 
   @SneakyThrows

@@ -3,6 +3,7 @@ package com.github.stmated.plang.ipr;
 public record InitialLoopFor(
     InitialAssignment[] assignments,
     InitialExpression predicate,
-    InitialExpression[] steppers
+    InitialExpression[] steppers,
+    InitialBlock block
 ) implements InitialExpression {
 }

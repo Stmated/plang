@@ -5,11 +5,11 @@ val v = match (value) {
     'a' => {
         return 'A';
     },
-    (10, ..) => 'First type item is ten',
+    (10, ...) => 'First type item is ten',
     20..30 => 'Semi-big',
     [10, 20] => 'Array of 10 & 20',
     [10, _, 20] => 'Array of 10 & unknown & 20',
-    [10, middle: .., 20] => 'Array of 10 & something then at the end 20',
+    [10, middle: ..., 20] => 'Array of 10 & something then at the end 20',
     _ => 'what?'
 };
 
