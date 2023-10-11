@@ -5,11 +5,11 @@ val array2 = [1, 2, 3];
 // If there are several entries without property keys, it is expected that "value" is an array
 val array3 = new Array { 1, 2, 3 };
 val array4 = new Array { initial = 6, 1, 2, 3 };
-val array5 = new Array<float> { initial = 6, 1, 2, 3 };
+val array5 = new Array(float) { initial = 6, 1, 2, 3 };
 
 // Vec = pointer, capacity, length
-val vec1 = Vector { 1, 2, 3 }; // Variable-sized array where memory is consecutive
-val list1 = List { 1, 2; 3 }; // Variable-sized Linked array where memory is not consecutive
+val vec1 = new Vector { 1, 2, 3 }; // Variable-sized array where memory is consecutive
+val list1 = new List { 1, 2; 3 }; // Variable-sized Linked array where memory is not consecutive
 
 val array1_0 = array1[0];
 val array1_slice = array1[0..1]; // Slice is a view into original -- mutable or immutable?

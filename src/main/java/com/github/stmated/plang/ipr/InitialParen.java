@@ -1,4 +1,10 @@
 package com.github.stmated.plang.ipr;
 
-public record InitialParen(InitialExpression[] children) implements InitialExpression {
+import com.github.stmated.plang.ipr.visitor.InitialVisitor;
+
+public record InitialParen(InitialExpression expression) implements InitialExpression {
+  @Override
+  public <R, V extends InitialVisitor<R>> R visit(V visitor) {
+    return visitor.visitParen(this);
+  }
 }

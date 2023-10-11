@@ -169,12 +169,14 @@ class PlangInitialParserTest {
   }
 
   @Test
-  void testBenchmark() {
+  void testBenchmark() throws IOException {
 
-    final var ITERATIONS = 1_000_000;
+    final var ITERATIONS = 1_000;
     final var before = System.nanoTime();
     for (var i = 0; i < ITERATIONS; i++) {
-      this.testParse();
+      for (final var file : PlangTestUtil.getTestFilePaths()) {
+        this.testAllFiles(file);
+      }
     }
 
     final var after = System.nanoTime();

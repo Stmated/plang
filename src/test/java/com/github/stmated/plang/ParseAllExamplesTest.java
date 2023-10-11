@@ -1,6 +1,7 @@
 package com.github.stmated.plang;
 
 import com.github.stmated.plang.parser.PlangTestUtil;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -32,5 +33,7 @@ class ParseAllExamplesTest {
       files.put(sourceFilePath, os);
       return os;
     });
+
+    Assertions.assertTrue(files.size() > 0);
   }
 }

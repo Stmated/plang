@@ -2,8 +2,18 @@
 // uint8: Backed by a number, kept in runtime
 // symbol: Backed by compile-time symbol, removed in runtime
 
-val Enum = type { A: uint8 | B: $T | C: symbol };
+// val Enum = type { A: uint8 | B: $T | C: symbol };
+
+// B's type will not be comparable to other uint8 -- because the type is nominal.
+// C will be a compile-time symbol that only works in static situations and is lost at runtime.
+val Enum = A: uint8 | B: nominal uint8 | C: symbol;
 
 // They must all be callable in this fashion:
 val e1 = new Enum.B { 1 }; // NOTE: Is this ugly? We do "alloc" something by giving value (?)
 val e2 = Enum.C;
+
+match (e2) {
+  Enum.A => println(e2),
+  Enum.B => println(e2),
+  Enum.C => println('Matched symbol'),
+}

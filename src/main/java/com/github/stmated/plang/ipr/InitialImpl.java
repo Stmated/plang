@@ -1,8 +1,16 @@
 package com.github.stmated.plang.ipr;
 
+import com.github.stmated.plang.ipr.visitor.InitialVisitor;
+
 public record InitialImpl(
-    InitialIdentifier traitIdentifier,
-    InitialExpression forExpression,
-    InitialBlock block
+  InitialIdentifier traitIdentifier,
+  InitialExpression forExpression,
+  InitialBlock block,
+  InitialExpression[] with
 ) implements InitialExpression {
+
+  @Override
+  public <R, V extends InitialVisitor<R>> R visit(V visitor) {
+    return visitor.visitImpl(this);
+  }
 }

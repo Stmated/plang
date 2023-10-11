@@ -1,6 +1,5 @@
 
-
-val fn = (): Result<(String, String), Error> => {
+val fn = (): Result((String, String), Error) => {
     return Result.Ok(('Hello', 'World'));
 };
 
@@ -11,12 +10,12 @@ val unwrapped1 = match value {
     Error(v) => v.reason,
 };
 
-val unwrapped1 = match value {
+val unwrapped2 = match value {
     Ok => (it + ', ' + other),
     Error => it.reason,
 };
 
-val fn2 = (): Result<(String, String), Error> => {
+val fn2 = (): Result((String, String), Error) => {
     return fn()?;
 };
 

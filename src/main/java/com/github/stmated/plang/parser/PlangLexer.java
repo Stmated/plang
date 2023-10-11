@@ -86,7 +86,6 @@ public class PlangLexer implements Iterator<Token>, AutoCloseable {
         markStart();
         future = switch (c) {
           case ',' -> newToken(TokenType.COMMA);
-          case ':' -> newToken(TokenType.COLON);
           case ';' -> newToken(TokenType.SEMI_COLON);
           case '+' -> newToken(TokenType.PLUS);
           case '*' -> newToken(TokenType.MULTIPLY);
@@ -103,6 +102,7 @@ public class PlangLexer implements Iterator<Token>, AutoCloseable {
           case '@' -> newToken(TokenType.META);
           case '~' -> newToken(TokenType.TILDE);
           case '.' -> newToken(TokenType.DOT);
+          case ':' -> advanceAsDoubleColonOtherwiseColon();
           case '/' -> advanceCommentOtherwiseDivide();
           case '"' -> advanceUntil('"');
           case '\'' -> advanceUntil('\'');
@@ -281,7 +281,6 @@ public class PlangLexer implements Iterator<Token>, AutoCloseable {
       // TODO: Add multiline support
       // TODO: Change advanceUntil to only advance, return boolean, no token
 
-      //skip = true; // Keep current char
       final var contentToken = this.advanceUntil('\n');
       final var content = contentToken.content();
       final var stripped = content.replaceAll("[\r\n]", "");
@@ -312,6 +311,17 @@ public class PlangLexer implements Iterator<Token>, AutoCloseable {
     } else {
       skip = true;
       return this.newToken(TokenType.DIVIDE);
+    }
+  }
+
+  private Token advanceAsDoubleColonOtherwiseColon() throws IOException {
+
+    c = this.read();
+    if (c == ':') {
+      return this.newToken(TokenType.COLON_DOUBLE);
+    } else {
+      skip = true;
+      return this.newToken(TokenType.COLON);
     }
   }
 

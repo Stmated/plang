@@ -1,5 +1,7 @@
 package com.github.stmated.plang.ipr;
 
+import com.github.stmated.plang.ipr.visitor.InitialVisitor;
+
 /**
  *
  * @param source
@@ -11,4 +13,8 @@ public record InitialLoopForEach(
     InitialExpression target,
     InitialExpression body
 ) implements InitialExpression {
+  @Override
+  public <R, V extends InitialVisitor<R>> R visit(V visitor) {
+    return visitor.visitLoopForEach(this);
+  }
 }

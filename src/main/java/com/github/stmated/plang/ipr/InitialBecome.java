@@ -1,6 +1,10 @@
 package com.github.stmated.plang.ipr;
 
-public record InitialBecome(
-    InitialCall call
-) implements InitialExpression {
+import com.github.stmated.plang.ipr.visitor.InitialVisitor;
+
+public record InitialBecome(InitialCall call) implements InitialExpression {
+  @Override
+  public <R, V extends InitialVisitor<R>> R visit(V visitor) {
+    return visitor.visitBecome(this);
+  }
 }

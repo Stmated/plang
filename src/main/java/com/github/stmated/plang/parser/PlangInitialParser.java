@@ -1,12 +1,63 @@
 package com.github.stmated.plang.parser;
 
 import com.github.stmated.plang.hir.MutabilityKind;
-import com.github.stmated.plang.ipr.*;
+import com.github.stmated.plang.ipr.InitialAssignment;
+import com.github.stmated.plang.ipr.InitialBecome;
+import com.github.stmated.plang.ipr.InitialBinaryOperation;
+import com.github.stmated.plang.ipr.InitialBinaryOperationType;
+import com.github.stmated.plang.ipr.InitialBlock;
+import com.github.stmated.plang.ipr.InitialBracket;
+import com.github.stmated.plang.ipr.InitialCall;
+import com.github.stmated.plang.ipr.InitialCallable;
+import com.github.stmated.plang.ipr.InitialComment;
+import com.github.stmated.plang.ipr.InitialCompTime;
+import com.github.stmated.plang.ipr.InitialConditional;
+import com.github.stmated.plang.ipr.InitialDotAccess;
+import com.github.stmated.plang.ipr.InitialExport;
+import com.github.stmated.plang.ipr.InitialExpression;
+import com.github.stmated.plang.ipr.InitialExpressionCollection;
+import com.github.stmated.plang.ipr.InitialIdentifier;
+import com.github.stmated.plang.ipr.InitialImpl;
+import com.github.stmated.plang.ipr.InitialImport;
+import com.github.stmated.plang.ipr.InitialImportCapable;
+import com.github.stmated.plang.ipr.InitialImportPath;
+import com.github.stmated.plang.ipr.InitialImportPathAlias;
+import com.github.stmated.plang.ipr.InitialImportPathGroup;
+import com.github.stmated.plang.ipr.InitialImportPathIdentifier;
+import com.github.stmated.plang.ipr.InitialImportPathWildcard;
+import com.github.stmated.plang.ipr.InitialLabeling;
+import com.github.stmated.plang.ipr.InitialLiteral;
+import com.github.stmated.plang.ipr.InitialLoopDoWhile;
+import com.github.stmated.plang.ipr.InitialLoopFor;
+import com.github.stmated.plang.ipr.InitialLoopForEach;
+import com.github.stmated.plang.ipr.InitialLoopWhile;
+import com.github.stmated.plang.ipr.InitialMatch;
+import com.github.stmated.plang.ipr.InitialNew;
+import com.github.stmated.plang.ipr.InitialNoOp;
+import com.github.stmated.plang.ipr.InitialNot;
+import com.github.stmated.plang.ipr.InitialParen;
+import com.github.stmated.plang.ipr.InitialProgram;
+import com.github.stmated.plang.ipr.InitialRange;
+import com.github.stmated.plang.ipr.InitialReturn;
+import com.github.stmated.plang.ipr.InitialStaticAccess;
+import com.github.stmated.plang.ipr.InitialStruct;
+import com.github.stmated.plang.ipr.InitialThen;
+import com.github.stmated.plang.ipr.InitialTrait;
+import com.github.stmated.plang.ipr.InitialType;
+import com.github.stmated.plang.ipr.InitialTypePlaceholder;
+import com.github.stmated.plang.ipr.InitialVarargs;
+import com.github.stmated.plang.ipr.InitialVariableDeclaration;
+import com.github.stmated.plang.ipr.InitialVariableSink;
+import com.github.stmated.plang.ipr.InitialWhere;
+import com.github.stmated.plang.ipr.InitialWith;
+import com.github.stmated.plang.ipr.InitialYield;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class PlangInitialParser {
 
@@ -36,36 +87,9 @@ public class PlangInitialParser {
   }
 
   /**
-   * COMMA
-   */
-  private InitialExpression parseLevel0() {
-
-    final var lhs = parseLevel0_1();
-    final var token = next();
-
-    if (token != null) {
-
-      final var t = token.type();
-      if (t == TokenType.COMMA) {
-        final var rhs = parseLevel0();
-        if (rhs != null) {
-          return new InitialCollectionItem(lhs, rhs);
-          //return new InitialAssignment(lhs, rhs);
-        } else {
-          throw new IllegalArgumentException("No RHS for assignment");
-        }
-      } else {
-        queuedTokens.push(token);
-      }
-    }
-
-    return lhs;
-  }
-
-  /**
    * ASSIGN
    */
-  private InitialExpression parseLevel0_1() {
+  private InitialExpression parseLevel0() {
 
     final var lhs = parseLevel1();
     final var token = next();
@@ -74,7 +98,7 @@ public class PlangInitialParser {
 
       final var t = token.type();
       if (t == TokenType.ASSIGN) {
-        final var rhs = parseLevel1();
+        final var rhs = parseLevel0();
         if (rhs != null) {
           return new InitialAssignment(lhs, rhs);
         } else {
@@ -117,6 +141,80 @@ public class PlangInitialParser {
   /**
    * WHERE
    */
+  private InitialExpression parseLevel2_rhs_level0() {
+
+    final var lhs = parseLevel2_rhs_level1();
+    final var token = next();
+
+    if (token != null) {
+
+      final var t = token.type();
+      if (t == TokenType.WHERE) {
+        final var rhs = parseLevel2_rhs_level0();
+        return new InitialWhere(lhs, rhs);
+      } else {
+        queuedTokens.push(token);
+      }
+    }
+
+    return lhs;
+  }
+
+  /**
+   * ASSIGN
+   */
+  private InitialExpression parseLevel2_rhs_level1() {
+
+    final var lhs = parseLevel2_rhs_level2();
+    final var token = next();
+
+    if (token != null) {
+
+      final var t = token.type();
+      if (t == TokenType.ASSIGN) {
+        final var rhs = parseLevel2_rhs_level1();
+        if (rhs != null) {
+          return new InitialAssignment(lhs, rhs);
+        } else {
+          throw new IllegalArgumentException("No RHS for assignment");
+        }
+      } else {
+        queuedTokens.push(token);
+      }
+    }
+
+    return lhs;
+  }
+
+  /**
+   * COLON
+   */
+  private InitialExpression parseLevel2_rhs_level2() {
+
+    final var lhs = parseLevel6();
+    final var token = next();
+
+    if (token != null) {
+
+      final var t = token.type();
+      if (t == TokenType.COLON) {
+        final var rhs = parseLevel6();
+        if (rhs != null) {
+          return new InitialLabeling(lhs, rhs);
+        } else {
+          throw new IllegalArgumentException("No RHS for labeling");
+        }
+      } else {
+        queuedTokens.push(token);
+      }
+    }
+
+    return lhs;
+  }
+
+  /**
+   * WHERE
+   */
   private InitialExpression parseLevel2() {
 
     final var lhs = parseLevel3();
@@ -126,12 +224,8 @@ public class PlangInitialParser {
 
       final var t = token.type();
       if (t == TokenType.WHERE) {
-        final var rhs = parseLevel3();
-        if (rhs != null) {
-          return new InitialWhere(lhs, rhs);
-        } else {
-          throw new IllegalArgumentException("No RHS for where");
-        }
+        final var rhs = parseLevel2_rhs_level0(); // RHS goes back up to higher level
+        return new InitialWhere(lhs, rhs);
       } else {
         queuedTokens.push(token);
       }
@@ -152,7 +246,7 @@ public class PlangInitialParser {
 
       final var t = token.type();
       if (t == TokenType.COLON) {
-        final var rhs = parseLevel3Rhs();
+        final var rhs = parseLevel3();
         if (rhs != null) {
           return new InitialLabeling(lhs, rhs);
         } else {
@@ -166,37 +260,35 @@ public class PlangInitialParser {
     return lhs;
   }
 
-  /**
-   * RHS of level 1 (Colon labeling) is more restrictive.
-   * Identifier or conditional.
-   */
-  private InitialExpression parseLevel3Rhs() {
-
-    final var token = next();
-    if (token != null) {
-
-      if (token.type() == TokenType.IDENTIFIER) {
-
-        // For label RHS, we will also check if it is a generic type.
-        final var identifierOrType = this.parseIdentifierLikeOrType();
-        if (identifierOrType != null) {
-          return identifierOrType;
-        }
-      } else {
-
-        // Go past LT, GT.
-        // Many options as invalid as label RHS. But that is for later stages to decide.
-        // But first add token back for next step to find.
-        queuedTokens.push(token);
-        final var expression = parseLevel6();
-        if (expression != null) {
-          return expression;
-        }
-      }
-    }
-
-    throw new IllegalArgumentException("There is no valid RHS for the labeling");
-  }
+//  /**
+//   * RHS of Colon Labeling is more restrictive.
+//   */
+//  private InitialExpression parseLevel3Rhs() {
+//
+//    final var token = next();
+//    if (token != null) {
+//
+////      if (token.type() == TokenType.IDENTIFIER) {
+////
+////        final var identifierOrType = this.parseIdentifierLike();
+////        if (identifierOrType != null) {
+////          return identifierOrType;
+////        }
+////      } else {
+//
+//      // Go past LT, GT.
+//      // Many options as invalid as label RHS. But that is for later stages to decide.
+//      // But first add token back for next step to find.
+//      queuedTokens.push(token);
+//      final var expression = parseLevel6();
+//      if (expression != null) {
+//        return expression;
+//      }
+////      }
+//    }
+//
+//    throw new IllegalArgumentException("There is no valid RHS for the labeling");
+//  }
 
   /**
    * AND | OR
@@ -361,9 +453,6 @@ public class PlangInitialParser {
     return lhs;
   }
 
-  /**
-   * Dot
-   */
   private InitialExpression parseLevel10() {
 
     final var lhs = parseLevel11();
@@ -372,12 +461,12 @@ public class PlangInitialParser {
     if (token != null) {
 
       final var t = token.type();
-      if (t == TokenType.DOT) {
+      if (t == TokenType.COLON_DOUBLE) {
         final var rhs = parseLevel10(); // Recursive
         if (rhs != null) {
-          return new InitialDotAccess(lhs, rhs);
+          return new InitialStaticAccess(lhs, rhs);
         } else {
-          throw new IllegalArgumentException("No RHS for range expression");
+          throw new IllegalArgumentException("No RHS for static access");
         }
       } else {
         queuedTokens.push(token);
@@ -387,9 +476,6 @@ public class PlangInitialParser {
     return lhs;
   }
 
-  /**
-   * Meta
-   */
   private InitialExpression parseLevel11() {
 
     final var lhs = parseExpression();
@@ -398,12 +484,12 @@ public class PlangInitialParser {
     if (token != null) {
 
       final var t = token.type();
-      if (t == TokenType.META) {
+      if (t == TokenType.DOT) {
         final var rhs = parseLevel11(); // Recursive
         if (rhs != null) {
-          return new InitialMetaScope(lhs, rhs);
+          return new InitialDotAccess(lhs, rhs);
         } else {
-          throw new IllegalArgumentException("No RHS for meta");
+          throw new IllegalArgumentException("No RHS for dot access");
         }
       } else {
         queuedTokens.push(token);
@@ -435,6 +521,7 @@ public class PlangInitialParser {
       case OPEN_BRACE -> parseBlock();
       case OPEN_PAREN -> parseParen();
       case OPEN_BRACKET -> parseBracket();
+      //case LT -> parseDiamond();
       case REF -> parseRef();
       case VAL, VAR -> parseVarVal(token);
       case STRUCT -> parseStruct();
@@ -447,11 +534,11 @@ public class PlangInitialParser {
       case SEMI_COLON, END -> new InitialNoOp();
 //      case COMMA -> new InitialCollectionDelimiter();
       case IDENTIFIER -> parseIdentifierLike();
-      case IDENTIFIER_GENERIC -> new InitialIdentifierGeneric(token.content());
+//      case IDENTIFIER_GENERIC -> new InitialIdentifierGeneric(token.content());
       case EXPORT -> parseExport();
       case IMPORT -> parseImport();
       case BECOME -> parseBecome();
-      case META -> parseMeta();
+      case META -> parseCompTime();
       case COMMENT_SINGLE_LINE, COMMENT_MULTI_LINE -> new InitialComment(token.content());
       case YIELD -> parseYield();
       case FOREACH -> parseForEach();
@@ -459,7 +546,9 @@ public class PlangInitialParser {
       case DO -> parseDo();
       case WHILE -> parseWhile();
       case MATCH -> parseMatch();
+      case WITH -> parseWith();
       case TRIPLE_DOT -> new InitialVarargs();
+      case DOLLAR -> parseDollar();
       default -> {
         throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
       }
@@ -476,7 +565,7 @@ public class PlangInitialParser {
     final var potentialColon = next();
     if (potentialColon != null && potentialColon.type() == TokenType.COLON) {
       next(); // TODO: Wrong? Or is this what we should do always? next() before?
-      type = this.parseIdentifierLikeOrType();
+      type = this.parseIdentifierLike();
     } else {
       queuedTokens.add(potentialColon);
       type = null;
@@ -527,225 +616,245 @@ public class PlangInitialParser {
     return current;
   }
 
-  private InitialExpression parseIdentifierLikeOrType() {
-
-    final var identifierLike = this.parseIdentifierLike();
-
-    if (identifierLike instanceof InitialIdentifier identifier) {
-
-      final var n = next();
-      if (n != null) {
-
-        if (n.type() == TokenType.LT) {
-
-          // This could be a generic type. Get all the children as such.
-          // NOTE: This is probably too naive and will require something smarter.
-          final var diamondChildren = parseUntil(TokenType.GT);
-          final var diamondChildrenArray = diamondChildren.toArray(new InitialExpression[0]);
-
-          return new InitialDiamond(identifier, diamondChildrenArray);
-        } else {
-          this.queuedTokens.add(n);
-        }
-      }
-    }
-
-    return identifierLike;
-  }
-
-  private List<InitialExpression> parseUntil(TokenType tt) {
-
-    final var expressions = new ArrayList<InitialExpression>();
-
-    try {
-      Token token;
-      while ((token = next()) != null) {
-
-        if (token.type() == tt) {
-
-          // We have found out stop. Let's exit.
-          break;
-        }
-
-        // Let's stay on our current token.
-        // TODO: This pattern seems strange. We should set HARD rules on when to read next or not.
-        queuedTokens.add(token);
-
-        final var expression = this.parseExpression();
-        if (expression != null) {
-          expressions.add(expression);
-        } else {
-          throw new IllegalArgumentException("Encountered EOF before %s".formatted(tt));
-        }
-      }
-    } catch (Exception ex) {
-
-      final var expressionStrings = expressions.stream().map(Object::toString).toList();
-      final var expressionsString = "\n    " + String.join("\n    ", expressionStrings);
-      throw new IllegalArgumentException("Failed parsing after found 'until'-expressions %s".formatted(expressionsString), ex);
-    }
-
-    return expressions;
-  }
+//  private List<InitialExpression> parseUntil(TokenType tt) {
+//
+//    final var expressions = new ArrayList<InitialExpression>();
+//
+//    try {
+//      Token token;
+//      while ((token = next()) != null) {
+//
+//        if (token.type() == tt) {
+//
+//          // We have found out stop. Let's exit.
+//          break;
+//        }
+//
+//        // Let's stay on our current token.
+//        // TODO: This pattern seems strange. We should set HARD rules on when to read next or not.
+//        queuedTokens.add(token);
+//
+//        final var expression = this.parseExpression();
+//        if (expression != null) {
+//          expressions.add(expression);
+//        } else {
+//          throw new IllegalArgumentException("Encountered EOF before %s".formatted(tt));
+//        }
+//      }
+//    } catch (Exception ex) {
+//
+//      final var expressionStrings = expressions.stream().map(Object::toString).toList();
+//      final var expressionsString = "\n    " + String.join("\n    ", expressionStrings);
+//      throw new IllegalArgumentException("Failed parsing after found 'until'-expressions %s".formatted(expressionsString), ex);
+//    }
+//
+//    return expressions;
+//  }
 
   private InitialExpression parseIdentifierLike() {
 
     // TODO: Goes against other code -- usually calls next()
     //        Need to always work the same way. Always assume read?
     //        Maybe have different methods "readXyz" and "parseXyz"?
-    if (current != null) {
-      if (current.type() == TokenType.META) {
+//    if (current != null && current.type() == TokenType.META) {
+//
+//      final var target = parseLevel10();
+//      if (target == null) {
+//        throw new IllegalArgumentException("There must be a meta target");
+//      }
+//
+//      return new InitialCompTime(target);
+//    }
 
-        final var target = parseLevel10();
-        if (target == null) {
-          throw new IllegalArgumentException("There must be a meta target");
-        }
-
-        return new InitialMeta(target);
-
-      }
-    }
-
-    final var identifierToken = current;
+//    final var identifierToken = current;
     final var identifier = this.parseIdentifier();
 
     var n = next();
     if (n != null) {
 
-      List<InitialExpression> generics = null;
-      if (n.type() == TokenType.LT) {
-
-        generics = parseGenericArguments(identifierToken);
-        n = next();
-      }
+//      InitialExpression[] generics = null;
+//      if (n.type() == TokenType.LT) {
+//
+//        generics = parseGenericArguments(identifierToken);
+//        n = next();
+//      }
 
       boolean partial = false;
-      if (n != null && n.type() == TokenType.TILDE) {
+      if (n.type() == TokenType.TILDE) {
         partial = true;
         n = next();
       }
 
-      if (n != null) {
-        if (n.type() == TokenType.OPEN_PAREN) {
+      if (n != null && n.type() == TokenType.OPEN_PAREN) {
 
-          final var paren = this.parseParen();
+        final var paren = this.parseParen();
 
-          boolean bubbleUp = false;
-          final var t2 = next();
-          if (t2 != null) {
-            if (t2.type() == TokenType.QUESTION_MARK) {
-              bubbleUp = true;
-            } else {
-              queuedTokens.add(t2);
-            }
+        boolean bubbleUp = false;
+        final var t2 = next();
+        if (t2 != null) {
+          if (t2.type() == TokenType.QUESTION_MARK) {
+            bubbleUp = true;
+          } else {
+            queuedTokens.add(t2);
           }
-
-          final var genericArray = (generics == null) ? null : generics.toArray(new InitialExpression[0]);
-          return new InitialCall(identifier, paren, genericArray, bubbleUp, partial);
-
-        } else if (partial) {
-          throw new IllegalArgumentException("Tilde (partial call indicator) must be followed by an opening parenthesis");
-        } else {
-          queuedTokens.add(n);
         }
+
+//        final var genericArray = (generics == null) ? null : generics;
+        return new InitialCall(identifier, paren, bubbleUp, partial);
+
+      } else if (partial) {
+        throw new IllegalArgumentException("Tilde (partial call indicator) must be followed by an opening parenthesis");
+      } else {
+        queuedTokens.add(n);
       }
     }
 
     return identifier;
   }
 
-  private InitialExpression parseGenericType_level0() {
-
-    final var lhs = parseGenericType_expression();
-    final var token = next();
-
-    if (token != null) {
-
-      final var t = token.type();
-      if (t == TokenType.ASSIGN) {
-        final var rhs = parseGenericType_expression();
-        if (rhs != null) {
-          return new InitialAssignment(lhs, rhs);
-        } else {
-          throw new IllegalArgumentException("No RHS for type assignment");
-        }
-      } else {
-        queuedTokens.add(token);
-      }
-    }
-
-    return lhs;
-  }
-
-//  private InitialExpression parseGenericType_level1() {
+//  private InitialExpression parseGenericType_level0() {
 //
+//    final var lhs = parseGenericType_expression();
+//    final var token = next();
+//
+//    if (token != null) {
+//
+//      final var t = token.type();
+//      if (t == TokenType.ASSIGN) {
+//        final var rhs = parseGenericType_expression();
+//        if (rhs != null) {
+//          return new InitialAssignment(lhs, rhs);
+//        } else {
+//          throw new IllegalArgumentException("No RHS for type assignment");
+//        }
+//      } else {
+//        queuedTokens.push(token);
+//      }
+//    }
+//
+//    return lhs;
 //  }
 
-  private InitialExpression parseGenericType_expression() {
+//  private InitialExpression parseGenericType_expression() {
+//
+//    final var token = next();
+//    if (token == null) {
+//      return null;
+//    }
+//
+//    return switch (token.type()) {
+//      case LITERAL_INTEGER -> new InitialLiteral(Integer.parseInt(token.content()));
+//      case LITERAL_DECIMAL -> new InitialLiteral(Double.parseDouble(token.content()));
+//      case LITERAL_BOOLEAN_FALSE -> new InitialLiteral(false);
+//      case LITERAL_BOOLEAN_TRUE -> new InitialLiteral(true);
+//      case LITERAL_STRING -> new InitialLiteral(token.content());
+//      case LITERAL_STRING_TEMPLATE -> new InitialLiteral(token.content());
+//      case LITERAL_INTEGER_BINARY -> new InitialLiteral(Integer.parseInt(token.content(), 2));
+//      case LITERAL_INTEGER_HEX -> new InitialLiteral(Integer.parseInt(token.content(), 16));
+//      case LITERAL_INTEGER_OCTAL -> new InitialLiteral(Integer.parseInt(token.content(), 8));
+//      case UNDERSCORE -> new InitialVariableSink();
+//      case BANG -> new InitialNot(parseExpression());
+//      case OPEN_PAREN -> parseParen();
+//      case IF -> parseIf();
+////      case COMMA -> new InitialCollectionDelimiter();
+//      case IDENTIFIER -> parseIdentifierLike();
+//      case META -> parseCompTime();
+//      case COMMENT_SINGLE_LINE, COMMENT_MULTI_LINE -> new InitialComment(token.content());
+//      default -> {
+//        throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
+//      }
+//    };
+//  }
 
-    final var token = next();
-    if (token == null) {
-      return null;
+  private <T extends InitialExpression> List<T> parseExpressionCollection(
+    TokenType[] endedBy,
+    Supplier<T> next
+  ) {
+
+    if (matchesOneOf(current, endedBy)) {
+
+      // We are already on a closing token. It is an empty paren or bracket or similar.
+      return new ArrayList<>();
     }
 
-    return switch (token.type()) {
-      case LITERAL_INTEGER -> new InitialLiteral(Integer.parseInt(token.content()));
-      case LITERAL_DECIMAL -> new InitialLiteral(Double.parseDouble(token.content()));
-      case LITERAL_BOOLEAN_FALSE -> new InitialLiteral(false);
-      case LITERAL_BOOLEAN_TRUE -> new InitialLiteral(true);
-      case LITERAL_STRING -> new InitialLiteral(token.content());
-      case LITERAL_STRING_TEMPLATE -> new InitialLiteral(token.content());
-      case LITERAL_INTEGER_BINARY -> new InitialLiteral(Integer.parseInt(token.content(), 2));
-      case LITERAL_INTEGER_HEX -> new InitialLiteral(Integer.parseInt(token.content(), 16));
-      case LITERAL_INTEGER_OCTAL -> new InitialLiteral(Integer.parseInt(token.content(), 8));
-      case UNDERSCORE -> new InitialVariableSink();
-      case BANG -> new InitialNot(parseExpression());
-      case OPEN_PAREN -> parseParen();
-      case IF -> parseIf();
-      case COMMA -> new InitialCollectionDelimiter();
-      case IDENTIFIER -> parseIdentifierLike();
-      case IDENTIFIER_GENERIC -> new InitialIdentifierGeneric(token.content());
-      case META -> parseMeta();
-      case COMMENT_SINGLE_LINE, COMMENT_MULTI_LINE -> new InitialComment(token.content());
-      default -> {
-        throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
+    final var expressions = new ArrayList<T>();
+
+    try {
+      Token token;
+      while ((token = next()) != null) {
+
+        if (matchesOneOf(token, endedBy)) {
+          break;
+        }
+
+        if (token.type() == TokenType.COMMA) {
+
+          // Skip this one, it is a valid delimiter. Go to the next item.
+          continue;
+        }
+
+        // Let's stay on our current token.
+        // TODO: This pattern seems strange. We should set HARD rules on when to read next or not.
+        queuedTokens.add(token);
+
+        final var expression = next.get();
+        if (expression != null) {
+          expressions.add(expression);
+        } else {
+          throw new IllegalArgumentException("Encountered EOF before %s".formatted(token.type()));
+        }
       }
-    };
-  }
+    } catch (Exception ex) {
 
-  private List<InitialExpression> parseGenericArguments(Token previousToken) {
-
-    final var expressions = new ArrayList<InitialExpression>();
-
-    stayOrNext(TokenType.LT);
-
-    // TODO: Would be nice if this could be abstracted somehow; reuse code from other places more.
-
-    if (current.start() != previousToken.end()) {
-
-      // Generic arguments are whitespace-sensitive. They must be followed right after the previous token.
-      queuedTokens.push(current);
-      return null;
-    }
-
-    Token t;
-    while ((t = next()) != null) {
-      if (t.type() == TokenType.GT) {
-
-        // We have found our stop. Let's exit.
-        break;
-      } else {
-
-        // All other expressions should just be added to the list of generic items.
-        // All kinds of garbage could be placed here, but that is for later stages to handle.
-        queuedTokens.push(t);
-        final var expression = parseGenericType_level0();
-        expressions.add(expression);
-      }
+      final var expressionStrings = expressions.stream().map(Object::toString).toList();
+      final var expressionsString = "\n    " + String.join("\n    ", expressionStrings);
+      throw new IllegalArgumentException("Failed parsing after found collection-expressions %s".formatted(expressionsString), ex);
     }
 
     return expressions;
   }
+
+  private static boolean matchesOneOf(final Token token, final TokenType[] endedBy) {
+
+    for (final var end : endedBy) {
+      if (end == token.type()) {
+        return true;
+      }
+    }
+
+    // We have found our stop. Let's exit.
+    return false;
+  }
+
+//  /**
+//   * TODO: Fix so that it reads a comma-separated list like other code
+//   *       Where we nest each collection item into a new collection item.
+//   */
+//  private InitialExpression[] parseGenericArguments(Token previousToken) {
+//
+//    stayOrNext(TokenType.LT);
+//
+//    // TODO: Would be nice if this could be abstracted somehow; reuse code from other places more.
+//
+//    if (current.start() != previousToken.end()) {
+//
+//      // Generic arguments are whitespace-sensitive. They must be followed right after the previous token.
+//      queuedTokens.push(current);
+//      return null;
+//    }
+//
+//    final var expressionCollection = this.parseExpressionCollection(
+//      new TokenType[]{
+//        TokenType.GT,
+//        TokenType.CLOSE_PAREN,
+//        TokenType.CLOSE_BRACE,
+//        TokenType.CLOSE_BRACKET
+//      },
+//      this::parseGenericType_level0
+//    );
+//
+//    return expressionCollection.toArray(new InitialExpression[0]);
+//  }
 
   private InitialIdentifier parseIdentifier() {
 
@@ -834,49 +943,99 @@ public class PlangInitialParser {
     this.stayOrNext(TokenType.MATCH);
 
     final var target = this.parseLevel0();
+
+    this.stayOrNext(TokenType.OPEN_BRACE);
+
+    final var collection = this.parseExpressionCollection(
+      new TokenType[]{
+        TokenType.CLOSE_BRACE,
+        TokenType.CLOSE_BRACKET,
+        TokenType.CLOSE_PAREN
+      },
+      this::parseLevel0
+    );
+
+    this.stayOrNext(TokenType.CLOSE_BRACE);
+
+    return new InitialMatch(target, new InitialExpressionCollection<>(collection.toArray(new InitialExpression[0])));
+  }
+
+  private boolean ifNextAndBacktrack(TokenType tt) {
+
+    final var t = next();
+    if (t != null && t.type() == tt) {
+
+      queuedTokens.push(t);
+      return true;
+    } else {
+      queuedTokens.push(t);
+      return false;
+    }
+  }
+
+  private InitialWith parseWith() {
+
+    this.stayOrNext(TokenType.WITH);
+
+    final InitialExpression argument;
+    if (ifNextAndBacktrack(TokenType.OPEN_PAREN)) {
+      argument = parseParen();
+    } else {
+      argument = parseLevel0();
+    }
+
     final var block = this.parseBlock();
 
-    return new InitialMatch(target, block);
+    return new InitialWith(argument, block);
+  }
+
+  private InitialTypePlaceholder parseDollar() {
+
+    this.stayOrNext(TokenType.DOLLAR);
+
+    final var identifier = this.parseIdentifier();
+
+    return new InitialTypePlaceholder(identifier);
   }
 
   private InitialParen parseParen() {
 
     this.stayOrNext(TokenType.OPEN_PAREN);
 
-    final var children = new ArrayList<InitialExpression>();
+    // End on closing paren, but also on all other things since it probably means malformed code.
+    final var collection = this.parseExpressionCollection(
+      new TokenType[]{
+        TokenType.CLOSE_PAREN,
+        TokenType.CLOSE_BRACE,
+        TokenType.CLOSE_BRACKET
+      },
+      this::parseLevel0
+    );
 
-    while (hasNext()) {
-
-      final var token = next();
-      if (token == null || token.type() == TokenType.CLOSE_PAREN) {
-        break;
-      }
-
-      queuedTokens.push(token);
-      children.add(this.parseLevel0());
+    if (collection.size() == 1) {
+      return new InitialParen(collection.get(0));
+    } else if (collection.isEmpty()) {
+      return new InitialParen(null);
     }
 
-    return new InitialParen(children.toArray(new InitialExpression[0]));
+    return new InitialParen(new InitialExpressionCollection<>(collection.toArray(new InitialExpression[0])));
   }
 
   private InitialBracket parseBracket() {
 
     this.stayOrNext(TokenType.OPEN_BRACKET);
 
-    final var children = new ArrayList<InitialExpression>();
+    // End on closing bracket, but also on all other things since it probably means malformed code.
+    final var collection = this.parseExpressionCollection(
+      new TokenType[]{
+        TokenType.CLOSE_BRACKET,
+        TokenType.CLOSE_PAREN,
+        TokenType.CLOSE_BRACE,
+      },
+      this::parseLevel0
+    );
 
-    while (hasNext()) {
-
-      final var token = next();
-      if (token == null || token.type() == TokenType.CLOSE_BRACKET) {
-        break;
-      }
-
-      queuedTokens.add(token);
-      children.add(this.parseLevel0());
-    }
-
-    return new InitialBracket(children.toArray(new InitialExpression[0]));
+    return new InitialBracket(collection.toArray(new InitialExpression[0]));
   }
 
   private InitialVariableDeclaration parseRef() {
@@ -1064,14 +1223,14 @@ public class PlangInitialParser {
     throw new IllegalArgumentException("Become can only become another function by a regular call");
   }
 
-  private InitialMeta parseMeta() {
+  private InitialCompTime parseCompTime() {
 
     final var target = this.parseLevel10();
     if (target == null) {
       throw new IllegalArgumentException("The meta must target something");
     }
 
-    return new InitialMeta(target);
+    return new InitialCompTime(target);
   }
 
   private InitialImpl parseImpl() {
@@ -1107,20 +1266,38 @@ public class PlangInitialParser {
       throw new IllegalArgumentException("Impl must have a for-target or identifier, not %s".formatted(token_id1));
     }
 
-    final var maybeWith = next();
-    if (maybeWith != null) {
-      if (maybeWith.type() == TokenType.WITH) {
+    List<InitialExpression> withArguments = new ArrayList<>();
 
-        // TODO: Implement 'with' for impl
-        throw new IllegalStateException("Not yet implemented to have 'with' on impl!");
+    Token maybeWith;
+    while ((maybeWith = next()) != null && maybeWith.type() == TokenType.WITH) {
 
-      } else {
-        queuedTokens.push(maybeWith);
-      }
+//      final var withArgument = parseLevel0();
+      withArguments.add(parseLevel0());
     }
 
+    if (maybeWith != null) { // && maybeWith.type() != TokenType.WITH) {
+
+      // Add back the last token
+      queuedTokens.push(maybeWith);
+    }
+
+//    final var maybeWith = next();
+//    if (maybeWith != null) {
+//      if (maybeWith.type() == TokenType.WITH) {
+//
+//        // TODO: Implement 'with' for impl
+//        throw new IllegalStateException("Not yet implemented to have 'with' on impl!");
+//
+//      } else {
+//        queuedTokens.push(maybeWith);
+//      }
+//    }
+
     final var block = this.parseBlock();
-    return new InitialImpl(traitIdentifier, forExpression, block);
+    return new InitialImpl(
+      traitIdentifier, forExpression, block,
+      (withArguments.isEmpty()) ? null : withArguments.toArray(new InitialExpression[0])
+    );
   }
 
   private InitialConditional parseIf() {
@@ -1164,14 +1341,23 @@ public class PlangInitialParser {
     this.stayOrNext(TokenType.NEW);
 
     final var target = parseLevel0();
-    InitialBlock block = null;
 
     final var t1 = next();
     if (t1 != null && t1.type() == TokenType.OPEN_BRACE) {
-      block = parseBlock();
+
+      final var collection = parseExpressionCollection(
+        new TokenType[]{
+          TokenType.CLOSE_BRACE,
+          TokenType.CLOSE_PAREN,
+          TokenType.CLOSE_BRACKET,
+        },
+        this::parseLevel0
+      );
+
+      return new InitialNew(target, new InitialExpressionCollection<>(collection.toArray(new InitialExpression[0])));
     }
 
-    return new InitialNew(target, block);
+    return new InitialNew(target, null);
   }
 
   private InitialYield parseYield() {
@@ -1253,7 +1439,7 @@ public class PlangInitialParser {
 
     if (current.type() != TokenType.OPEN_BRACE) {
       queuedTokens.add(current);
-      return new InitialBlock(new InitialExpression[] { this.parseLevel0() });
+      return new InitialBlock(new InitialExpression[]{this.parseLevel0()});
     }
 
     return this.parseBlock();

@@ -18,7 +18,8 @@ val T = trait {
 };
 
 val A = impl T for A
-    with b: B, uniqueNumber: Q
+    with b: B
+    with uniqueNumber: Q
 {
     val call = (self, x: uint32) => {
       return self.v1 + x + b.v2 + uniqueNumber;
@@ -28,7 +29,7 @@ val A = impl T for A
 val f = () => {
     val a = new A { 1 }; // Should work since only 1 value, would also work if called "value"
 
-    with new B {v2 = 10}, 1: Q {
+    with (new B {v2 = 10}, 1: Q) {
         a.call(100); // Should be 112
     }
 };

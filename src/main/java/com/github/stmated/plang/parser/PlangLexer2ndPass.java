@@ -12,10 +12,8 @@ public class PlangLexer2ndPass {
 
   public Iterator<Token> transform(Iterator<Token> tokens) {
 
-    return new IdentifierGenericIterator(
-        new DecimalIterator(
-            new DotIterator(tokens)
-        )
+    return new DecimalIterator(
+      new DotIterator(tokens)
     );
   }
 
@@ -131,53 +129,6 @@ public class PlangLexer2ndPass {
               return token;
             }
           } else {
-            queue.add(token2);
-            return token;
-          }
-        }
-      }
-
-      return token;
-    }
-  }
-
-  private static class IdentifierGenericIterator implements Iterator<Token> {
-
-    private final Iterator<Token> inner;
-    private final Queue<Token> queue = new ArrayDeque<>();
-
-    public IdentifierGenericIterator(final Iterator<Token> inner) {
-      this.inner = inner;
-    }
-
-    @Override
-    public boolean hasNext() {
-
-      if (!queue.isEmpty()) {
-        return true;
-      }
-
-      return this.inner.hasNext();
-    }
-
-    @Override
-    public Token next() {
-
-      if (!queue.isEmpty()) {
-        return queue.poll();
-      }
-
-      // Convert integers with decimals into decimals
-      final var token = inner.next();
-      if (token != null) {
-        if (token.type() == TokenType.DOLLAR && inner.hasNext()) {
-          final var token2 = inner.next();
-          if (token2 != null && token2.type() == TokenType.IDENTIFIER) {
-
-            final var content = token.content() + token2.content();
-            return new Token(TokenType.IDENTIFIER_GENERIC, token.start(), token2.end(), content);
-
-          } else if (token2 != null) {
             queue.add(token2);
             return token;
           }
