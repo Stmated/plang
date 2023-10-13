@@ -1,4 +1,3 @@
-
 val fn = (v: ($T1, $T2)): $T3
     where T1: Add
     where T2: Add = T1
@@ -6,27 +5,50 @@ val fn = (v: ($T1, $T2)): $T3
     return v[0] + v[1];
 };
 
-// Can only specify the types by name if given as "where" entries
 fn(uint8)((1, 2));
-fn(T1 = uint8)((1, 2)); // First = uint8, Returns = uint8
-fn(uint8, $T3 = uint64)((1, 2)); // First = uint8, Returns = uint64
+fn(T1 = uint8)((1, 2));
+fn(uint8, $T3 = uint64)((1, 2));
 
-val fn2 = (t: (v1: Add, v2: $TV2)): @(t::v1.type & TV2) where TV2: Add => {
-    return t.v1 + t.v2;
-};
-
-val Point = ($T) where T: Number => struct {
-  x: T;
-  y: T;
-};
+val Point = ($T: Number) => struct { x: T; y: T };
 
 var p = new Point(uint64) { x = 1, y = 2 };
+
+// Meta/comptime referencing
+val fn5 = (t: (v1: Add, v2: $TV2)): @(t::v1.type & TV2) where TV2: Add => {
+    return t.v1 + t.v2;
+};
 
 // Higher Kind Types. Sort of?
 val fn2 = (t: $T1): $T2
     where T1: Iterable($TT)
     where TT: Number
     where T2: Number => {
-
-    // ... do something to turn Iterable of T1 into T2
+    // ... convert iterable of numbers to one number
 };
+
+val fn3 = (t: Iterable($TT)): $T2
+    where TT: Number
+    where T2: TT => {
+    // ... convert iterable of numbers to one number
+};
+
+val fn4 = (t: $T1: Iterable($TT: Number)): TT => {
+    // ... convert iterable of numbers to one number
+};
+
+
+// Alternative syntax, using "infer" instead of $ to mean placeholder generic declaration
+//
+// val fn2 = (t: infer T1): infer T2
+//     where T1: Iterable(infer TT)
+//     where TT: Number
+//     where T2: Number => {
+//     // ... convert iterable of numbers to one number
+// };
+
+// Alternative syntax:
+//
+// val fn4 = (t: infer T1: Iterable(infer TT: Number)): TT => {
+//     // ... convert iterable of numbers to one number
+// };
+
