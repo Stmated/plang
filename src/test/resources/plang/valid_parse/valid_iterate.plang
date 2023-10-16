@@ -18,21 +18,27 @@ while hungry() then eat()
 for (var i = 0; i < 10; i.increment()) { }
 for (var i = 0, n = i; i < 10; i.increment()) { }
 
-foreach a in array1 print(a);
+for a in array1 print(a);
 
-foreach a in array1[0..1] print(a);
+for a in array1[0..1] print(a);
 
-foreach array print(it);
-foreach array.to_keys() print(it);
+for array print(it);
+for array.to_keys() print(it);
 
-foreach a in array1 { print(a); }
-foreach a in array1 print(a);
-foreach a in array1 then print(a);
-foreach a in array1 then print(a) end
-foreach a in array1 print(a);
-foreach a in array1 then print(a);
-foreach a in array1 print(a);
-foreach a in array1 then print(a);
-foreach a in array1 {
+for var a in array1 { print(a); }
+for val a in array1 { print(a); }
+for a in array1 { print(a); }
+for a in array1 print(a);
+for a in array1 then print(a);
+for a in array1 then print(a) end
+for a in array1 print(a);
+for a in array1 then print(a);
+for a in array1 print(a);
+for a in array1 then print(a);
+for a in array1 {
     print(a);
+}
+
+for a in array1 {
+    break a + 1;
 }

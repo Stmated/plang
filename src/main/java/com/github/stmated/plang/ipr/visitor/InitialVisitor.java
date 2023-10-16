@@ -1,53 +1,6 @@
 package com.github.stmated.plang.ipr.visitor;
 
-import com.github.stmated.plang.ipr.InitialAssignment;
-import com.github.stmated.plang.ipr.InitialBecome;
-import com.github.stmated.plang.ipr.InitialBinaryOperation;
-import com.github.stmated.plang.ipr.InitialBlock;
-import com.github.stmated.plang.ipr.InitialBracket;
-import com.github.stmated.plang.ipr.InitialCall;
-import com.github.stmated.plang.ipr.InitialCallable;
-import com.github.stmated.plang.ipr.InitialComment;
-import com.github.stmated.plang.ipr.InitialConditional;
-import com.github.stmated.plang.ipr.InitialDotAccess;
-import com.github.stmated.plang.ipr.InitialExport;
-import com.github.stmated.plang.ipr.InitialExpression;
-import com.github.stmated.plang.ipr.InitialExpressionCollection;
-import com.github.stmated.plang.ipr.InitialIdentifier;
-import com.github.stmated.plang.ipr.InitialImpl;
-import com.github.stmated.plang.ipr.InitialImport;
-import com.github.stmated.plang.ipr.InitialImportPath;
-import com.github.stmated.plang.ipr.InitialImportPathAlias;
-import com.github.stmated.plang.ipr.InitialImportPathGroup;
-import com.github.stmated.plang.ipr.InitialImportPathIdentifier;
-import com.github.stmated.plang.ipr.InitialImportPathWildcard;
-import com.github.stmated.plang.ipr.InitialLabeling;
-import com.github.stmated.plang.ipr.InitialLiteral;
-import com.github.stmated.plang.ipr.InitialLoopDoWhile;
-import com.github.stmated.plang.ipr.InitialLoopFor;
-import com.github.stmated.plang.ipr.InitialLoopForEach;
-import com.github.stmated.plang.ipr.InitialLoopWhile;
-import com.github.stmated.plang.ipr.InitialMatch;
-import com.github.stmated.plang.ipr.InitialCompTime;
-import com.github.stmated.plang.ipr.InitialNew;
-import com.github.stmated.plang.ipr.InitialNoOp;
-import com.github.stmated.plang.ipr.InitialNot;
-import com.github.stmated.plang.ipr.InitialParen;
-import com.github.stmated.plang.ipr.InitialProgram;
-import com.github.stmated.plang.ipr.InitialRange;
-import com.github.stmated.plang.ipr.InitialReturn;
-import com.github.stmated.plang.ipr.InitialStaticAccess;
-import com.github.stmated.plang.ipr.InitialStruct;
-import com.github.stmated.plang.ipr.InitialThen;
-import com.github.stmated.plang.ipr.InitialTrait;
-import com.github.stmated.plang.ipr.InitialType;
-import com.github.stmated.plang.ipr.InitialTypePlaceholder;
-import com.github.stmated.plang.ipr.InitialVarargs;
-import com.github.stmated.plang.ipr.InitialVariableDeclaration;
-import com.github.stmated.plang.ipr.InitialVariableSink;
-import com.github.stmated.plang.ipr.InitialWhere;
-import com.github.stmated.plang.ipr.InitialWith;
-import com.github.stmated.plang.ipr.InitialYield;
+import com.github.stmated.plang.ipr.*;
 
 public interface InitialVisitor<T> {
 
@@ -183,10 +136,10 @@ public interface InitialVisitor<T> {
 
   default T visitLoopFor(InitialLoopFor expr) {
 
-    final var a = aggregate(visit(expr.assignments()), visit(expr.predicate()));
-    final var b = aggregate(visit(expr.steppers()), visit(expr.block()));
+//    final var a = aggregate(visit(expr.assignments()), visit(expr.predicate()));
+//    final var b = aggregate(visit(expr.steppers()), visit(expr.block()));
 
-    return aggregate(a, b);
+    return aggregate(visit(expr.head()), visit(expr.block()));
   }
 
   default T visitLoopForEach(InitialLoopForEach expr) {
@@ -278,6 +231,14 @@ public interface InitialVisitor<T> {
   }
 
   default T visitStaticAccess(InitialStaticAccess expr) {
+    return aggregate(visit(expr.lhs()), visit(expr.rhs()));
+  }
+
+  default T visitInfer(InitialInfer expr) {
+    return visit(expr.expression());
+  }
+
+  default T visitIn(InitialIn expr) {
     return aggregate(visit(expr.lhs()), visit(expr.rhs()));
   }
 }

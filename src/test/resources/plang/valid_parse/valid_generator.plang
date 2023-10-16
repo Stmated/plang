@@ -10,7 +10,7 @@ val generator = () => {
 };
 
 val consumer = () => {
-    foreach v in generator() {
+    for v in generator() {
         System.println(`No-cost iterable: ${v}`);
     }
 };

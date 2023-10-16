@@ -1,56 +1,7 @@
 package com.github.stmated.plang.parser;
 
 import com.github.stmated.plang.hir.MutabilityKind;
-import com.github.stmated.plang.ipr.InitialAssignment;
-import com.github.stmated.plang.ipr.InitialBecome;
-import com.github.stmated.plang.ipr.InitialBinaryOperation;
-import com.github.stmated.plang.ipr.InitialBinaryOperationType;
-import com.github.stmated.plang.ipr.InitialBlock;
-import com.github.stmated.plang.ipr.InitialBracket;
-import com.github.stmated.plang.ipr.InitialCall;
-import com.github.stmated.plang.ipr.InitialCallable;
-import com.github.stmated.plang.ipr.InitialComment;
-import com.github.stmated.plang.ipr.InitialCompTime;
-import com.github.stmated.plang.ipr.InitialConditional;
-import com.github.stmated.plang.ipr.InitialDotAccess;
-import com.github.stmated.plang.ipr.InitialExport;
-import com.github.stmated.plang.ipr.InitialExpression;
-import com.github.stmated.plang.ipr.InitialExpressionCollection;
-import com.github.stmated.plang.ipr.InitialIdentifier;
-import com.github.stmated.plang.ipr.InitialImpl;
-import com.github.stmated.plang.ipr.InitialImport;
-import com.github.stmated.plang.ipr.InitialImportCapable;
-import com.github.stmated.plang.ipr.InitialImportPath;
-import com.github.stmated.plang.ipr.InitialImportPathAlias;
-import com.github.stmated.plang.ipr.InitialImportPathGroup;
-import com.github.stmated.plang.ipr.InitialImportPathIdentifier;
-import com.github.stmated.plang.ipr.InitialImportPathWildcard;
-import com.github.stmated.plang.ipr.InitialLabeling;
-import com.github.stmated.plang.ipr.InitialLiteral;
-import com.github.stmated.plang.ipr.InitialLoopDoWhile;
-import com.github.stmated.plang.ipr.InitialLoopFor;
-import com.github.stmated.plang.ipr.InitialLoopForEach;
-import com.github.stmated.plang.ipr.InitialLoopWhile;
-import com.github.stmated.plang.ipr.InitialMatch;
-import com.github.stmated.plang.ipr.InitialNew;
-import com.github.stmated.plang.ipr.InitialNoOp;
-import com.github.stmated.plang.ipr.InitialNot;
-import com.github.stmated.plang.ipr.InitialParen;
-import com.github.stmated.plang.ipr.InitialProgram;
-import com.github.stmated.plang.ipr.InitialRange;
-import com.github.stmated.plang.ipr.InitialReturn;
-import com.github.stmated.plang.ipr.InitialStaticAccess;
-import com.github.stmated.plang.ipr.InitialStruct;
-import com.github.stmated.plang.ipr.InitialThen;
-import com.github.stmated.plang.ipr.InitialTrait;
-import com.github.stmated.plang.ipr.InitialType;
-import com.github.stmated.plang.ipr.InitialTypePlaceholder;
-import com.github.stmated.plang.ipr.InitialVarargs;
-import com.github.stmated.plang.ipr.InitialVariableDeclaration;
-import com.github.stmated.plang.ipr.InitialVariableSink;
-import com.github.stmated.plang.ipr.InitialWhere;
-import com.github.stmated.plang.ipr.InitialWith;
-import com.github.stmated.plang.ipr.InitialYield;
+import com.github.stmated.plang.ipr.*;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -342,7 +293,6 @@ public class PlangInitialParser {
     return lhs;
   }
 
-
   /**
    * PLUS | MINUS
    */
@@ -427,10 +377,33 @@ public class PlangInitialParser {
     return lhs;
   }
 
-  /**
-   * DoubleDot
-   */
   private InitialExpression parseLevel9() {
+
+    final var lhs = parseLevel9_2();
+    final var token = next();
+
+    if (token != null) {
+
+      final var t = token.type();
+      if (t == TokenType.DOUBLE_DOT) {
+        final var rhs = parseLevel9_2();
+        if (rhs != null) {
+          return new InitialRange(lhs, rhs);
+        } else {
+          throw new IllegalArgumentException("No RHS for range expression");
+        }
+      } else {
+        queuedTokens.push(token);
+      }
+    }
+
+    return lhs;
+  }
+
+  /**
+   * IN
+   */
+  private InitialExpression parseLevel9_2() {
 
     final var lhs = parseLevel10();
     final var token = next();
@@ -438,10 +411,10 @@ public class PlangInitialParser {
     if (token != null) {
 
       final var t = token.type();
-      if (t == TokenType.DOUBLE_DOT) {
+      if (t == TokenType.IN) {
         final var rhs = parseLevel10();
         if (rhs != null) {
-          return new InitialRange(lhs, rhs);
+          return new InitialIn(lhs, rhs);
         } else {
           throw new IllegalArgumentException("No RHS for range expression");
         }
@@ -541,7 +514,7 @@ public class PlangInitialParser {
       case META -> parseCompTime();
       case COMMENT_SINGLE_LINE, COMMENT_MULTI_LINE -> new InitialComment(token.content());
       case YIELD -> parseYield();
-      case FOREACH -> parseForEach();
+//      case FOREACH -> parseForEach();
       case FOR -> parseFor();
       case DO -> parseDo();
       case WHILE -> parseWhile();
@@ -549,6 +522,7 @@ public class PlangInitialParser {
       case WITH -> parseWith();
       case TRIPLE_DOT -> new InitialVarargs();
       case DOLLAR -> parseDollar();
+      case INFER -> parseInfer();
       default -> {
         throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
       }
@@ -998,6 +972,15 @@ public class PlangInitialParser {
     return new InitialTypePlaceholder(identifier);
   }
 
+  private InitialInfer parseInfer() {
+
+    this.stayOrNext(TokenType.INFER);
+
+    final var identifier = this.parseExpression();
+
+    return new InitialInfer(identifier);
+  }
+
   private InitialParen parseParen() {
 
     this.stayOrNext(TokenType.OPEN_PAREN);
@@ -1366,58 +1349,58 @@ public class PlangInitialParser {
     return new InitialYield(this.parseLevel0());
   }
 
-  private InitialExpression parseVarOrValOrIdentifier() {
+//  private InitialExpression parseVarOrValOrIdentifier() {
+//
+//    // TODO: FIX! Is wrong!
+//    return this.parseVarVal(current);
+//  }
 
-    // TODO: FIX! Is wrong!
-    return this.parseVarVal(current);
-  }
-
-  private InitialLoopForEach parseForEach() {
-
-    var parenthesized = false;
-    var token1 = next();
-    if (token1 != null) {
-      if (token1.type() == TokenType.OPEN_PAREN) {
-        next();
-        parenthesized = true;
-      } else {
-        queuedTokens.push(token1);
-      }
-    }
-
-    var target = parseLevel0();
-
-    InitialExpression source = null;
-
-    final var maybeIn = next();
-    if (maybeIn != null) {
-      if (maybeIn.type() == TokenType.IN) {
-        source = this.parseLevel0();
-      } else {
-
-        source = target;
-        target = null;
-      }
-    }
-
-    if (parenthesized) {
-
-      var token2 = next();
-      if (token2 == null || token2.type() != TokenType.CLOSE_PAREN) {
-        throw new IllegalArgumentException("If foreach loop opens with parenthesis, it must close with one not %s".formatted(token2));
-      }
-
-      queuedTokens.add(token2);
-    }
-
-    if (target instanceof InitialIdentifier ii) {
-      target = new InitialVariableDeclaration(ii, MutabilityKind.Immutable, null, false);
-    }
-
-    final var block = this.parseLevel0();
-
-    return new InitialLoopForEach(source, target, block);
-  }
+//  private InitialLoopForEach parseForEach() {
+//
+//    var parenthesized = false;
+//    var token1 = next();
+//    if (token1 != null) {
+//      if (token1.type() == TokenType.OPEN_PAREN) {
+//        next();
+//        parenthesized = true;
+//      } else {
+//        queuedTokens.push(token1);
+//      }
+//    }
+//
+//    var target = parseLevel0();
+//
+//    InitialExpression source = null;
+//
+//    final var maybeIn = next();
+//    if (maybeIn != null) {
+//      if (maybeIn.type() == TokenType.IN) {
+//        source = this.parseLevel0();
+//      } else {
+//
+//        source = target;
+//        target = null;
+//      }
+//    }
+//
+//    if (parenthesized) {
+//
+//      var token2 = next();
+//      if (token2 == null || token2.type() != TokenType.CLOSE_PAREN) {
+//        throw new IllegalArgumentException("If foreach loop opens with parenthesis, it must close with one not %s".formatted(token2));
+//      }
+//
+//      queuedTokens.add(token2);
+//    }
+//
+//    if (target instanceof InitialIdentifier ii) {
+//      target = new InitialVariableDeclaration(ii, MutabilityKind.Immutable, null, false);
+//    }
+//
+//    final var block = this.parseLevel0();
+//
+//    return new InitialLoopForEach(source, target, block);
+//  }
 
   private InitialLoopDoWhile parseDo() {
 
@@ -1434,75 +1417,69 @@ public class PlangInitialParser {
 
     return new InitialLoopWhile(predicate, body);
   }
-
-  private InitialBlock parseOptionallyEnclosedBlock() {
-
-    if (current.type() != TokenType.OPEN_BRACE) {
-      queuedTokens.add(current);
-      return new InitialBlock(new InitialExpression[]{this.parseLevel0()});
-    }
-
-    return this.parseBlock();
-  }
-
   private InitialLoopFor parseFor() {
 
-    var t = next();
-    if (t != null && t.type() == TokenType.OPEN_PAREN) {
-      t = next();
-    } else {
-      throw new IllegalArgumentException("A for-loop must have parenthesis");
-    }
+    final var head = this.parseLevel0();
+    final var block = this.parseLevel0();
 
-    final var assignments = new ArrayList<InitialAssignment>();
+    return new InitialLoopFor(head, block);
 
-    while (t != null && t.type() != TokenType.SEMI_COLON) {
-
-      if (t.type() == TokenType.COMMA) {
-        t = next();
-        continue;
-      }
-
-      final var dec = parseVarVal(t);
-      if (dec instanceof InitialAssignment ia) {
-        assignments.add(ia);
-      } else {
-        throw new IllegalArgumentException("Only assignments are allowed in first for-loop part");
-      }
-
-      t = next();
-    }
-
-    final var predicate = this.parseLevel0();
-
-    t = next();
-    if (t == null || t.type() != TokenType.SEMI_COLON) {
-      throw new IllegalArgumentException("There must be a semi-colon after the predicate");
-    }
-
-    final var steppers = new ArrayList<InitialExpression>();
-    do {
-
-      if (t.type() == TokenType.COMMA) {
-        continue;
-      }
-
-      final var step = parseLevel0();
-      if (step != null) {
-        steppers.add(step);
-      }
-
-      // TODO: This is probably bad -- since it could end up eating up all the rest of the file.
-    } while ((t = next()) != null && t.type() != TokenType.CLOSE_PAREN);
-
-    stayOrNext(TokenType.OPEN_BRACE, null);
-    final var block = this.parseOptionallyEnclosedBlock();
-
-    return new InitialLoopFor(
-      assignments.toArray(new InitialAssignment[0]),
-      predicate,
-      steppers.toArray(new InitialExpression[0]),
-      block
-    );
+//    var t = next();
+//    if (t != null && t.type() == TokenType.OPEN_PAREN) {
+//      t = next();
+//    } else {
+//      throw new IllegalArgumentException("A for-loop must have parenthesis");
+//    }
+//
+//    final var assignments = new ArrayList<InitialAssignment>();
+//
+//    while (t != null && t.type() != TokenType.SEMI_COLON) {
+//
+//      if (t.type() == TokenType.COMMA) {
+//        t = next();
+//        continue;
+//      }
+//
+//      final var dec = parseVarVal(t);
+//      if (dec instanceof InitialAssignment ia) {
+//        assignments.add(ia);
+//      } else {
+//        throw new IllegalArgumentException("Only assignments are allowed in first for-loop part");
+//      }
+//
+//      t = next();
+//    }
+//
+//    final var predicate = this.parseLevel0();
+//
+//    t = next();
+//    if (t == null || t.type() != TokenType.SEMI_COLON) {
+//      throw new IllegalArgumentException("There must be a semi-colon after the predicate");
+//    }
+//
+//    final var steppers = new ArrayList<InitialExpression>();
+//    do {
+//
+//      if (t.type() == TokenType.COMMA) {
+//        continue;
+//      }
+//
+//      final var step = parseLevel0();
+//      if (step != null) {
+//        steppers.add(step);
+//      }
+//
+//      // TODO: This is probably bad -- since it could end up eating up all the rest of the file.
+//    } while ((t = next()) != null && t.type() != TokenType.CLOSE_PAREN);
+//
+//    stayOrNext(TokenType.OPEN_BRACE, null);
+//    final var block = this.parseOptionallyEnclosedBlock();
+//
+//    return new InitialLoopFor(
+//      assignments.toArray(new InitialAssignment[0]),
+//      predicate,
+//      steppers.toArray(new InitialExpression[0]),
+//      block
+//    );
   }
 }
