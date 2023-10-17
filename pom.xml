@@ -12,16 +12,9 @@
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <antlr.version>4.13.0</antlr.version>
   </properties>
 
   <dependencies>
-
-    <dependency>
-      <groupId>org.antlr</groupId>
-      <artifactId>antlr4-runtime</artifactId>
-      <version>${antlr.version}</version>
-    </dependency>
 
     <dependency>
       <groupId>com.oracle.truffle</groupId>
@@ -67,27 +60,6 @@
   <build>
 
     <plugins>
-      <plugin>
-        <groupId>org.antlr</groupId>
-        <artifactId>antlr4-maven-plugin</artifactId>
-        <version>${antlr.version}</version>
-        <executions>
-          <execution>
-            <id>antlr</id>
-            <goals>
-              <goal>antlr4</goal>
-            </goals>
-            <configuration>
-              <visitor>true</visitor>
-              <outputDirectory>${project.build.directory}/generated-sources/com/github/stmated/plang</outputDirectory>
-              <includes>
-                <include>**/*.g4</include>
-<!--                <include>**/PlangParser.g4</include>-->
-              </includes>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
     </plugins>
 
   </build>

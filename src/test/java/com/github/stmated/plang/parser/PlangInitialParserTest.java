@@ -7,11 +7,12 @@ import com.github.stmated.plang.ipr.InitialIdentifier;
 import com.github.stmated.plang.ipr.InitialLiteral;
 import com.github.stmated.plang.ipr.InitialProgram;
 import com.github.stmated.plang.ipr.visitor.InitialVisitor;
+import com.github.stmated.plang.lexer.PlangLexer;
+import com.github.stmated.plang.lexer.PlangLexerSteps;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -157,9 +158,10 @@ class PlangInitialParserTest {
 
     // Does not test real validity, just that it does not crash.
 
-    final var pass2 = new PlangLexer2ndPass();
+    final var steps = new PlangLexerSteps();
+
     try (final var tokens = new PlangLexer(Files.newInputStream(path))) {
-      final var transformed = pass2.transform(tokens);
+      final var transformed = steps.transform(tokens);
       final var parser = new PlangInitialParser(transformed);
       final var program = parser.parse();
       Assertions.assertNotNull(program);
@@ -170,7 +172,7 @@ class PlangInitialParserTest {
   @SneakyThrows
   void testGenerics() {
 
-    final var pass2 = new PlangLexer2ndPass();
+    final var pass2 = new PlangLexerSteps();
     final var path = Path.of("src/test/resources/plang/valid_parse/valid_generics.plang").toAbsolutePath();
     try (final var tokens = new PlangLexer(Files.newInputStream(path))) {
       final var transformed = pass2.transform(tokens);
@@ -184,7 +186,7 @@ class PlangInitialParserTest {
   @SneakyThrows
   void testIterate() {
 
-    final var pass2 = new PlangLexer2ndPass();
+    final var pass2 = new PlangLexerSteps();
     final var path = Path.of("src/test/resources/plang/valid_parse/valid_iterate.plang").toAbsolutePath();
     try (final var tokens = new PlangLexer(Files.newInputStream(path))) {
       final var transformed = pass2.transform(tokens);

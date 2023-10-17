@@ -26,9 +26,9 @@ import static com.github.stmated.plang.parser.TokenType.SEMI_COLON;
 import static com.github.stmated.plang.parser.TokenType.THEN;
 import static com.github.stmated.plang.parser.TokenType.VAL;
 
+import com.github.stmated.plang.lexer.PlangLexer;
+import com.github.stmated.plang.lexer.PlangLexerSteps;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,9 +38,7 @@ import java.util.stream.Stream;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 
 class PlangLexerTest {
 
@@ -147,16 +145,16 @@ class PlangLexerTest {
     return PlangTestUtil.testShouldSucceedSource();
   }
 
-  @ParameterizedTest
-  @MethodSource("allValidTestFiles")
-  @SneakyThrows
-  void testAllFiles(Path path) {
-
-    // Does not test real validity, just that it does not crash.
-    try (final var tokens = new PlangLexer(Files.newInputStream(path))) {
-       this.iteratorToList(tokens);
-    }
-  }
+//  @ParameterizedTest
+//  @MethodSource("allValidTestFiles")
+//  @SneakyThrows
+//  void testAllFiles(Path path) {
+//
+//    // Does not test real validity, just that it does not crash.
+//    try (final var tokens = new PlangLexer(Files.newInputStream(path))) {
+//       this.iteratorToList(tokens);
+//    }
+//  }
 
   @Test
   void testBenchmark() {
@@ -178,7 +176,7 @@ class PlangLexerTest {
   @Test
   void testTokenizerErrors() {
 
-    Assertions.assertThrows(IllegalArgumentException.class, () -> this.execute("123.123.123"));
+    Assertions.assertThrows(IllegalArgumentException.class, () ->  this.execute("123.123.123"));
   }
 
   @SneakyThrows
@@ -198,7 +196,7 @@ class PlangLexerTest {
 
   private List<Token> execute(String from) throws Exception {
 
-    final var pass2 = new PlangLexer2ndPass();
+    final var pass2 = new PlangLexerSteps();
     try (final var tokens = new PlangLexer(PlangTestUtil.stringToStream(from))) {
       final var transformed = pass2.transform(tokens);
       return this.iteratorToList(transformed);

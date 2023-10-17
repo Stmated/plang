@@ -1,6 +1,6 @@
 package com.github.stmated.plang.parser;
 
-import com.github.stmated.plang.PlangCompiler;
+import com.github.stmated.plang.util.PathUtils;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,7 +21,7 @@ public class PlangTestUtil {
   public static List<Path> getTestFilePaths() throws IOException {
 
     final var paths = new ArrayList<Path>();
-    PlangCompiler.find(Paths.get("src/test/resources/plang/valid_parse"), paths);
+    PathUtils.find(Paths.get("src/test/resources/plang/valid_parse"), paths);
 
     return paths;
   }

@@ -1,5 +1,8 @@
-package com.github.stmated.plang.parser;
+package com.github.stmated.plang.lexer;
 
+import com.github.stmated.plang.parser.NoSyncBufferedReader;
+import com.github.stmated.plang.parser.Token;
+import com.github.stmated.plang.parser.TokenType;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -8,41 +11,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ArrayBlockingQueue;
 
-/**
- * TODO:
- *  Comments
- *  Strings
- *    - Double
- *    - Single
- *    - Template
- *      - Will be split into different parts, and merged by later stage
- */
-public class PlangLexer implements Iterator<Token>, AutoCloseable {
-
-  private final NoSyncBufferedReader reader;
-
-  private Token nextToken;
-
-  private boolean skip;
-  private int index_start;
-  private int index = -1;
-  private int c;
-
-  private final StringBuilder contentBuffer = new StringBuilder(128);
-
-  public PlangLexer(InputStream is) {
-
-    this.reader = new NoSyncBufferedReader(new InputStreamReader(is));
-    this.advance();
-  }
+public class PlangLexer implements AutoCloseable, Iterator<Token> {
 
   private static final TrieNode keywordNode;
-
-  @Override
-  public void close() throws Exception {
-    reader.close();
-  }
 
   private static class TrieNode {
 
@@ -67,7 +40,29 @@ public class PlangLexer implements Iterator<Token>, AutoCloseable {
       final var keywordString = keyword.name().toLowerCase();
       keywordNode.insert(keywordString, keyword);
     }
+  }
 
+  private final NoSyncBufferedReader reader;
+  private final ArrayBlockingQueue<Token> queue = new ArrayBlockingQueue<>(100, true);
+
+  private Token nextToken;
+
+  private boolean skip;
+  private int index_start;
+  private int index = -1;
+  private int c;
+
+  private final StringBuilder contentBuffer = new StringBuilder(128);
+
+  public PlangLexer(InputStream is) {
+
+    this.reader = new NoSyncBufferedReader(new InputStreamReader(is));
+    this.advance();
+  }
+
+  @Override
+  public void close() throws Exception {
+    reader.close();
   }
 
   private void advance() {

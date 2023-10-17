@@ -211,36 +211,6 @@ public class PlangInitialParser {
     return lhs;
   }
 
-//  /**
-//   * RHS of Colon Labeling is more restrictive.
-//   */
-//  private InitialExpression parseLevel3Rhs() {
-//
-//    final var token = next();
-//    if (token != null) {
-//
-////      if (token.type() == TokenType.IDENTIFIER) {
-////
-////        final var identifierOrType = this.parseIdentifierLike();
-////        if (identifierOrType != null) {
-////          return identifierOrType;
-////        }
-////      } else {
-//
-//      // Go past LT, GT.
-//      // Many options as invalid as label RHS. But that is for later stages to decide.
-//      // But first add token back for next step to find.
-//      queuedTokens.push(token);
-//      final var expression = parseLevel6();
-//      if (expression != null) {
-//        return expression;
-//      }
-////      }
-//    }
-//
-//    throw new IllegalArgumentException("There is no valid RHS for the labeling");
-//  }
-
   /**
    * AND | OR
    */
@@ -590,68 +560,12 @@ public class PlangInitialParser {
     return current;
   }
 
-//  private List<InitialExpression> parseUntil(TokenType tt) {
-//
-//    final var expressions = new ArrayList<InitialExpression>();
-//
-//    try {
-//      Token token;
-//      while ((token = next()) != null) {
-//
-//        if (token.type() == tt) {
-//
-//          // We have found out stop. Let's exit.
-//          break;
-//        }
-//
-//        // Let's stay on our current token.
-//        // TODO: This pattern seems strange. We should set HARD rules on when to read next or not.
-//        queuedTokens.add(token);
-//
-//        final var expression = this.parseExpression();
-//        if (expression != null) {
-//          expressions.add(expression);
-//        } else {
-//          throw new IllegalArgumentException("Encountered EOF before %s".formatted(tt));
-//        }
-//      }
-//    } catch (Exception ex) {
-//
-//      final var expressionStrings = expressions.stream().map(Object::toString).toList();
-//      final var expressionsString = "\n    " + String.join("\n    ", expressionStrings);
-//      throw new IllegalArgumentException("Failed parsing after found 'until'-expressions %s".formatted(expressionsString), ex);
-//    }
-//
-//    return expressions;
-//  }
-
   private InitialExpression parseIdentifierLike() {
 
-    // TODO: Goes against other code -- usually calls next()
-    //        Need to always work the same way. Always assume read?
-    //        Maybe have different methods "readXyz" and "parseXyz"?
-//    if (current != null && current.type() == TokenType.META) {
-//
-//      final var target = parseLevel10();
-//      if (target == null) {
-//        throw new IllegalArgumentException("There must be a meta target");
-//      }
-//
-//      return new InitialCompTime(target);
-//    }
-
-//    final var identifierToken = current;
     final var identifier = this.parseIdentifier();
 
     var n = next();
     if (n != null) {
-
-//      InitialExpression[] generics = null;
-//      if (n.type() == TokenType.LT) {
-//
-//        generics = parseGenericArguments(identifierToken);
-//        n = next();
-//      }
 
       boolean partial = false;
       if (n.type() == TokenType.TILDE) {
@@ -673,7 +587,6 @@ public class PlangInitialParser {
           }
         }
 
-//        final var genericArray = (generics == null) ? null : generics;
         return new InitialCall(identifier, paren, bubbleUp, partial);
 
       } else if (partial) {
@@ -685,60 +598,6 @@ public class PlangInitialParser {
 
     return identifier;
   }
-
-//  private InitialExpression parseGenericType_level0() {
-//
-//    final var lhs = parseGenericType_expression();
-//    final var token = next();
-//
-//    if (token != null) {
-//
-//      final var t = token.type();
-//      if (t == TokenType.ASSIGN) {
-//        final var rhs = parseGenericType_expression();
-//        if (rhs != null) {
-//          return new InitialAssignment(lhs, rhs);
-//        } else {
-//          throw new IllegalArgumentException("No RHS for type assignment");
-//        }
-//      } else {
-//        queuedTokens.push(token);
-//      }
-//    }
-//
-//    return lhs;
-//  }
-
-//  private InitialExpression parseGenericType_expression() {
-//
-//    final var token = next();
-//    if (token == null) {
-//      return null;
-//    }
-//
-//    return switch (token.type()) {
-//      case LITERAL_INTEGER -> new InitialLiteral(Integer.parseInt(token.content()));
-//      case LITERAL_DECIMAL -> new InitialLiteral(Double.parseDouble(token.content()));
-//      case LITERAL_BOOLEAN_FALSE -> new InitialLiteral(false);
-//      case LITERAL_BOOLEAN_TRUE -> new InitialLiteral(true);
-//      case LITERAL_STRING -> new InitialLiteral(token.content());
-//      case LITERAL_STRING_TEMPLATE -> new InitialLiteral(token.content());
-//      case LITERAL_INTEGER_BINARY -> new InitialLiteral(Integer.parseInt(token.content(), 2));
-//      case LITERAL_INTEGER_HEX -> new InitialLiteral(Integer.parseInt(token.content(), 16));
-//      case LITERAL_INTEGER_OCTAL -> new InitialLiteral(Integer.parseInt(token.content(), 8));
-//      case UNDERSCORE -> new InitialVariableSink();
-//      case BANG -> new InitialNot(parseExpression());
-//      case OPEN_PAREN -> parseParen();
-//      case IF -> parseIf();
-////      case COMMA -> new InitialCollectionDelimiter();
-//      case IDENTIFIER -> parseIdentifierLike();
-//      case META -> parseCompTime();
-//      case COMMENT_SINGLE_LINE, COMMENT_MULTI_LINE -> new InitialComment(token.content());
-//      default -> {
-//        throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
-//      }
-//    };
-//  }
 
   private <T extends InitialExpression> List<T> parseExpressionCollection(
     TokenType[] endedBy,
@@ -800,36 +659,6 @@ public class PlangInitialParser {
     return false;
   }
 
-//  /**
-//   * TODO: Fix so that it reads a comma-separated list like other code
-//   *       Where we nest each collection item into a new collection item.
-//   */
-//  private InitialExpression[] parseGenericArguments(Token previousToken) {
-//
-//    stayOrNext(TokenType.LT);
-//
-//    // TODO: Would be nice if this could be abstracted somehow; reuse code from other places more.
-//
-//    if (current.start() != previousToken.end()) {
-//
-//      // Generic arguments are whitespace-sensitive. They must be followed right after the previous token.
-//      queuedTokens.push(current);
-//      return null;
-//    }
-//
-//    final var expressionCollection = this.parseExpressionCollection(
-//      new TokenType[]{
-//        TokenType.GT,
-//        TokenType.CLOSE_PAREN,
-//        TokenType.CLOSE_BRACE,
-//        TokenType.CLOSE_BRACKET
-//      },
-//      this::parseGenericType_level0
-//    );
-//
-//    return expressionCollection.toArray(new InitialExpression[0]);
-//  }
-
   private InitialIdentifier parseIdentifier() {
 
     final var token = stayOrNext(TokenType.IDENTIFIER);
@@ -838,12 +667,6 @@ public class PlangInitialParser {
     }
 
     return new InitialIdentifier(token.content());
-  }
-
-  private InitialType parseType() {
-
-    final var identifier = this.parseIdentifier();
-    return new InitialType(identifier);
   }
 
   private Token stayOrNext(TokenType t) {
@@ -1254,27 +1077,14 @@ public class PlangInitialParser {
     Token maybeWith;
     while ((maybeWith = next()) != null && maybeWith.type() == TokenType.WITH) {
 
-//      final var withArgument = parseLevel0();
       withArguments.add(parseLevel0());
     }
 
-    if (maybeWith != null) { // && maybeWith.type() != TokenType.WITH) {
+    if (maybeWith != null) {
 
       // Add back the last token
       queuedTokens.push(maybeWith);
     }
-
-//    final var maybeWith = next();
-//    if (maybeWith != null) {
-//      if (maybeWith.type() == TokenType.WITH) {
-//
-//        // TODO: Implement 'with' for impl
-//        throw new IllegalStateException("Not yet implemented to have 'with' on impl!");
-//
-//      } else {
-//        queuedTokens.push(maybeWith);
-//      }
-//    }
 
     final var block = this.parseBlock();
     return new InitialImpl(
@@ -1349,59 +1159,6 @@ public class PlangInitialParser {
     return new InitialYield(this.parseLevel0());
   }
 
-//  private InitialExpression parseVarOrValOrIdentifier() {
-//
-//    // TODO: FIX! Is wrong!
-//    return this.parseVarVal(current);
-//  }
-
-//  private InitialLoopForEach parseForEach() {
-//
-//    var parenthesized = false;
-//    var token1 = next();
-//    if (token1 != null) {
-//      if (token1.type() == TokenType.OPEN_PAREN) {
-//        next();
-//        parenthesized = true;
-//      } else {
-//        queuedTokens.push(token1);
-//      }
-//    }
-//
-//    var target = parseLevel0();
-//
-//    InitialExpression source = null;
-//
-//    final var maybeIn = next();
-//    if (maybeIn != null) {
-//      if (maybeIn.type() == TokenType.IN) {
-//        source = this.parseLevel0();
-//      } else {
-//
-//        source = target;
-//        target = null;
-//      }
-//    }
-//
-//    if (parenthesized) {
-//
-//      var token2 = next();
-//      if (token2 == null || token2.type() != TokenType.CLOSE_PAREN) {
-//        throw new IllegalArgumentException("If foreach loop opens with parenthesis, it must close with one not %s".formatted(token2));
-//      }
-//
-//      queuedTokens.add(token2);
-//    }
-//
-//    if (target instanceof InitialIdentifier ii) {
-//      target = new InitialVariableDeclaration(ii, MutabilityKind.Immutable, null, false);
-//    }
-//
-//    final var block = this.parseLevel0();
-//
-//    return new InitialLoopForEach(source, target, block);
-//  }
-
   private InitialLoopDoWhile parseDo() {
 
     final var body = parseLevel0();
@@ -1423,63 +1180,5 @@ public class PlangInitialParser {
     final var block = this.parseLevel0();
 
     return new InitialLoopFor(head, block);
-
-//    var t = next();
-//    if (t != null && t.type() == TokenType.OPEN_PAREN) {
-//      t = next();
-//    } else {
-//      throw new IllegalArgumentException("A for-loop must have parenthesis");
-//    }
-//
-//    final var assignments = new ArrayList<InitialAssignment>();
-//
-//    while (t != null && t.type() != TokenType.SEMI_COLON) {
-//
-//      if (t.type() == TokenType.COMMA) {
-//        t = next();
-//        continue;
-//      }
-//
-//      final var dec = parseVarVal(t);
-//      if (dec instanceof InitialAssignment ia) {
-//        assignments.add(ia);
-//      } else {
-//        throw new IllegalArgumentException("Only assignments are allowed in first for-loop part");
-//      }
-//
-//      t = next();
-//    }
-//
-//    final var predicate = this.parseLevel0();
-//
-//    t = next();
-//    if (t == null || t.type() != TokenType.SEMI_COLON) {
-//      throw new IllegalArgumentException("There must be a semi-colon after the predicate");
-//    }
-//
-//    final var steppers = new ArrayList<InitialExpression>();
-//    do {
-//
-//      if (t.type() == TokenType.COMMA) {
-//        continue;
-//      }
-//
-//      final var step = parseLevel0();
-//      if (step != null) {
-//        steppers.add(step);
-//      }
-//
-//      // TODO: This is probably bad -- since it could end up eating up all the rest of the file.
-//    } while ((t = next()) != null && t.type() != TokenType.CLOSE_PAREN);
-//
-//    stayOrNext(TokenType.OPEN_BRACE, null);
-//    final var block = this.parseOptionallyEnclosedBlock();
-//
-//    return new InitialLoopFor(
-//      assignments.toArray(new InitialAssignment[0]),
-//      predicate,
-//      steppers.toArray(new InitialExpression[0]),
-//      block
-//    );
   }
 }
