@@ -1,0 +1,16 @@
+package com.github.stmated.plang.ast;
+
+import com.github.stmated.plang.ast.visitor.AstVisitor;
+
+public record AstComment(String content) implements AstExpression {
+
+  @Override
+  public String toString() {
+    return "/*" + content + " */";
+  }
+
+  @Override
+  public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    return visitor.visitComment(this);
+  }
+}
