@@ -1,12 +1,7 @@
 package com.github.stmated.plang.parser;
 
-import com.github.stmated.plang.ast.AstBinaryOperation;
-import com.github.stmated.plang.ast.AstBinaryOperationType;
-import com.github.stmated.plang.ast.AstExpression;
-import com.github.stmated.plang.ast.AstIdentifier;
-import com.github.stmated.plang.ast.AstLiteral;
-import com.github.stmated.plang.ast.AstProgram;
-import com.github.stmated.plang.ast.visitor.AstVisitor;
+import com.github.stmated.plang.ast.model.*;
+import com.github.stmated.plang.ast.AstVisitor;
 import com.github.stmated.plang.lexer.PlangLexer;
 import com.github.stmated.plang.lexer.PlangLexerSteps;
 import java.io.IOException;

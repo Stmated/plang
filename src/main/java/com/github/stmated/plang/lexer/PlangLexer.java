@@ -1,8 +1,6 @@
 package com.github.stmated.plang.lexer;
 
 import com.github.stmated.plang.parser.NoSyncBufferedReader;
-import com.github.stmated.plang.parser.Token;
-import com.github.stmated.plang.parser.TokenType;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;

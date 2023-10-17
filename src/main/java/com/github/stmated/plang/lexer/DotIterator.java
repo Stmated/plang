@@ -1,7 +1,5 @@
 package com.github.stmated.plang.lexer;
 
-import com.github.stmated.plang.parser.Token;
-import com.github.stmated.plang.parser.TokenType;
 import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.Queue;

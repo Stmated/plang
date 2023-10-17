@@ -1,8 +1,11 @@
 package com.github.stmated.plang.parser;
 
-import com.github.stmated.plang.hir.MutabilityKind;
+import com.github.stmated.plang.ast.model.*;
+//import com.github.stmated.plang.ast.model.HirMutabilityKind;
 import com.github.stmated.plang.ast.*;
 
+import com.github.stmated.plang.lexer.Token;
+import com.github.stmated.plang.lexer.TokenType;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -496,7 +499,7 @@ public class PlangAstParser {
   private AstExpression parseVarVal(final Token token) {
 
     final var identifier = this.parseIdentifier();
-    final var mutabilityKind = (token.type() == TokenType.VAR) ? MutabilityKind.Mutable : MutabilityKind.Immutable;
+    final var mutabilityKind = (token.type() == TokenType.VAR) ? AstMutabilityKind.Mutable : AstMutabilityKind.Immutable;
     // TODO: If possible generalize this into an "InitialLabel"?
 
     AstExpression type;
@@ -871,7 +874,7 @@ public class PlangAstParser {
 
         return new AstVariableDeclaration(
           identifier,
-          MutabilityKind.Immutable,
+          AstMutabilityKind.Immutable,
           null,
           true
         );
