@@ -142,10 +142,6 @@ public interface InitialVisitor<T> {
     return aggregate(visit(expr.head()), visit(expr.block()));
   }
 
-  default T visitLoopForEach(InitialLoopForEach expr) {
-    return aggregate(aggregate(visit(expr.target()), visit(expr.source())), visit(expr.body()));
-  }
-
   default T visitLoopWhile(InitialLoopWhile expr) {
     return aggregate(visit(expr.predicate()), visit(expr.body()));
   }
