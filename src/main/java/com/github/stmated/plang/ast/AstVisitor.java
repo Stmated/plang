@@ -79,7 +79,7 @@ public interface AstVisitor<T> {
     return visit(expr.exported());
   }
 
-  default <E extends AstExpression> T visitExpressionCollection(AstExpressionCollection<E> expr) {
+  default T visitExpressionCollection(AstExpressionCollection expr) {
     return visit(expr.children());
   }
 
@@ -236,5 +236,9 @@ public interface AstVisitor<T> {
 
   default T visitIn(AstIn expr) {
     return aggregate(visit(expr.lhs()), visit(expr.rhs()));
+  }
+
+  default T visitLoop(AstLoop expr) {
+    return visit(expr.body());
   }
 }

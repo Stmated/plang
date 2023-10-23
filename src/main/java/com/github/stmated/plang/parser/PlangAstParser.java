@@ -2,7 +2,6 @@ package com.github.stmated.plang.parser;
 
 import com.github.stmated.plang.ast.model.*;
 //import com.github.stmated.plang.ast.model.HirMutabilityKind;
-import com.github.stmated.plang.ast.*;
 
 import com.github.stmated.plang.lexer.Token;
 import com.github.stmated.plang.lexer.TokenType;
@@ -228,7 +227,7 @@ public class PlangAstParser {
       if (t == TokenType.AND || t == TokenType.OR) {
         final var rhs = parseLevel4();
         if (rhs != null) {
-          return new AstBinaryOperation(lhs, AstBinaryOperationType.fromTokenType(t), rhs);
+          return new AstBinaryOperation(lhs, AstBinaryOperationKind.fromTokenType(t), rhs);
         } else {
           throw new IllegalArgumentException("No RHS for binary boolean logical operator");
         }
@@ -254,7 +253,7 @@ public class PlangAstParser {
       if (t == TokenType.EQUALS || t == TokenType.LTE || t == TokenType.GTE || t == TokenType.LT || t == TokenType.GT || t == TokenType.IS) {
         final var rhs = parseLevel6();
         if (rhs != null) {
-          return new AstBinaryOperation(lhs, AstBinaryOperationType.fromTokenType(t), rhs);
+          return new AstBinaryOperation(lhs, AstBinaryOperationKind.fromTokenType(t), rhs);
         } else {
           throw new IllegalArgumentException("No RHS for binary boolean comparison operator");
         }
@@ -280,7 +279,7 @@ public class PlangAstParser {
       if (t == TokenType.PLUS || t == TokenType.MINUS) {
         final var rhs = parseLevel6(); // Recursive to same level
         if (rhs != null) {
-          return new AstBinaryOperation(lhs, AstBinaryOperationType.fromTokenType(t), rhs);
+          return new AstBinaryOperation(lhs, AstBinaryOperationKind.fromTokenType(t), rhs);
         } else {
           throw new IllegalArgumentException("No RHS for binary boolean logical operator");
         }
@@ -306,7 +305,7 @@ public class PlangAstParser {
       if (t == TokenType.MULTIPLY || t == TokenType.DIVIDE) {
         final var rhs = parseLevel8();
         if (rhs != null) {
-          return new AstBinaryOperation(lhs, AstBinaryOperationType.fromTokenType(t), rhs);
+          return new AstBinaryOperation(lhs, AstBinaryOperationKind.fromTokenType(t), rhs);
         } else {
           throw new IllegalArgumentException("No RHS for binary boolean logical operator");
         }
@@ -338,7 +337,7 @@ public class PlangAstParser {
         || t == TokenType.BIT_OR) {
         final var rhs = parseLevel8(); // Recursive
         if (rhs != null) {
-          return new AstBinaryOperation(lhs, AstBinaryOperationType.fromTokenType(t), rhs);
+          return new AstBinaryOperation(lhs, AstBinaryOperationKind.fromTokenType(t), rhs);
         } else {
           throw new IllegalArgumentException("No RHS for math operator");
         }
@@ -457,7 +456,7 @@ public class PlangAstParser {
       case LITERAL_DECIMAL -> new AstLiteral(Double.parseDouble(token.content()));
       case LITERAL_BOOLEAN_FALSE -> new AstLiteral(false);
       case LITERAL_BOOLEAN_TRUE -> new AstLiteral(true);
-      case LITERAL_STRING -> new AstLiteral(token.content());
+      case LITERAL_STRING -> new AstLiteral(token.content().substring(1, token.content().length() - 1));
       case LITERAL_STRING_TEMPLATE -> new AstLiteral(token.content()); // TODO: Where and how to parse this?
       case LITERAL_INTEGER_BINARY -> new AstLiteral(Integer.parseInt(token.content(), 2));
       case LITERAL_INTEGER_HEX -> new AstLiteral(Integer.parseInt(token.content(), 16));
@@ -751,7 +750,7 @@ public class PlangAstParser {
 
     this.stayOrNext(TokenType.CLOSE_BRACE);
 
-    return new AstMatch(target, new AstExpressionCollection<>(collection.toArray(new AstExpression[0])));
+    return new AstMatch(target, new AstExpressionCollection(collection.toArray(new AstExpression[0])));
   }
 
   private boolean ifNextAndBacktrack(TokenType tt) {
@@ -816,12 +815,12 @@ public class PlangAstParser {
     );
 
     if (collection.size() == 1) {
-      return new AstParen(collection.get(0));
+      return new AstParen(collection.getFirst());
     } else if (collection.isEmpty()) {
       return new AstParen(null);
+    } else {
+      return new AstParen(new AstExpressionCollection(collection.toArray(new AstExpression[0])));
     }
-
-    return new AstParen(new AstExpressionCollection<>(collection.toArray(new AstExpression[0])));
   }
 
   private AstBracket parseBracket() {
@@ -1144,7 +1143,7 @@ public class PlangAstParser {
         this::parseLevel0
       );
 
-      return new AstNew(target, new AstExpressionCollection<>(collection.toArray(new AstExpression[0])));
+      return new AstNew(target, new AstExpressionCollection(collection.toArray(new AstExpression[0])));
     }
 
     return new AstNew(target, null);

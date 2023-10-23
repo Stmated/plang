@@ -4,8 +4,8 @@ import com.github.stmated.plang.ast.AstVisitor;
 
 import java.util.Arrays;
 
-public record AstExpressionCollection<T extends AstExpression>(
-    T[] children
+public record AstExpressionCollection(
+  AstExpression[] children
 ) implements AstExpression {
 
   @Override

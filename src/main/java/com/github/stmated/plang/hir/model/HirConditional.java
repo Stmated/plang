@@ -4,5 +4,5 @@ public record HirConditional(
     HirExpression predicate,
     HirExpression pass,
     HirExpression fail
-) {
+) implements HirExpression {
 }

@@ -4,7 +4,7 @@ import com.github.stmated.plang.ast.AstVisitor;
 
 public record AstBinaryOperation(
   AstExpression lhs,
-  AstBinaryOperationType type,
+  AstBinaryOperationKind type,
   AstExpression rhs
 ) implements AstExpression {
 

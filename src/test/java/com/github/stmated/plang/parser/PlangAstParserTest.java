@@ -34,7 +34,7 @@ class PlangAstParserTest {
     final var rhs = assertType(AstLiteral.class, ibo.rhs());
 
     Assertions.assertEquals(1, lhs.value());
-    Assertions.assertEquals(AstBinaryOperationType.ADD, ibo.type());
+    Assertions.assertEquals(AstBinaryOperationKind.ADD, ibo.type());
     Assertions.assertEquals(1, rhs.value());
   }
 
@@ -51,9 +51,9 @@ class PlangAstParserTest {
     final var lhs = assertType(AstBinaryOperation.class, ibo.lhs());
     final var rhs = assertType(AstBinaryOperation.class, ibo.rhs());
 
-    Assertions.assertEquals(AstBinaryOperationType.AND, ibo.type());
-    Assertions.assertEquals(AstBinaryOperationType.LT, lhs.type());
-    Assertions.assertEquals(AstBinaryOperationType.GT, rhs.type());
+    Assertions.assertEquals(AstBinaryOperationKind.AND, ibo.type());
+    Assertions.assertEquals(AstBinaryOperationKind.LT, lhs.type());
+    Assertions.assertEquals(AstBinaryOperationKind.GT, rhs.type());
   }
 
   // TODO: Create tests that checks exact result of:
@@ -66,12 +66,28 @@ class PlangAstParserTest {
 
     final var program = this.parseProgram("for (var i = 0; i < 10; i.increment()) { }");
 
+    Object o = null;
+
+    switch (o) {
+      case AstProgram astProgram -> {
+        var i = 0;
+      }
+      case AstBinaryOperation astBinaryOperation -> {
+        var i = 0;
+      }
+      case AstMutabilityKind astMutabilityKind -> {
+        var i = 0;
+      }
+      case null, default -> {
+      }
+    }
+
 //    as(program.children()[0], AstLoopFor.class, loop -> {
 //      is(loop.assignments()[0].lhs(), AstVariableDeclaration.class, it -> it.identifier().name(), "i");
 //
 //      as(loop.predicate(), AstBinaryOperation.class, pred -> {
 //        isIdentifier(pred.lhs(), "i");
-//        Assertions.assertEquals(AstBinaryOperationType.LT, pred.type());
+//        Assertions.assertEquals(AstBinaryOperationKind.LT, pred.type());
 //        isLiteral(pred.rhs(), 10);
 //      });
 //
@@ -96,18 +112,18 @@ class PlangAstParserTest {
     as(program.children()[0], AstBinaryOperation.class, ibo -> {
 
       as(ibo.lhs(), AstBinaryOperation.class, lhs -> {
-        Assertions.assertEquals(AstBinaryOperationType.LT, lhs.type());
+        Assertions.assertEquals(AstBinaryOperationKind.LT, lhs.type());
       });
 
       as(ibo.rhs(), AstBinaryOperation.class, rhs -> {
-        Assertions.assertEquals(AstBinaryOperationType.OR, rhs.type());
+        Assertions.assertEquals(AstBinaryOperationKind.OR, rhs.type());
 
         as(rhs.lhs(), AstBinaryOperation.class, rhs_lhs -> {
-          Assertions.assertEquals(AstBinaryOperationType.GT, rhs_lhs.type());
+          Assertions.assertEquals(AstBinaryOperationKind.GT, rhs_lhs.type());
         });
 
         as(rhs.rhs(), AstBinaryOperation.class, rhs_rhs -> {
-          Assertions.assertEquals(AstBinaryOperationType.Equals, rhs_rhs.type());
+          Assertions.assertEquals(AstBinaryOperationKind.EQUALS, rhs_rhs.type());
         });
       });
     });
@@ -125,18 +141,18 @@ class PlangAstParserTest {
     as(program.children()[0], AstBinaryOperation.class, ibo -> {
 
       as(ibo.lhs(), AstBinaryOperation.class, lhs -> {
-        Assertions.assertEquals(AstBinaryOperationType.LT, lhs.type());
+        Assertions.assertEquals(AstBinaryOperationKind.LT, lhs.type());
       });
 
       as(ibo.rhs(), AstBinaryOperation.class, rhs -> {
-        Assertions.assertEquals(AstBinaryOperationType.OR, rhs.type());
+        Assertions.assertEquals(AstBinaryOperationKind.OR, rhs.type());
 
         as(rhs.lhs(), AstBinaryOperation.class, rhs_lhs -> {
-          Assertions.assertEquals(AstBinaryOperationType.GT, rhs_lhs.type());
+          Assertions.assertEquals(AstBinaryOperationKind.GT, rhs_lhs.type());
         });
 
         as(rhs.rhs(), AstBinaryOperation.class, rhs_rhs -> {
-          Assertions.assertEquals(AstBinaryOperationType.Equals, rhs_rhs.type());
+          Assertions.assertEquals(AstBinaryOperationKind.EQUALS, rhs_rhs.type());
         });
       });
     });

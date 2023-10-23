@@ -1,6 +1,6 @@
 package com.github.stmated.plang.hir.model;
 
-public record HirArgument(HirExpression expression) implements HirExpression {
+public record HirReturn(HirExpression expression) implements HirExpression {
 
 //  @Override
 //  public HirType getResultType() {

@@ -1,6 +1,6 @@
 package com.github.stmated.plang.hir.model;
 
-public record HirTrait(HirExpression[] children) implements HirExpression {
+public record HirTuple(HirTupleKeyValue[] children) implements HirExpression {
 
 //  @Override
 //  public HirType getResultType() {

@@ -2,23 +2,29 @@ package com.github.stmated.plang.hir.model;
 
 public enum HirBinaryOperationKind {
 
-  Plus,
-  Minus,
-  Multiply,
-  Divide,
-  Modulus,
-  Remainder,
-  Pow,
-  BitShiftLeft,
-  BitShiftRight,
+  ADD,
+  SUBTRACT,
+  MULTIPLY,
+  DIVIDE,
+  MODULUS,
+  REMAINDER,
+  POW,
+
+  BIT_SHIFT_LEFT,
+  BIT_SHIFT_RIGHT,
+
   LTE,
   GTE,
-  Equals,
+
   LT,
   GT,
-  Or,
-  And,
 
-  BitOr,
-  BitAnd,
+  EQUALS,
+  IS,
+
+  OR,
+  AND,
+
+  BIT_OR,
+  BIT_AND,
 }
