@@ -1,5 +1,6 @@
 package com.github.stmated.plang.lexer;
 
+import com.github.stmated.plang.exceptions.UnexpectedTokenException;
 import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.Queue;
@@ -32,39 +33,60 @@ class DecimalIterator implements Iterator<Token> {
 
     // Convert integers with decimals into decimals
     final var t = inner.next();
-    if (t != null) {
-      if (t.type() == TokenType.DOT && inner.hasNext()) {
-        final var t2 = inner.next();
-        if (t2 != null && t2.type() == TokenType.LITERAL_INTEGER) {
+    if (t != null && t.type() == TokenType.DOT && inner.hasNext()) {
+      final var t2 = inner.next();
+      if (t2 != null && t2.type() == TokenType.LITERAL_INTEGER) {
 
-          final var content = t.content() + t2.content();
-          return new Token(TokenType.LITERAL_DECIMAL, t.start(), t2.end(), content);
+        final var content = t.content() + t2.content();
 
-        } else if (t2 != null) {
-          queue.add(t2);
-          return t;
-        }
-      } else if (t.type() == TokenType.LITERAL_INTEGER && inner.hasNext()) {
-
-        final var t2 = inner.next();
-        if (t2 != null && t2.type() == TokenType.DOT) {
-
-          final var t3 = inner.hasNext() ? inner.next() : null;
-          if (t3 != null && t3.type() == TokenType.LITERAL_INTEGER) {
-
-            final var content = t.content() + t2.content() + t3.content();
-            return new Token(TokenType.LITERAL_DECIMAL, t.start(), t3.end(), content);
+        if (inner.hasNext()) {
+          final var t3 = inner.next();
+          if (t3.type() == TokenType.DOT) {
+            // ".123." is not valid syntax. Fail early.
+            // TODO: This should change. Should be up to parser whether it's useful or not.
+            throw new UnexpectedTokenException(t3);
           } else {
-
-            // TODO: Is this also a decimal? "1."
-            queue.add(t2);
             queue.add(t3);
-            return t;
           }
+        }
+
+        return new Token(TokenType.LITERAL_DECIMAL, t.start(), t2.end(), content);
+
+      } else if (t2 != null) {
+        queue.add(t2);
+        return t;
+      }
+    } else if (t != null && t.type() == TokenType.LITERAL_INTEGER && inner.hasNext()) {
+
+      final var t2 = inner.next();
+      if (t2 != null && t2.type() == TokenType.DOT) {
+
+        final var t3 = inner.hasNext() ? inner.next() : null;
+        if (t3 != null && t3.type() == TokenType.LITERAL_INTEGER) {
+
+          final var content = t.content() + t2.content() + t3.content();
+
+          if (inner.hasNext()) {
+            final var t4 = inner.next();
+            if (t4.type() == TokenType.DOT) {
+              // "123.123." is not valid syntax. Fail early.
+              // TODO: This should change. Should be up to parser whether it's useful or not.
+              throw new UnexpectedTokenException(t4);
+            } else {
+              queue.add(t4);
+            }
+          }
+
+          return new Token(TokenType.LITERAL_DECIMAL, t.start(), t3.end(), content);
         } else {
+
           queue.add(t2);
+          queue.add(t3);
           return t;
         }
+      } else {
+        queue.add(t2);
+        return t;
       }
     }
 

@@ -13,7 +13,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,9 +23,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Plang {
 
-  public static record Result(int returnCode, String output, String error) {}
+  public record Result(int returnCode, String output, String error) {}
 
-  public static AstProgram codeToAst(String code) throws Exception {
+  public static AstProgram codeToAst(String code) {
 
     final var pass2 = new PlangLexerSteps();
     try (final var tokens = new PlangLexer(stringToStream(code))) {
@@ -34,23 +33,38 @@ public class Plang {
       final var parser = new PlangAstParser(transformed);
 
       return parser.parse();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 
   public static HirProgram astToHir(AstProgram ast) {
-    return AstToHirLowering.lower_program(ast);
+    return new AstToHirLowering().lower_program(ast);
   }
 
-  public static Path hirToPath(HirProgram hir) throws IOException, InterruptedException {
+  public static Path hirToPath(HirProgram hir) {
 
-    final var randomPath = Files
-      .createTempDirectory(STR."plang-\{UUID.randomUUID()}")
-      .resolve(UUID.randomUUID().toString());
+    final Path randomPath;
 
-    return HirToLLVMLowering.lower_program(hir, randomPath);
+    try {
+
+      randomPath = Files
+        .createTempDirectory(STR."plang-\{UUID.randomUUID()}")
+        .resolve(UUID.randomUUID().toString());
+
+    } catch (IOException ex) {
+
+      throw new RuntimeException("Could not create temp directory", ex);
+    }
+
+    try {
+      return new HirToLLVMLowering().lower_program(hir, randomPath);
+    } catch (IOException | InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
 
-  public static Result pathToResult(Path path, boolean deleteDirectory) throws IOException, InterruptedException {
+  public static Result pathToResult(Path path, boolean deleteDirectory) {
 
     try {
 
@@ -76,38 +90,44 @@ public class Plang {
       final var returnCode = p.waitFor();
       return new Result(returnCode, sbOutput.toString(), sbError.toString());
 
+    } catch (IOException | InterruptedException e) {
+      throw new RuntimeException(e);
     } finally {
 
       if (deleteDirectory) {
 
-        Files.walk(path.getParent())
-          .sorted(Comparator.reverseOrder())
-          .forEach(p -> {
-            try {
-              log.debug("Deleting {}", p);
-              Files.delete(p);
-            } catch (IOException ex) {
-              log.error(STR."Could not delete '\{p}'", ex);
-            }
-          });
+        try {
+          Files.walk(path.getParent())
+            .sorted(Comparator.reverseOrder())
+            .forEach(p -> {
+              try {
+                log.debug("Deleting {}", p);
+                Files.delete(p);
+              } catch (IOException ex) {
+                log.error(STR."Could not delete '\{p}'", ex);
+              }
+            });
+        } catch (IOException ex) {
+          log.error(STR."Could not delete the temporary files inside '\{path.getParent()}'", ex);
+        }
       }
     }
   }
 
-  public static Path codeToPath(String code) throws Exception {
+  public static Path codeToPath(String code) {
 
     final var ast = Plang.codeToAst(code);
     final var hir = Plang.astToHir(ast);
     return Plang.hirToPath(hir);
   }
 
-  public static Result hirToResult(HirProgram hir) throws IOException, InterruptedException {
+  public static Result hirToResult(HirProgram hir) {
 
     final var path = Plang.hirToPath(hir);
     return Plang.pathToResult(path, true);
   }
 
-  public static Result codeToResult(String code) throws Exception {
+  public static Result codeToResult(String code) {
 
     final var path = Plang.codeToPath(code);
     return Plang.pathToResult(path, true);

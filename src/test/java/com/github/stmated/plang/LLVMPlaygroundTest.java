@@ -64,7 +64,7 @@ class LLVMPlaygroundTest {
     PointerPointer<Pointer> phiBlocks = new PointerPointer<>(2)
         .put(0, entry)
         .put(1, ifFalse);
-    LLVMAddIncoming(phi, phiValues, phiBlocks, /* pairCount */ 2);
+    LLVMAddIncoming(phi, phiValues, phiBlocks, 2);
     LLVMBuildRet(builder, phi);
 
     // Stage 3: Verify the module using LLVMVerifier

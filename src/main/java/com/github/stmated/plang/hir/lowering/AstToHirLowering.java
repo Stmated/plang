@@ -15,6 +15,7 @@ import com.github.stmated.plang.ast.model.AstNoOp;
 import com.github.stmated.plang.ast.model.AstParen;
 import com.github.stmated.plang.ast.model.AstProgram;
 import com.github.stmated.plang.ast.model.AstReturn;
+import com.github.stmated.plang.ast.model.AstThen;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.hir.model.HirArgument;
 import com.github.stmated.plang.hir.model.HirBinaryOperation;
@@ -39,11 +40,11 @@ import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 
 public class AstToHirLowering {
 
-  public static HirProgram lower_program(AstProgram astProgram) {
+  public HirProgram lower_program(AstProgram astProgram) {
     return new HirProgram(lower_expressions(astProgram.children()));
   }
 
-  public static HirExpression[] lower_expressions(AstExpression[] astExpressions) {
+  private HirExpression[] lower_expressions(AstExpression[] astExpressions) {
 
     final var lowered = new HirExpression[astExpressions.length];
     var targetIndex = 0;
@@ -65,7 +66,7 @@ public class AstToHirLowering {
     return lowered;
   }
 
-  public static HirExpression lower_expression(AstExpression expr) {
+  public HirExpression lower_expression(AstExpression expr) {
 
     return switch (expr) {
       case AstLoopFor ast -> lower_loop_for(ast);
@@ -76,17 +77,19 @@ public class AstToHirLowering {
       case AstBlock ast -> lower_block(ast);
       case AstCall ast -> lower_call(ast);
       case AstIdentifier ast -> lower_identifier(ast);
+      case AstParen ast -> lower_paren(ast);
+      case AstThen ast -> lower_expression(ast.expression());
       case AstNoOp ast -> null;
       default ->
         throw new IllegalArgumentException(STR."Unknown AST Expression (\{expr.getClass().getSimpleName()}) '\{expr}'");
     };
   }
 
-  private static HirIdentifier lower_identifier(AstIdentifier ast) {
+  private HirIdentifier lower_identifier(AstIdentifier ast) {
     return new HirIdentifier(ast.name());
   }
 
-  private static HirCall lower_call(AstCall ast) {
+  private HirCall lower_call(AstCall ast) {
 
     final var target = lower_expression(ast.target());
     String targetName = switch (target) {
@@ -120,19 +123,26 @@ public class AstToHirLowering {
     );
   }
 
-  private static HirBlock lower_block(AstBlock ast) {
-    return new HirBlock(lower_expressions(ast.children()));
+  private HirExpression lower_block(AstBlock ast) {
+
+    final var lowered = lower_expressions(ast.children());
+
+    if (lowered.length == 1) {
+      return lower_expression(ast.children()[0]);
+    }
+
+    return new HirBlock(lowered);
   }
 
-  private static HirReturn lower_return(AstReturn ast) {
+  private HirReturn lower_return(AstReturn ast) {
     return new HirReturn(lower_expression(ast.expression()));
   }
 
-  private static HirLiteral lower_literal(AstLiteral ast) {
+  private HirLiteral lower_literal(AstLiteral ast) {
     return new HirLiteral(ast.value());
   }
 
-  private static HirBinaryOperation lower_binary_operation(AstBinaryOperation ast) {
+  private HirBinaryOperation lower_binary_operation(AstBinaryOperation ast) {
 
     return new HirBinaryOperation(
       lower_expression(ast.lhs()),
@@ -141,7 +151,7 @@ public class AstToHirLowering {
     );
   }
 
-  private static HirBinaryOperationKind lower_binary_operation_type(AstBinaryOperationKind type) {
+  private HirBinaryOperationKind lower_binary_operation_type(AstBinaryOperationKind type) {
     return switch (type) {
       case ADD -> HirBinaryOperationKind.ADD;
       case SUBTRACT -> HirBinaryOperationKind.SUBTRACT;
@@ -165,7 +175,7 @@ public class AstToHirLowering {
     };
   }
 
-  public static HirLoop lower_loop_for(AstLoopFor astLoopFor) {
+  private HirLoop lower_loop_for(AstLoopFor astLoopFor) {
 
     final var loweredHead = lower_expression(astLoopFor.head());
 
@@ -185,17 +195,19 @@ public class AstToHirLowering {
 //    final var loop = new HirLoop(loopBody);
   }
 
-  public static HirExpression lower_paren(AstParen astParen) {
+  private HirExpression lower_paren(AstParen astParen) {
 
     final var astExpr = astParen.expression();
 
     return switch (astExpr) {
       case AstExpressionCollection collection -> lower_paren_expression_collection(collection);
-      default -> throw new NotImplementedException();
+      default -> lower_expression(astExpr);
+
+        //throw new NotImplementedException(STR."Unknown expression '\{astExpr}'");
     };
   }
 
-  public static HirExpression lower_paren_expression_collection(AstExpressionCollection astExpressionCollection) {
+  private HirExpression lower_paren_expression_collection(AstExpressionCollection astExpressionCollection) {
 
     var labeledExpressionCount = 0;
     var unlabeledExpressionCount = 0;
@@ -232,7 +244,7 @@ public class AstToHirLowering {
     }
   }
 
-  public static HirTupleKeyValue lower_labeling_to_tuple_key_value(AstLabeling astLabeling) {
+  private HirTupleKeyValue lower_labeling_to_tuple_key_value(AstLabeling astLabeling) {
 
     return new HirTupleKeyValue(
       lower_expression_to_identifier(astLabeling.lhs()),
@@ -240,17 +252,22 @@ public class AstToHirLowering {
     );
   }
 
-  public static HirIdentifier lower_expression_to_identifier(AstExpression astExpression) {
+  private HirIdentifier lower_expression_to_identifier(AstExpression astExpression) {
 
     throw new NotImplementedException();
   }
 
-  public static HirConditional lower_conditional(AstConditional astConditional) {
+  public HirConditional lower_conditional(AstConditional astConditional) {
+
+    // A conditional is never allowed to not have an "else" -- we must always produce a value
+    final var fail = astConditional.fail() == null
+      ? new HirLiteral(null) // TODO: THIS IS WRONG! It should be some kind of "Optional"
+      : lower_expression(astConditional.fail());
 
     return new HirConditional(
       lower_expression(astConditional.predicate()),
       lower_expression(astConditional.pass()),
-      lower_expression(astConditional.fail())
+      fail
     );
   }
 }

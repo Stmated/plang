@@ -40,7 +40,7 @@ class AstToHirLoweringTest {
       )
     );
 
-    final var hir = AstToHirLowering.lower_conditional(ast);
+    final var hir = new AstToHirLowering().lower_conditional(ast);
 
     Assertions.assertInstanceOf(HirBinaryOperation.class, hir.predicate());
 

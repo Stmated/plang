@@ -26,6 +26,8 @@ import static com.github.stmated.plang.lexer.TokenType.SEMI_COLON;
 import static com.github.stmated.plang.lexer.TokenType.THEN;
 import static com.github.stmated.plang.lexer.TokenType.VAL;
 
+import com.github.stmated.plang.exceptions.UncaughtLexerException;
+import com.github.stmated.plang.exceptions.UnexpectedTokenException;
 import com.github.stmated.plang.lexer.PlangLexer;
 import com.github.stmated.plang.lexer.PlangLexerSteps;
 import com.github.stmated.plang.lexer.Token;
@@ -178,7 +180,9 @@ class PlangLexerTest {
   @Test
   void testTokenizerErrors() {
 
-    Assertions.assertThrows(IllegalArgumentException.class, () ->  this.execute("123.123.123"));
+    final var ex = Assertions.assertThrows(UncaughtLexerException.class, () ->  this.execute("123.123.123"));
+    Assertions.assertInstanceOf(UnexpectedTokenException.class, ex.getCause());
+    Assertions.assertEquals(TokenType.DOT, ((UnexpectedTokenException) ex.getCause()).getToken().type());
   }
 
   @SneakyThrows
@@ -211,12 +215,12 @@ class PlangLexerTest {
     while (iterator.hasNext()) {
       try {
         list.add(iterator.next());
-      } catch (Exception ex) {
+      } catch (Throwable ex) {
 
         final var tokens = list.stream().map(Object::toString).toList();
         final var tokenStrings = String.join(", ", tokens);
 
-        throw new RuntimeException("Exception after %s".formatted(tokenStrings), ex);
+        throw new UncaughtLexerException("Exception after %s".formatted(tokenStrings), ex);
       }
     }
 

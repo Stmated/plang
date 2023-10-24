@@ -1,0 +1,10 @@
+<configuration>
+  <appender name="COLOR" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%blue([%date]) %highlight([%level]) [%green(%logger{10}):%line] %cyan(--) %msg%n</pattern>
+    </encoder>
+  </appender>
+  <root level="debug">
+    <appender-ref ref="COLOR"/>
+  </root>
+</configuration>
