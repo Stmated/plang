@@ -8,22 +8,28 @@ import static org.bytedeco.llvm.global.LLVM.LLVMBuildPhi;
 import static org.bytedeco.llvm.global.LLVM.LLVMPositionBuilderAtEnd;
 
 import com.github.stmated.plang.exceptions.GenericLLVMException;
-import com.github.stmated.plang.exceptions.UncaughtLLVMException;
+import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.exceptions.UnreachableCodeLLVMException;
 import com.github.stmated.plang.hir.model.HirArgument;
+import com.github.stmated.plang.hir.model.HirAssignment;
 import com.github.stmated.plang.hir.model.HirBinaryOperation;
 import com.github.stmated.plang.hir.model.HirBlock;
 import com.github.stmated.plang.hir.model.HirCall;
 import com.github.stmated.plang.hir.model.HirConditional;
 import com.github.stmated.plang.hir.model.HirExpression;
+import com.github.stmated.plang.hir.model.HirExpressionCollection;
+import com.github.stmated.plang.hir.model.HirIdentifier;
 import com.github.stmated.plang.hir.model.HirLiteral;
+import com.github.stmated.plang.hir.model.HirLoop;
+import com.github.stmated.plang.hir.model.HirLoopBreak;
+import com.github.stmated.plang.hir.model.HirLoopContinue;
 import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.hir.model.HirReturn;
+import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -31,7 +37,6 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Stack;
-import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.Pointer;
@@ -56,6 +61,10 @@ public class HirToLLVMLowering {
 
   private final Stack<LLVMValueRef> fnStack = new Stack<>();
   private final Stack<LLVMBasicBlockRef> blockStack = new Stack<>();
+  private final Stack<LLVMScope> scopeStack = new Stack<>();
+
+  private final Map<String, LLVMValueRef> globalStringCache = new HashMap<>();
+  private final Map<Byte, LLVMValueRef> cachedBytes = new HashMap<>();
 
   private LLVMContextRef context;
   private LLVMModuleRef module;
@@ -73,12 +82,26 @@ public class HirToLLVMLowering {
 
     final var result = switch (typeName) {
       case "i32" -> LLVM.LLVMInt32TypeInContext(context);
-      case "i8" -> LLVM.LLVMInt8TypeInContext(context);
+      case "i8", "byte" -> LLVM.LLVMInt8TypeInContext(context);
+      case "float", "float32" -> LLVM.LLVMFloatTypeInContext(context);
+      case "float16" -> LLVM.LLVMHalfTypeInContext(context);
+      case "double", "float64" -> LLVM.LLVMDoubleTypeInContext(context);
       default -> throw new IllegalArgumentException(STR."Unknown type name '\{typeName}'");
     };
 
     typeCache.put(typeName, result);
     return result;
+  }
+
+  private LLVMValueRef getGlobalStringPtr(String str) {
+    return globalStringCache.computeIfAbsent(str, s -> LLVM.LLVMBuildGlobalStringPtr(builder, s, "str"));
+  }
+
+  private LLVMValueRef getByte(byte bite) {
+
+    // Q: Is this worth it? Try with and without.
+    final var charType = getType("byte");
+    return cachedBytes.computeIfAbsent(bite, b -> LLVM.LLVMConstInt(charType, b, 0));
   }
 
   public Path lower_program(HirProgram program, Path output) throws IOException, InterruptedException {
@@ -117,17 +140,22 @@ public class HirToLLVMLowering {
     LLVM.LLVMSetTarget(module, "arm64-apple-macosx14.0.0");
 
     // Stage 3: Verify the module using LLVMVerifier
-    if (LLVM.LLVMVerifyModule(module, LLVM.LLVMPrintMessageAction, error) != 0) {
+    if (LLVM.LLVMVerifyModule(module, LLVM.LLVMReturnStatusAction, error) != 0) {
+
+      final var details = LLVM.LLVMPrintModuleToString(module).getString();
+
+      final var errorMessage = error.getString();
       LLVM.LLVMDisposeMessage(error);
-      throw new IllegalArgumentException(error.getString());
+
+      throw map_error_message_to_exception(errorMessage, details);
     }
 
     // Stage 4: Create a pass pipeline using the legacy pass manager
     var pm = LLVM.LLVMCreatePassManager();
 //    LLVM.LLVMAddAggressiveInstCombinerPass(pm);
-    LLVM.LLVMAddNewGVNPass(pm);
-    LLVM.LLVMAddCFGSimplificationPass(pm);
-    LLVM.LLVMRunPassManager(pm, module);
+//    LLVM.LLVMAddNewGVNPass(pm);
+//    LLVM.LLVMAddCFGSimplificationPass(pm);
+//    LLVM.LLVMRunPassManager(pm, module);
 
     // Stage 5: Execute the code using MCJIT
 //    LLVMExecutionEngineRef engine = new LLVMExecutionEngineRef();
@@ -138,9 +166,28 @@ public class HirToLLVMLowering {
 //      return;
 //    }
 
-    addMainFunction(program);
+    try {
 
-    // Save the IR to a file.
+      scopeStack.push(new LLVMScope("global"));
+      addMainFunction(program);
+    } finally {
+      scopeStack.pop();
+    }
+
+    // Stage 3: Verify the module using LLVMVerifier
+    if (LLVM.LLVMVerifyModule(module, LLVM.LLVMReturnStatusAction, error) != 0) {
+
+      final var details = LLVM.LLVMPrintModuleToString(module).getString();
+
+      final var errorString = error.getString();
+      LLVM.LLVMDisposeMessage(error);
+
+      throw map_error_message_to_exception(errorString, details);
+    }
+
+    if (log.isTraceEnabled()) {
+      log.trace(LLVM.LLVMPrintModuleToString(module).getString());
+    }
 
     final var directoryPath = output.toAbsolutePath().getParent();
     if (!Files.exists(directoryPath)) {
@@ -152,8 +199,6 @@ public class HirToLLVMLowering {
     final var executablePath = directoryPath.resolve(STR."\{outputName}\{extension}").toAbsolutePath();
 
     LLVM.LLVMWriteBitcodeToFile(module, bitcodePath.toString());
-
-    LLVM.LLVMDumpModule(module);
 
     // Compile the .ll to .o using clang/llvm
     executeCommand(new String[]{"clang", "-c", bitcodePath.toString(), "-o", objectPath.toString()});
@@ -178,7 +223,7 @@ public class HirToLLVMLowering {
     }
   }
 
-  private void addMainFunction(HirProgram program) {
+  private LLVMValueRef addMainFunction(HirProgram program) {
 
     // LLVM Types
     var i32Type = LLVM.LLVMInt32TypeInContext(context);
@@ -194,30 +239,6 @@ public class HirToLLVMLowering {
     );
     var entryBlock = LLVM.LLVMAppendBasicBlockInContext(context, mainFn, "entry");
     LLVM.LLVMPositionBuilderAtEnd(builder, entryBlock);
-
-    // TODO: Add the entry code here
-//
-//    // [OPTIONAL] Create factorial argument
-//    LLVMValueRef factorialFn = LLVMGetNamedFunction(module, "factorial");
-//
-//    LLVMTypeRef factorialType = LLVMFunctionType(i32Type, i32Type, 1, 0);
-//
-//    var arguments = new PointerPointer<>(1)
-//      .put(0, LLVMConstInt(i32Type, 30, 0));
-//
-//    LLVMValueRef factorialCall = LLVMBuildCall2(
-//      builder,
-//      factorialType,
-//      factorialFn,
-//      arguments, 1, "factorialtmp"
-//    );
-//
-//    LLVMTypeRef[] printfArgs = {i8PointerType};
-//    var printFnType = LLVMFunctionType(i32Type, new PointerPointer<>(printfArgs), printfArgs.length, 1);
-//    LLVMValueRef printfFn = LLVMAddFunction(module, "printf", printFnType);
-//
-//    var format = LLVMBuildGlobalStringPtr(builder, "%ld\n", "format");
-//    LLVMBuildCall2(builder, printFnType, printfFn, new PointerPointer<>(format, factorialCall), 2, "printfCall");
 
     LLVMValueRef lastExpression;
 
@@ -239,54 +260,26 @@ public class HirToLLVMLowering {
 
     if (LLVM.LLVMIsATerminatorInst(lastExpression) == null) {
 
-//      LLVMPositionBuilderAtEnd(builder, entryBlock);
-      LLVM.LLVMBuildRet(builder, lastExpression);
+      dereferenceAndBuildRet(lastExpression);
+//      LLVM.LLVMBuildRet(builder, lastExpression);
     }
 
-    final var exception = captureError(() -> LLVM.LLVMVerifyFunction(mainFn, LLVM.LLVMPrintMessageAction));
-
-    if (exception != null) {
-      throw exception;
-    }
+    return mainFn;
   }
 
-  private RuntimeException captureError(Supplier<Integer> runnable) {
+  private GenericLLVMException map_error_message_to_exception(String errorMessages, String details) {
 
-    final var originalErrStream = System.err;
-    final var originalOutStream = System.out;
+    if (errorMessages != null && !errorMessages.isEmpty()) {
 
-    try {
-
-      // Create a custom output stream to capture the messages
-      final var baosErr = new ByteArrayOutputStream();
-      final var baosOut = new ByteArrayOutputStream();
-      System.setErr(new PrintStream(baosErr));
-      System.setOut(new PrintStream(baosOut));
-
-      if (runnable.get() != 0) {
-
-        var errorMessages = baosErr.toString();
-        if (errorMessages != null && errorMessages.length() > 0) {
-
-          if (containsAll(errorMessages, new String[] {"terminator", "found", "middle"})) {
-            throw new UnreachableCodeLLVMException(errorMessages);
-          }
-
-        } else {
-          errorMessages = "Unknown error";
-        }
-
-        return new GenericLLVMException(errorMessages);
+      if (containsAll(errorMessages, new String[]{"terminator", "found", "middle"})) {
+        throw new UnreachableCodeLLVMException(errorMessages, details);
       }
 
-      return null;
-
-    } finally {
-
-      // Restore original error stream
-      System.setErr(originalErrStream);
-      System.setOut(originalOutStream);
+    } else {
+      errorMessages = "Unknown error";
     }
+
+    return new GenericLLVMException(errorMessages, details);
   }
 
   private boolean containsAll(String haystack, String[] needles) {
@@ -305,21 +298,7 @@ public class HirToLLVMLowering {
   private LLVMValueRef lower_expression(HirExpression hirExpression) {
 
     return switch (hirExpression) {
-      case HirProgram hir -> {
-        LLVMValueRef lastRef = null;
-        for (final var expr : hir.expressions()) {
-          lastRef = translate_expression(expr);
-        }
-
-        yield lastRef;
-      }
-//      case HirBinaryOperation hir -> lower_binary_operation(module, builder, hir);
-//      case HirNoOp hir -> {
-//        // Do nothing
-//      }
       default -> translate_expression(hirExpression);
-
-      //throw new IllegalArgumentException(STR."Unknown expression '\{hirExpression.getClass().getSimpleName()}'");
     };
   }
 
@@ -361,40 +340,298 @@ public class HirToLLVMLowering {
   private LLVMValueRef lower_llvm_return(HirReturn hir) {
 
     final var expr = translate_expression(hir.expression());
-    return LLVM.LLVMBuildRet(builder, expr);
+    return dereferenceAndBuildRet(expr);
+  }
+
+  /**
+   * Dereferences the given expression and builds a return statement.
+   * <p>
+   * TODO: Is most likely incorrect, since we might actually *want* to return the pointer and not the underlying value...
+   *
+   * @param expr the expression to dereference
+   * @return the return statement
+   */
+  private LLVMValueRef dereferenceAndBuildRet(LLVMValueRef expr) {
+
+    final var type = LLVM.LLVMTypeOf(expr);
+    if (LLVM.LLVMGetTypeKind(type) == LLVM.LLVMPointerTypeKind) {
+
+      // TODO: NEED TO KEEP TRACK OF THE TYPE! NEED TO TRUST WHAT THE HIR IS TELLING US -- BLINDLY!
+      final var loaded = LLVM.LLVMBuildLoad2(builder, getType("i32"), expr, "loadedA");
+
+      return LLVM.LLVMBuildRet(builder, loaded);
+
+    } else {
+
+      return LLVM.LLVMBuildRet(builder, expr);
+    }
+  }
+
+  private LLVMValueRef load_or_reuse(HirExpression hir) {
+
+    return switch (hir) {
+      case HirIdentifier identifier -> {
+        final var details = lower_identifier_detailed(identifier);
+        final var preLoaded = details.loaded().get();
+        if (preLoaded != null) {
+          yield preLoaded;
+        }
+
+        // TODO: This should be known and trusted from the HIR nodes, and NOT investigated through LLVM
+        // TODO: WE MUST KEEP TRACK OF THIS OURSELVES! SINCE LLVM ONLY KNOWS OF IT AS A POINTER!
+        final var lhsType = getType("i32"); //LLVM.LLVMTypeOf(lhs);
+
+        final var loaded = LLVM.LLVMIsConstant(details.ref()) == 1
+          ? details.ref()
+          : LLVM.LLVMBuildLoad2(builder, lhsType, details.ref(), hir.toString());
+
+        details.loaded().set(loaded);
+
+        yield loaded;
+      }
+      default -> {
+
+        final var translated = translate_expression(hir);
+
+        // TODO: This should be known and trusted from the HIR nodes, and NOT investigated through LLVM
+        // TODO: WE MUST KEEP TRACK OF THIS OURSELVES! SINCE LLVM ONLY KNOWS OF IT AS A POINTER!
+        final var lhsType = getType("i32"); //LLVM.LLVMTypeOf(lhs);
+
+        final var loaded = LLVM.LLVMIsConstant(translated) == 1
+          ? translated
+          : LLVM.LLVMBuildLoad2(builder, lhsType, translated, hir.toString());
+
+        yield loaded;
+      }
+    };
   }
 
   private LLVMValueRef lower_binary_operation(HirBinaryOperation hir) {
 
-    final var lhs = translate_expression(hir.lhs());
-    final var rhs = translate_expression(hir.rhs());
+    final var lhs = load_or_reuse(hir.lhs());
+    final var rhs = load_or_reuse(hir.rhs());
+
+    // TODO: This should be known and trusted from the HIR nodes, and NOT investigated through LLVM
+    // TODO: WE MUST KEEP TRACK OF THIS OURSELVES! SINCE LLVM ONLY KNOWS OF IT AS A POINTER!
+    final var lhsType = getType("i32"); //LLVM.LLVMTypeOf(lhs);
+    final var rhsType = getType("i32"); //LLVM.LLVMTypeOf(rhs);
+
+    // TODO: Store this somewhere in the HIR, and trust it, and do not investigate like this.
+//    final var loadedLhs = LLVM.LLVMIsConstant(lhs) == 1 ? lhs : LLVM.LLVMBuildLoad2(builder, lhsType, lhs, hir.lhs().toString());
+//    final var loadedRhs = LLVM.LLVMIsConstant(rhs) == 1 ? rhs : LLVM.LLVMBuildLoad2(builder, rhsType, rhs, hir.rhs().toString());
 
     return switch (hir.type()) {
-      case ADD -> LLVM.LLVMBuildAdd(builder, lhs, rhs, "lhs + rhs");
-      case SUBTRACT -> LLVM.LLVMBuildSub(builder, lhs, rhs, "lhs - rhs");
-      case MULTIPLY -> LLVM.LLVMBuildMul(builder, lhs, rhs, "lhs * rhs");
-      case DIVIDE -> LLVM.LLVMBuildFDiv(builder, lhs, rhs, "lhs / rhs");
-      case EQUALS -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntEQ, lhs, rhs, "lhs == rhs");
-      case LT -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntSLT, lhs, rhs, "lhs < rhs");
-      case LTE -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntSLE, lhs, rhs, "lhs <= rhs");
-      case GT -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntSGT, lhs, rhs, "lhs > rhs");
-      case GTE -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntSGE, lhs, rhs, "lhs >= rhs");
+      case ADD -> LLVM.LLVMBuildAdd(builder, lhs, rhs, STR."\{hir.lhs()} + \{hir.rhs()}");
+      case SUBTRACT -> LLVM.LLVMBuildSub(builder, lhs, rhs, STR."\{hir.lhs()} - \{hir.rhs()}");
+      case MULTIPLY -> LLVM.LLVMBuildMul(builder, lhs, rhs, STR."\{hir.lhs()} * \{hir.rhs()}");
+      case DIVIDE -> {
+
+        final var lhsKind = LLVM.LLVMGetTypeKind(lhsType);
+        final var rhsKind = LLVM.LLVMGetTypeKind(rhsType);
+
+        if (lhsKind == LLVM.LLVMIntegerTypeKind && rhsKind == LLVM.LLVMIntegerTypeKind) {
+
+          // TODO: Need to have information in the HIR for if these values are signed or unsigned.
+          yield LLVM.LLVMBuildSDiv(builder, lhs, rhs, "lhs / rhs");
+        }
+
+        // TODO: This is wrong -- if it is two float16 it should not be converted into a float32
+        LLVMValueRef correctLhs;
+        LLVMValueRef correctRhs;
+        if (lhsKind == LLVM.LLVMDoubleTypeKind || rhsKind == LLVM.LLVMDoubleTypeKind) {
+          correctLhs = getValueAsFloat(lhs, getType("float64"), lhsKind, hir.lhs());
+          correctRhs = getValueAsFloat(rhs, getType("float64"), rhsKind, hir.rhs());
+        } else if (lhsKind == LLVM.LLVMFloatTypeKind || rhsKind == LLVM.LLVMFloatTypeKind) {
+          correctLhs = getValueAsFloat(lhs, getType("float32"), lhsKind, hir.lhs());
+          correctRhs = getValueAsFloat(rhs, getType("float32"), rhsKind, hir.rhs());
+        } else if (lhsKind == LLVM.LLVMHalfTypeKind || rhsKind == LLVM.LLVMHalfTypeKind) {
+          correctLhs = getValueAsFloat(lhs, getType("float16"), lhsKind, hir.lhs());
+          correctRhs = getValueAsFloat(rhs, getType("float16"), rhsKind, hir.rhs());
+        } else {
+          throw new NotImplementedException(STR."Cannot divide values of types '\{hir.lhs()}' and '\{hir.rhs()}'");
+        }
+
+        yield LLVM.LLVMBuildFDiv(builder, correctLhs, correctRhs, STR."\{hir.lhs()} / \{hir.rhs()}");
+      }
+      case EQUALS -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntEQ, lhs, rhs, STR."\{hir.lhs()} == \{hir.rhs()}");
+      case LT -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntSLT, lhs, rhs, STR."\{hir.lhs()} < \{hir.rhs()}");
+      case LTE -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntSLE, lhs, rhs, STR."\{hir.lhs()} <= \{hir.rhs()}");
+      case GT -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntSGT, lhs, rhs, STR."\{hir.lhs()} > \{hir.rhs()}");
+      case GTE -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntSGE, lhs, rhs, STR."\{hir.lhs()} >= \{hir.rhs()}");
       default -> throw new IllegalArgumentException(STR."Unknown binary operation kind '\{hir.type()}'");
     };
   }
 
+  private LLVMValueRef getValueAsFloat(LLVMValueRef v, LLVMTypeRef targetType, int lhsKind, HirExpression hir) {
+
+    if (lhsKind == LLVM.LLVMFloatTypeKind) {
+      return v;
+    } else if (lhsKind == LLVM.LLVMHalfTypeKind) {
+      return LLVM.LLVMBuildFPExt(builder, v, targetType, "float16ToFloat32");
+    } else if (lhsKind == LLVM.LLVMDoubleTypeKind) {
+      return LLVM.LLVMBuildFPTrunc(builder, v, targetType, "doubleToFloat32");
+    } else if (lhsKind == LLVM.LLVMIntegerTypeKind) {
+      return LLVM.LLVMBuildSIToFP(builder, v, targetType, "intToFloat32");
+    } else {
+      throw new NotImplementedException(STR."Cannot convert '\{hir}' into a float");
+    }
+  }
+
+  private LLVMValueRef lower_expressions(HirExpression[] expressions) {
+
+    LLVMValueRef lastRef = null;
+    for (final var expr : expressions) {
+      lastRef = translate_expression(expr);
+    }
+
+    return lastRef;
+  }
+
   private LLVMValueRef translate_expression(HirExpression hirExpression) {
+    return translate_expression(hirExpression, false);
+  }
+
+  private LLVMValueRef translate_expression(HirExpression hirExpression, boolean dynamic) {
 
     return switch (hirExpression) {
-      case HirLiteral hir -> translate_literal(hir);
+      case HirLiteral hir -> lower_literal(hir, dynamic);
       case HirBinaryOperation hir -> lower_binary_operation(hir);
       case HirArgument hir -> lower_llvm_argument(hir);
       case HirCall hir -> lower_llvm_call(hir);
       case HirReturn hir -> lower_llvm_return(hir);
       case HirConditional hir -> lower_conditional(hir);
       case HirBlock hir -> lower_block(hir);
-      default ->
-        throw new IllegalArgumentException(STR."Unknown expression '\{hirExpression.getClass().getSimpleName()}'");
+      case HirAssignment hir -> lower_assignment(hir);
+      case HirIdentifier hir -> lower_identifier(hir);
+      case HirLoop hir -> lower_loop(hir);
+      case HirLoopBreak hir -> lower_loop_break(hir);
+      case HirLoopContinue hir -> lower_loop_continue(hir);
+      case HirExpressionCollection hir -> lower_expressions(hir.children());
+      case HirProgram hir -> lower_expressions(hir.expressions());
+      default -> throw new NotImplementedException(STR."Unknown expression '\{hirExpression.getClass().getSimpleName()}'");
+    };
+  }
+
+  private record LoopScope(LLVMBasicBlockRef next, LLVMBasicBlockRef exit) {
+
+  }
+
+  private Stack<LoopScope> loopStack = new Stack<>();
+
+  private LLVMValueRef lower_loop(HirLoop hir) {
+
+    final var fn = fnStack.peek();
+
+    LLVMBasicBlockRef loop = LLVM.LLVMAppendBasicBlockInContext(context, fn, "loop");
+    LLVMBasicBlockRef after_loop = LLVM.LLVMAppendBasicBlockInContext(context, fn, "after_loop");
+
+    // Jump to the loop block
+    LLVM.LLVMBuildBr(builder, loop);
+
+    // Start insertion in loop block
+    LLVMPositionBuilderAtEnd(builder, loop);
+
+    try {
+
+      // The result of the loop is the body of the loop.
+      // TODO: This will need some seriously big revisions once I figure out all the requirements/intricacies.
+      loopStack.push(new LoopScope(loop, after_loop));
+      try {
+        blockStack.push(loop);
+        return translate_expression(hir.body());
+      } finally {
+        blockStack.pop();
+      }
+    } finally {
+      loopStack.pop();
+      LLVMPositionBuilderAtEnd(builder, after_loop);
+    }
+  }
+
+  private LLVMValueRef lower_loop_break(HirLoopBreak hir) {
+
+    // TODO: This could likely be improved by converting the conditional into a conditional branch if it is either-or.
+    final var loop = loopStack.peek();
+    return LLVM.LLVMBuildBr(builder, loop.exit());
+  }
+
+  private LLVMValueRef lower_loop_continue(HirLoopContinue hir) {
+
+    // TODO: This could likely be improved by converting the conditional into a conditional branch if it is either-or.
+    final var loop = loopStack.peek();
+    return LLVM.LLVMBuildBr(builder, loop.next());
+  }
+
+  private LLVMScopeValue lower_identifier_detailed(HirIdentifier hir) {
+    final var identifierName = hir.name();
+
+    for (var i = scopeStack.size() - 1; i >= 0; i--) {
+
+      final var scope = scopeStack.get(i);
+      final var var = scope.map().get(identifierName);
+      if (var != null) {
+        return var;
+      }
+    }
+
+    throw new IllegalArgumentException(STR."There is no variable '\{hir.name()}' found in scope");
+  }
+
+  private LLVMValueRef lower_identifier(HirIdentifier hir) {
+    return lower_identifier_detailed(hir).ref();
+  }
+
+  private LLVMValueRef lower_assignment(HirAssignment hirAssignment) {
+
+    return switch (hirAssignment.lhs()) {
+      case HirVariableDeclaration lhs -> {
+
+        final var targetName = lhs.identifier().name();
+        final var rhs = translate_expression(hirAssignment.rhs(), true);
+
+        final var scope = scopeStack.peek();
+
+        for (var scopeIndex = scopeStack.size() - 1; scopeIndex >= 0; scopeIndex--) {
+          if (scopeStack.get(scopeIndex).map().containsKey(targetName)) {
+            throw new IllegalArgumentException(STR."Not allowed to re-declare '\{targetName}'");
+          }
+        }
+
+        scope.map().put(targetName, new LLVMScopeValue(rhs));
+
+        yield rhs;
+      }
+      case HirIdentifier lhs -> {
+
+        // TODO: If "ptr" is a constant (change dynamic=false above for declaration)
+        //        Then we need to Alloca the result of rhs and place that allocation inside lhs
+        //        Also, if rhs is a constant, then we can just replace the scoped variable with that constant
+        //        This will need A LOT of work, but can be saved for another time for later optimizations.
+        final var ptr_detailed = lower_identifier_detailed(lhs);
+
+        // Replace the value in the scope.
+        // TODO: This might need changing later, since it deals with altering value only in current scope.
+        ptr_detailed.loaded().set(null); // Clear the loaded, letting it re-load on the next use-site.
+
+        if (hirAssignment.rhs() instanceof HirIdentifier rhs_identifier) {
+
+          final var scope = scopeStack.peek();
+          final var rhs_detailed = lower_identifier_detailed(rhs_identifier);
+          scope.map().put(lhs.name(), rhs_detailed);
+
+          // Q: Is this correct? Should an assignment return the value, or should it return some sort of Option/Result that always fails?
+          yield rhs_detailed.ref();
+
+        } else {
+
+          final var val = translate_expression(hirAssignment.rhs(), false);
+          LLVM.LLVMBuildStore(builder, val, ptr_detailed.ref());
+
+          // Q: Is this correct? Should an assignment return the value, or should it return some sort of Option/Result that always fails?
+          yield val;
+        }
+      }
+      default -> throw new NotImplementedException(STR."Cannot handle '\{hirAssignment.lhs()}' for lhs assignment");
     };
   }
 
@@ -431,23 +668,23 @@ public class HirToLLVMLowering {
     // TODO: Needs to add support for the "phi" way of adding to a "result"
     //        Then that "result" ref needs to be returned, since ALL expressions should have a result
 
-    final var block_true_non_terminal = block_true != null && LLVM.LLVMGetBasicBlockTerminator(block_true) == null;
-    final var block_false_non_terminal = block_false != null && LLVM.LLVMGetBasicBlockTerminator(block_false) == null;
+    final var block_true_terminal = LLVM.LLVMGetBasicBlockTerminator(block_true) != null;
+    final var block_false_terminal = LLVM.LLVMGetBasicBlockTerminator(block_false) != null;
 
     LLVMBasicBlockRef block_merge = null;
-    if (block_true_non_terminal || block_false_non_terminal) {
+    if (!block_true_terminal || !block_false_terminal) {
 
       LLVMPositionBuilderAtEnd(builder, parent_block);
       block_merge = LLVMAppendBasicBlockInContext(context, fn, "conditional_merge");
 
-      if (block_true_non_terminal) {
+      if (!block_true_terminal) {
 
         // There is no terminator in the block, so we will need to branch to the merge block.
         LLVMPositionBuilderAtEnd(builder, block_true);
         LLVMBuildBr(builder, block_merge);
       }
 
-      if (block_false_non_terminal) {
+      if (!block_false_terminal) {
 
         // There is no terminator in the block, so we will need to branch to the merge block.
         LLVMPositionBuilderAtEnd(builder, block_false);
@@ -457,11 +694,11 @@ public class HirToLLVMLowering {
 
     LLVMPositionBuilderAtEnd(builder, parent_block);
     final var condition = translate_expression(hir.predicate());
-    LLVMBuildCondBr(builder, condition, block_true, block_false);
+    final var branch = LLVMBuildCondBr(builder, condition, block_true, block_false);
 
     if (block_merge != null) {
 
-      if (block_true_non_terminal && block_false_non_terminal) {
+      if (!block_true_terminal && !block_false_terminal) {
 
         // Both paths are non-terminal, so we will use a phi node to decide the result and give that back.
         LLVMPositionBuilderAtEnd(builder, block_merge);
@@ -480,9 +717,10 @@ public class HirToLLVMLowering {
         LLVMAddIncoming(phi, phiValues, phiBlocks, 2);
 
         return phi;
-      } else if (block_true_non_terminal) {
+      } else if (!block_true_terminal) {
 
         // Only the true block is not terminal, so just return that.
+//        LLVMPositionBuilderAtEnd(builder, block_merge);
         return block_true_last;
 
       } else {
@@ -494,8 +732,8 @@ public class HirToLLVMLowering {
 
     } else {
 
-      // Both paths are terminal. So we will simply return the condition branch.
-      return condition;
+      // Both paths are terminal. So we will simply return the branch itself.
+      return branch;
     }
   }
 
@@ -544,17 +782,65 @@ public class HirToLLVMLowering {
     return translate_expression(hir.expression());
   }
 
-  private LLVMValueRef translate_literal(HirLiteral hirLiteral) {
+  private LLVMValueRef lower_literal(HirLiteral hirLiteral, boolean dynamic) {
 
     if (hirLiteral.literal() == null) {
+
+      // TODO: This needs to refer to the correct type, since null can be of different types.
+      // TODO: Then later, null needs to not exist at all.
       return LLVM.LLVMConstNull(getType("i32"));
     }
 
-    return switch (hirLiteral.literal()) {
+    // TODO: Figure out a way to know better when to use constants and when to use allocated values
+
+    if (hirLiteral.literal() instanceof String) {
+
+      final var str = (String) hirLiteral.literal();
+
+      if (dynamic) {
+
+        // \0-terminate the string and get it as utf-8 bytes.
+        final var bytes = (STR."\{str}\0").getBytes(StandardCharsets.UTF_8);
+        final var charArray = new LLVMValueRef[bytes.length];
+        final var charType = LLVM.LLVMInt8TypeInContext(context);
+        for (int i = 0; i < bytes.length; i++) {
+          charArray[i] = getByte(bytes[i]);
+        }
+
+        final var strArray = LLVM.LLVMConstArray(charType, new PointerPointer<>(charArray), bytes.length);
+
+        final var charArrayType = LLVM.LLVMArrayType(charType, bytes.length);
+        final var globalVar = LLVM.LLVMAddGlobal(module, charArrayType, STR."globalString: \{str}");
+        LLVM.LLVMSetInitializer(globalVar, strArray);
+
+      } else {
+
+        return getGlobalStringPtr(str);
+      }
+    }
+
+    final var constant = switch (hirLiteral.literal()) {
       case Integer v -> LLVM.LLVMConstInt(getType("i32"), v, 0);
-      case String v -> LLVM.LLVMBuildGlobalStringPtr(builder, v, v);
+      case Double v -> LLVM.LLVMConstReal(getType("double"), v);
+      case Float v -> LLVM.LLVMConstReal(getType("float32"), v);
       default -> throw new IllegalArgumentException(STR."Unknown literal '\{hirLiteral.literal()}'");
     };
+
+    if (dynamic) {
+
+      final var allocation = switch (hirLiteral.literal()) {
+        case Integer _ -> LLVM.LLVMBuildAlloca(builder, getType("i32"), "int");
+        case Double _ -> LLVM.LLVMBuildAlloca(builder, getType("double"), "double");
+        case Float _ -> LLVM.LLVMBuildAlloca(builder, getType("float32"), "float32");
+        default -> throw new IllegalArgumentException(STR."Unknown literal '\{hirLiteral.literal()}'");
+      };
+
+      LLVM.LLVMBuildStore(builder, constant, allocation);
+      return allocation;
+
+    } else {
+      return constant;
+    }
   }
 
   private static void executeCommand(String[] commandParts) throws IOException, InterruptedException {

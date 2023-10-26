@@ -80,8 +80,6 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
         future = switch (c) {
           case ',' -> newToken(TokenType.COMMA);
           case ';' -> newToken(TokenType.SEMI_COLON);
-          case '+' -> newToken(TokenType.PLUS);
-          case '*' -> newToken(TokenType.MULTIPLY);
           case '^' -> newToken(TokenType.POW);
           case '!' -> newToken(TokenType.BANG);
           case '(' -> newToken(TokenType.OPEN_PAREN);
@@ -96,11 +94,13 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
           case '~' -> newToken(TokenType.TILDE);
           case '.' -> newToken(TokenType.DOT);
           case ':' -> advanceAsDoubleColonOtherwiseColon();
-          case '/' -> advanceCommentOtherwiseDivide();
+          case '*' -> advanceAsMulAssignmentOtherwiseMul();
+          case '/' -> advanceCommentOtherwiseDivAssignmentOrDiv();
           case '"' -> advanceUntil('"');
           case '\'' -> advanceUntil('\'');
           case '`' -> advanceIntoTemplateString();
-          case '-' -> advanceAsArrowSingleOtherwiseMinus();
+          case '+' -> advanceAsAddAssignmentOrOtherwiseAdd();
+          case '-' -> advanceAsArrowSingleOrSubAssOtherwiseSub();
           case '%' -> advanceAsModulusOtherwiseRemainder();
           case '=' -> advanceAsEqualsOrDoubleArrowOtherwiseAssign();
           case '<' -> advanceAsLteOrBslOtherwiseLt();
@@ -137,6 +137,28 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
 
     } catch (IOException e) {
       throw new UncheckedIOException(e);
+    }
+  }
+
+  private Token advanceAsMulAssignmentOtherwiseMul() throws IOException {
+
+    c = this.read();
+    if (c == '=') {
+      return newToken(TokenType.MULTIPLY_ASSIGNMENT);
+    } else {
+      skip = true;
+      return newToken(TokenType.MULTIPLY);
+    }
+  }
+
+  private Token advanceAsAddAssignmentOrOtherwiseAdd() throws IOException {
+
+    c = this.read();
+    if (c == '=') {
+      return newToken(TokenType.ADDITION_ASSIGNMENT);
+    } else {
+      skip = true;
+      return newToken(TokenType.ADD);
     }
   }
 
@@ -266,7 +288,7 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
     return t >= Character.DECIMAL_DIGIT_NUMBER && t <= Character.OTHER_NUMBER;
   }
 
-  private Token advanceCommentOtherwiseDivide() throws IOException {
+  private Token advanceCommentOtherwiseDivAssignmentOrDiv() throws IOException {
 
     c = this.read();
     if (c == '/') {
@@ -301,6 +323,8 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
           contentToken.end(),
           sub
       );
+    } else if (c == '=') {
+      return newToken(TokenType.DIVIDE_ASSIGNMENT);
     } else {
       skip = true;
       return this.newToken(TokenType.DIVIDE);
@@ -318,13 +342,15 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
     }
   }
 
-  private Token advanceAsArrowSingleOtherwiseMinus() throws IOException {
+  private Token advanceAsArrowSingleOrSubAssOtherwiseSub() throws IOException {
     c = this.read();
     if (c == '>') {
       return this.newToken(TokenType.ARROW_SINGLE);
+    } else if (c == '=') {
+      return newToken(TokenType.SUBTRACTION_ASSIGNMENT);
     } else {
       skip = true;
-      return this.newToken(TokenType.MINUS);
+      return this.newToken(TokenType.SUBTRACT);
     }
   }
 

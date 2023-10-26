@@ -19,7 +19,7 @@ import static com.github.stmated.plang.lexer.TokenType.LITERAL_INTEGER;
 import static com.github.stmated.plang.lexer.TokenType.MULTIPLY;
 import static com.github.stmated.plang.lexer.TokenType.OPEN_BRACE;
 import static com.github.stmated.plang.lexer.TokenType.OPEN_PAREN;
-import static com.github.stmated.plang.lexer.TokenType.PLUS;
+import static com.github.stmated.plang.lexer.TokenType.ADD;
 import static com.github.stmated.plang.lexer.TokenType.REMAINDER;
 import static com.github.stmated.plang.lexer.TokenType.RETURN;
 import static com.github.stmated.plang.lexer.TokenType.SEMI_COLON;
@@ -40,10 +40,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.Arguments;
 
+@Slf4j
 class PlangLexerTest {
 
   @Test
@@ -80,24 +82,24 @@ class PlangLexerTest {
   @Test
   void testOnePlusOne() {
 
-    this.check("1 + 1", LITERAL_INTEGER, PLUS, LITERAL_INTEGER);
-    this.check("1+1", LITERAL_INTEGER, PLUS, LITERAL_INTEGER);
-    this.check("  1+1", LITERAL_INTEGER, PLUS, LITERAL_INTEGER);
-    this.check("  1+1  ", LITERAL_INTEGER, PLUS, LITERAL_INTEGER);
+    this.check("1 + 1", LITERAL_INTEGER, ADD, LITERAL_INTEGER);
+    this.check("1+1", LITERAL_INTEGER, ADD, LITERAL_INTEGER);
+    this.check("  1+1", LITERAL_INTEGER, ADD, LITERAL_INTEGER);
+    this.check("  1+1  ", LITERAL_INTEGER, ADD, LITERAL_INTEGER);
   }
 
   @Test
   void testParen() {
 
     this.check("(1)", OPEN_PAREN, LITERAL_INTEGER, CLOSE_PAREN);
-    this.check("(1 + 1)", OPEN_PAREN, LITERAL_INTEGER, PLUS, LITERAL_INTEGER, CLOSE_PAREN);
+    this.check("(1 + 1)", OPEN_PAREN, LITERAL_INTEGER, ADD, LITERAL_INTEGER, CLOSE_PAREN);
   }
 
   @Test
   void testIdentifiersAndKeywords() {
 
     this.check("something", IDENTIFIER);
-    this.check("something + other", IDENTIFIER, PLUS, IDENTIFIER);
+    this.check("something + other", IDENTIFIER, ADD, IDENTIFIER);
     this.check("if", IF);
     this.check("iff", IDENTIFIER);
 
@@ -173,8 +175,7 @@ class PlangLexerTest {
     final var duration = Duration.ofNanos(after - before);
     final var durationPer = duration.dividedBy(ITERATIONS);
 
-    System.out.printf("Duration: %s, per %sns %sms", duration, durationPer.toNanos(), durationPer.toMillis());
-    System.out.println();
+    log.info("Duration: {}, per {}ns {}ms", duration, durationPer.toNanos(), durationPer.toMillis());
   }
 
   @Test

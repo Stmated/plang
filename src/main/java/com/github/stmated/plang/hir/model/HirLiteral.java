@@ -1,9 +1,19 @@
 package com.github.stmated.plang.hir.model;
 
+import com.github.stmated.plang.ast.model.AstExpression;
+import java.util.Objects;
+
 public record HirLiteral(Object literal) implements HirExpression {
 
-//  @Override
-//  public HirType getResultType() {
-//    return HirType.fromJavaType(this.literal());
-//  }
+  public HirLiteral {
+
+    if (literal instanceof HirExpression) {
+      throw new IllegalArgumentException(STR."Not allowed to have an expression as a literal: \{literal}");
+    }
+  }
+
+  @Override
+  public String toString() {
+    return Objects.toString(literal);
+  }
 }

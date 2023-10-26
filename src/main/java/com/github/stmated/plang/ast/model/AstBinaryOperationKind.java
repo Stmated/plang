@@ -11,7 +11,6 @@ public enum AstBinaryOperationKind {
   GT,
   IS,
 
-
   ADD,
   SUBTRACT,
   MULTIPLY,
@@ -21,6 +20,11 @@ public enum AstBinaryOperationKind {
   POW,
   BIT_SHIFT_LEFT,
   BIT_SHIFT_RIGHT,
+
+  DIVIDE_ASSIGNMENT,
+  MULTIPLY_ASSIGNMENT,
+  ADDITION_ASSIGNMENT,
+  SUBTRACTION_ASSIGNMENT,
 
   OR,
   AND,
@@ -38,13 +42,18 @@ public enum AstBinaryOperationKind {
       case GT -> AstBinaryOperationKind.GT;
       case IS -> AstBinaryOperationKind.IS;
 
-      case PLUS -> AstBinaryOperationKind.ADD;
-      case MINUS -> AstBinaryOperationKind.SUBTRACT;
+      case ADD -> AstBinaryOperationKind.ADD;
+      case SUBTRACT -> AstBinaryOperationKind.SUBTRACT;
       case MULTIPLY -> AstBinaryOperationKind.MULTIPLY;
       case DIVIDE -> AstBinaryOperationKind.DIVIDE;
       case MODULUS -> AstBinaryOperationKind.MODULUS;
       case REMAINDER -> AstBinaryOperationKind.REMAINDER;
       case POW -> AstBinaryOperationKind.POW;
+
+      case ADDITION_ASSIGNMENT -> AstBinaryOperationKind.ADDITION_ASSIGNMENT;
+      case SUBTRACTION_ASSIGNMENT -> AstBinaryOperationKind.SUBTRACTION_ASSIGNMENT;
+      case MULTIPLY_ASSIGNMENT -> AstBinaryOperationKind.MULTIPLY_ASSIGNMENT;
+      case DIVIDE_ASSIGNMENT -> AstBinaryOperationKind.DIVIDE_ASSIGNMENT;
 
       case BIT_SHIFT_LEFT -> AstBinaryOperationKind.BIT_SHIFT_LEFT;
       case BIT_SHIFT_RIGHT -> AstBinaryOperationKind.BIT_SHIFT_RIGHT;

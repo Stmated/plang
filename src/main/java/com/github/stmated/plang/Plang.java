@@ -97,11 +97,12 @@ public class Plang {
       if (deleteDirectory) {
 
         try {
+
+          log.debug("Deleting {}", path.getParent());
           Files.walk(path.getParent())
             .sorted(Comparator.reverseOrder())
             .forEach(p -> {
               try {
-                log.debug("Deleting {}", p);
                 Files.delete(p);
               } catch (IOException ex) {
                 log.error(STR."Could not delete '\{p}'", ex);

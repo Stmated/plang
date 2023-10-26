@@ -6,4 +6,6 @@ public record HirBinaryOperation(HirExpression lhs, HirBinaryOperationKind type,
 //  public HirType getResultType() {
 //    return HirType.getCommonDenominator(this.lhs().getResultType(), this.rhs().getResultType());
 //  }
+
+
 }

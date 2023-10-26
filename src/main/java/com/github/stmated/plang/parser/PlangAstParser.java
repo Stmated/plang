@@ -250,7 +250,10 @@ public class PlangAstParser {
     if (token != null) {
 
       final var t = token.type();
-      if (t == TokenType.EQUALS || t == TokenType.LTE || t == TokenType.GTE || t == TokenType.LT || t == TokenType.GT || t == TokenType.IS) {
+      if (t == TokenType.EQUALS
+          || t == TokenType.LTE || t == TokenType.GTE || t == TokenType.LT || t == TokenType.GT
+          || t == TokenType.IS
+          || t == TokenType.ADDITION_ASSIGNMENT || t == TokenType.SUBTRACTION_ASSIGNMENT || t == TokenType.MULTIPLY_ASSIGNMENT || t == TokenType.DIVIDE_ASSIGNMENT ) {
         final var rhs = parseLevel6();
         if (rhs != null) {
           return new AstBinaryOperation(lhs, AstBinaryOperationKind.fromTokenType(t), rhs);
@@ -276,7 +279,7 @@ public class PlangAstParser {
     if (token != null) {
 
       final var t = token.type();
-      if (t == TokenType.PLUS || t == TokenType.MINUS) {
+      if (t == TokenType.ADD || t == TokenType.SUBTRACT) {
         final var rhs = parseLevel6(); // Recursive to same level
         if (rhs != null) {
           return new AstBinaryOperation(lhs, AstBinaryOperationKind.fromTokenType(t), rhs);

@@ -1,14 +1,8 @@
 package com.github.stmated.plang.exceptions;
 
-public class UnreachableCodeLLVMException extends RuntimeException {
+public class UnreachableCodeLLVMException extends LLVMException {
 
-  private final String explanation;
-
-  public UnreachableCodeLLVMException(String explanation) {
-    this.explanation = explanation;
-  }
-
-  public String getExplanation() {
-    return explanation;
+  public UnreachableCodeLLVMException(String message, String details) {
+    super(message, details, null);
   }
 }

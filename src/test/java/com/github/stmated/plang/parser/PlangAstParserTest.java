@@ -12,12 +12,14 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+@Slf4j
 class PlangAstParserTest {
 
   @Test
@@ -206,8 +208,7 @@ class PlangAstParserTest {
       Assertions.assertNotNull(program);
 
       final var treePrintVisitor = new ToStringTreeAstVisitor();
-      final var treeString = treePrintVisitor.visit(program);
-      System.out.println(treeString);
+      treePrintVisitor.visit(program);
     }
   }
 
@@ -226,8 +227,7 @@ class PlangAstParserTest {
     final var duration = Duration.ofNanos(after - before);
     final var durationPer = duration.dividedBy(ITERATIONS);
 
-    System.out.printf("Duration: %s, per %sns %sms", duration, durationPer.toNanos(), durationPer.toMillis());
-    System.out.println();
+    log.info("Duration: {}, per {}ns {}ms", duration, durationPer.toNanos(), durationPer.toMillis());
   }
 
   private <T> void as(AstExpression exp, Class<T> clazz, Consumer<T> then) {

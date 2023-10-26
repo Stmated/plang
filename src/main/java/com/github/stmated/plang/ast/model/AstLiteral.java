@@ -11,6 +11,13 @@ public record AstLiteral(
     Object value
 ) implements AstExpression {
 
+  public AstLiteral {
+
+    if (value instanceof AstExpression) {
+      throw new IllegalArgumentException(STR."Not allowed to have an expression as a literal: \{value}");
+    }
+  }
+
   @Override
   public String toString() {
     return Objects.toString(value, "<null>");

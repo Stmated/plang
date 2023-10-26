@@ -1,15 +1,8 @@
 package com.github.stmated.plang.exceptions;
 
-public class UncaughtLLVMException extends RuntimeException {
+public class UncaughtLLVMException extends LLVMException {
 
-  private final String explanation;
-
-  public UncaughtLLVMException(String explanation, Throwable cause) {
-    super(cause);
-    this.explanation = explanation;
-  }
-
-  public String getExplanation() {
-    return explanation;
+  public UncaughtLLVMException(String message, Throwable cause) {
+    super(message, null, cause);
   }
 }
