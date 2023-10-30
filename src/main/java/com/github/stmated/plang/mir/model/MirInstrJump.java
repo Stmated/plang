@@ -1,6 +1,6 @@
 package com.github.stmated.plang.mir.model;
 
-public record MirReturn(MirOperand op) implements MirInstruction, MirOperand {
+public record MirInstrJump(MirNode node) implements MirInstruction {
 
   @Override
   public boolean isTerminal() {
@@ -9,6 +9,6 @@ public record MirReturn(MirOperand op) implements MirInstruction, MirOperand {
 
   @Override
   public String toString() {
-    return STR."return \{op.toShortString()}";
+    return STR."Jump To '\{node.name()}'";
   }
 }

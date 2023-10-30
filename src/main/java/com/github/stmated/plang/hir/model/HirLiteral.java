@@ -1,6 +1,5 @@
 package com.github.stmated.plang.hir.model;
 
-import com.github.stmated.plang.ast.model.AstExpression;
 import java.util.Objects;
 
 public record HirLiteral(Object literal) implements HirExpression {

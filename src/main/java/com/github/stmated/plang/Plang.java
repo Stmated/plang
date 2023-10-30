@@ -1,14 +1,15 @@
 package com.github.stmated.plang;
 
 import com.github.stmated.plang.ast.model.AstProgram;
-import com.github.stmated.plang.hir.lowering.AstToHirLowering;
+import com.github.stmated.plang.hir.raising.AstToHirRaising;
 import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.lexer.PlangLexer;
 import com.github.stmated.plang.lexer.PlangLexerSteps;
 import com.github.stmated.plang.llvm.lowering.HirToLLVMLowering;
+import com.github.stmated.plang.mir.HirToMirLowering;
+import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.parser.PlangAstParser;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,7 +40,11 @@ public class Plang {
   }
 
   public static HirProgram astToHir(AstProgram ast) {
-    return new AstToHirLowering().lower_program(ast);
+    return new AstToHirRaising().lower_program(ast);
+  }
+
+  public static MirNode hirToMir(HirProgram hir) {
+    return new HirToMirLowering().lower_program(hir);
   }
 
   public static Path hirToPath(HirProgram hir) {
@@ -120,6 +125,13 @@ public class Plang {
     final var ast = Plang.codeToAst(code);
     final var hir = Plang.astToHir(ast);
     return Plang.hirToPath(hir);
+  }
+
+  public static MirNode codeToMir(String code) {
+
+    final var ast = Plang.codeToAst(code);
+    final var hir = Plang.astToHir(ast);
+    return Plang.hirToMir(hir);
   }
 
   public static Result hirToResult(HirProgram hir) {

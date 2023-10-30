@@ -1,6 +1,6 @@
 package com.github.stmated.plang.hir.model;
 
-public record HirBinaryOperation(HirExpression lhs, HirBinaryOperationKind type, HirExpression rhs) implements HirExpression {
+public record HirBinaryOperation(HirExpression lhs, HirBinaryOperationKind kind, HirExpression rhs) implements HirExpression {
 
 //  @Override
 //  public HirType getResultType() {

@@ -1,7 +1,5 @@
 package com.github.stmated.plang.exceptions;
 
-import com.github.stmated.plang.lexer.Token;
-
 public class UncaughtLexerException extends RuntimeException {
 
   private final String explanation;

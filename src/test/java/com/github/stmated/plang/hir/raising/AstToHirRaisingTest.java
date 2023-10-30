@@ -1,4 +1,4 @@
-package com.github.stmated.plang.hir.lowering;
+package com.github.stmated.plang.hir.raising;
 
 import com.github.stmated.plang.ast.model.AstBinaryOperation;
 import com.github.stmated.plang.ast.model.AstBinaryOperationKind;
@@ -13,7 +13,7 @@ import com.github.stmated.plang.hir.model.HirLiteral;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-class AstToHirLoweringTest {
+class AstToHirRaisingTest {
 
   @Test
   void lowerConditional() {
@@ -40,13 +40,13 @@ class AstToHirLoweringTest {
       )
     );
 
-    final var hir = new AstToHirLowering().lower_conditional(ast);
+    final var hir = new AstToHirRaising().lower_conditional(ast);
 
     Assertions.assertInstanceOf(HirBinaryOperation.class, hir.predicate());
 
     final var hbo = (HirBinaryOperation) hir.predicate();
     Assertions.assertInstanceOf(HirLiteral.class, hbo.lhs());
-    Assertions.assertEquals(HirBinaryOperationKind.EQUALS, hbo.type());
+    Assertions.assertEquals(HirBinaryOperationKind.EQUALS, hbo.kind());
     Assertions.assertInstanceOf(HirLiteral.class, hbo.lhs());
   }
 }

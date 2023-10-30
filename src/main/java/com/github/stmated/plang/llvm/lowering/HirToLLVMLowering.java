@@ -52,6 +52,10 @@ import org.bytedeco.llvm.global.LLVM;
 @Slf4j
 public class HirToLLVMLowering {
 
+  private record LoopScope(LLVMBasicBlockRef next, LLVMBasicBlockRef exit) {
+
+  }
+
   /**
    * a 'char *' used to retrieve error messages from LLVM
    */
@@ -62,6 +66,7 @@ public class HirToLLVMLowering {
   private final Stack<LLVMValueRef> fnStack = new Stack<>();
   private final Stack<LLVMBasicBlockRef> blockStack = new Stack<>();
   private final Stack<LLVMScope> scopeStack = new Stack<>();
+  private final Stack<LoopScope> loopStack = new Stack<>();
 
   private final Map<String, LLVMValueRef> globalStringCache = new HashMap<>();
   private final Map<Byte, LLVMValueRef> cachedBytes = new HashMap<>();
@@ -379,9 +384,12 @@ public class HirToLLVMLowering {
 
         // TODO: This should be known and trusted from the HIR nodes, and NOT investigated through LLVM
         // TODO: WE MUST KEEP TRACK OF THIS OURSELVES! SINCE LLVM ONLY KNOWS OF IT AS A POINTER!
-        final var lhsType = getType("i32"); //LLVM.LLVMTypeOf(lhs);
+        final var lhsType = LLVM.LLVMTypeOf(details.ref()); // getType("i32"); //LLVM.LLVMTypeOf(lhs);
 
-        final var loaded = LLVM.LLVMIsConstant(details.ref()) == 1
+        final var isValue  = LLVM.LLVMIsConstant(details.ref()) == 1
+                             || LLVM.LLVMGetTypeKind(lhsType) != LLVM.LLVMPointerTypeKind;
+
+        final var loaded = isValue
           ? details.ref()
           : LLVM.LLVMBuildLoad2(builder, lhsType, details.ref(), hir.toString());
 
@@ -395,9 +403,12 @@ public class HirToLLVMLowering {
 
         // TODO: This should be known and trusted from the HIR nodes, and NOT investigated through LLVM
         // TODO: WE MUST KEEP TRACK OF THIS OURSELVES! SINCE LLVM ONLY KNOWS OF IT AS A POINTER!
-        final var lhsType = getType("i32"); //LLVM.LLVMTypeOf(lhs);
+        final var lhsType = LLVM.LLVMTypeOf(translated); // getType("i32"); //LLVM.LLVMTypeOf(lhs);
 
-        final var loaded = LLVM.LLVMIsConstant(translated) == 1
+        final var isValue  = LLVM.LLVMIsConstant(translated) == 1
+                             || LLVM.LLVMGetTypeKind(lhsType) != LLVM.LLVMPointerTypeKind;
+
+        final var loaded = isValue
           ? translated
           : LLVM.LLVMBuildLoad2(builder, lhsType, translated, hir.toString());
 
@@ -413,14 +424,22 @@ public class HirToLLVMLowering {
 
     // TODO: This should be known and trusted from the HIR nodes, and NOT investigated through LLVM
     // TODO: WE MUST KEEP TRACK OF THIS OURSELVES! SINCE LLVM ONLY KNOWS OF IT AS A POINTER!
-    final var lhsType = getType("i32"); //LLVM.LLVMTypeOf(lhs);
-    final var rhsType = getType("i32"); //LLVM.LLVMTypeOf(rhs);
+
+    final var lhsType = LLVM.LLVMTypeOf(lhs); //(lhsTypeKind == LLVM.LLVMPointerTypeKind)
+//      ? getType("i32")
+//      : LLVM.LLVMTypeOf(lhs); //;
+    final var rhsType = LLVM.LLVMTypeOf(rhs); //(lhsTypeKind == LLVM.LLVMPointerTypeKind)
+//      ? getType("i32")
+//      : LLVM.LLVMTypeOf(rhs); //LLVM.LLVMTypeOf(rhs);
+
+//    final var lhsTypeKind = LLVM.LLVMGetTypeKind(lhs);
+//    final var rhsTypeKind = LLVM.LLVMGetTypeKind(rhs);
 
     // TODO: Store this somewhere in the HIR, and trust it, and do not investigate like this.
 //    final var loadedLhs = LLVM.LLVMIsConstant(lhs) == 1 ? lhs : LLVM.LLVMBuildLoad2(builder, lhsType, lhs, hir.lhs().toString());
 //    final var loadedRhs = LLVM.LLVMIsConstant(rhs) == 1 ? rhs : LLVM.LLVMBuildLoad2(builder, rhsType, rhs, hir.rhs().toString());
 
-    return switch (hir.type()) {
+    return switch (hir.kind()) {
       case ADD -> LLVM.LLVMBuildAdd(builder, lhs, rhs, STR."\{hir.lhs()} + \{hir.rhs()}");
       case SUBTRACT -> LLVM.LLVMBuildSub(builder, lhs, rhs, STR."\{hir.lhs()} - \{hir.rhs()}");
       case MULTIPLY -> LLVM.LLVMBuildMul(builder, lhs, rhs, STR."\{hir.lhs()} * \{hir.rhs()}");
@@ -458,7 +477,7 @@ public class HirToLLVMLowering {
       case LTE -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntSLE, lhs, rhs, STR."\{hir.lhs()} <= \{hir.rhs()}");
       case GT -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntSGT, lhs, rhs, STR."\{hir.lhs()} > \{hir.rhs()}");
       case GTE -> LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntSGE, lhs, rhs, STR."\{hir.lhs()} >= \{hir.rhs()}");
-      default -> throw new IllegalArgumentException(STR."Unknown binary operation kind '\{hir.type()}'");
+      default -> throw new IllegalArgumentException(STR."Unknown binary operation kind '\{hir.kind()}'");
     };
   }
 
@@ -511,12 +530,6 @@ public class HirToLLVMLowering {
       default -> throw new NotImplementedException(STR."Unknown expression '\{hirExpression.getClass().getSimpleName()}'");
     };
   }
-
-  private record LoopScope(LLVMBasicBlockRef next, LLVMBasicBlockRef exit) {
-
-  }
-
-  private Stack<LoopScope> loopStack = new Stack<>();
 
   private LLVMValueRef lower_loop(HirLoop hir) {
 

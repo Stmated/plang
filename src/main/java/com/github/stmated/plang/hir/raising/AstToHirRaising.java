@@ -1,4 +1,4 @@
-package com.github.stmated.plang.hir.lowering;
+package com.github.stmated.plang.hir.raising;
 
 import com.github.stmated.plang.ast.model.AstAssignment;
 import com.github.stmated.plang.ast.model.AstBinaryOperation;
@@ -45,7 +45,7 @@ import com.github.stmated.plang.hir.model.HirTupleKeyValue;
 import com.github.stmated.plang.hir.model.HirType;
 import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 
-public class AstToHirLowering {
+public class AstToHirRaising {
 
   public HirProgram lower_program(AstProgram astProgram) {
     return new HirProgram(lower_expressions(astProgram.children()));
@@ -88,6 +88,9 @@ public class AstToHirLowering {
       case AstThen ast -> lower_expression(ast.expression());
       case AstVariableDeclaration ast -> lower_variable_declaration(ast);
       case AstAssignment ast -> lower_assignment(ast);
+      // TODO: Important that a NoOp means "nothing" if last expression of block.
+      //        Since everything is an expression, if "x" is last expression, then give back "x"
+      //        But if it's "x;" then it means we should return "nothing".
       case AstNoOp ast -> null;
       default -> throw new IllegalArgumentException(STR."Unknown AST Expression (\{expr.getClass().getSimpleName()}) '\{expr}'");
     };
@@ -258,7 +261,7 @@ public class AstToHirLowering {
           final var second = head.children()[1];
           switch (second) {
             case HirBinaryOperation hir -> {
-              if (hir.type().isPredicate()) {
+              if (hir.kind().isPredicate()) {
                 loopPredicate = hir;
               } else {
                 throw new IllegalArgumentException(STR."The second for-loop part must be a predicate binary op, not '\{hir}'");
@@ -365,10 +368,7 @@ public class AstToHirLowering {
       );
 
     } else {
-
       return new HirExpressionCollection(children_lowered);
-
-      //throw new NotImplementedException();
     }
   }
 
