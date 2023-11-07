@@ -1,18 +1,11 @@
 package com.github.stmated.plang.hir.model;
 
-import java.util.Objects;
+import com.github.stmated.plang.ty.TyValue;
 
-public record HirLiteral(Object literal) implements HirExpression {
-
-  public HirLiteral {
-
-    if (literal instanceof HirExpression) {
-      throw new IllegalArgumentException(STR."Not allowed to have an expression as a literal: \{literal}");
-    }
-  }
+public record HirLiteral(String content, TyValue ty) implements HirExpression {
 
   @Override
   public String toString() {
-    return Objects.toString(literal);
+    return STR."\{content}: \{ty.toShortString()}";
   }
 }

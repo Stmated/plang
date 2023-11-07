@@ -10,8 +10,8 @@ public class PlangLexerSteps {
 
   public Iterator<Token> transform(Iterator<Token> iterator) {
 
-    return new DecimalIterator(
-      new DotIterator(iterator)
-    );
+//    return new DecimalIterator(
+    return new DotIterator(iterator);
+//    );
   }
 }

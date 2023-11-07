@@ -1,6 +1,8 @@
 package com.github.stmated.plang.hir.model;
 
-public record HirParameter(HirIdentifier identifier, HirType type) implements HirExpression {
+import com.github.stmated.plang.ty.Ty;
+
+public record HirParameter(HirIdentifier identifier, Ty ty) implements HirExpression {
 
 //  @Override
 //  public HirType getResultType() {

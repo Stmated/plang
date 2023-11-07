@@ -1,6 +1,14 @@
 package com.github.stmated.plang.mir.model;
 
-public record MirInstrJump(MirNode node) implements MirInstruction {
+import com.github.stmated.plang.ty.Ty;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
+
+@Value
+@EqualsAndHashCode(callSuper = true)
+public class MirInstrJump extends MirInstr {
+
+  MirNode node;
 
   @Override
   public boolean isTerminal() {
@@ -10,5 +18,10 @@ public record MirInstrJump(MirNode node) implements MirInstruction {
   @Override
   public String toString() {
     return STR."Jump To '\{node.name()}'";
+  }
+
+  @Override
+  public Ty ty() {
+    return Ty.VOID;
   }
 }

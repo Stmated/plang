@@ -1,10 +1,60 @@
 package com.github.stmated.plang.parser;
 
-import com.github.stmated.plang.ast.model.*;
-//import com.github.stmated.plang.ast.model.HirMutabilityKind;
-
+import com.github.stmated.plang.ast.model.AstAssignment;
+import com.github.stmated.plang.ast.model.AstBecome;
+import com.github.stmated.plang.ast.model.AstBinaryOperation;
+import com.github.stmated.plang.ast.model.AstBinaryOperationKind;
+import com.github.stmated.plang.ast.model.AstBlock;
+import com.github.stmated.plang.ast.model.AstBracket;
+import com.github.stmated.plang.ast.model.AstCall;
+import com.github.stmated.plang.ast.model.AstCallable;
+import com.github.stmated.plang.ast.model.AstComment;
+import com.github.stmated.plang.ast.model.AstCompTime;
+import com.github.stmated.plang.ast.model.AstConditional;
+import com.github.stmated.plang.ast.model.AstDotAccess;
+import com.github.stmated.plang.ast.model.AstExport;
+import com.github.stmated.plang.ast.model.AstExpression;
+import com.github.stmated.plang.ast.model.AstExpressionCollection;
+import com.github.stmated.plang.ast.model.AstIdentifier;
+import com.github.stmated.plang.ast.model.AstImpl;
+import com.github.stmated.plang.ast.model.AstImport;
+import com.github.stmated.plang.ast.model.AstImportCapable;
+import com.github.stmated.plang.ast.model.AstImportPath;
+import com.github.stmated.plang.ast.model.AstImportPathAlias;
+import com.github.stmated.plang.ast.model.AstImportPathGroup;
+import com.github.stmated.plang.ast.model.AstImportPathIdentifier;
+import com.github.stmated.plang.ast.model.AstImportPathWildcard;
+import com.github.stmated.plang.ast.model.AstIn;
+import com.github.stmated.plang.ast.model.AstInfer;
+import com.github.stmated.plang.ast.model.AstLabeling;
+import com.github.stmated.plang.ast.model.AstLiteral;
+import com.github.stmated.plang.ast.model.AstLoopDoWhile;
+import com.github.stmated.plang.ast.model.AstLoopFor;
+import com.github.stmated.plang.ast.model.AstLoopWhile;
+import com.github.stmated.plang.ast.model.AstMatch;
+import com.github.stmated.plang.ast.model.AstMutabilityKind;
+import com.github.stmated.plang.ast.model.AstNegate;
+import com.github.stmated.plang.ast.model.AstNew;
+import com.github.stmated.plang.ast.model.AstNoOp;
+import com.github.stmated.plang.ast.model.AstNot;
+import com.github.stmated.plang.ast.model.AstParen;
+import com.github.stmated.plang.ast.model.AstProgram;
+import com.github.stmated.plang.ast.model.AstRange;
+import com.github.stmated.plang.ast.model.AstReturn;
+import com.github.stmated.plang.ast.model.AstStaticAccess;
+import com.github.stmated.plang.ast.model.AstStruct;
+import com.github.stmated.plang.ast.model.AstThen;
+import com.github.stmated.plang.ast.model.AstTrait;
+import com.github.stmated.plang.ast.model.AstTypePlaceholder;
+import com.github.stmated.plang.ast.model.AstVarargs;
+import com.github.stmated.plang.ast.model.AstVariableDeclaration;
+import com.github.stmated.plang.ast.model.AstVariableSink;
+import com.github.stmated.plang.ast.model.AstWhere;
+import com.github.stmated.plang.ast.model.AstWith;
+import com.github.stmated.plang.ast.model.AstYield;
 import com.github.stmated.plang.lexer.Token;
 import com.github.stmated.plang.lexer.TokenType;
+import com.github.stmated.plang.ty.Ty;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -17,6 +67,8 @@ public class PlangAstParser {
   private final Iterator<Token> iterator;
 
   private Token current;
+
+  private final Deque<Token> queuedTokens = new ArrayDeque<>();
 
   public PlangAstParser(Iterator<Token> iterator) {
     this.iterator = iterator;
@@ -253,7 +305,8 @@ public class PlangAstParser {
       if (t == TokenType.EQUALS
           || t == TokenType.LTE || t == TokenType.GTE || t == TokenType.LT || t == TokenType.GT
           || t == TokenType.IS
-          || t == TokenType.ADDITION_ASSIGNMENT || t == TokenType.SUBTRACTION_ASSIGNMENT || t == TokenType.MULTIPLY_ASSIGNMENT || t == TokenType.DIVIDE_ASSIGNMENT ) {
+          || t == TokenType.ADDITION_ASSIGNMENT || t == TokenType.SUBTRACTION_ASSIGNMENT || t == TokenType.MULTIPLY_ASSIGNMENT
+          || t == TokenType.DIVIDE_ASSIGNMENT) {
         final var rhs = parseLevel6();
         if (rhs != null) {
           return new AstBinaryOperation(lhs, AstBinaryOperationKind.fromTokenType(t), rhs);
@@ -332,12 +385,12 @@ public class PlangAstParser {
 
       final var t = token.type();
       if (t == TokenType.POW
-        || t == TokenType.MODULUS
-        || t == TokenType.REMAINDER
-        || t == TokenType.BIT_SHIFT_LEFT
-        || t == TokenType.BIT_SHIFT_RIGHT
-        || t == TokenType.BIT_AND
-        || t == TokenType.BIT_OR) {
+          || t == TokenType.MODULUS
+          || t == TokenType.REMAINDER
+          || t == TokenType.BIT_SHIFT_LEFT
+          || t == TokenType.BIT_SHIFT_RIGHT
+          || t == TokenType.BIT_AND
+          || t == TokenType.BIT_OR) {
         final var rhs = parseLevel8(); // Recursive
         if (rhs != null) {
           return new AstBinaryOperation(lhs, AstBinaryOperationKind.fromTokenType(t), rhs);
@@ -455,15 +508,21 @@ public class PlangAstParser {
     }
 
     return switch (token.type()) {
-      case LITERAL_INTEGER -> new AstLiteral(Integer.parseInt(token.content()));
-      case LITERAL_DECIMAL -> new AstLiteral(Double.parseDouble(token.content()));
-      case LITERAL_BOOLEAN_FALSE -> new AstLiteral(false);
-      case LITERAL_BOOLEAN_TRUE -> new AstLiteral(true);
-      case LITERAL_STRING -> new AstLiteral(token.content().substring(1, token.content().length() - 1));
-      case LITERAL_STRING_TEMPLATE -> new AstLiteral(token.content()); // TODO: Where and how to parse this?
-      case LITERAL_INTEGER_BINARY -> new AstLiteral(Integer.parseInt(token.content(), 2));
-      case LITERAL_INTEGER_HEX -> new AstLiteral(Integer.parseInt(token.content(), 16));
-      case LITERAL_INTEGER_OCTAL -> new AstLiteral(Integer.parseInt(token.content(), 8));
+      case LITERAL_INTEGER -> new AstLiteral(token.content(), Ty.INTEGER);
+      // TODO: Need to add all the other precision number types, like double, float, etc. Especially with variable width...
+      //        Right now the default decimal number is FLOAT, to make things easier in LLVM. But DECIMAL should be DECIMAL ^^;
+      case LITERAL_DECIMAL -> new AstLiteral(token.content(), Ty.DECIMAL);
+      case LITERAL_FLOAT -> new AstLiteral(token.content(), Ty.FLOAT);
+      case LITERAL_DOUBLE -> new AstLiteral(token.content(), Ty.DOUBLE);
+      case LITERAL_BOOLEAN -> new AstLiteral(token.content(), Ty.BOOLEAN);
+      case LITERAL_STRING -> new AstLiteral(token.content().substring(1, token.content().length() - 1), Ty.STRING);
+      case LITERAL_STRING_TEMPLATE -> new AstLiteral(token.content(), Ty.STRING); // TODO: Where and how to parse this?
+      case LITERAL_INTEGER_BINARY -> new AstLiteral(token.content(), Ty.INTEGER_BINARY);
+      case LITERAL_INTEGER_HEX -> new AstLiteral(token.content(), Ty.INTEGER_HEX);
+      case LITERAL_INTEGER_OCTAL -> new AstLiteral(token.content(), Ty.INTEGER_OCTAL);
+      case LITERAL_INTEGER_LONG -> new AstLiteral(token.content(), Ty.LONG);
+      case ADD -> parsePotentialDeclaredPositiveLiteralNumber();
+      case SUBTRACT -> parsePotentialDeclaredNegativeLiteralNumber();
       case UNDERSCORE -> new AstVariableSink();
       case BANG -> new AstNot(parseExpression());
       case OPEN_BRACE -> parseBlock();
@@ -496,6 +555,36 @@ public class PlangAstParser {
       case INFER -> parseInfer();
       default -> throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
     };
+  }
+
+  /**
+   * `+(something)` is handled same as `(something)`.
+   * <p>
+   * If operator overloading is ever a thing, then a AstUnaryPlus might be needed.
+   */
+  private AstExpression parsePotentialDeclaredPositiveLiteralNumber() {
+    final var potentialNumber = this.parseExpression();
+    if (potentialNumber != null) {
+      return potentialNumber;
+    } else {
+      throw new IllegalStateException("EOS");
+    }
+  }
+
+  private AstExpression parsePotentialDeclaredNegativeLiteralNumber() {
+
+    final var potentialNumber = this.parseExpression();
+    if (potentialNumber != null) {
+
+      if (potentialNumber instanceof AstLiteral literal && literal.ty().isNumber()) {
+        return new AstLiteral(STR."-\{literal.content()}", literal.ty());
+      } else {
+        return new AstNegate(potentialNumber);
+      }
+
+    } else {
+      throw new IllegalStateException("EOS");
+    }
   }
 
   private AstExpression parseVarVal(final Token token) {
@@ -542,8 +631,6 @@ public class PlangAstParser {
 
     return iterator.hasNext();
   }
-
-  private final Deque<Token> queuedTokens = new ArrayDeque<>();
 
   private Token next() {
 
@@ -1173,6 +1260,7 @@ public class PlangAstParser {
 
     return new AstLoopWhile(predicate, body);
   }
+
   private AstLoopFor parseFor() {
 
     final var head = this.parseLevel0();

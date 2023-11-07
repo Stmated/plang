@@ -241,4 +241,8 @@ public interface AstVisitor<T> {
   default T visitLoop(AstLoop expr) {
     return visit(expr.body());
   }
+
+  default T visitNegate(AstNegate expr) {
+    return visit(expr.expression());
+  }
 }

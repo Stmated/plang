@@ -5,5 +5,8 @@ public enum TyValueKind {
   INTEGER,
   FLOAT,
   DOUBLE,
-  BOOLEAN
+  DECIMAL,
+  BOOLEAN,
+  STRING,
+  ARRAY
 }

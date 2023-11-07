@@ -5,10 +5,12 @@ import com.github.stmated.plang.hir.raising.AstToHirRaising;
 import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.lexer.PlangLexer;
 import com.github.stmated.plang.lexer.PlangLexerSteps;
-import com.github.stmated.plang.llvm.lowering.HirToLLVMLowering;
-import com.github.stmated.plang.mir.HirToMirLowering;
+import com.github.stmated.plang.llvm.lowering.MirToLLVMLowering;
+import com.github.stmated.plang.mir.ThirToMirLowering;
 import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.parser.PlangAstParser;
+import com.github.stmated.plang.thir.raising.HirToThirRaising;
+import com.github.stmated.plang.thir.raising.ThirRepository;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -43,11 +45,31 @@ public class Plang {
     return new AstToHirRaising().lower_program(ast);
   }
 
+  public static ThirRepository hirToThir(HirProgram hir) {
+    return new HirToThirRaising().raise(hir);
+  }
+
   public static MirNode hirToMir(HirProgram hir) {
-    return new HirToMirLowering().lower_program(hir);
+
+    final var thir = new HirToThirRaising().raise(hir);
+    return thirToMir(thir);
+  }
+
+  public static MirNode thirToMir(ThirRepository thir) {
+    return new ThirToMirLowering(thir).lower();
   }
 
   public static Path hirToPath(HirProgram hir) {
+    final var mir = hirToMir(hir);
+    return mirToPath(mir);
+  }
+
+  public static Path thirToPath(ThirRepository hir) {
+    final var mir = thirToMir(hir);
+    return mirToPath(mir);
+  }
+
+  public static Path mirToPath(MirNode mirNode) {
 
     final Path randomPath;
 
@@ -58,12 +80,13 @@ public class Plang {
         .resolve(UUID.randomUUID().toString());
 
     } catch (IOException ex) {
-
       throw new RuntimeException("Could not create temp directory", ex);
     }
 
     try {
-      return new HirToLLVMLowering().lower_program(hir, randomPath);
+
+      final var llvmLowering = new MirToLLVMLowering();
+      return llvmLowering.lower(mirNode, randomPath);
     } catch (IOException | InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -125,6 +148,13 @@ public class Plang {
     final var ast = Plang.codeToAst(code);
     final var hir = Plang.astToHir(ast);
     return Plang.hirToPath(hir);
+  }
+
+  public static ThirRepository codeToThir(String code) {
+
+    final var ast = Plang.codeToAst(code);
+    final var hir = Plang.astToHir(ast);
+    return Plang.hirToThir(hir);
   }
 
   public static MirNode codeToMir(String code) {

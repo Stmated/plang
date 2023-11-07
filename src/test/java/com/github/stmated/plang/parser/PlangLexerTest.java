@@ -15,7 +15,9 @@ import static com.github.stmated.plang.lexer.TokenType.GTE;
 import static com.github.stmated.plang.lexer.TokenType.IDENTIFIER;
 import static com.github.stmated.plang.lexer.TokenType.IF;
 import static com.github.stmated.plang.lexer.TokenType.LITERAL_DECIMAL;
+import static com.github.stmated.plang.lexer.TokenType.LITERAL_DOUBLE;
 import static com.github.stmated.plang.lexer.TokenType.LITERAL_INTEGER;
+import static com.github.stmated.plang.lexer.TokenType.MODULUS;
 import static com.github.stmated.plang.lexer.TokenType.MULTIPLY;
 import static com.github.stmated.plang.lexer.TokenType.OPEN_BRACE;
 import static com.github.stmated.plang.lexer.TokenType.OPEN_PAREN;
@@ -23,9 +25,12 @@ import static com.github.stmated.plang.lexer.TokenType.ADD;
 import static com.github.stmated.plang.lexer.TokenType.REMAINDER;
 import static com.github.stmated.plang.lexer.TokenType.RETURN;
 import static com.github.stmated.plang.lexer.TokenType.SEMI_COLON;
+import static com.github.stmated.plang.lexer.TokenType.SUBTRACT;
 import static com.github.stmated.plang.lexer.TokenType.THEN;
 import static com.github.stmated.plang.lexer.TokenType.VAL;
 
+import com.github.stmated.plang.exceptions.InvalidDecimalsException;
+import com.github.stmated.plang.exceptions.LexerException;
 import com.github.stmated.plang.exceptions.UncaughtLexerException;
 import com.github.stmated.plang.exceptions.UnexpectedTokenException;
 import com.github.stmated.plang.lexer.PlangLexer;
@@ -40,10 +45,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.SneakyThrows;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @Slf4j
 class PlangLexerTest {
@@ -52,40 +60,104 @@ class PlangLexerTest {
   void testNumbers() {
 
     this.check("1", LITERAL_INTEGER);
-    this.check("1.1", LITERAL_DECIMAL);
-    this.check(".1", LITERAL_DECIMAL);
+    this.check("1.1", LITERAL_DOUBLE);
+    this.check("0.1", LITERAL_DOUBLE);
 
     this.check("123", LITERAL_INTEGER);
-    this.check("123.123", LITERAL_DECIMAL);
-    this.check(".123", LITERAL_DECIMAL);
+    this.check("123.123", LITERAL_DOUBLE);
+    this.check("0.123", LITERAL_DOUBLE);
 
     this.check("123_123", LITERAL_INTEGER);
-    this.check("123_123.123_123", LITERAL_DECIMAL);
+    this.check("123_123.123_123", LITERAL_DOUBLE);
 
     this.check("123..123", LITERAL_INTEGER, DOUBLE_DOT, LITERAL_INTEGER);
-    this.check("123.456..123.456", LITERAL_DECIMAL, DOUBLE_DOT, LITERAL_DECIMAL);
   }
 
   @Test
-  @SneakyThrows
-  void testDecimalContent() {
+  void testDifficultDecimalRange() {
+    this.check("123.456..123.456", LITERAL_DOUBLE, DOUBLE_DOT, LITERAL_DOUBLE);
+    this.checkToString("123.456..123.456", "123.456..123.456");
+  }
 
-    final var tokens = this.execute("1.1");
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "1.1m",
+    "1.1M"
+  })
+  @SneakyThrows
+  void testDecimalContent(String code) {
+
+    final var tokens = this.execute(code);
 
     Assertions.assertEquals(1, tokens.size());
-    Assertions.assertEquals(LITERAL_DECIMAL, tokens.get(0).type());
-    Assertions.assertEquals(0, tokens.get(0).start());
-    Assertions.assertEquals(3, tokens.get(0).end());
-    Assertions.assertEquals("1.1", tokens.get(0).content());
+    Assertions.assertEquals(LITERAL_DECIMAL, tokens.getFirst().type());
+    Assertions.assertEquals(0, tokens.getFirst().start());
+    Assertions.assertEquals(4, tokens.getFirst().end());
+    Assertions.assertEquals("1.1", tokens.getFirst().content());
   }
 
-  @Test
-  void testOnePlusOne() {
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "1.1"
+  })
+  @SneakyThrows
+  void testDoubleContent(String code) {
 
-    this.check("1 + 1", LITERAL_INTEGER, ADD, LITERAL_INTEGER);
-    this.check("1+1", LITERAL_INTEGER, ADD, LITERAL_INTEGER);
-    this.check("  1+1", LITERAL_INTEGER, ADD, LITERAL_INTEGER);
-    this.check("  1+1  ", LITERAL_INTEGER, ADD, LITERAL_INTEGER);
+    final var tokens = this.execute(code);
+
+    Assertions.assertEquals(1, tokens.size());
+    Assertions.assertEquals(LITERAL_DOUBLE, tokens.getFirst().type());
+    Assertions.assertEquals(0, tokens.getFirst().start());
+    Assertions.assertEquals(3, tokens.getFirst().end());
+    Assertions.assertEquals("1.1", tokens.getFirst().content());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "1.1d",
+    "1.1D"
+  })
+  @SneakyThrows
+  void testDoubleContentWithSuffix(String code) {
+
+    final var tokens = this.execute(code);
+
+    Assertions.assertEquals(1, tokens.size());
+    Assertions.assertEquals(LITERAL_DOUBLE, tokens.getFirst().type());
+    Assertions.assertEquals(0, tokens.getFirst().start());
+    Assertions.assertEquals(4, tokens.getFirst().end());
+    Assertions.assertEquals("1.1", tokens.getFirst().content());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "1 + 1",
+    "1+1",
+    "  1+1",
+    "  1+1  "
+  })
+  void testOnePlusOne(String code) {
+    this.check(code, LITERAL_INTEGER, ADD, LITERAL_INTEGER);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "-1",
+    " -1",
+    " - 1 "
+  })
+  void testUnaryNegate(String code) {
+    this.check(code, SUBTRACT, LITERAL_INTEGER);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "+1",
+    " +1",
+    " + 1 "
+  })
+  void testUnaryAdd(String code) {
+    this.check(code, ADD, LITERAL_INTEGER);
   }
 
   @Test
@@ -107,6 +179,14 @@ class PlangLexerTest {
         "if (1 >= 1) then return 10 << 1",
         IF, OPEN_PAREN, LITERAL_INTEGER, GTE, LITERAL_INTEGER, CLOSE_PAREN,
         THEN, RETURN, LITERAL_INTEGER, BIT_SHIFT_LEFT, LITERAL_INTEGER
+    );
+  }
+
+  @Test
+  void testParenIncluded() {
+    this.check(
+      "if (a % b == 0) bar",
+      IF, OPEN_PAREN, IDENTIFIER, REMAINDER, IDENTIFIER, EQUALS, LITERAL_INTEGER, CLOSE_PAREN, IDENTIFIER
     );
   }
 
@@ -163,27 +243,8 @@ class PlangLexerTest {
 //  }
 
   @Test
-  void testBenchmark() {
-
-    final var ITERATIONS = 1_000_000;
-    final var before = System.nanoTime();
-    for (var i = 0; i < ITERATIONS; i++) {
-      this.testCode();
-    }
-
-    final var after = System.nanoTime();
-    final var duration = Duration.ofNanos(after - before);
-    final var durationPer = duration.dividedBy(ITERATIONS);
-
-    log.info("Duration: {}, per {}ns {}ms", duration, durationPer.toNanos(), durationPer.toMillis());
-  }
-
-  @Test
   void testTokenizerErrors() {
-
-    final var ex = Assertions.assertThrows(UncaughtLexerException.class, () ->  this.execute("123.123.123"));
-    Assertions.assertInstanceOf(UnexpectedTokenException.class, ex.getCause());
-    Assertions.assertEquals(TokenType.DOT, ((UnexpectedTokenException) ex.getCause()).getToken().type());
+    Assertions.assertThrows(InvalidDecimalsException.class, () ->  this.execute("123.123.123"));
   }
 
   @SneakyThrows
@@ -199,6 +260,15 @@ class PlangLexerTest {
 
       return "\n%s\n%s\n".formatted(expectedStrings, actualStrings);
     });
+  }
+
+  @SneakyThrows
+  private void checkToString(String from, String expected) {
+
+    final var tokenList = this.execute(from);
+    final var actual = String.join("", tokenList.stream().map(Token::content).toList());
+
+    Assertions.assertEquals(expected, actual);
   }
 
   private List<Token> execute(String from) throws Exception {

@@ -25,15 +25,20 @@ public enum TokenType {
 
   LITERAL_INTEGER,
   LITERAL_INTEGER_HEX,
-  LITERAL_DECIMAL,
   LITERAL_INTEGER_OCTAL,
   LITERAL_INTEGER_BINARY,
+  LITERAL_INTEGER_LONG,
+
+  LITERAL_DECIMAL,
+  LITERAL_FLOAT,
+  LITERAL_DOUBLE,
 
   LITERAL_STRING,
   LITERAL_STRING_TEMPLATE,
 
-  LITERAL_BOOLEAN_TRUE,
-  LITERAL_BOOLEAN_FALSE,
+  TRUE,
+  FALSE,
+  LITERAL_BOOLEAN,
 
   IDENTIFIER,
 
@@ -130,51 +135,51 @@ public enum TokenType {
   }
 
   private static final TokenType[] KEYWORDS = new TokenType[]{
-      IF,
-      ELSE,
-      MATCH,
-      NEW,
-      IMPORT,
-      EXPORT,
-      DEFAULT,
+    IF,
+    ELSE,
+    MATCH,
+    NEW,
+    IMPORT,
+    EXPORT,
+    DEFAULT,
 
-      THEN,
-      END,
+    THEN,
+    END,
 
-      IS,
-      AS,
-      QUALIFIER,
+    IS,
+    AS,
+    QUALIFIER,
 
-      BECOME,
-      YIELD,
-      RETURN,
-      REF,
+    BECOME,
+    YIELD,
+    RETURN,
+    REF,
 
-      STRUCT,
-      IMPL,
-      SUPER,
-      DERIVE,
-      INFER,
+    STRUCT,
+    IMPL,
+    SUPER,
+    DERIVE,
+    INFER,
 
-      OF,
-      OUT,
-      IN,
+    OF,
+    OUT,
+    IN,
 
-      DO,
-      WHILE,
-      FOREACH,
-      FOR,
+    DO,
+    WHILE,
+    FOREACH,
+    FOR,
 
-      WITH,
-      WHERE,
-      GIVEN,
+    WITH,
+    WHERE,
+    GIVEN,
 
-      TRAIT,
-      VAL,
-      VAR,
+    TRAIT,
+    VAL,
+    VAR,
 
-      LITERAL_BOOLEAN_TRUE,
-      LITERAL_BOOLEAN_FALSE,
+    TRUE,
+    FALSE
   };
 
   public static TokenType[] keywords() {
@@ -189,5 +194,11 @@ public enum TokenType {
     }
 
     return false;
+  }
+
+  public boolean isLiteralNumber() {
+    return this == LITERAL_INTEGER
+           || this == LITERAL_DECIMAL || this == LITERAL_DOUBLE || this == LITERAL_FLOAT
+           || this == LITERAL_INTEGER_BINARY || this == LITERAL_INTEGER_HEX || this == LITERAL_INTEGER_OCTAL || this == LITERAL_INTEGER_LONG;
   }
 }

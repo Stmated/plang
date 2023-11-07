@@ -8,6 +8,7 @@ import com.github.stmated.plang.hir.model.HirExpression;
 import com.github.stmated.plang.hir.model.HirLiteral;
 import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.hir.model.HirReturn;
+import com.github.stmated.plang.ty.Ty;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -20,7 +21,11 @@ class HirToLLVMLoweringTest {
 
     final var program = new HirProgram(new HirExpression[]{
       new HirReturn(
-        new HirBinaryOperation(new HirLiteral(1), HirBinaryOperationKind.ADD, new HirLiteral(2))
+        new HirBinaryOperation(
+          new HirLiteral("1", Ty.INTEGER),
+          HirBinaryOperationKind.ADD,
+          new HirLiteral("2", Ty.INTEGER)
+        )
       )
     });
 
@@ -159,9 +164,9 @@ class HirToLLVMLoweringTest {
 
   @ParameterizedTest
   @ValueSource(strings = {
-    "val a = 0; return if (a == 0) then a = 10 else a = 5",
-    "val a = 10",
-    "val a = 10; a += 1; a -= 1"
+    "var a = 0; if (a == 0) then a = 10 else a = 5; return a;",
+    "val a = 10; a",
+    "var a = 10; a += 1; a -= 1; a"
   })
   void testScopes(String code) {
     Assertions.assertEquals(10, Plang.codeToResult(code).returnCode());

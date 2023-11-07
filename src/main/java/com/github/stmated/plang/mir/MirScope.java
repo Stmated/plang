@@ -1,16 +1,17 @@
 package com.github.stmated.plang.mir;
 
-import com.github.stmated.plang.mir.model.MirAssignment;
+import com.github.stmated.plang.mir.model.MirInstr;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 record MirScope(
   MirScope parent,
   String name,
-  Map<String, List<MirAssignment>> map,
+  Map<String, List<MirInstr>> map,
   Map<String, AtomicInteger> idMap
 ) {
 
@@ -18,7 +19,7 @@ record MirScope(
     this(parent, name, new HashMap<>(), new HashMap<>());
   }
 
-  MirScope(MirScope parent, String name, Map<String, List<MirAssignment>> map, Map<String, AtomicInteger> idMap) {
+  MirScope(MirScope parent, String name, Map<String, List<MirInstr>> map, Map<String, AtomicInteger> idMap) {
     this.parent = parent;
     this.name = name;
     this.map = map;
@@ -26,6 +27,10 @@ record MirScope(
   }
 
   public MirIdentifierId newUniqueId(String name) {
+    return newUniqueId(name, null);
+  }
+
+  public MirIdentifierId newUniqueId(String name, String label) {
 
     var pointer = this;
     AtomicInteger earliest_counter = null;
@@ -39,20 +44,29 @@ record MirScope(
     }
 
     if (earliest_counter != null) {
-      return new MirIdentifierId(name, earliest_counter.incrementAndGet());
+      return new MirIdentifierId(name, label, earliest_counter.incrementAndGet());
     }
 
     final var id = this.idMap.computeIfAbsent(name, n -> new AtomicInteger(0)).incrementAndGet();
-    return new MirIdentifierId(name, id);
+    return new MirIdentifierId(name, label, id);
   }
 
-  public void add(MirAssignment operand) {
+  public void add(MirInstr instruction) {
 
-    final var e = this.map.computeIfAbsent(operand.iid().name(), n -> new ArrayList<>());
-    e.add(operand);
+    final var iid = Objects.requireNonNull(
+      instruction.name(),
+      "To add a scoped instruction, it must be identifiable"
+    );
+
+    final var e = this.map.computeIfAbsent(
+      Objects.requireNonNull(iid.name(), "To add scoped instruction it must be named"),
+      n -> new ArrayList<>()
+    );
+
+    e.add(instruction);
   }
 
-  public MirAssignment get(String name) {
+  public MirInstr get(String name) {
 
     final var e = this.map.get(name);
     if (e != null) {

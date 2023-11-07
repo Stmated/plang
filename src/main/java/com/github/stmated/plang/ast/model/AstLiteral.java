@@ -2,25 +2,19 @@ package com.github.stmated.plang.ast.model;
 
 import com.github.stmated.plang.ast.AstVisitor;
 
-import java.util.Objects;
+import com.github.stmated.plang.ty.TyValue;
 
 /**
  * TODO: Probably not good, since it relies on the data types of Java and not the actual target language
  */
 public record AstLiteral(
-    Object value
+    String content,
+    TyValue ty
 ) implements AstExpression {
-
-  public AstLiteral {
-
-    if (value instanceof AstExpression) {
-      throw new IllegalArgumentException(STR."Not allowed to have an expression as a literal: \{value}");
-    }
-  }
 
   @Override
   public String toString() {
-    return Objects.toString(value, "<null>");
+    return STR."\{content} (\{ty})";
   }
 
   @Override

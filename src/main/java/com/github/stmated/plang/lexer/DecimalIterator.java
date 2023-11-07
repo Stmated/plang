@@ -50,7 +50,7 @@ class DecimalIterator implements Iterator<Token> {
           }
         }
 
-        return new Token(TokenType.LITERAL_DECIMAL, t.start(), t2.end(), content);
+        return new Token(TokenType.LITERAL_DOUBLE, t.start(), t2.end(), content);
 
       } else if (t2 != null) {
         queue.add(t2);
@@ -77,7 +77,7 @@ class DecimalIterator implements Iterator<Token> {
             }
           }
 
-          return new Token(TokenType.LITERAL_DECIMAL, t.start(), t3.end(), content);
+          return new Token(TokenType.LITERAL_DOUBLE, t.start(), t3.end(), content);
         } else {
 
           queue.add(t2);

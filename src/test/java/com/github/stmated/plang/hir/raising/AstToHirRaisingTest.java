@@ -10,6 +10,7 @@ import com.github.stmated.plang.ast.model.AstReturn;
 import com.github.stmated.plang.hir.model.HirBinaryOperation;
 import com.github.stmated.plang.hir.model.HirBinaryOperationKind;
 import com.github.stmated.plang.hir.model.HirLiteral;
+import com.github.stmated.plang.ty.Ty;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -20,21 +21,21 @@ class AstToHirRaisingTest {
 
     final var ast = new AstConditional(
       new AstBinaryOperation(
-        new AstLiteral(1),
+        new AstLiteral("1", Ty.INTEGER),
         AstBinaryOperationKind.EQUALS,
-        new AstLiteral(1)
+        new AstLiteral("1", Ty.INTEGER)
       ),
       new AstBlock(
         new AstExpression[] {
           new AstReturn(
-            new AstLiteral(10)
+            new AstLiteral("10", Ty.INTEGER)
           )
         }
       ),
       new AstBlock(
         new AstExpression[] {
           new AstReturn(
-            new AstLiteral(20)
+            new AstLiteral("20", Ty.INTEGER)
           )
         }
       )

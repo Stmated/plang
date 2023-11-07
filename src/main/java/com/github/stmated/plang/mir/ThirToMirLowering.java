@@ -10,6 +10,7 @@ import com.github.stmated.plang.hir.model.HirCall;
 import com.github.stmated.plang.hir.model.HirConditional;
 import com.github.stmated.plang.hir.model.HirExpression;
 import com.github.stmated.plang.hir.model.HirExpressionCollection;
+import com.github.stmated.plang.hir.model.HirFunctionReference;
 import com.github.stmated.plang.hir.model.HirIdentifier;
 import com.github.stmated.plang.hir.model.HirLiteral;
 import com.github.stmated.plang.hir.model.HirLoop;
@@ -19,18 +20,23 @@ import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.hir.model.HirReturn;
 import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 import com.github.stmated.plang.mir.model.MirBinaryOperationKind;
-import com.github.stmated.plang.mir.model.MirAssignment;
-import com.github.stmated.plang.mir.model.MirBinaryOperation;
 import com.github.stmated.plang.mir.model.MirCall;
+import com.github.stmated.plang.mir.model.MirFn;
+import com.github.stmated.plang.mir.model.MirFnArgument;
+import com.github.stmated.plang.mir.model.MirFnParameter;
+import com.github.stmated.plang.mir.model.MirInstrBinaryOperation;
 import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
+import com.github.stmated.plang.mir.model.MirInstrCreateLiteral;
 import com.github.stmated.plang.mir.model.MirInstrJump;
-import com.github.stmated.plang.mir.model.MirOperandPhi;
-import com.github.stmated.plang.mir.model.MirOperandNodeResult;
-import com.github.stmated.plang.mir.model.MirReturn;
+import com.github.stmated.plang.mir.model.MirInstrPhi;
+import com.github.stmated.plang.mir.model.MirInstr;
 import com.github.stmated.plang.mir.model.MirNode;
-import com.github.stmated.plang.mir.model.MirOperand;
-import com.github.stmated.plang.mir.model.MirOperandHirExpression;
+import com.github.stmated.plang.mir.model.MirReturn;
+import com.github.stmated.plang.thir.raising.ThirRepository;
+import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.util.TyUtil;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.Stack;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +46,7 @@ import lombok.extern.slf4j.Slf4j;
  * the MIR as much as possible and separate it away from the HIR.
  */
 @Slf4j
-public class HirToMirLowering {
+public class ThirToMirLowering {
 
   private record LoopScope(MirNode next, MirNode exit) {
 
@@ -51,7 +57,18 @@ public class HirToMirLowering {
   private final Stack<MirNode> nodeStack = new Stack<>();
   private final Stack<MirScope> scopeStack = new Stack<>();
 
-  public MirNode lower_program(HirProgram hir) {
+  private final ThirRepository thirRepository;
+
+  public ThirToMirLowering(ThirRepository thirRepository) {
+    this.thirRepository = thirRepository;
+  }
+
+  /**
+   * TODO: One THIR should be able to result in multiple different MirNodes.
+   *        It is then up to different kinds of nodes to link them all together.
+   *        Could be either a hard link to an actual MirNode, or a soft link to a locator node (like dependant on package)
+   */
+  public MirNode lower() {
 
     final var startNode = new MirNode("start");
 
@@ -59,7 +76,7 @@ public class HirToMirLowering {
       scopeStack.push(new MirScope(null, "global"));
       try {
         nodeStack.push(startNode);
-        lower_expressions(hir.expressions());
+        lower_expression(thirRepository.root());
       } finally {
         nodeStack.pop();
       }
@@ -70,9 +87,9 @@ public class HirToMirLowering {
     return startNode;
   }
 
-  private MirOperand lower_expressions(HirExpression[] expressions) {
+  private MirInstr lower_expressions(HirExpression[] expressions) {
 
-    MirOperand lastOperand = null;
+    MirInstr lastOperand = null;
     for (final var expression : expressions) {
       final var operand = lower_expression(expression);
       if (operand != null) {
@@ -87,7 +104,7 @@ public class HirToMirLowering {
     return lastOperand;
   }
 
-  private MirOperand lower_expression(HirExpression expr) {
+  private MirInstr lower_expression(HirExpression expr) {
 
     return switch (expr) {
       case HirLiteral hir -> lower_literal(hir);
@@ -110,7 +127,7 @@ public class HirToMirLowering {
     };
   }
 
-  private MirOperand lower_loop(HirLoop hir) {
+  private MirInstr lower_loop(HirLoop hir) {
 
     final var node_loop = new MirNode("loop");
     nodeStack.peek().addSuccessor(node_loop);
@@ -138,7 +155,7 @@ public class HirToMirLowering {
     }
   }
 
-  private MirOperand lower_loop_continue(HirLoopContinue hir) {
+  private MirInstr lower_loop_continue(HirLoopContinue hir) {
 
     final var loop = loopStack.peek();
     final var node = nodeStack.peek();
@@ -151,7 +168,7 @@ public class HirToMirLowering {
     return null;
   }
 
-  private MirOperand lower_loop_break(HirLoopBreak hir) {
+  private MirInstr lower_loop_break(HirLoopBreak hir) {
 
     final var loop = loopStack.peek();
     final var node = nodeStack.peek();
@@ -164,7 +181,7 @@ public class HirToMirLowering {
     return null;
   }
 
-  private MirOperand lower_identifier(HirIdentifier hir) {
+  private MirInstr lower_identifier(HirIdentifier hir) {
 
     final var identifierName = hir.name();
 
@@ -180,7 +197,7 @@ public class HirToMirLowering {
     throw new IllegalArgumentException(STR."There is no variable '\{hir.name()}' found in scope");
   }
 
-  private MirOperand lower_assignment(HirAssignment hir) {
+  private MirInstr lower_assignment(HirAssignment hir) {
 
     final var name = switch (hir.lhs()) {
       case HirVariableDeclaration lhs -> lhs.identifier().name();
@@ -192,17 +209,15 @@ public class HirToMirLowering {
     final var scope = scopeStack.peek();
     final var iid = scope.newUniqueId(name);
 
-    // TODO: Add the result of the assignment, since it will be easier to follow
-    final var assignment = new MirAssignment(iid, rhs);
-    scope.add(assignment);
+    rhs.name(iid);
+    scope.add(rhs);
 
-//    final var operand = new MirOperandPhi(assignment);
-    nodeStack.peek().instructions().add(assignment);
+//    nodeStack.peek().instructions().add(rhs);
 
-    return assignment;
+    return rhs;
   }
 
-  private MirOperand lower_variable_declaration(HirVariableDeclaration hir) {
+  private MirInstr lower_variable_declaration(HirVariableDeclaration hir) {
 
     log.debug("Variable declaration has no meaning in CFG, handle assignment expressions");
     return null;
@@ -216,13 +231,14 @@ public class HirToMirLowering {
 
   @Data
   private class PhiEntry {
-    MirAssignment a;
+
+    MirInstr a;
     MirNode aNode;
-    MirAssignment b;
+    MirInstr b;
     MirNode bNode;
   }
 
-  private MirOperand lower_conditional(HirConditional hir) {
+  private MirInstr lower_conditional(HirConditional hir) {
 
     final var predicate_operand = lower_expression(hir.predicate());
 
@@ -269,11 +285,11 @@ public class HirToMirLowering {
       nodeStack.pop();
     }
 
-    if (!pass_node.isTerminal() || !fail_node.isTerminal()) {
+    final var parent = nodeStack.pop();
+    final var node_merge = new MirNode("conditional_merge");
+    nodeStack.push(node_merge);
 
-      final var parent = nodeStack.pop();
-      final var node_merge = new MirNode("conditional_merge");
-      nodeStack.push(node_merge);
+    if (!pass_node.isTerminal() || !fail_node.isTerminal()) {
 
       if (!pass_node.isTerminal()) {
 
@@ -296,66 +312,127 @@ public class HirToMirLowering {
       for (final var e : pass_scope.map().entrySet()) {
         if (scope.get(e.getKey()) != null) {
           final var phi = phiMap.computeIfAbsent(e.getKey(), _ -> new PhiEntry());
-          phi.setA(e.getValue().getLast());
-          phi.setANode(pass_node);
+          phi
+            .a(e.getValue().getLast())
+            .aNode(pass_node);
         }
       }
 
       for (final var e : fail_scope.map().entrySet()) {
         if (scope.get(e.getKey()) != null) {
           final var phi = phiMap.computeIfAbsent(e.getKey(), _ -> new PhiEntry());
-          phi.setB(e.getValue().getLast());
-          phi.setBNode(fail_node);
+          phi
+            .b(e.getValue().getLast())
+            .bNode(fail_node);
         }
       }
 
       // If the variable was only assigned on one path, then we need to virtually add it to the other.
       for (final var phi_entry : phiMap.entrySet()) {
-        if (phi_entry.getValue().getA() == null) {
-          phi_entry.getValue().setA(scope.get(phi_entry.getKey()));
-          phi_entry.getValue().setANode(pass_node);
+        if (phi_entry.getValue().a() == null) {
+          phi_entry.getValue().a(scope.get(phi_entry.getKey()));
+          phi_entry.getValue().aNode(pass_node);
         }
-        if (phi_entry.getValue().getB() == null) {
-          phi_entry.getValue().setB(scope.get(phi_entry.getKey()));
-          phi_entry.getValue().setBNode(fail_node);
+        if (phi_entry.getValue().b() == null) {
+          phi_entry.getValue()
+            .b(scope.get(phi_entry.getKey()))
+            .bNode(fail_node);
         }
       }
 
       for (final var phi_entry : phiMap.entrySet()) {
 
-        final var phi = new MirOperandPhi(
-          new MirOperand[] { phi_entry.getValue().getA(), phi_entry.getValue().getB()},
-          new MirNode[] { phi_entry.getValue().getANode(), phi_entry.getValue().getBNode() }
+        final var a = phi_entry.getValue().a();
+        final var b = phi_entry.getValue().b();
+
+        final var phiTy = TyUtil.merge(a.ty(), b.ty());
+
+        if (!TyUtil.isUsable(phiTy)) {
+          throw new IllegalArgumentException(STR."Merged Phi node for '\{a}' and '\{b}' not usable");
+        }
+
+        final var phi = new MirInstrPhi(
+          new MirInstr[]{a, b},
+          new MirNode[]{phi_entry.getValue().aNode(), phi_entry.getValue().bNode()},
+          phiTy
         );
 
         final var iid = scope.newUniqueId(phi_entry.getKey());
-        final var assignment = new MirAssignment(iid, phi);
+        phi.name(iid);
 
-        node_merge.instructions().add(assignment);
-        scope.add(assignment);
+        nodeStack.peek().instructions().add(phi);
+        scope.add(phi);
       }
 
       // We will always create a phi-node for the if-case. For sake of simplicity.
       // But it is up to optimization passes to remove any terminal paths.
-      return new MirOperandPhi(
-        new MirOperand[] { new MirOperandNodeResult(pass_node), new MirOperandNodeResult(fail_node)},
-        new MirNode[] { pass_node, fail_node }
-      );
+
+      return getMirInstrPhi(hir, pass_node, fail_node);
 
     } else {
 
       // Both paths are terminal, so there is no need for a merge node.
       final var instruction = new MirInstrConditionalJump(predicate_operand, pass_node, fail_node);
-      nodeStack.peek().instructions().add(instruction);
+      parent.instructions().add(instruction);
 
-      return new MirOperandPhi(
-        new MirOperand[] { new MirOperandNodeResult(pass_node), new MirOperandNodeResult(fail_node)},
-        new MirNode[] { pass_node, fail_node }
-      );
+      // TODO: Should probably return something? Even if just some kind of "void" instruction?
+      return null; // getMirInstrPhi(hir, pass_node, fail_node);
     }
   }
 
-  private MirOperand lower_block(HirBlock hir) {
+  private MirInstr getMirInstrPhi(HirConditional hir, MirNode pass_node, MirNode fail_node) {
+
+    final var resultTy = Objects.requireNonNull(thirRepository.getType(hir), "Conditional itself must have a result type");
+
+    // TODO: Need a "good" way of solving a phi with only one path because of conditional, until a Result(T) type is added
+
+    if (resultTy != Ty.VOID) {
+
+//      final var passTy = Objects.requireNonNull(thirRepository.getType(hir.pass()), "Pass branch must have a result type");
+//      final var failTy = Objects.requireNonNull(thirRepository.getType(hir.fail()), "Fail branch must have a result type");
+
+      final var last_pass = getLastValueInstruction(pass_node);
+      final var last_fail = getLastValueInstruction(fail_node);
+
+      if (last_pass == null || last_fail == null) {
+
+        // Do not create a phi node as result instead give the last value instruction.
+        // This would happen if only one of the branches yield a value.
+        // TODO: This should yield a Result/Optional/other construct, where you would need to verify the result? Need better test cases.
+        return Objects.requireNonNullElse(last_pass, last_fail);
+      }
+
+      final var phi = new MirInstrPhi(
+        new MirInstr[]{last_pass, last_fail},
+        new MirNode[]{pass_node, fail_node},
+        resultTy
+      );
+
+      nodeStack.peek().instructions().add(phi);
+      return phi;
+    }
+
+    // NOTE: This is likely wrong. It should return something. An always failing Result/Optional/other construct?
+    return null;
+  }
+
+  private MirInstr getLastValueInstruction(MirNode node) {
+
+    for (var i = node.instructions().size() - 1; i >= 0; i--) {
+
+      final var instr = node.instructions().get(i);
+      if (instr instanceof MirInstrJump || instr instanceof MirInstrConditionalJump) {
+        continue;
+      } else {
+        return instr;
+      }
+    }
+
+    return null;
+//    throw new IllegalArgumentException(STR."There were no value instructions for node '\{node}'");
+  }
+
+  private MirInstr lower_block(HirBlock hir) {
 
     try {
 
@@ -370,50 +447,115 @@ public class HirToMirLowering {
     }
   }
 
-  private MirOperand lower_argument(HirArgument hir) {
-    return lower_expression(hir.expression());
+  private MirInstr lower_argument(HirArgument hir) {
+    return lower_expression(hir.value());
   }
 
-  private MirOperand lower_call(HirCall hir) {
+  private MirInstr lower_call(HirCall hir) {
 
-    final var mirOperands = new MirOperand[hir.arguments().length];
+    final var mirFnArguments = new MirFnArgument[hir.arguments().length];
     HirArgument[] arguments = hir.arguments();
     for (int i = 0; i < arguments.length; i++) {
       final var argument_operand = lower_expression(arguments[i]);
       if (argument_operand == null) {
         throw new IllegalArgumentException(STR."Argument '\{arguments[i]}' must produce an operand");
       } else {
-        mirOperands[i] = argument_operand;
+        mirFnArguments[i] = new MirFnArgument(arguments[i].label(), argument_operand);
       }
     }
 
-    final var target_operand = lower_expression(hir.functionReference());
-    if (target_operand == null) {
-      throw new IllegalArgumentException(STR."Function reference '\{hir.functionReference()}' must produce an operand");
-    }
+    final var mirFn = getMirFn(hir.functionReference());
 
-    final var instruction = new MirCall(target_operand, mirOperands);
+    final var instruction = new MirCall(
+      mirFn,
+      mirFnArguments,
+      Objects.requireNonNullElseGet(
+        hir.functionReference().function().returnType(),
+        () -> thirRepository.getType(hir)
+      )
+    );
+
     nodeStack.peek().instructions().add(instruction);
 
     return instruction;
   }
 
-  private MirOperand lower_binary_operation(HirBinaryOperation hir) {
+  private MirFn getMirFn(HirFunctionReference hirFn) {
+
+    // TODO: We should not be creating the function here, we should look it up somehow.
+    //        Perhaps we lock the thread here and await on a promise that might resolve the function reference?
+
+    final var hirParameters = hirFn.function().parameters();
+    final var mirParameters = new MirFnParameter[hirParameters.length];
+    for (var i = 0; i < hirParameters.length; i++) {
+      final var identifier = hirParameters[i].identifier();
+      final var identifierName = (identifier == null) ? null : identifier.name();
+      final var parameterType = Objects.requireNonNullElse(
+        thirRepository.getType(hirParameters[i]),
+        hirParameters[i].ty()
+      );
+      mirParameters[i] = new MirFnParameter(identifierName, parameterType);
+    }
+
+    return new MirFn(
+      hirFn.function().identifier().name(),
+      // TODO: This needs to be a reference to the entry node of the other function. This is where it starts getting tricky.
+      //        For external functions there is no entry, it will be made available through the linker
+      null,
+      mirParameters,
+      hirFn.function().vararg(),
+      hirFn.function().returnType()
+    );
+
+//    return switch (hirFn.function().identifier().name()) {
+//      case "printf" -> {
+//        //        final var i8PointerType = LLVM.LLVMPointerType(getType("i8"), 0);
+////        LLVMTypeRef[] printfArgs = {i8PointerType};
+////        final var printFnType = LLVM.LLVMFunctionType(getType("i32"), new PointerPointer<>(printfArgs), printfArgs.length, 1);
+////        final var printfFn = LLVM.LLVMAddFunction(module, "printf", printFnType);
+////
+////        return new ExternalFn(printfFn, printFnType);
+//
+//        yield new MirFn(
+//          hirFn.function().identifier().name(),
+//          null,
+//          mirParameters,
+//          hirFn.function().returnType()
+//        );
+//      }
+//      default -> {
+//        yield
+//      }
+//    };
+  }
+
+  private MirInstr lower_binary_operation(HirBinaryOperation hir) {
 
     final var lhs = lower_expression(hir.lhs());
     final var rhs = lower_expression(hir.rhs());
 
-    final var instruction = new MirBinaryOperation(lhs, MirBinaryOperationKind.ofHirKind(hir.kind()), rhs);
+    final var mirBopKind = MirBinaryOperationKind.ofHirKind(hir.kind());
+    final var ty = thirRepository.getTypeOrThrow(hir);
+    final var instruction = new MirInstrBinaryOperation(lhs, mirBopKind, rhs, ty);
+    nodeStack.peek().instructions().add(instruction);
+
+    final var scope = scopeStack.peek();
+    final var iid = scope.newUniqueId("bop");
+    instruction.name(iid);
+
+    return instruction;
+  }
+
+  private MirInstr lower_literal(HirLiteral hir) {
+    final var ty = Objects.requireNonNullElse(thirRepository.getType(hir), hir.ty());
+    final var instruction = new MirInstrCreateLiteral(hir.content(), ty);
+
     nodeStack.peek().instructions().add(instruction);
 
     return instruction;
   }
 
-  private MirOperand lower_literal(HirLiteral hir) {
-    return new MirOperandHirExpression(hir);
-  }
-
-  private MirOperand lower_return(HirReturn hir) {
+  private MirInstr lower_return(HirReturn hir) {
 
     final var operand = lower_expression(hir.expression());
     final var instruction = new MirReturn(operand);

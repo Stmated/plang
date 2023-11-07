@@ -29,7 +29,6 @@ import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -50,6 +49,7 @@ import org.bytedeco.llvm.LLVM.LLVMValueRef;
 import org.bytedeco.llvm.global.LLVM;
 
 @Slf4j
+@Deprecated
 public class HirToLLVMLowering {
 
   private record LoopScope(LLVMBasicBlockRef next, LLVMBasicBlockRef exit) {
@@ -131,7 +131,7 @@ public class HirToLLVMLowering {
     }
 
     // Stage 1: Initialize LLVM components
-    LLVM.LLVMInitializeCore(LLVM.LLVMGetGlobalPassRegistry());
+    //LLVM.LLVMInitializeCore(LLVM.LLVMGetGlobalPassRegistry());
     LLVM.LLVMLinkInMCJIT();
     LLVM.LLVMInitializeNativeAsmPrinter();
     LLVM.LLVMInitializeNativeAsmParser();
@@ -154,13 +154,6 @@ public class HirToLLVMLowering {
 
       throw map_error_message_to_exception(errorMessage, details);
     }
-
-    // Stage 4: Create a pass pipeline using the legacy pass manager
-    var pm = LLVM.LLVMCreatePassManager();
-//    LLVM.LLVMAddAggressiveInstCombinerPass(pm);
-//    LLVM.LLVMAddNewGVNPass(pm);
-//    LLVM.LLVMAddCFGSimplificationPass(pm);
-//    LLVM.LLVMRunPassManager(pm, module);
 
     // Stage 5: Execute the code using MCJIT
 //    LLVMExecutionEngineRef engine = new LLVMExecutionEngineRef();
@@ -189,6 +182,13 @@ public class HirToLLVMLowering {
 
       throw map_error_message_to_exception(errorString, details);
     }
+
+    // Stage 4: Create a pass pipeline using the legacy pass manager
+    var pm = LLVM.LLVMCreatePassManager();
+//    LLVM.LLVMAddAggressiveInstCombinerPass(pm);
+//    LLVM.LLVMAddNewGVNPass(pm);
+//    LLVM.LLVMAddCFGSimplificationPass(pm);
+    LLVM.LLVMRunPassManager(pm, module);
 
     if (log.isTraceEnabled()) {
       log.trace(LLVM.LLVMPrintModuleToString(module).getString());
@@ -335,14 +335,14 @@ public class HirToLLVMLowering {
       llvmArgs[i] = translate_expression(hir.arguments()[i]);
     }
 
-//    var format = LLVMBuildGlobalStringPtr(builder, "%ld\n", "format");
+    final var pp = new PointerPointer<>(llvmArgs);
 
     return LLVM.LLVMBuildCall2(
-      builder, fnType, fn, new PointerPointer<>(llvmArgs), llvmArgs.length, STR."call \{functionName}"
+      builder, fnType, fn, pp, llvmArgs.length, STR."call \{functionName}"
     );
   }
 
-  private LLVMValueRef lower_llvm_return(HirReturn hir) {
+  private LLVMValueRef lower_return(HirReturn hir) {
 
     final var expr = translate_expression(hir.expression());
     return dereferenceAndBuildRet(expr);
@@ -517,7 +517,7 @@ public class HirToLLVMLowering {
       case HirBinaryOperation hir -> lower_binary_operation(hir);
       case HirArgument hir -> lower_llvm_argument(hir);
       case HirCall hir -> lower_llvm_call(hir);
-      case HirReturn hir -> lower_llvm_return(hir);
+      case HirReturn hir -> lower_return(hir);
       case HirConditional hir -> lower_conditional(hir);
       case HirBlock hir -> lower_block(hir);
       case HirAssignment hir -> lower_assignment(hir);
@@ -792,68 +792,70 @@ public class HirToLLVMLowering {
   }
 
   private LLVMValueRef lower_llvm_argument(HirArgument hir) {
-    return translate_expression(hir.expression());
+    return translate_expression(hir.value());
   }
 
   private LLVMValueRef lower_literal(HirLiteral hirLiteral, boolean dynamic) {
 
-    if (hirLiteral.literal() == null) {
+    throw new NotImplementedException("This needs to be reimplemented in the Mir -> LLVM implementation");
 
-      // TODO: This needs to refer to the correct type, since null can be of different types.
-      // TODO: Then later, null needs to not exist at all.
-      return LLVM.LLVMConstNull(getType("i32"));
-    }
-
-    // TODO: Figure out a way to know better when to use constants and when to use allocated values
-
-    if (hirLiteral.literal() instanceof String) {
-
-      final var str = (String) hirLiteral.literal();
-
-      if (dynamic) {
-
-        // \0-terminate the string and get it as utf-8 bytes.
-        final var bytes = (STR."\{str}\0").getBytes(StandardCharsets.UTF_8);
-        final var charArray = new LLVMValueRef[bytes.length];
-        final var charType = LLVM.LLVMInt8TypeInContext(context);
-        for (int i = 0; i < bytes.length; i++) {
-          charArray[i] = getByte(bytes[i]);
-        }
-
-        final var strArray = LLVM.LLVMConstArray(charType, new PointerPointer<>(charArray), bytes.length);
-
-        final var charArrayType = LLVM.LLVMArrayType(charType, bytes.length);
-        final var globalVar = LLVM.LLVMAddGlobal(module, charArrayType, STR."globalString: \{str}");
-        LLVM.LLVMSetInitializer(globalVar, strArray);
-
-      } else {
-
-        return getGlobalStringPtr(str);
-      }
-    }
-
-    final var constant = switch (hirLiteral.literal()) {
-      case Integer v -> LLVM.LLVMConstInt(getType("i32"), v, 0);
-      case Double v -> LLVM.LLVMConstReal(getType("double"), v);
-      case Float v -> LLVM.LLVMConstReal(getType("float32"), v);
-      default -> throw new IllegalArgumentException(STR."Unknown literal '\{hirLiteral.literal()}'");
-    };
-
-    if (dynamic) {
-
-      final var allocation = switch (hirLiteral.literal()) {
-        case Integer _ -> LLVM.LLVMBuildAlloca(builder, getType("i32"), "int");
-        case Double _ -> LLVM.LLVMBuildAlloca(builder, getType("double"), "double");
-        case Float _ -> LLVM.LLVMBuildAlloca(builder, getType("float32"), "float32");
-        default -> throw new IllegalArgumentException(STR."Unknown literal '\{hirLiteral.literal()}'");
-      };
-
-      LLVM.LLVMBuildStore(builder, constant, allocation);
-      return allocation;
-
-    } else {
-      return constant;
-    }
+//    if (hirLiteral.literal() == null) {
+//
+//      // TODO: This needs to refer to the correct type, since null can be of different types.
+//      // TODO: Then later, null needs to not exist at all.
+//      return LLVM.LLVMConstNull(getType("i32"));
+//    }
+//
+//    // TODO: Figure out a way to know better when to use constants and when to use allocated values
+//
+//    if (hirLiteral.literal() instanceof String) {
+//
+//      final var str = (String) hirLiteral.literal();
+//
+//      if (dynamic) {
+//
+//        // \0-terminate the string and get it as utf-8 bytes.
+//        final var bytes = (STR."\{str}\0").getBytes(StandardCharsets.UTF_8);
+//        final var charArray = new LLVMValueRef[bytes.length];
+//        final var charType = LLVM.LLVMInt8TypeInContext(context);
+//        for (int i = 0; i < bytes.length; i++) {
+//          charArray[i] = getByte(bytes[i]);
+//        }
+//
+//        final var strArray = LLVM.LLVMConstArray(charType, new PointerPointer<>(charArray), bytes.length);
+//
+//        final var charArrayType = LLVM.LLVMArrayType(charType, bytes.length);
+//        final var globalVar = LLVM.LLVMAddGlobal(module, charArrayType, STR."globalString: \{str}");
+//        LLVM.LLVMSetInitializer(globalVar, strArray);
+//
+//      } else {
+//
+//        return getGlobalStringPtr(str);
+//      }
+//    }
+//
+//    final var constant = switch (hirLiteral.literal()) {
+//      case Integer v -> LLVM.LLVMConstInt(getType("i32"), v, 0);
+//      case Double v -> LLVM.LLVMConstReal(getType("double"), v);
+//      case Float v -> LLVM.LLVMConstReal(getType("float32"), v);
+//      default -> throw new IllegalArgumentException(STR."Unknown literal '\{hirLiteral.literal()}'");
+//    };
+//
+//    if (dynamic) {
+//
+//      final var allocation = switch (hirLiteral.literal()) {
+//        case Integer _ -> LLVM.LLVMBuildAlloca(builder, getType("i32"), "int");
+//        case Double _ -> LLVM.LLVMBuildAlloca(builder, getType("double"), "double");
+//        case Float _ -> LLVM.LLVMBuildAlloca(builder, getType("float32"), "float32");
+//        default -> throw new IllegalArgumentException(STR."Unknown literal '\{hirLiteral.literal()}'");
+//      };
+//
+//      LLVM.LLVMBuildStore(builder, constant, allocation);
+//      return allocation;
+//
+//    } else {
+//      return constant;
+//    }
   }
 
   private static void executeCommand(String[] commandParts) throws IOException, InterruptedException {

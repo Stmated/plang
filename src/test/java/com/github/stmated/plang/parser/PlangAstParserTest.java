@@ -1,9 +1,16 @@
 package com.github.stmated.plang.parser;
 
+import static com.github.stmated.plang.lexer.TokenType.ADD;
+import static com.github.stmated.plang.lexer.TokenType.LITERAL_INTEGER;
+import static com.github.stmated.plang.lexer.TokenType.SUBTRACT;
+
+import com.github.stmated.plang.Plang;
 import com.github.stmated.plang.ast.model.*;
 import com.github.stmated.plang.ast.AstVisitor;
 import com.github.stmated.plang.lexer.PlangLexer;
 import com.github.stmated.plang.lexer.PlangLexerSteps;
+import com.github.stmated.plang.ty.Ty;
+import com.sun.source.tree.AssertTree;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @Slf4j
 class PlangAstParserTest {
@@ -35,9 +43,9 @@ class PlangAstParserTest {
     final var lhs = assertType(AstLiteral.class, ibo.lhs());
     final var rhs = assertType(AstLiteral.class, ibo.rhs());
 
-    Assertions.assertEquals(1, lhs.value());
+    Assertions.assertEquals("1", lhs.content());
     Assertions.assertEquals(AstBinaryOperationKind.ADD, ibo.type());
-    Assertions.assertEquals(1, rhs.value());
+    Assertions.assertEquals("1", rhs.content());
   }
 
   @Test
@@ -212,22 +220,50 @@ class PlangAstParserTest {
     }
   }
 
-  @Test
-  void testBenchmark() throws IOException {
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "-1",
+    " -1",
+    " - 1 "
+  })
+  void testNegativeNumber(String code) {
 
-    final var ITERATIONS = 1_000;
-    final var before = System.nanoTime();
-    for (var i = 0; i < ITERATIONS; i++) {
-      for (final var file : PlangTestUtil.getTestFilePaths()) {
-        this.testAllFiles(file);
-      }
-    }
+    final var ast = Plang.codeToAst(code);
 
-    final var after = System.nanoTime();
-    final var duration = Duration.ofNanos(after - before);
-    final var durationPer = duration.dividedBy(ITERATIONS);
+    as(ast.children()[0], AstLiteral.class, literal -> {
+      Assertions.assertEquals("-1", literal.content());
+    });
+  }
 
-    log.info("Duration: {}, per {}ns {}ms", duration, durationPer.toNanos(), durationPer.toMillis());
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "-something",
+    " -something",
+    " - something "
+  })
+  void testUnaryNegate(String code) {
+    final var ast = Plang.codeToAst(code);
+
+    as(ast.children()[0], AstNegate.class, negate -> {
+      as(negate.expression(), AstIdentifier.class, id -> {
+        Assertions.assertEquals("something", id.name());
+      });
+    });
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "+1",
+    " +1",
+    " + 1 "
+  })
+  void testPositiveNumber(String code) {
+    final var ast = Plang.codeToAst(code);
+    as(ast.children()[0], AstLiteral.class, literal -> {
+
+      Assertions.assertEquals("1", literal.content());
+      Assertions.assertEquals(Ty.INTEGER, literal.ty());
+    });
   }
 
   private <T> void as(AstExpression exp, Class<T> clazz, Consumer<T> then) {
@@ -251,10 +287,10 @@ class PlangAstParserTest {
     Assertions.assertEquals(expected, ((AstIdentifier)exp).name());
   }
 
-  private void isLiteral(AstExpression exp, Object expected) {
+  private void isLiteral(AstExpression exp, String expected) {
 
     Assertions.assertInstanceOf(AstLiteral.class, exp);
-    Assertions.assertEquals(expected, ((AstLiteral)exp).value());
+    Assertions.assertEquals(expected, ((AstLiteral)exp).content());
   }
 
   private <T, R> void is(AstExpression exp, Class<T> clazz, Function<T, R> mapper, Object expected) {
@@ -297,7 +333,7 @@ class PlangAstParserTest {
 
     @Override
     public String visitLiteral(final AstLiteral expr) {
-      return "  " + expr.value() + "\n";
+      return STR."  \{expr.content()}\n";
     }
 
     @Override

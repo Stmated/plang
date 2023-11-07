@@ -5,7 +5,7 @@ import java.util.List;
 
 public record MirNode(
   String name,
-  List<MirInstruction> instructions,
+  List<MirInstr> instructions,
   List<MirNode> predecessors,
   List<MirNode> successors
 ) {
@@ -46,5 +46,15 @@ public record MirNode(
 
   public String toShortString() {
     return name();
+  }
+
+  @Override
+  public int hashCode() {
+    return System.identityHashCode(this);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    return obj == this;
   }
 }
