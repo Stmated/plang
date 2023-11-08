@@ -22,6 +22,7 @@ public enum MirBinaryOperationKind {
   GT,
 
   EQUALS,
+  NOT_EQUALS,
   IS,
 
   OR,
@@ -51,6 +52,7 @@ public enum MirBinaryOperationKind {
       case LT -> MirBinaryOperationKind.LT;
       case GT -> MirBinaryOperationKind.GT;
       case EQUALS -> MirBinaryOperationKind.EQUALS;
+      case NOT_EQUALS -> MirBinaryOperationKind.NOT_EQUALS;
       case IS -> MirBinaryOperationKind.IS;
       case OR -> MirBinaryOperationKind.OR;
       case AND -> MirBinaryOperationKind.AND;

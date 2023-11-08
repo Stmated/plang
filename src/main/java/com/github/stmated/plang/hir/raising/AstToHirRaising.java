@@ -55,6 +55,9 @@ public class AstToHirRaising {
 
     if (expressions.length > 0) {
 
+      // TODO: This is bad since it will add a "return" even if all paths inside this are terminal
+      //        We would need a visitor pattern to visit the last expression of every node, and see if it is terminal
+      //        Only then should we add this implicit return...
       final var last = expressions[expressions.length - 1];
       if (!(last instanceof HirReturn)) {
 
@@ -118,8 +121,8 @@ public class AstToHirRaising {
     return new HirVariableDeclaration(
       lower_identifier(ast.identifier()),
       switch (ast.mutabilityKind()) {
-        case Immutable -> HirMutabilityKind.Immutable;
-        case Mutable -> HirMutabilityKind.Mutable;
+        case Immutable -> HirMutabilityKind.IMMUTABLE;
+        case Mutable -> HirMutabilityKind.MUTABLE;
       },
       ast.type() == null ? null : lower_type(ast.type())
     );
@@ -285,6 +288,7 @@ public class AstToHirRaising {
       case MULTIPLY -> HirBinaryOperationKind.MULTIPLY;
       case DIVIDE -> HirBinaryOperationKind.DIVIDE;
       case EQUALS -> HirBinaryOperationKind.EQUALS;
+      case NOT_EQUALS -> HirBinaryOperationKind.NOT_EQUALS;
       case GT -> HirBinaryOperationKind.GT;
       case GTE -> HirBinaryOperationKind.GTE;
       case IS -> HirBinaryOperationKind.IS;

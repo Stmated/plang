@@ -24,12 +24,12 @@ import com.github.stmated.plang.mir.model.MirCall;
 import com.github.stmated.plang.mir.model.MirFn;
 import com.github.stmated.plang.mir.model.MirFnArgument;
 import com.github.stmated.plang.mir.model.MirFnParameter;
+import com.github.stmated.plang.mir.model.MirInstr;
 import com.github.stmated.plang.mir.model.MirInstrBinaryOperation;
 import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
 import com.github.stmated.plang.mir.model.MirInstrCreateLiteral;
 import com.github.stmated.plang.mir.model.MirInstrJump;
 import com.github.stmated.plang.mir.model.MirInstrPhi;
-import com.github.stmated.plang.mir.model.MirInstr;
 import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.mir.model.MirReturn;
 import com.github.stmated.plang.thir.raising.ThirRepository;
@@ -48,11 +48,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ThirToMirLowering {
 
-  private record LoopScope(MirNode next, MirNode exit) {
+  private record LoopHandle(MirNode next, MirNode exit) {
 
   }
 
-  private final Stack<LoopScope> loopStack = new Stack<>();
+  private final Stack<LoopHandle> loopStack = new Stack<>();
 
   private final Stack<MirNode> nodeStack = new Stack<>();
   private final Stack<MirScope> scopeStack = new Stack<>();
@@ -70,10 +70,11 @@ public class ThirToMirLowering {
    */
   public MirNode lower() {
 
-    final var startNode = new MirNode("start");
+    final var startNode = new MirNode(getNodePathName("start"));
+    final var startScope = new MirScope(null, "start");
 
     try {
-      scopeStack.push(new MirScope(null, "global"));
+      scopeStack.push(startScope);
       try {
         nodeStack.push(startNode);
         lower_expression(thirRepository.root());
@@ -93,10 +94,6 @@ public class ThirToMirLowering {
     for (final var expression : expressions) {
       final var operand = lower_expression(expression);
       if (operand != null) {
-//        if (lastOperand != null) {
-//          throw new IllegalStateException("You must handle expression collections that could result in multiple operands higher in call chain");
-//        }
-
         lastOperand = operand;
       }
     }
@@ -127,31 +124,61 @@ public class ThirToMirLowering {
     };
   }
 
+  private String getNodePathName(String name) {
+
+    final var sb = new StringBuilder();
+
+    if (nodeStack.size() > 1) {
+
+      final var parent = nodeStack.peek();
+      if (parent != null) {
+        sb.append(parent.name());
+
+        if (!sb.isEmpty()) {
+          sb.append("_");
+        }
+      }
+    }
+
+    sb.append(name);
+
+    return sb.toString();
+  }
+
   private MirInstr lower_loop(HirLoop hir) {
 
-    final var node_loop = new MirNode("loop");
+    final var node_loop = new MirNode(getNodePathName("loop_body"));
     nodeStack.peek().addSuccessor(node_loop);
 
-    final var node_after = new MirNode("loop_after");
+    final var node_after = new MirNode(getNodePathName("loop_after"));
 
     final var jump = new MirInstrJump(node_loop);
     nodeStack.peek().instructions().add(jump);
 
-    try {
-      loopStack.push(new LoopScope(node_loop, node_after));
-      try {
-        nodeStack.push(node_loop);
-        return lower_expression(hir.body());
-      } finally {
-        nodeStack.push(node_loop);
+    final var loop_handle = new LoopHandle(node_loop, node_after);
+    final var loop_scope = new MirScope(scopeStack.peek(), "loop");
 
-        // We are done with current node, node_after is the future.
-        // It is up to later optimization stages to remove if it turns out empty.
-        nodeStack.pop();
-        nodeStack.push(node_after);
+    try {
+      scopeStack.push(loop_scope);
+      try {
+        loopStack.push(loop_handle);
+        try {
+          nodeStack.push(node_loop);
+          return lower_expression(hir.body());
+        } finally {
+
+          // We are done with current node, node_after is the future.
+          // It is up to later optimization stages to remove if it turns out empty.
+          nodeStack.pop();
+
+          // TODO: This seems very bad, it will never get properly popped off!
+          nodeStack.push(node_after);
+        }
+      } finally {
+        loopStack.pop();
       }
     } finally {
-      loopStack.pop();
+      scopeStack.pop();
     }
   }
 
@@ -185,13 +212,9 @@ public class ThirToMirLowering {
 
     final var identifierName = hir.name();
 
-    for (var i = scopeStack.size() - 1; i >= 0; i--) {
-
-      final var scope = scopeStack.get(i);
-      final var assignment = scope.get(identifierName);
-      if (assignment != null) {
-        return assignment;
-      }
+    final var assignment = scopeStack.peek().get(identifierName);
+    if (assignment != null) {
+      return assignment;
     }
 
     throw new IllegalArgumentException(STR."There is no variable '\{hir.name()}' found in scope");
@@ -199,11 +222,19 @@ public class ThirToMirLowering {
 
   private MirInstr lower_assignment(HirAssignment hir) {
 
-    final var name = switch (hir.lhs()) {
-      case HirVariableDeclaration lhs -> lhs.identifier().name();
-      case HirIdentifier lhs -> lhs.name();
+    final String name;
+    final boolean declare;
+    switch (hir.lhs()) {
+      case HirVariableDeclaration lhs -> {
+        name = lhs.identifier().name();
+        declare = true;
+      }
+      case HirIdentifier lhs -> {
+        name = lhs.name();
+        declare = false;
+      }
       default -> throw new UnexpectedExpressionException(hir.lhs());
-    };
+    }
 
     final var rhs = lower_expression(hir.rhs());
     final var scope = scopeStack.peek();
@@ -211,8 +242,6 @@ public class ThirToMirLowering {
 
     rhs.name(iid);
     scope.add(rhs);
-
-//    nodeStack.peek().instructions().add(rhs);
 
     return rhs;
   }
@@ -245,13 +274,13 @@ public class ThirToMirLowering {
     final var scope = scopeStack.peek();
 
     MirScope pass_scope;
-    MirNode pass_node;
+    MirNode pass_node = new MirNode(getNodePathName("conditional_pass"));
     try {
-      pass_node = new MirNode("conditional_pass");
+
       nodeStack.peek().addSuccessor(pass_node);
       nodeStack.push(pass_node);
 
-      pass_scope = new MirScope(scopeStack.peek(), "scope_conditional_pass");
+      pass_scope = new MirScope(scopeStack.peek(), getNodePathName("scope_conditional_pass"));
       try {
         scopeStack.push(pass_scope);
         if (hir.pass() != null) {
@@ -265,10 +294,9 @@ public class ThirToMirLowering {
     }
 
     MirScope fail_scope;
-    MirNode fail_node;
+    MirNode fail_node = new MirNode(getNodePathName("conditional_fail"));
     try {
 
-      fail_node = new MirNode("conditional_fail");
       nodeStack.peek().addSuccessor(fail_node);
       nodeStack.push(fail_node);
 
@@ -285,11 +313,11 @@ public class ThirToMirLowering {
       nodeStack.pop();
     }
 
-    final var parent = nodeStack.pop();
-    final var node_merge = new MirNode("conditional_merge");
-    nodeStack.push(node_merge);
-
     if (!pass_node.isTerminal() || !fail_node.isTerminal()) {
+
+      final var parent = nodeStack.pop();
+      final var node_merge = new MirNode(getNodePathName("conditional_merge"));
+      nodeStack.push(node_merge); // TODO: Is this really correct? Does not seem so!
 
       if (!pass_node.isTerminal()) {
 
@@ -369,14 +397,21 @@ public class ThirToMirLowering {
 
       return getMirInstrPhi(hir, pass_node, fail_node);
 
+    } else if (pass_node.isTerminal() && fail_node.isTerminal()) {
+
+      final var instruction = new MirInstrConditionalJump(predicate_operand, pass_node, fail_node);
+      nodeStack.peek().instructions().add(instruction);
+
+      return null;
+
     } else {
 
       // Both paths are terminal, so there is no need for a merge node.
       final var instruction = new MirInstrConditionalJump(predicate_operand, pass_node, fail_node);
-      parent.instructions().add(instruction);
+      nodeStack.peek().instructions().add(instruction);
 
       // TODO: Should probably return something? Even if just some kind of "void" instruction?
-      return null; // getMirInstrPhi(hir, pass_node, fail_node);
+      return getMirInstrPhi(hir, pass_node, fail_node);
     }
   }
 
@@ -434,16 +469,24 @@ public class ThirToMirLowering {
 
   private MirInstr lower_block(HirBlock hir) {
 
+    // TODO: This is wrong, since it never does a jump to the new block node. Should it even?
+    final var block_node = new MirNode(getNodePathName("block"));
+    final var block_scope = new MirScope(scopeStack.peek(), "block");
+
     try {
 
-      // TODO: This is wrong, since it never does a jump to the new block node. Should it even?
-      final var block_node = new MirNode("block");
-      nodeStack.peek().addSuccessor(block_node);
-      nodeStack.push(block_node);
+      scopeStack.push(block_scope);
+      try {
 
-      return lower_expressions(hir.children());
+        nodeStack.peek().addSuccessor(block_node);
+        nodeStack.push(block_node);
+
+        return lower_expressions(hir.children());
+      } finally {
+        nodeStack.pop();
+      }
     } finally {
-      nodeStack.pop();
+      scopeStack.pop();
     }
   }
 
@@ -558,6 +601,11 @@ public class ThirToMirLowering {
   private MirInstr lower_return(HirReturn hir) {
 
     final var operand = lower_expression(hir.expression());
+    if (operand == null) {
+      log.warn("Return operand is null. Likely because of invalid AST->HIR raising implicit return. Build is-terminal visitor");
+      return null;
+    }
+
     final var instruction = new MirReturn(operand);
     nodeStack.peek().instructions().add(instruction);
 

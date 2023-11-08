@@ -12,6 +12,7 @@ import com.github.stmated.plang.hir.model.HirExpressionCollection;
 import com.github.stmated.plang.hir.model.HirIdentifier;
 import com.github.stmated.plang.hir.model.HirLiteral;
 import com.github.stmated.plang.hir.model.HirLoop;
+import com.github.stmated.plang.hir.model.HirMutabilityKind;
 import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.hir.model.HirReturn;
 import com.github.stmated.plang.hir.model.HirVariableDeclaration;
@@ -160,6 +161,14 @@ public class HirToThirRaising {
       case HirIdentifier it -> it.name();
       default -> null;
     };
+
+    final var mutability = switch (hir.lhs()) {
+      case HirVariableDeclaration it -> it.mutabilityKind();
+      case HirIdentifier it -> HirMutabilityKind.MUTABLE;
+      default -> throw new NotImplementedException(STR."Do not know how to find mutability of '\{hir.lhs()}'");
+    };
+
+    // TODO: Make use of Tys.toNonConstIfRequired, to convert "a (const) + 10" to not const
 
     if (lhs == Ty.INFER) {
 

@@ -2,6 +2,7 @@ package com.github.stmated.plang.llvm.lowering;
 
 import static org.bytedeco.llvm.global.LLVM.LLVMAddIncoming;
 import static org.bytedeco.llvm.global.LLVM.LLVMBuildCondBr;
+import static org.bytedeco.llvm.global.LLVM.LLVMBuildExactSDiv;
 import static org.bytedeco.llvm.global.LLVM.LLVMBuildPhi;
 
 import com.github.stmated.plang.exceptions.NotImplementedException;
@@ -20,7 +21,6 @@ import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyValueArray;
 import com.github.stmated.plang.ty.TyValueBoolean;
-import com.github.stmated.plang.ty.TyValueKind;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
 import com.github.stmated.plang.ty.TyValueString;
@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
-import org.bytedeco.javacpp.LongPointer;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.llvm.LLVM.LLVMModuleRef;
 import org.bytedeco.llvm.LLVM.LLVMTypeRef;
@@ -47,13 +46,15 @@ import org.bytedeco.llvm.global.LLVM;
 class MirToLLVMLoweringModule implements AutoCloseable {
 
   private final LLVMModuleRef module;
-//  private final LLVMBuilderRef builder;
 
   private final Ctx ctx;
 
   /**
    * TODO: This should not be filled on-demand, it should be filled as a pass through all instructions -- so it is known at all times.
-   *        We then of course need to change this Map to be
+   *        We then of course need to change this Map to be.
+   *
+   * TODO: Remove this and instead derive it from the type that it states and the state we then would expect
+   *          For example if it is a const int or not a const it makes it a pointer or not.
    */
   private final Map<LLVMValueRef, Ty> overridingTypes = new HashMap<>();
 
@@ -230,7 +231,7 @@ class MirToLLVMLoweringModule implements AutoCloseable {
       } else {
 
         // TODO: If 'ref' is a pointer
-        llvmArgs[i] = conform(ref, arg.instruction().ty());
+        llvmArgs[i] = normalizeToType(ref, arg.instruction().ty());
       }
     }
 
@@ -239,12 +240,13 @@ class MirToLLVMLoweringModule implements AutoCloseable {
   }
 
   /**
+   * NOTE: Would be better if we did not have overridingTypes and instead could deduce the llvm type based on stated type
+   *        For example if the type is a constant or a value that is not a constant (so allocated and hence a pointer)
    *
-   * @param ref The value reference
+   * @param ref    The value reference
    * @param stated The type that the user thinks it is working with
-   * @return
    */
-  private LLVMValueRef conform(LLVMValueRef ref, Ty stated) {
+  private LLVMValueRef normalizeToType(LLVMValueRef ref, Ty stated) {
 
     // Given is the type that LLVM is using in the background.
     final var given = overridingTypes.getOrDefault(ref, stated);
@@ -360,19 +362,10 @@ class MirToLLVMLoweringModule implements AutoCloseable {
     // We do not do any casts or convert here.
     // It is up to the THIR and MIR to add compatibility instructions.
 
-    var ref = lower_instruction(mir.instr());
-    final var actualType = LLVM.LLVMTypeOf(ref);
+    final var ref = lower_instruction(mir.instr());
+    final var normalized = normalizeToType(ref, mir.instr().ty());
 
-    if (LLVM.LLVMGetTypeKind(actualType) == LLVM.LLVMPointerTypeKind) {
-
-      // This is the type we actually want out from the ref, when it is a pointer.
-      final var derefType = MirToLLVMUtils.toLLVMType(ctx, mir.ty());
-
-      // Load the value into our registers, and that is what we will return.
-      ref = LLVM.LLVMBuildLoad2(ctx.builder, derefType, ref, getLabel(mir.instr(), "value"));
-    }
-
-    return LLVM.LLVMBuildRet(ctx.builder, ref);
+    return LLVM.LLVMBuildRet(ctx.builder, normalized);
   }
 
   private LLVMValueRef lower_literal(MirInstrCreateLiteral literal) {
@@ -473,78 +466,176 @@ class MirToLLVMLoweringModule implements AutoCloseable {
     var lhs = lower_instruction(mir.lhs());
     var rhs = lower_instruction(mir.rhs());
 
-    final var lhsActualType = LLVM.LLVMTypeOf(lhs);
-    final var rhsActualType = LLVM.LLVMTypeOf(rhs);
+    lhs = normalizeToType(lhs, mir.lhs().ty());
+    rhs = normalizeToType(rhs, mir.rhs().ty());
 
-    final var lhsTy = mir.lhs().ty();
-    final var rhsTy = mir.rhs().ty();
+    lhs = extend(lhs, mir.lhs().ty(), mir.rhs().ty());
+    rhs = extend(rhs, mir.rhs().ty(), mir.lhs().ty());
 
-    // This is the type we want the binary operation to be for
-    final var lhsType = MirToLLVMUtils.toLLVMType(ctx, lhsTy);
-    final var rhsType = MirToLLVMUtils.toLLVMType(ctx, rhsTy);
+//    final var lhsKind = Tys.getValueKind(mir.lhs().ty());
+//    final var rhsKind = Tys.getValueKind(mir.rhs().ty());
 
-    if (LLVM.LLVMGetTypeKind(lhsActualType) == LLVM.LLVMPointerTypeKind) {
-      lhs = LLVM.LLVMBuildLoad2(ctx.builder, lhsType, lhs, getLabel(mir.lhs(), "lhs"));
-    }
+//    final var lhsActualType = LLVM.LLVMTypeOf(lhs);
+//    final var rhsActualType = LLVM.LLVMTypeOf(rhs);
+//
+//    final var lhsTy = mir.lhs().ty();
+//    final var rhsTy = mir.rhs().ty();
+//
+//    // This is the type we want the binary operation to be for
+//    final var lhsType = MirToLLVMUtils.toLLVMType(ctx, lhsTy);
+//    final var rhsType = MirToLLVMUtils.toLLVMType(ctx, rhsTy);
+//
+//    if (LLVM.LLVMGetTypeKind(lhsActualType) == LLVM.LLVMPointerTypeKind) {
+//      lhs = LLVM.LLVMBuildLoad2(ctx.builder, lhsType, lhs, getLabel(mir.lhs(), "lhs"));
+//    }
+//
+//    if (LLVM.LLVMGetTypeKind(rhsActualType) == LLVM.LLVMPointerTypeKind) {
+//      rhs = LLVM.LLVMBuildLoad2(ctx.builder, rhsType, rhs, getLabel(mir.rhs(), "rhs"));
+//    }
 
-    if (LLVM.LLVMGetTypeKind(rhsActualType) == LLVM.LLVMPointerTypeKind) {
-      rhs = LLVM.LLVMBuildLoad2(ctx.builder, rhsType, rhs, getLabel(mir.rhs(), "rhs"));
-    }
-
-    return switch (mir.kind()) {
-      case ADD -> LLVM.LLVMBuildAdd(ctx.builder, lhs, rhs, STR."\{mir.lhs()} add \{mir.rhs()}");
-      case SUBTRACT -> LLVM.LLVMBuildSub(ctx.builder, lhs, rhs, STR."\{mir.lhs()} sub \{mir.rhs()}");
-      case MULTIPLY -> LLVM.LLVMBuildMul(ctx.builder, lhs, rhs, STR."\{mir.lhs()} mul \{mir.rhs()}");
-      case DIVIDE -> {
-
-        final var lhsKind = LLVM.LLVMGetTypeKind(lhsType);
-        final var rhsKind = LLVM.LLVMGetTypeKind(rhsType);
-
-        if (lhsKind == LLVM.LLVMIntegerTypeKind && rhsKind == LLVM.LLVMIntegerTypeKind) {
-
-          // TODO: Need to have information in the HIR for if these values are signed or unsigned.
-          yield LLVM.LLVMBuildSDiv(ctx.builder, lhs, rhs, "lhs / rhs");
-        }
-
-        // TODO: This is wrong -- if it is two float16 it should not be converted into a float32
-        LLVMValueRef correctLhs;
-        LLVMValueRef correctRhs;
-        if (lhsKind == LLVM.LLVMDoubleTypeKind || rhsKind == LLVM.LLVMDoubleTypeKind) {
-          correctLhs = getValueAsFloat(lhs, MirToLLVMUtils.toLLVMType(ctx, Ty.FLOAT64), lhsKind, mir.lhs());
-          correctRhs = getValueAsFloat(rhs, MirToLLVMUtils.toLLVMType(ctx, Ty.FLOAT64), rhsKind, mir.rhs());
-        } else if (lhsKind == LLVM.LLVMFloatTypeKind || rhsKind == LLVM.LLVMFloatTypeKind) {
-          correctLhs = getValueAsFloat(lhs, MirToLLVMUtils.toLLVMType(ctx, Ty.FLOAT), lhsKind, mir.lhs());
-          correctRhs = getValueAsFloat(rhs, MirToLLVMUtils.toLLVMType(ctx, Ty.FLOAT), rhsKind, mir.rhs());
-        } else if (lhsKind == LLVM.LLVMHalfTypeKind || rhsKind == LLVM.LLVMHalfTypeKind) {
-          correctLhs = getValueAsFloat(lhs, MirToLLVMUtils.toLLVMType(ctx, Ty.FLOAT16), lhsKind, mir.lhs());
-          correctRhs = getValueAsFloat(rhs, MirToLLVMUtils.toLLVMType(ctx, Ty.FLOAT16), rhsKind, mir.rhs());
-        } else {
-          throw new NotImplementedException(STR."Cannot divide values of types '\{mir.lhs()}' and '\{mir.rhs()}'");
-        }
-
-        yield LLVM.LLVMBuildFDiv(ctx.builder, correctLhs, correctRhs, STR."\{mir.lhs()} / \{mir.rhs()}");
-      }
-      case EQUALS -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntEQ, lhs, rhs, STR."\{mir.lhs()} eq \{mir.rhs()}");
-      case LT -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntSLT, lhs, rhs, STR."\{mir.lhs()} lt \{mir.rhs()}");
-      case LTE -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntSLE, lhs, rhs, STR."\{mir.lhs()} lte \{mir.rhs()}");
-      case GT -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntSGT, lhs, rhs, STR."\{mir.lhs()} gt \{mir.rhs()}");
-      case GTE -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntSGE, lhs, rhs, STR."\{mir.lhs()} gte \{mir.rhs()}");
-      default -> throw new IllegalArgumentException(STR."Unknown binary operation kind '\{mir.kind()}'");
+    return switch (mir.lhs().ty()) {
+      case TyValueNumberInteger lni -> switch (mir.rhs().ty()) {
+        case TyValueNumberInteger rni -> switch (mir.kind()) {
+          // TODO: Look into LLVMBuildNSWSub and LLVMBuildNUWSub (No Wrap variants -- would work if we KNOW it will not wrap)
+          case ADD -> LLVM.LLVMBuildAdd(ctx.builder, lhs, rhs, STR."\{mir.lhs()} add \{mir.rhs()}");
+          case SUBTRACT -> LLVM.LLVMBuildSub(ctx.builder, lhs, rhs, STR."\{mir.lhs()} sub \{mir.rhs()}");
+          case MULTIPLY -> LLVM.LLVMBuildMul(ctx.builder, lhs, rhs, STR."\{mir.lhs()} mul \{mir.rhs()}");
+          case DIVIDE -> {
+            if (lni.signed() && rni.signed()) {
+              yield LLVM.LLVMBuildSDiv(ctx.builder, lhs, rhs, "lhs div rhs");
+            } else if (!lni.signed() && !rni.signed()) {
+              yield LLVM.LLVMBuildUDiv(ctx.builder, lhs, rhs, "lhs div rhs");
+            } else {
+              throw new NotImplementedException("Need to add signed <-> unsigned conversion");
+            }
+          }
+          case EQUALS -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntEQ, lhs, rhs, STR."\{mir.lhs()} eq \{mir.rhs()}");
+          case LT -> {
+            if (lni.signed() && rni.signed()) {
+              yield LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntSLT, lhs, rhs, STR."\{mir.lhs()} lt \{mir.rhs()}");
+            } else if (!lni.signed() && !rni.signed()) {
+              yield LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntULT, lhs, rhs, STR."\{mir.lhs()} lt \{mir.rhs()}");
+            } else {
+              throw new NotImplementedException("Need to add signed <-> unsigned conversion");
+            }
+          }
+          case LTE -> {
+            if (lni.signed() && rni.signed()) {
+              yield LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntSLE, lhs, rhs, STR."\{mir.lhs()} lt \{mir.rhs()}");
+            } else if (!lni.signed() && !rni.signed()) {
+              yield LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntULE, lhs, rhs, STR."\{mir.lhs()} lt \{mir.rhs()}");
+            } else {
+              throw new NotImplementedException("Need to add signed <-> unsigned conversion");
+            }
+          }
+          case GT -> {
+            if (lni.signed() && rni.signed()) {
+              yield LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntSGT, lhs, rhs, STR."\{mir.lhs()} lt \{mir.rhs()}");
+            } else if (!lni.signed() && !rni.signed()) {
+              yield LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntUGT, lhs, rhs, STR."\{mir.lhs()} lt \{mir.rhs()}");
+            } else {
+              throw new NotImplementedException("Need to add signed <-> unsigned conversion");
+            }
+          }
+          case GTE -> {
+            if (lni.signed() && rni.signed()) {
+              yield LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntSGE, lhs, rhs, STR."\{mir.lhs()} lt \{mir.rhs()}");
+            } else if (!lni.signed() && !rni.signed()) {
+              yield LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntUGE, lhs, rhs, STR."\{mir.lhs()} lt \{mir.rhs()}");
+            } else {
+              throw new NotImplementedException("Need to add signed <-> unsigned conversion");
+            }
+          }
+          default -> throw new NotImplementedException("Unknown kind");
+        };
+        default -> throw new NotImplementedException("Unknown ty");
+      };
+      case TyValueNumberPrecisioned lnp -> switch (mir.rhs().ty()) {
+        case TyValueNumberPrecisioned rnp -> switch (mir.kind()) {
+          case ADD -> LLVM.LLVMBuildFAdd(ctx.builder, lhs, rhs, STR."\{mir.lhs()} add \{mir.rhs()}");
+          case SUBTRACT -> LLVM.LLVMBuildFSub(ctx.builder, lhs, rhs, STR."\{mir.lhs()} sub \{mir.rhs()}");
+          case MULTIPLY -> LLVM.LLVMBuildFMul(ctx.builder, lhs, rhs, STR."\{mir.lhs()} mul \{mir.rhs()}");
+          case DIVIDE -> LLVM.LLVMBuildFDiv(ctx.builder, lhs, rhs, "lhs div rhs");
+          case EQUALS -> LLVM.LLVMBuildFCmp(ctx.builder, LLVM.LLVMRealOEQ, lhs, rhs, STR."\{mir.lhs()} eq \{mir.rhs()}");
+          case LT -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMRealOLT, lhs, rhs, STR."\{mir.lhs()} lt \{mir.rhs()}");
+          case LTE -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMRealOLE, lhs, rhs, STR."\{mir.lhs()} lte \{mir.rhs()}");
+          case GT -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMRealOGT, lhs, rhs, STR."\{mir.lhs()} gt \{mir.rhs()}");
+          case GTE -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMRealOGE, lhs, rhs, STR."\{mir.lhs()} gte \{mir.rhs()}");
+          default -> throw new NotImplementedException("Unknown kind");
+        };
+        default -> throw new NotImplementedException("Unknown ty");
+      };
+      default -> throw new NotImplementedException("Unknown ty");
     };
+
+//    return switch (mir.kind()) {
+//      case ADD -> LLVM.LLVMBuildAdd(ctx.builder, lhs, rhs, STR."\{mir.lhs()} add \{mir.rhs()}");
+//      case SUBTRACT -> LLVM.LLVMBuildSub(ctx.builder, lhs, rhs, STR."\{mir.lhs()} sub \{mir.rhs()}");
+//      case MULTIPLY -> LLVM.LLVMBuildMul(ctx.builder, lhs, rhs, STR."\{mir.lhs()} mul \{mir.rhs()}");
+//      case DIVIDE -> {
+//
+////        final var lhsKind = LLVM.LLVMGetTypeKind(lhsType);
+////        final var rhsKind = LLVM.LLVMGetTypeKind(rhsType);
+//
+//        if (lhsKind == TyValueKind.INTEGER && rhsKind == TyValueKind.INTEGER) {
+//
+//          // TODO: Need to have information in the HIR for if these values are signed or unsigned.
+//          yield LLVM.LLVMBuildSDiv(ctx.builder, lhs, rhs, "lhs / rhs");
+//        }
+//
+//        // TODO: This is wrong -- if it is two float16 it should not be converted into a float32
+//        LLVMValueRef correctLhs;
+//        LLVMValueRef correctRhs;
+//        if (lhsKind == TyValueKind.DOUBLE || rhsKind == TyValueKind.DOUBLE) {
+//          correctLhs = getValueAsFloat(lhs, MirToLLVMUtils.toLLVMType(ctx, Ty.FLOAT64), lhsKind, mir.lhs());
+//          correctRhs = getValueAsFloat(rhs, MirToLLVMUtils.toLLVMType(ctx, Ty.FLOAT64), rhsKind, mir.rhs());
+//        } else if (lhsKind == TyValueKind.FLOAT || rhsKind == TyValueKind.FLOAT) {
+//          correctLhs = getValueAsFloat(lhs, MirToLLVMUtils.toLLVMType(ctx, Ty.FLOAT), lhsKind, mir.lhs());
+//          correctRhs = getValueAsFloat(rhs, MirToLLVMUtils.toLLVMType(ctx, Ty.FLOAT), rhsKind, mir.rhs());
+//        } /*else if (lhsKind == TyValueKind.LLVMHalfTypeKind || rhsKind == LLVM.LLVMHalfTypeKind) {
+//          correctLhs = getValueAsFloat(lhs, MirToLLVMUtils.toLLVMType(ctx, Ty.FLOAT16), lhsKind, mir.lhs());
+//          correctRhs = getValueAsFloat(rhs, MirToLLVMUtils.toLLVMType(ctx, Ty.FLOAT16), rhsKind, mir.rhs());
+//        }*/ else {
+//          throw new NotImplementedException(STR."Cannot divide values of types '\{mir.lhs()}' and '\{mir.rhs()}'");
+//        }
+//
+//        yield LLVM.LLVMBuildFDiv(ctx.builder, correctLhs, correctRhs, STR."\{mir.lhs()} / \{mir.rhs()}");
+//      }
+//      case EQUALS -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntEQ, lhs, rhs, STR."\{mir.lhs()} eq \{mir.rhs()}");
+//      case LT -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntSLT, lhs, rhs, STR."\{mir.lhs()} lt \{mir.rhs()}");
+//      case LTE -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntSLE, lhs, rhs, STR."\{mir.lhs()} lte \{mir.rhs()}");
+//      case GT -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntSGT, lhs, rhs, STR."\{mir.lhs()} gt \{mir.rhs()}");
+//      case GTE -> LLVM.LLVMBuildICmp(ctx.builder, LLVM.LLVMIntSGE, lhs, rhs, STR."\{mir.lhs()} gte \{mir.rhs()}");
+//      default -> throw new IllegalArgumentException(STR."Unknown binary operation kind '\{mir.kind()}'");
+//    };
   }
 
-  private LLVMValueRef getValueAsFloat(LLVMValueRef v, LLVMTypeRef targetType, int lhsKind, MirInstr miri) {
+  /**
+   * To be able to do binary operations between numbers, we need to make the two values the same.
+   * We will blindly trust our type system to be correct.
+   */
+  private LLVMValueRef extend(LLVMValueRef v, Ty ty, Ty other) {
 
-    if (lhsKind == LLVM.LLVMFloatTypeKind) {
-      return v;
-    } else if (lhsKind == LLVM.LLVMHalfTypeKind) {
-      return LLVM.LLVMBuildFPExt(ctx.builder, v, targetType, "float16ToFloat32");
-    } else if (lhsKind == LLVM.LLVMDoubleTypeKind) {
-      return LLVM.LLVMBuildFPTrunc(ctx.builder, v, targetType, "doubleToFloat32");
-    } else if (lhsKind == LLVM.LLVMIntegerTypeKind) {
-      return LLVM.LLVMBuildSIToFP(ctx.builder, v, targetType, "intToFloat32");
-    } else {
-      throw new NotImplementedException(STR."Cannot convert '\{miri}' into a float");
-    }
+    return v;
   }
+
+//  private LLVMValueRef getValueAsFloat(
+//    LLVMValueRef v,
+//    LLVMTypeRef targetType,
+//    TyValueKind lhsKind,
+//    MirInstr miri
+//  ) {
+//
+//    if (lhsKind == LLVM.LLVMFloatTypeKind) {
+//      return v;
+//    } else if (lhsKind == LLVM.LLVMHalfTypeKind) {
+//      return LLVM.LLVMBuildFPExt(ctx.builder, v, targetType, "float16ToFloat32");
+//    } else if (lhsKind == LLVM.LLVMDoubleTypeKind) {
+//      return LLVM.LLVMBuildFPTrunc(ctx.builder, v, targetType, "doubleToFloat32");
+//    } else if (lhsKind == LLVM.LLVMIntegerTypeKind) {
+//      return LLVM.LLVMBuildSIToFP(ctx.builder, v, targetType, "intToFloat32");
+//    } else {
+//      throw new NotImplementedException(STR."Cannot convert '\{miri}' into a float");
+//    }
+//  }
 }

@@ -81,6 +81,7 @@ public enum TokenType {
   LT,
   GT,
   EQUALS,
+  NOT_EQUALS,
   GTE,
   LTE,
 

@@ -89,7 +89,7 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
           case ',' -> newToken(TokenType.COMMA);
           case ';' -> newToken(TokenType.SEMI_COLON);
           case '^' -> newToken(TokenType.POW);
-          case '!' -> newToken(TokenType.BANG);
+          case '!' -> advanceAsNotEqualsOtherwiseBang();
           case '(' -> newToken(TokenType.OPEN_PAREN);
           case ')' -> newToken(TokenType.CLOSE_PAREN);
           case '{' -> newToken(TokenType.OPEN_BRACE);
@@ -145,6 +145,17 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
 
     } catch (IOException e) {
       throw new UncheckedIOException(e);
+    }
+  }
+
+  private Token advanceAsNotEqualsOtherwiseBang() throws IOException {
+
+    var c = this.read();
+    if (c == '=') {
+      return newToken(TokenType.NOT_EQUALS);
+    } else {
+      backtrack(c);
+      return newToken(TokenType.BANG);
     }
   }
 

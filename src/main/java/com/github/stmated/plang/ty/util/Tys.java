@@ -1,11 +1,14 @@
 package com.github.stmated.plang.ty.util;
 
+import com.github.stmated.plang.hir.model.HirMutabilityKind;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyDiffKind;
 import com.github.stmated.plang.ty.TyFlags;
 import com.github.stmated.plang.ty.TyIdentifier;
 import com.github.stmated.plang.ty.TyResult;
 import com.github.stmated.plang.ty.TyUnion;
+import com.github.stmated.plang.ty.TyValue;
+import com.github.stmated.plang.ty.TyValueKind;
 import com.github.stmated.plang.ty.TyValueNumber;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
@@ -71,6 +74,26 @@ public class Tys {
     };
   }
 
+  public static Ty toNonConstIfRequired(Ty ty, HirMutabilityKind mutabilityKind) {
+
+    return switch (ty) {
+      case TyValueNumberInteger ni -> {
+        yield ni;
+      }
+
+      // TODO: This needs to be extensively expanded upon.
+      default -> ty;
+    };
+  }
+
+  public static TyValueKind getValueKind(Ty ty) {
+
+    return switch (ty) {
+      case TyValue v -> v.getValueKind();
+      default -> throw new IllegalArgumentException(STR."Unknown value kind '\{ty}'");
+    };
+  }
+
   private record Pair<A, B>(A a, B b) {}
 
   private Pair<Ty, Ty> reorder(Ty a, Ty b) {
@@ -94,6 +117,12 @@ public class Tys {
     if (a.contains(TyFlags.MUTABLE) || b.contains(TyFlags.MUTABLE)) {
       mix.remove(TyFlags.CONSTANT);
       mix.remove(TyFlags.IMMUTABLE);
+    }
+
+    if (a.contains(TyFlags.CONSTANT) != b.contains(TyFlags.CONSTANT)) {
+
+      // One of them is not constant, so it will stop being one.
+      mix.remove(TyFlags.CONSTANT);
     }
 
     return mix;

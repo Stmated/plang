@@ -7,6 +7,7 @@ public enum AstBinaryOperationKind {
   LTE,
   GTE,
   EQUALS,
+  NOT_EQUALS,
   LT,
   GT,
   IS,
@@ -38,6 +39,7 @@ public enum AstBinaryOperationKind {
       case LTE -> AstBinaryOperationKind.LTE;
       case GTE -> AstBinaryOperationKind.GTE;
       case EQUALS -> AstBinaryOperationKind.EQUALS;
+      case NOT_EQUALS -> AstBinaryOperationKind.NOT_EQUALS;
       case LT -> AstBinaryOperationKind.LT;
       case GT -> AstBinaryOperationKind.GT;
       case IS -> AstBinaryOperationKind.IS;
