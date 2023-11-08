@@ -34,7 +34,7 @@ import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.mir.model.MirReturn;
 import com.github.stmated.plang.thir.raising.ThirRepository;
 import com.github.stmated.plang.ty.Ty;
-import com.github.stmated.plang.ty.util.TyUtil;
+import com.github.stmated.plang.ty.util.Tys;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.Stack;
@@ -345,9 +345,9 @@ public class ThirToMirLowering {
         final var a = phi_entry.getValue().a();
         final var b = phi_entry.getValue().b();
 
-        final var phiTy = TyUtil.merge(a.ty(), b.ty());
+        final var phiTy = Tys.merge(a.ty(), b.ty());
 
-        if (!TyUtil.isUsable(phiTy)) {
+        if (!Tys.isUsable(phiTy)) {
           throw new IllegalArgumentException(STR."Merged Phi node for '\{a}' and '\{b}' not usable");
         }
 

@@ -2,7 +2,7 @@ package com.github.stmated.plang.ty;
 
 import java.util.EnumSet;
 
-public record TyValueNumberInteger(int radix, int width, boolean signed, EnumSet<TyFlags> flags) implements TyValueNumber {
+public record TyValueNumberInteger(byte radix, int width, boolean signed, EnumSet<TyFlags> flags) implements TyValueNumber {
 
   @Override
   public TyValueKind getValueKind() {

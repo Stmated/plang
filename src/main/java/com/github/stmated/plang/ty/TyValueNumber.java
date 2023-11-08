@@ -2,7 +2,7 @@ package com.github.stmated.plang.ty;
 
 public interface TyValueNumber extends TyValue {
 
-  int radix();
+  byte radix();
 
   int width();
 

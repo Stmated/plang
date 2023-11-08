@@ -4,5 +4,4 @@ public enum TyValueNumberPrecisionKind {
 
   FLOAT,
   DOUBLE,
-//  DECIMAL,
 }

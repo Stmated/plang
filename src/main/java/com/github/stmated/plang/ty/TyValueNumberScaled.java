@@ -8,7 +8,7 @@ public record TyValueNumberScaled(int width, int scale, boolean signed) implemen
   }
 
   @Override
-  public int radix() {
+  public byte radix() {
     return 10;
   }
 }

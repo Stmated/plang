@@ -20,6 +20,7 @@ import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyValueArray;
 import com.github.stmated.plang.ty.TyValueBoolean;
+import com.github.stmated.plang.ty.TyValueKind;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
 import com.github.stmated.plang.ty.TyValueString;
@@ -227,12 +228,34 @@ class MirToLLVMLoweringModule implements AutoCloseable {
         final var mirParam = mir.target().parameters()[i];
         llvmArgs[i] = convert(ref, arg.instruction().ty(), mirParam.type());
       } else {
-        llvmArgs[i] = ref;
+
+        // TODO: If 'ref' is a pointer
+        llvmArgs[i] = conform(ref, arg.instruction().ty());
       }
     }
 
     final var pp = new PointerPointer<>(llvmArgs);
     return LLVM.LLVMBuildCall2(ctx.builder, fn.fnType(), fn.fn(), pp, llvmArgs.length, STR."call \{functionName}");
+  }
+
+  /**
+   *
+   * @param ref The value reference
+   * @param stated The type that the user thinks it is working with
+   * @return
+   */
+  private LLVMValueRef conform(LLVMValueRef ref, Ty stated) {
+
+    // Given is the type that LLVM is using in the background.
+    final var given = overridingTypes.getOrDefault(ref, stated);
+
+    if (given instanceof TyPointer && !(stated instanceof TyPointer)) {
+
+      final var type = MirToLLVMUtils.toLLVMType(ctx, stated);
+      return LLVM.LLVMBuildLoad2(ctx.builder, type, ref, "loaded");
+    }
+
+    return ref;
   }
 
   private LLVMValueRef convert(LLVMValueRef ref, Ty given, Ty expected) {
@@ -412,8 +435,24 @@ class MirToLLVMLoweringModule implements AutoCloseable {
     }
   }
 
-  private LLVMValueRef lower_literal_number_precisioned(String content, TyValueNumberPrecisioned np) {
-    throw new NotImplementedException("Implement precisioned numbers");
+  private LLVMValueRef lower_literal_number_precisioned(String content, TyValueNumberPrecisioned ty) {
+
+    final var v = Double.parseDouble(content);
+    final var typeRef = MirToLLVMUtils.toLLVMType(ctx, ty);
+    final var constant = LLVM.LLVMConstReal(typeRef, v);
+
+    if (ty.isConstant()) {
+      return constant;
+    } else {
+
+      final var allocation = LLVM.LLVMBuildAlloca(ctx.builder, typeRef, ty.toShortString());
+      LLVM.LLVMBuildStore(ctx.builder, constant, allocation);
+
+      // Override the type to be a pointer of the type.
+      overridingTypes.put(allocation, new TyPointer(ty));
+
+      return allocation;
+    }
   }
 
   private String getLabel(MirInstr instruction, String fallback) {

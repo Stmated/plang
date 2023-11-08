@@ -12,15 +12,21 @@ import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
 import com.github.stmated.plang.ty.TyValueNumberScaled;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.Set;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
-public class TyUtil {
+public class Tys {
 
   public static TyResult<Ty> getCommonDenominator(Ty a, Ty b) {
+
+    final var reordered = reorder(a, b);
+    a = reordered.a();
+    b = reordered.b();
+
+    if (a == b) {
+      return new TyResult<>(a);
+    }
 
     if (a == Ty.UNKNOWN || b == Ty.UNKNOWN) {
       return new TyResult<>(Ty.UNKNOWN, TyDiffKind.UNKNOWN);
@@ -28,25 +34,52 @@ public class TyUtil {
 
     return switch (a) {
       case TyValueNumberInteger ani -> switch (b) {
-        case TyValueNumberInteger bni
-          when ani.width() == bni.width() && ani.signed() == bni.signed() && ani.radix() == bni.radix() -> new TyResult<>(ani);
-        case TyValueNumberInteger bni
-          when ani.width() == bni.width() && ani.signed() == bni.signed() -> new TyResult<>(Ty.INTEGER, TyDiffKind.DIFF_RADIX);
-        case TyValueNumberInteger bni
-          when ani.signed() == bni.signed() -> new TyResult<>(
-          new TyValueNumberInteger(10, Math.max(ani.width(), bni.width()), ani.signed(), mixFlags(ani.flags(), bni.flags())),
-          TyDiffKind.DIFF_WIDTH
-        );
+        case TyValueNumberInteger bni -> {
+          if (ani.signed() != bni.signed()) {
+            yield new TyResult<>(Ty.INTEGER, TyDiffKind.DIFF_SIGNED);
+          }
+          if (ani.radix() != bni.radix()) {
+            yield new TyResult<>(Ty.INTEGER, TyDiffKind.DIFF_RADIX);
+          }
+          if (ani.width() != bni.width()) {
+            final var newWidth = Math.max(ani.width(), bni.width());
+            final var newFlags = mixFlags(ani.flags(), bni.flags());
+            yield new TyResult<>(
+              new TyValueNumberInteger((byte) 10, newWidth, ani.signed(), newFlags),
+              TyDiffKind.DIFF_WIDTH_EXT
+            );
+          }
+
+          yield new TyResult<>(ani);
+        }
+//          when ani.width() == bni.width() && ani.signed() == bni.signed() && ani.radix() == bni.radix() -> new TyResult<>(ani);
+//        case TyValueNumberInteger bni
+//          when ani.width() == bni.width() && ani.signed() == bni.signed() ->
+//        case TyValueNumberInteger bni
+//          when ani.signed() == bni.signed() -> new TyResult<>(
+//          new TyValueNumberInteger((byte) 10, Math.max(ani.width(), bni.width()), ani.signed(), mixFlags(ani.flags(), bni.flags())),
+//          TyDiffKind.DIFF_WIDTH
+//        );
         case TyValueNumberPrecisioned bnp -> new TyResult<>(bnp, TyDiffKind.DIFF_PRECISION_EXT);
         case TyValueNumberScaled bns -> new TyResult<>(bns, TyDiffKind.DIFF_PRECISION_EXT);
         default -> new TyResult<>(null, TyDiffKind.INCOMPATIBLE);
       };
       case TyValueNumber an -> switch (b) {
-//        case TyValueNumber bn -> {};
         default -> new TyResult<>(null, TyDiffKind.INCOMPATIBLE);
       };
       default -> new TyResult<>(null, TyDiffKind.INCOMPATIBLE);
     };
+  }
+
+  private record Pair<A, B>(A a, B b) {}
+
+  private Pair<Ty, Ty> reorder(Ty a, Ty b) {
+
+    if (a.getClass().getSimpleName().compareTo(b.getClass().getSimpleName()) <= 0) {
+      return new Pair<>(a, b);
+    } else {
+      return new Pair<>(b, a);
+    }
   }
 
   /**

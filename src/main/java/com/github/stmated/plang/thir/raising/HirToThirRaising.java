@@ -17,7 +17,7 @@ import com.github.stmated.plang.hir.model.HirReturn;
 import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyIdentifier;
-import com.github.stmated.plang.ty.util.TyUtil;
+import com.github.stmated.plang.ty.util.Tys;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -139,7 +139,7 @@ public class HirToThirRaising {
       return branch_types[0];
     }
 
-    return TyUtil.merge(branch_types);
+    return Tys.merge(branch_types);
   }
 
   private Ty investigate_identifier(HirIdentifier hir) {
@@ -177,8 +177,8 @@ public class HirToThirRaising {
 
     } else {
 
-      final var common = TyUtil.getCommonDenominator(lhs, rhs);
-      if (!TyUtil.isGenerallyCompatible(common.diffs())) {
+      final var common = Tys.getCommonDenominator(lhs, rhs);
+      if (!Tys.isGenerallyCompatible(common.diffs())) {
         throw new IllegalArgumentException(STR."\{lhs} and \{rhs} are not compatible with each other");
       }
 
@@ -244,7 +244,7 @@ public class HirToThirRaising {
     final var lhst = investigate(v.lhs());
     final var rhst = investigate(v.rhs());
 
-    final var result = TyUtil.getCommonDenominator(lhst, rhst);
+    final var result = Tys.getCommonDenominator(lhst, rhst);
     if (result.ty() == null) {
       throw new IllegalArgumentException(STR."There was no common denominator between '\{lhst}' and '\{rhst}'");
     }

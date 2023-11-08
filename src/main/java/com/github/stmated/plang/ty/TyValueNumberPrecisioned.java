@@ -6,14 +6,13 @@ public record TyValueNumberPrecisioned(TyValueNumberPrecisionKind kind, int widt
   public TyValueKind getValueKind() {
 
     return switch (kind) {
-//      case DECIMAL -> TyValueKind.DECIMAL;
       case DOUBLE -> TyValueKind.DOUBLE;
       case FLOAT -> TyValueKind.FLOAT;
     };
   }
 
   @Override
-  public int radix() {
+  public byte radix() {
     return 10;
   }
 }
