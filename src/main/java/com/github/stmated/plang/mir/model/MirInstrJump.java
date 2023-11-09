@@ -6,7 +6,7 @@ import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
-public class MirInstrJump extends MirInstr {
+public class MirInstrJump extends AbstractMirInstr {
 
   MirNode node;
 

@@ -6,7 +6,7 @@ import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
-public class MirInstrConditionalJump extends MirInstr {
+public class MirInstrConditionalJump extends AbstractMirInstr {
 
   MirInstr predicate;
   MirNode pass;

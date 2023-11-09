@@ -1,6 +1,7 @@
 package com.github.stmated.plang.mir.model;
 
 import com.github.stmated.plang.ty.Ty;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
@@ -8,7 +9,8 @@ import lombok.Value;
  * nothing.
  */
 @Value
-public class MirInstrPhi extends MirInstr {
+@EqualsAndHashCode(callSuper = true)
+public class MirInstrPhi extends AbstractMirInstr {
 
   MirInstr[] operands;
   MirNode[] from;

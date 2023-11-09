@@ -172,9 +172,16 @@ class HirToLLVMLoweringTest {
   @ValueSource(strings = {
     "var a = 0; if (a == 0) then a = 10 else a = 5; return a;",
     "val a = 10; a",
-    "var a = 10; a += 1; a -= 1; a"
   })
   void testScopes(String code) {
     Assertions.assertEquals(10, Plang.codeToResult(code).returnCode());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "var a = 10; a += 2; a -= 1; a"
+  })
+  void testScopes2(String code) {
+    Assertions.assertEquals(11, Plang.codeToResult(code).returnCode());
   }
 }

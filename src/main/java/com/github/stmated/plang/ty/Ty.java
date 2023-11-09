@@ -1,66 +1,65 @@
 package com.github.stmated.plang.ty;
 
+import com.github.stmated.plang.ty.util.Tys;
 import java.util.EnumSet;
+import java.util.Objects;
 
 public interface Ty {
 
-  Ty INFER = new TyInfer();
-  Ty INVALID = new TyInvalid();
-  Ty UNKNOWN = new TyUnknown();
-  Ty VOID = new MyVoid();
+  Ty INFER = new TyNamed("INFER");
+  Ty INVALID = new TyNamed("INVALID");
+  Ty UNKNOWN = new TyNamed("UNKNOWN");
+  Ty VOID = new TyNamed("VOID");
 
-  TyValueNumberInteger INTEGER = new TyValueNumberInteger((byte) 10, 32, true, EnumSet.noneOf(TyFlags.class));
-  TyValueNumberInteger LONG = new TyValueNumberInteger((byte) 10, 64, true, EnumSet.noneOf(TyFlags.class));
+  TyValueNumberInteger INTEGER = Tys.intern(new TyValueNumberInteger((byte) 10, 32, true, EnumSet.noneOf(TyFlags.class)));
+  TyValueNumberInteger LONG = Tys.intern(new TyValueNumberInteger((byte) 10, 64, true, EnumSet.noneOf(TyFlags.class)));
 
-  TyValueNumberInteger CHAR = new TyValueNumberInteger((byte) 10, 8, false, EnumSet.noneOf(TyFlags.class));
+  TyValueNumberInteger CHAR = Tys.intern(new TyValueNumberInteger((byte) 10, 8, false, EnumSet.noneOf(TyFlags.class)));
 
-  TyValueNumberInteger INTEGER_BINARY = new TyValueNumberInteger((byte) 2, 32, true, EnumSet.noneOf(TyFlags.class));
-  TyValueNumberInteger INTEGER_OCTAL = new TyValueNumberInteger((byte) 8, 32, true, EnumSet.noneOf(TyFlags.class));
-  TyValueNumberInteger INTEGER_HEX = new TyValueNumberInteger((byte) 16, 32, true, EnumSet.noneOf(TyFlags.class));
+  TyValueNumberInteger INTEGER_BINARY = Tys.intern(new TyValueNumberInteger((byte) 2, 32, true, EnumSet.noneOf(TyFlags.class)));
+  TyValueNumberInteger INTEGER_OCTAL = Tys.intern(new TyValueNumberInteger((byte) 8, 32, true, EnumSet.noneOf(TyFlags.class)));
+  TyValueNumberInteger INTEGER_HEX = Tys.intern(new TyValueNumberInteger((byte) 16, 32, true, EnumSet.noneOf(TyFlags.class)));
 
-  TyValueNumberPrecisioned FLOAT16 = new TyValueNumberPrecisioned(TyValueNumberPrecisionKind.FLOAT, 16, 4, true);
-  TyValueNumberPrecisioned FLOAT = new TyValueNumberPrecisioned(TyValueNumberPrecisionKind.FLOAT, 32, 7, true);
-  TyValueNumberScaled DECIMAL = new TyValueNumberScaled(128, 10, true);
-  TyValueNumberPrecisioned DOUBLE = new TyValueNumberPrecisioned(TyValueNumberPrecisionKind.DOUBLE, 64, 16, true);
-  TyValueNumberPrecisioned FLOAT64 = Ty.DOUBLE;
+  TyValueNumberPrecisioned FLOAT16 = Tys.intern(new TyValueNumberPrecisioned(TyValueNumberPrecisionKind.FLOAT, 16, 4, true, EnumSet.noneOf(TyFlags.class)));
+  TyValueNumberPrecisioned FLOAT = Tys.intern(new TyValueNumberPrecisioned(TyValueNumberPrecisionKind.FLOAT, 32, 7, true, EnumSet.noneOf(TyFlags.class)));
+  TyValueNumberScaled DECIMAL = Tys.intern(new TyValueNumberScaled(128, 10, true, EnumSet.noneOf(TyFlags.class)));
+  TyValueNumberPrecisioned DOUBLE = Tys.intern(new TyValueNumberPrecisioned(TyValueNumberPrecisionKind.DOUBLE, 64, 16, true, EnumSet.noneOf(TyFlags.class)));
+  TyValueNumberPrecisioned FLOAT64 = Tys.intern(Ty.DOUBLE);
 
-  TyValueBoolean BOOLEAN = new TyValueBoolean();
+  TyValueBoolean BOOLEAN = Tys.intern(new TyValueBoolean());
 
-  TyValueString STRING = new TyValueString();
+  TyValueString STRING = Tys.intern(new TyValueString());
+
+  default Ty intern() {
+    return Tys.intern(this);
+  }
 
   default String toShortString() {
     return this.toString();
   }
 
-  class TyInfer implements Ty {
+  record TyNamed(String name) implements Ty {
 
     @Override
-    public String toString() {
-      return "INFER";
+    public String toShortString() {
+      return this.name;
     }
-  }
-
-  class TyInvalid implements Ty {
 
     @Override
-    public String toString() {
-      return "INVALID";
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      final var that = (TyNamed) o;
+      return Objects.equals(name, that.name);
     }
-  }
-
-  class TyUnknown implements Ty {
 
     @Override
-    public String toString() {
-      return "UNKNOWN";
-    }
-  }
-
-  class MyVoid implements Ty {
-
-    @Override
-    public String toString() {
-      return "VOID";
+    public int hashCode() {
+      return Objects.hash(name);
     }
   }
 }

@@ -30,10 +30,12 @@ import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
 import com.github.stmated.plang.mir.model.MirInstrCreateLiteral;
 import com.github.stmated.plang.mir.model.MirInstrJump;
 import com.github.stmated.plang.mir.model.MirInstrPhi;
+import com.github.stmated.plang.mir.model.MirInstrStore;
 import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.mir.model.MirReturn;
 import com.github.stmated.plang.thir.raising.ThirRepository;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.util.Tys;
 import java.util.HashMap;
 import java.util.Objects;
@@ -238,12 +240,29 @@ public class ThirToMirLowering {
 
     final var rhs = lower_expression(hir.rhs());
     final var scope = scopeStack.peek();
-    final var iid = scope.newUniqueId(name);
 
-    rhs.name(iid);
-    scope.add(rhs);
+    MirIdentifierId iid;
+    if (declare) {
+      iid = scope.newUniqueId(name);
+    } else {
+      iid = Objects.requireNonNull(scope.getLatestUniqueId(name), STR."Variable '\{name}' not declared");
+    }
 
-    return rhs;
+    MirInstrStore store;
+    if (rhs instanceof MirInstrStore s) {
+
+      // TODO: If we get a reference to a store instruction we should not
+      // If rhs is already a store instruction; just use that.
+      store = s;
+
+    } else {
+
+      store = new MirInstrStore(iid, rhs, new TyPointer<>(rhs.ty()));
+      nodeStack.peek().instructions().add(store);
+    }
+
+    scope.add(iid.name(), store);
+    return store;
   }
 
   private MirInstr lower_variable_declaration(HirVariableDeclaration hir) {
@@ -385,11 +404,11 @@ public class ThirToMirLowering {
           phiTy
         );
 
-        final var iid = scope.newUniqueId(phi_entry.getKey());
-        phi.name(iid);
+//        final var iid = scope.newUniqueId(phi_entry.getKey());
+//        phi.name(iid);
 
         nodeStack.peek().instructions().add(phi);
-        scope.add(phi);
+        scope.add(phi_entry.getKey(), phi);
       }
 
       // We will always create a phi-node for the if-case. For sake of simplicity.
@@ -402,6 +421,7 @@ public class ThirToMirLowering {
       final var instruction = new MirInstrConditionalJump(predicate_operand, pass_node, fail_node);
       nodeStack.peek().instructions().add(instruction);
 
+      // NOTE: Most likely wrong; should return the instruction/void. Up to caller if that instruction should be used (which it should not)
       return null;
 
     } else {
@@ -590,6 +610,7 @@ public class ThirToMirLowering {
   }
 
   private MirInstr lower_literal(HirLiteral hir) {
+
     final var ty = Objects.requireNonNullElse(thirRepository.getType(hir), hir.ty());
     final var instruction = new MirInstrCreateLiteral(hir.content(), ty);
 

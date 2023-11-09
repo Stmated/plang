@@ -26,40 +26,59 @@ record MirScope(
     this.idMap = idMap;
   }
 
+  /**
+   * TODO: This stuff with uniqueId is probably wrong and needs some cleanup/rethinking/simplification
+   */
+  public MirIdentifierId getLatestUniqueId(String name) {
+
+    final var earliestCounter = getEarliestCounter(name);
+    if (earliestCounter != null) {
+      return new MirIdentifierId(name, null, earliestCounter.get());
+    }
+
+    return null;
+  }
+
   public MirIdentifierId newUniqueId(String name) {
     return newUniqueId(name, null);
   }
 
   public MirIdentifierId newUniqueId(String name, String label) {
 
-    var pointer = this;
-    AtomicInteger earliest_counter = null;
-    while (pointer != null) {
-      final var counter = pointer.idMap().get(name);
-      if (counter != null) {
-        earliest_counter = counter;
-      }
-
-      pointer = pointer.parent();
-    }
-
-    if (earliest_counter != null) {
-      return new MirIdentifierId(name, label, earliest_counter.incrementAndGet());
+    final var earliestCounter = getEarliestCounter(name);
+    if (earliestCounter != null) {
+      return new MirIdentifierId(name, label, earliestCounter.incrementAndGet());
     }
 
     final var id = this.idMap.computeIfAbsent(name, n -> new AtomicInteger(0)).incrementAndGet();
     return new MirIdentifierId(name, label, id);
   }
 
-  public void add(MirInstr instruction) {
+  private AtomicInteger getEarliestCounter(String name) {
 
-    final var iid = Objects.requireNonNull(
-      instruction.name(),
-      "To add a scoped instruction, it must be identifiable"
-    );
+    var pointer = this;
+    AtomicInteger earliestCounter = null;
+    while (pointer != null) {
+      final var counter = pointer.idMap().get(name);
+      if (counter != null) {
+        earliestCounter = counter;
+      }
+
+      pointer = pointer.parent();
+    }
+
+    return earliestCounter;
+  }
+
+  public void add(String name, MirInstr instruction) {
+
+//    final var iid = Objects.requireNonNull(
+//      name,
+//      "To add a scoped instruction, it must be identifiable"
+//    );
 
     final var e = this.map.computeIfAbsent(
-      Objects.requireNonNull(iid.name(), "To add scoped instruction it must be named"),
+      Objects.requireNonNull(name, "To add scoped instruction it must be named"),
       n -> new ArrayList<>()
     );
 

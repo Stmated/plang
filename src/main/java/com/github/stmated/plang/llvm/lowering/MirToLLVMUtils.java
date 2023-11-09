@@ -73,7 +73,7 @@ public class MirToLLVMUtils {
       case TyValueNumberScaled ni when ni.width() == 8 -> LLVM.LLVMInt8TypeInContext(context);
       case TyValueNumberScaled ni when ni.width() == 1 -> LLVM.LLVMInt1TypeInContext(context);
 
-      case TyValueString s -> toLLVMType(context, new TyPointer(Ty.CHAR));
+      case TyValueString s -> toLLVMType(context, new TyPointer<>(Ty.CHAR));
 
       case TyPointer p -> LLVM.LLVMPointerType(toLLVMType(context, p.inner()), getAddressSpace(p.addressSpace()));
       case TyValueArray a when a.size() >= 0 -> LLVM.LLVMArrayType2(toLLVMType(context, a.elementType()), a.size());
@@ -81,7 +81,7 @@ public class MirToLLVMUtils {
 
       case TyValueBoolean b -> LLVM.LLVMInt1TypeInContext(context);
 
-      case Ty.MyVoid _ -> LLVM.LLVMVoidTypeInContext(context);
+      case Ty.TyNamed n when n.intern() == Ty.VOID -> LLVM.LLVMVoidTypeInContext(context);
 
 //      case  np when np.width() == 128 -> LLVM.LLVMTypeInContext(context);
 

@@ -5,6 +5,7 @@ import com.github.stmated.plang.mir.model.MirInstrBinaryOperation;
 import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
 import com.github.stmated.plang.mir.model.MirInstrCreateLiteral;
 import com.github.stmated.plang.mir.model.MirInstrJump;
+import com.github.stmated.plang.mir.model.MirInstrStore;
 import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.mir.model.MirInstrPhi;
 import com.github.stmated.plang.mir.model.MirReturn;
@@ -34,12 +35,14 @@ class ThirToMirLoweringTest {
 
     Assertions.assertEquals(0, mir.predecessors().size());
     Assertions.assertEquals(0, mir.successors().size());
-    Assertions.assertEquals(4, mir.instructions().size());
+    Assertions.assertEquals(6, mir.instructions().size());
 
     Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(0));
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(1));
-    Assertions.assertInstanceOf(MirInstrBinaryOperation.class, mir.instructions().get(2));
-    Assertions.assertInstanceOf(MirReturn.class, mir.instructions().get(3));
+    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(1));
+    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(2));
+    Assertions.assertInstanceOf(MirInstrBinaryOperation.class, mir.instructions().get(3));
+    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(4));
+    Assertions.assertInstanceOf(MirReturn.class, mir.instructions().get(5));
   }
 
   @Test
@@ -49,12 +52,14 @@ class ThirToMirLoweringTest {
 
     Assertions.assertEquals(0, mir.predecessors().size());
     Assertions.assertEquals(0, mir.successors().size());
-    Assertions.assertEquals(4, mir.instructions().size());
+    Assertions.assertEquals(6, mir.instructions().size());
 
     Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(0));
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(1));
-    Assertions.assertInstanceOf(MirInstrBinaryOperation.class, mir.instructions().get(2));
-    Assertions.assertInstanceOf(MirReturn.class, mir.instructions().get(3));
+    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(1));
+    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(2));
+    Assertions.assertInstanceOf(MirInstrBinaryOperation.class, mir.instructions().get(3));
+    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(4));
+    Assertions.assertInstanceOf(MirReturn.class, mir.instructions().get(5));
   }
 
   @Test
@@ -62,12 +67,13 @@ class ThirToMirLoweringTest {
 
     final var mir = Plang.codeToMir("var a = 0; if (a == 0) { a = 10; } else { a = 20; } return a;");
 
-    Assertions.assertEquals(4, mir.instructions().size());
+    Assertions.assertEquals(5, mir.instructions().size());
 
     Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(0));
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(1));
-    Assertions.assertInstanceOf(MirInstrBinaryOperation.class, mir.instructions().get(2));
-    Assertions.assertInstanceOf(MirInstrConditionalJump.class, mir.instructions().get(3));
+    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(1));
+    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(2));
+    Assertions.assertInstanceOf(MirInstrBinaryOperation.class, mir.instructions().get(3));
+    Assertions.assertInstanceOf(MirInstrConditionalJump.class, mir.instructions().get(4));
 
     assertEdges(mir, new Edge[]{
       new Edge("start", "conditional_pass"),
@@ -78,14 +84,16 @@ class ThirToMirLoweringTest {
 
     final var conditional_pass = mir.successors().getFirst();
     Assertions.assertEquals("conditional_pass", conditional_pass.name());
-    Assertions.assertEquals(2, conditional_pass.instructions().size());
+    Assertions.assertEquals(3, conditional_pass.instructions().size());
     Assertions.assertInstanceOf(MirInstrCreateLiteral.class, conditional_pass.instructions().getFirst());
+    Assertions.assertInstanceOf(MirInstrStore.class, conditional_pass.instructions().get(1));
     Assertions.assertInstanceOf(MirInstrJump.class, conditional_pass.instructions().getLast());
 
     final var conditional_fail = mir.successors().getLast();
     Assertions.assertEquals("conditional_fail", conditional_fail.name());
-    Assertions.assertEquals(2, conditional_fail.instructions().size());
+    Assertions.assertEquals(3, conditional_fail.instructions().size());
     Assertions.assertInstanceOf(MirInstrCreateLiteral.class, conditional_fail.instructions().getFirst());
+    Assertions.assertInstanceOf(MirInstrStore.class, conditional_fail.instructions().get(1));
     Assertions.assertInstanceOf(MirInstrJump.class, conditional_fail.instructions().getLast());
 
     final var conditional_merge = conditional_fail.successors().getFirst();
@@ -108,18 +116,20 @@ class ThirToMirLoweringTest {
 
     Assertions.assertEquals(0, mir.predecessors().size());
     Assertions.assertEquals(1, mir.successors().size());
-    Assertions.assertEquals(3, mir.instructions().size());
+    Assertions.assertEquals(5, mir.instructions().size());
 
     Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(0));
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(1));
-    Assertions.assertInstanceOf(MirInstrJump.class, mir.instructions().get(2));
+    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(1));
+    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(2));
+    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(3));
+    Assertions.assertInstanceOf(MirInstrJump.class, mir.instructions().get(4));
 
     assertEdges(mir, new Edge[]{
-      new Edge("start", "loop"),
-      new Edge("loop", "conditional_pass"),
-      new Edge("loop", "conditional_fail"),
-      new Edge("conditional_pass", "loop"),
-      new Edge("conditional_fail", "loop_after")
+      new Edge("start", "loop_body"),
+      new Edge("loop_body", "loop_body_conditional_pass"),
+      new Edge("loop_body", "loop_body_conditional_fail"),
+      new Edge("loop_body_conditional_pass", "loop_body"),
+      new Edge("loop_body_conditional_fail", "loop_after")
     });
   }
 

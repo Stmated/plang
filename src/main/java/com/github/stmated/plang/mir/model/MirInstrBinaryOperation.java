@@ -6,7 +6,7 @@ import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
-public class MirInstrBinaryOperation extends MirInstr {
+public class MirInstrBinaryOperation extends AbstractMirInstr {
 
   MirInstr lhs;
   MirBinaryOperationKind kind;

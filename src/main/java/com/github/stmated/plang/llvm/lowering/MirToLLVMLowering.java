@@ -30,8 +30,8 @@ public class MirToLLVMLowering {
       new MirFnParameter[]{
         new MirFnParameter("argc", Ty.INTEGER),
         // Since the type is an array and the size is unknown (-1), then LLVM will likely make this a PointerPointer instead.
-        new MirFnParameter("argv", new TyPointer(new TyValueArray(Ty.CHAR, -1))),
-        new MirFnParameter("env", new TyPointer(new TyPointer(Ty.CHAR)))
+        new MirFnParameter("argv", new TyPointer<>(new TyValueArray(Ty.CHAR, -1))),
+        new MirFnParameter("env", new TyPointer<>(new TyPointer<>(Ty.CHAR)))
       },
       false,
       Ty.INTEGER

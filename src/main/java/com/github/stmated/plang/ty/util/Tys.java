@@ -14,12 +14,24 @@ import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
 import com.github.stmated.plang.ty.TyValueNumberScaled;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.function.Function;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class Tys {
+
+  public static final Comparator<Ty> TY_COMPARATOR = Comparator.comparing(it -> it.getClass().getSimpleName());
+
+  private static final Map<Ty, Ty> tyInternMap = new HashMap<>();
+
+  public static <T extends Ty> T intern(T ty) {
+    return (T) tyInternMap.computeIfAbsent(ty, it -> it);
+  }
 
   public static TyResult<Ty> getCommonDenominator(Ty a, Ty b) {
 
@@ -94,11 +106,13 @@ public class Tys {
     };
   }
 
-  private record Pair<A, B>(A a, B b) {}
-
   private Pair<Ty, Ty> reorder(Ty a, Ty b) {
+    return reorderBasedOnType(a, b, Function.identity());
+  }
 
-    if (a.getClass().getSimpleName().compareTo(b.getClass().getSimpleName()) <= 0) {
+  public static <T> Pair<T, T> reorderBasedOnType(T a, T b, Function<T, Ty> mapper) {
+
+    if (TY_COMPARATOR.compare(mapper.apply(a), mapper.apply(b)) <= 0) {
       return new Pair<>(a, b);
     } else {
       return new Pair<>(b, a);
@@ -108,7 +122,7 @@ public class Tys {
   /**
    * TODO: This is all bad and wrong and needs a way better system
    */
-  public EnumSet<TyFlags> mixFlags(EnumSet<TyFlags> a, EnumSet<TyFlags> b) {
+  public static EnumSet<TyFlags> mixFlags(EnumSet<TyFlags> a, EnumSet<TyFlags> b) {
 
     final var mix = EnumSet.noneOf(TyFlags.class);
     mix.addAll(a);

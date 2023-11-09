@@ -4,28 +4,19 @@ import com.github.stmated.plang.mir.MirIdentifierId;
 import com.github.stmated.plang.ty.Ty;
 import lombok.Data;
 
-@Data
-public abstract class MirInstr {
+public interface MirInstr {
 
-  private MirIdentifierId name;
+  MirIdentifierId name();
 
-  boolean isTerminal() {
+//  void name(MirIdentifierId iid);
+
+  default boolean isTerminal() {
     return false;
   }
 
-  String toShortString() {
+  default String toShortString() {
     return this.toString();
   }
 
-  public abstract Ty ty();
-
-  @Override
-  public int hashCode() {
-    return System.identityHashCode(this);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    return this == obj;
-  }
+  Ty ty();
 }

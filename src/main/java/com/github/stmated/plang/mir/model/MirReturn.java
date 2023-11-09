@@ -7,7 +7,7 @@ import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
-public class MirReturn extends MirInstr {
+public class MirReturn extends AbstractMirInstr {
 
   MirInstr instr;
 

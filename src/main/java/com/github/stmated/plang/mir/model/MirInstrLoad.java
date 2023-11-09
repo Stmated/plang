@@ -4,16 +4,17 @@ import com.github.stmated.plang.ty.Ty;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
+/**
+ * Load the value of a previous store.
+ */
 @Value
 @EqualsAndHashCode(callSuper = true)
-public class MirCall extends AbstractMirInstr {
+public class MirInstrLoad extends AbstractMirInstr {
 
-  MirFn target;
-  MirFnArgument[] arguments;
-  Ty returnType;
+  MirInstrStore store;
 
   @Override
   public Ty ty() {
-    return returnType;
+    return store.ty();
   }
 }

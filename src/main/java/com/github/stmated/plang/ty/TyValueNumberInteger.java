@@ -1,6 +1,7 @@
 package com.github.stmated.plang.ty;
 
 import java.util.EnumSet;
+import java.util.Objects;
 
 public record TyValueNumberInteger(byte radix, int width, boolean signed, EnumSet<TyFlags> flags) implements TyValueNumber {
 
@@ -22,5 +23,22 @@ public record TyValueNumberInteger(byte radix, int width, boolean signed, EnumSe
   @Override
   public boolean isImmutable() {
     return flags.contains(TyFlags.IMMUTABLE) || flags.contains(TyFlags.CONSTANT);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TyValueNumberInteger that = (TyValueNumberInteger) o;
+    return radix == that.radix && width == that.width && signed == that.signed && Objects.equals(flags, that.flags);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(radix, width, signed, flags);
   }
 }
