@@ -12,6 +12,7 @@ import com.github.stmated.plang.mir.model.MirInstr;
 import com.github.stmated.plang.mir.model.MirInstrBinaryOperation;
 import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
 import com.github.stmated.plang.mir.model.MirInstrCreateLiteral;
+import com.github.stmated.plang.mir.model.MirInstrGetGlobal;
 import com.github.stmated.plang.mir.model.MirInstrJump;
 import com.github.stmated.plang.mir.model.MirInstrPhi;
 import com.github.stmated.plang.mir.model.MirInstrStore;
@@ -48,7 +49,7 @@ import org.bytedeco.llvm.global.LLVM;
  * It is then up to the main {@link MirToLLVMLowering} to mend all the different functions together into one bigger program.
  */
 @Slf4j
-class MirToLLVMLoweringModule implements AutoCloseable {
+class LLVMFunctionLowering {
 
   private final LLVMModuleRef module;
 
@@ -63,18 +64,47 @@ class MirToLLVMLoweringModule implements AutoCloseable {
    */
   private final Map<LLVMValueRef, Ty> overridingTypes = new HashMap<>();
 
-  public MirToLLVMLoweringModule(Ctx ctx, String name) {
+  private LLVMFunctionLowering(Ctx ctx, String name) {
     this.ctx = ctx;
     this.module = LLVM.LLVMModuleCreateWithNameInContext(name, ctx.context);
 
     // NOTE: Change this according to the actual target!
-    LLVM.LLVMSetTarget(module, "arm64-apple-macosx14.0.0");
-    MirToLLVMUtils.verifyModule(module);
+//    LLVM.LLVMSetTarget(module, "arm64-apple-macosx14.0.0");
+//    MirToLLVMUtils.verifyModule(module);
   }
 
-  @Override
-  public void close() {
-    LLVM.LLVMDisposeModule(module);
+  public static void lower(LLVMFunctionLoweringRequest request) {
+    new LLVMFunctionLowering(request.ctx(), request.fn().name()).lower_request(request);
+  }
+
+  private void lower_request(LLVMFunctionLoweringRequest request) {
+
+    final var fn = this.createFnDeclaration(request.fn());
+
+    firstPassTraverseNodes(request.fn().entry(), fn.fn());
+
+    ctx.enterFunction(fn.fn(), () -> secondPassBuildNodes(request.fn().entry()));
+
+    MirToLLVMUtils.verifyModule(module);
+
+    request.callback().accept(new LLVMFunctionLoweringResult(module));
+
+//    final var function = (mirFn.name().equals("main"))
+//      // If the function is called "main" then we will just take the word of it and let it be the program entrypoint.
+//      ? null
+//      // But if it is not "main", then we will give back the LLVM call info for this function to the caller.
+//      // It is then up to the caller to decide what to do with this information.
+//      : new LLVMFunctionCallInfo(fn.fnType(), fn.fn(), new PointerPointer<>(fn.params()), fn.params().length, mirFn.name(), ctx.resolveBlock(mirFn.entry()));
+
+//    return new LLVMFunctionLoweringResult();
+//    return new ModuleResult(
+//      module,
+//      ctx.context,
+//      function,
+//      () -> {
+//      },
+//      ctx.threadContext
+//    );
   }
 
   private ExternalFn createFnDeclaration(MirFn mirFn) {
@@ -104,31 +134,6 @@ class MirToLLVMLoweringModule implements AutoCloseable {
     }
 
     return new ExternalFn(fn, fnType, fnParams);
-  }
-
-  public ModuleResult lower(MirFn mirFn) {
-
-    final var fn = this.createFnDeclaration(mirFn);
-
-    firstPassTraverseNodes(mirFn.entry(), fn.fn());
-
-    ctx.enterFunction(fn.fn(), () -> secondPassBuildNodes(mirFn.entry()));
-
-    MirToLLVMUtils.verifyModule(module);
-
-    final var function = (mirFn.name().equals("main"))
-      // If the function is called "main" then we will just take the word of it and let it be the program entrypoint.
-      ? null
-      // But if it is not "main", then we will give back the LLVM call info for this function to the caller.
-      // It is then up to the caller to decide what to do with this information.
-      : new LLVMFunctionCallInfo(fn.fnType(), fn.fn(), new PointerPointer<>(fn.params()), fn.params().length, mirFn.name(), ctx.resolveBlock(mirFn.entry()));
-
-    return new ModuleResult(
-      module,
-      function,
-      () -> {
-      }
-    );
   }
 
   private void forEachNode(MirNode root, Consumer<MirNode> consumer) {
@@ -199,6 +204,7 @@ class MirToLLVMLoweringModule implements AutoCloseable {
       case MirInstrPhi it -> lower_phi(it);
       case MirCall it -> lower_call(it);
       case MirInstrStore it -> lower_store(it);
+      case MirInstrGetGlobal it -> lower_get_global(it);
       default -> throw new UnexpectedExpressionException(miri);
     };
 
@@ -206,6 +212,15 @@ class MirToLLVMLoweringModule implements AutoCloseable {
     ctx.register(miri, valueRef);
 
     return valueRef;
+  }
+
+  private LLVMValueRef lower_get_global(MirInstrGetGlobal it) {
+
+    if ("stdout".equals(it.globalName())) {
+      prepare_freopen();
+    }
+
+    return LLVM.LLVMGetNamedGlobal(module, it.globalName());
   }
 
   private final Map<String, LLVMValueRef> addressToValueMap = new HashMap<>();
@@ -239,6 +254,8 @@ class MirToLLVMLoweringModule implements AutoCloseable {
 
     final var functionName = mir.target().name();
 
+    // TODO: This is very bad! We should NOT create fn declarations on the fly like this.
+    //        Only here right now for testing. To be removed.
     final var fn = Objects.requireNonNull(
       externalFunctionMap.computeIfAbsent(functionName, _ -> createFnDeclaration(mir.target())),
       () -> STR."Unknown function '\{functionName}'"
@@ -265,6 +282,14 @@ class MirToLLVMLoweringModule implements AutoCloseable {
 
     final var pp = new PointerPointer<>(llvmArgs);
     return LLVM.LLVMBuildCall2(ctx.builder, fn.fnType(), fn.fn(), pp, llvmArgs.length, functionName);
+  }
+
+  private void prepare_freopen() {
+
+    LLVMTypeRef i8PtrType = MirToLLVMUtils.toLLVMType(ctx, new TyPointer<>(Ty.CHAR).intern());
+    LLVMValueRef stdout = LLVM.LLVMAddGlobal(module, i8PtrType, "stdout");
+    LLVM.LLVMSetLinkage(stdout, LLVM.LLVMExternalLinkage);
+    LLVM.LLVMSetAlignment(stdout, 8);
   }
 
   private record RefTyPair(LLVMValueRef ref, Ty ty) {

@@ -4,7 +4,7 @@
       <pattern>%blue([%date]) %highlight([%-5level]) [%green(%-25(%logger{0}))] %cyan(--) %msg%n</pattern>
     </encoder>
   </appender>
-  <root level="trace">
+  <root level="info">
     <appender-ref ref="COLOR"/>
   </root>
 </configuration>

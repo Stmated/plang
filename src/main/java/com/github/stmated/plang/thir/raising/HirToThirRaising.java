@@ -18,6 +18,7 @@ import com.github.stmated.plang.hir.model.HirReturn;
 import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyIdentifier;
+import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.util.Tys;
 import java.util.HashMap;
 import java.util.Map;
@@ -144,6 +145,11 @@ public class HirToThirRaising {
   }
 
   private Ty investigate_identifier(HirIdentifier hir) {
+
+    // TODO: Very bad. Needs serious change later.
+    if ("stdout".equals(hir.name())) {
+      return new TyPointer<>(Ty.CHAR);
+    }
 
     return Objects.requireNonNull(scopeStack.peek().get(hir.name()), STR."Cannot get '\{hir.name()}' since its type is unknown");
   }

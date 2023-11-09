@@ -44,6 +44,10 @@ import com.github.stmated.plang.hir.model.HirTuple;
 import com.github.stmated.plang.hir.model.HirTupleKeyValue;
 import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyPointer;
+import org.bytedeco.llvm.LLVM.LLVMTypeRef;
+import org.bytedeco.llvm.LLVM.LLVMValueRef;
+import org.bytedeco.llvm.global.LLVM;
 
 public class AstToHirRaising {
 
@@ -186,12 +190,20 @@ public class AstToHirRaising {
         default -> new HirArgument(null, hirArgumentExpressions[i]);
       };
 
-      if (i < varArgIndex) {
+      if (varArgIndex == -1 || i < varArgIndex) {
 
         // TODO: Can this be better partially resolved now, or just leave it to later stages to figure out?
         // TODO: Right now we only guessed the target ty from the literal, but might be a related but different type.
         final var parameterTy = switch (hirArguments[i].value()) {
           case HirLiteral literal -> literal.ty();
+          case HirIdentifier it -> {
+            // TODO: Extremely ugly! Need to be fixed!
+            if (it.name().equals("stdout")) {
+              yield new TyPointer<>(Ty.CHAR).intern();
+            } else {
+              yield Ty.UNKNOWN;
+            }
+          }
           default -> Ty.UNKNOWN;
         };
 
@@ -217,8 +229,17 @@ public class AstToHirRaising {
 
   private Ty getKnownFunctionReturnTypes(String fnName) {
 
+    // freopen("myfile.txt", "w", stdout);
+    // declare i8* @freopen(i8*, i8*, i8*)
+
+    // @stdout = external dso_local global i8*, align 8
+
+    // %file = call i8* @freopen(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.filename, i32 0, i32 0), i8*
+    // getelementptr inbounds ([2 x i8], [2 x i8]* @.mode, i32 0, i32 0), i8* bitcast (%struct._IO_FILE** @stdout to i8*))
+
     return switch (fnName) {
       case "printf" -> Ty.INTEGER;
+      case "freopen" -> new TyPointer<>(Ty.CHAR).intern();
       default -> Ty.UNKNOWN;
     };
   }

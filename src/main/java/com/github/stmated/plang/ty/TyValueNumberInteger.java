@@ -11,7 +11,7 @@ public record TyValueNumberInteger(byte radix, int width, boolean signed, EnumSe
   }
 
   @Override
-  public String toShortString() {
+  public String toString() {
     return STR."\{signed ? "" : "u"}int\{width}\{radix == 10 ? "" : STR."base\{radix}"}";
   }
 

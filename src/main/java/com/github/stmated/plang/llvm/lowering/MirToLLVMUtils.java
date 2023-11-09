@@ -118,7 +118,7 @@ public class MirToLLVMUtils {
 
     final var arrayTy = new TyValueArray(elementTy, bytes.length);
     final var charArrayType = toLLVMType(ctx, arrayTy);
-    final var globalVar = LLVM.LLVMAddGlobal(module, charArrayType, STR."globalString: \{str}");
+    final var globalVar = LLVM.LLVMAddGlobal(module, charArrayType, "gs");
     LLVM.LLVMSetInitializer(globalVar, strArray);
 
     return new ArrayAndSize(globalVar, arrayTy);

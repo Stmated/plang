@@ -10,6 +10,7 @@ import java.util.Stack;
 import org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import org.bytedeco.llvm.LLVM.LLVMBuilderRef;
 import org.bytedeco.llvm.LLVM.LLVMContextRef;
+import org.bytedeco.llvm.LLVM.LLVMOrcThreadSafeContextRef;
 import org.bytedeco.llvm.LLVM.LLVMValueRef;
 import org.bytedeco.llvm.global.LLVM;
 
@@ -23,10 +24,12 @@ class Ctx {
 
   private final Stack<LLVMValueRef> fnStack = new Stack<>();
 
+  final LLVMOrcThreadSafeContextRef threadContext;
   final LLVMContextRef context;
   final LLVMBuilderRef builder;
 
-  public Ctx(LLVMContextRef context, LLVMBuilderRef builder) {
+  public Ctx(LLVMOrcThreadSafeContextRef threadContext, LLVMContextRef context, LLVMBuilderRef builder) {
+    this.threadContext = threadContext;
     this.context = context;
     this.builder = builder;
   }

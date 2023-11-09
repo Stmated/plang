@@ -28,6 +28,7 @@ import com.github.stmated.plang.mir.model.MirInstr;
 import com.github.stmated.plang.mir.model.MirInstrBinaryOperation;
 import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
 import com.github.stmated.plang.mir.model.MirInstrCreateLiteral;
+import com.github.stmated.plang.mir.model.MirInstrGetGlobal;
 import com.github.stmated.plang.mir.model.MirInstrJump;
 import com.github.stmated.plang.mir.model.MirInstrPhi;
 import com.github.stmated.plang.mir.model.MirInstrStore;
@@ -217,6 +218,16 @@ public class ThirToMirLowering {
     final var assignment = scopeStack.peek().get(identifierName);
     if (assignment != null) {
       return assignment;
+    }
+
+    // TODO: Very bad. Needs serious change later.
+    if ("stdout".equals(hir.name())) {
+
+      final var instr = new MirInstrGetGlobal("stdout", new TyPointer<>(Ty.CHAR).intern());
+      nodeStack.peek().instructions().add(instr);
+      scopeStack.peek().add(hir.name(), instr);
+
+      return instr;
     }
 
     throw new IllegalArgumentException(STR."There is no variable '\{hir.name()}' found in scope");
@@ -569,27 +580,6 @@ public class ThirToMirLowering {
       hirFn.function().vararg(),
       hirFn.function().returnType()
     );
-
-//    return switch (hirFn.function().identifier().name()) {
-//      case "printf" -> {
-//        //        final var i8PointerType = LLVM.LLVMPointerType(getType("i8"), 0);
-////        LLVMTypeRef[] printfArgs = {i8PointerType};
-////        final var printFnType = LLVM.LLVMFunctionType(getType("i32"), new PointerPointer<>(printfArgs), printfArgs.length, 1);
-////        final var printfFn = LLVM.LLVMAddFunction(module, "printf", printFnType);
-////
-////        return new ExternalFn(printfFn, printFnType);
-//
-//        yield new MirFn(
-//          hirFn.function().identifier().name(),
-//          null,
-//          mirParameters,
-//          hirFn.function().returnType()
-//        );
-//      }
-//      default -> {
-//        yield
-//      }
-//    };
   }
 
   private MirInstr lower_binary_operation(HirBinaryOperation hir) {
