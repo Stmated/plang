@@ -12,6 +12,8 @@ import com.github.stmated.plang.hir.model.HirExpressionCollection;
 import com.github.stmated.plang.hir.model.HirIdentifier;
 import com.github.stmated.plang.hir.model.HirLiteral;
 import com.github.stmated.plang.hir.model.HirLoop;
+import com.github.stmated.plang.hir.model.HirLoopBreak;
+import com.github.stmated.plang.hir.model.HirLoopContinue;
 import com.github.stmated.plang.hir.model.HirMutabilityKind;
 import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.hir.model.HirReturn;
@@ -70,7 +72,6 @@ public class HirToThirRaising {
   private Ty investigate_inner(HirExpression e) {
 
     return switch (e) {
-      case HirProgram it -> investigate_program(it);
       case HirBinaryOperation it -> investigate_binary_operation(it);
       case HirLiteral it -> investigate_literal(it);
       case HirReturn it -> investigate_return(it);
@@ -82,8 +83,10 @@ public class HirToThirRaising {
       case HirExpressionCollection it -> investigate_expressions(it.children());
       case HirCall it -> investigate_call(it);
       case HirArgument it -> investigate_argument(it);
-      default -> Ty.UNKNOWN;
-        //throw new UnexpectedExpressionException(e);
+      case HirLoopContinue it -> investigate_loop_continue(it);
+      case HirLoopBreak it -> investigate_loop_break(it);
+      case HirProgram it -> investigate_program(it);
+      default -> throw new UnexpectedExpressionException(e);
     };
   }
 
@@ -105,6 +108,19 @@ public class HirToThirRaising {
 
   private Ty investigate_loop(HirLoop hir) {
     return investigate(hir.body());
+  }
+
+  private Ty investigate_loop_break(HirLoopBreak it) {
+
+    if (it.value() != null) {
+      return investigate(it.value());
+    }
+
+    return Ty.VOID;
+  }
+
+  private Ty investigate_loop_continue(HirLoopContinue hir) {
+    return Ty.VOID;
   }
 
   private Ty investigate_conditional(HirConditional hir) {

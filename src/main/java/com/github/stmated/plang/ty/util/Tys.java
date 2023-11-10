@@ -5,6 +5,7 @@ import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyDiffKind;
 import com.github.stmated.plang.ty.TyFlags;
 import com.github.stmated.plang.ty.TyIdentifier;
+import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyResult;
 import com.github.stmated.plang.ty.TyUnion;
 import com.github.stmated.plang.ty.TyValue;
@@ -177,5 +178,13 @@ public class Tys {
 
   public static boolean isUsable(Ty ty) {
     return ty != null && ty != Ty.INVALID;
+  }
+
+  public static Ty simplify(Ty ty) {
+
+    // TODO: Simplify the type as much as possible
+    //        Used to be able to find a single type that LLVM can use
+
+    return ty;
   }
 }

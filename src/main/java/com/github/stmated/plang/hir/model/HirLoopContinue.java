@@ -6,4 +6,8 @@ package com.github.stmated.plang.hir.model;
  */
 public record HirLoopContinue() implements HirExpression {
 
+  @Override
+  public String toString() {
+    return "continue";
+  }
 }

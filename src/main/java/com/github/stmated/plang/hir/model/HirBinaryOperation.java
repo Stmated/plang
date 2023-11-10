@@ -8,4 +8,8 @@ public record HirBinaryOperation(HirExpression lhs, HirBinaryOperationKind kind,
 //  }
 
 
+  @Override
+  public String toString() {
+    return STR."\{this.lhs()} \{kind} \{this.rhs()}";
+  }
 }

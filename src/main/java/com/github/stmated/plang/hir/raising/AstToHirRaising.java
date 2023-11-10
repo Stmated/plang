@@ -392,7 +392,8 @@ public class AstToHirRaising {
           loopAction,
           new HirLoopContinue()
         }),
-        new HirLoopBreak()
+        // TODO: Add support for adding value to the break
+        new HirLoopBreak(null)
       )
     );
 
@@ -474,7 +475,7 @@ public class AstToHirRaising {
   public HirConditional lower_conditional(AstConditional astConditional) {
 
     final var fail = (astConditional.fail() == null)
-      ? null //new HirLiteral("0", Ty.INTEGER)
+      ? null
       : lower_expression(astConditional.fail());
 
     return new HirConditional(

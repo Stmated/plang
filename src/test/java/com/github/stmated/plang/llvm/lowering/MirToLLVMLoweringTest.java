@@ -30,50 +30,50 @@ class MirToLLVMLoweringTest {
       )
     });
 
-    Assertions.assertEquals(3, Plang.hirToResult(program).returnCode());
+    Assertions.assertEquals(3, Plang.hirToResult(program).resultValue());
   }
 
   @Test
   void testBinaryOperationAdd() {
-    Assertions.assertEquals(3, Plang.codeToResult("return 1 + 2").returnCode());
+    Assertions.assertEquals(3, Plang.codeToResult("return 1 + 2").resultValue());
   }
 
   @Test
   void testBinaryOperationSubtract() {
-    Assertions.assertEquals(1, Plang.codeToResult("return 3 - 2").returnCode());
+    Assertions.assertEquals(1, Plang.codeToResult("return 3 - 2").resultValue());
   }
 
   @Test
   void testBinaryOperationMultiply() {
-    Assertions.assertEquals(4, Plang.codeToResult("return 2 * 2").returnCode());
+    Assertions.assertEquals(4, Plang.codeToResult("return 2 * 2").resultValue());
   }
 
   @Test
   void testBinaryOperationDivideInteger() {
-    Assertions.assertEquals(1, Plang.codeToResult("return 2 / 2").returnCode());
+    Assertions.assertEquals(1, Plang.codeToResult("return 2 / 2").resultValue());
   }
 
   @Test
   @Disabled
   void testPrint() {
     final var result = Plang.codeToResult("freopen('/tmp/out', 'w', stdout); printf('%d', 1337); return 1;");
-    Assertions.assertEquals(1, result.returnCode());
+    Assertions.assertEquals(1, result.resultValue());
     Assertions.assertEquals("1337", result.output());
   }
 
   @Test
   void testConditionalWithBlocks() {
-    Assertions.assertEquals(1, Plang.codeToResult("if (1 == 1) { return 1; } else { return 2; }").returnCode());
+    Assertions.assertEquals(1, Plang.codeToResult("if (1 == 1) { return 1; } else { return 2; }").resultValue());
   }
 
   @Test
   void testPassingConditionalWithBranchMerge() {
-    Assertions.assertEquals(1, Plang.codeToResult("if (1 == 1) { return 1; } return 2;").returnCode());
+    Assertions.assertEquals(1, Plang.codeToResult("if (1 == 1) { return 1; } return 2;").resultValue());
   }
 
   @Test
   void testFailingConditionalWithBranchMerge() {
-    Assertions.assertEquals(2, Plang.codeToResult("if (1 == 2) { return 1; } return 2;").returnCode());
+    Assertions.assertEquals(2, Plang.codeToResult("if (1 == 2) { return 1; } return 2;").resultValue());
   }
 
   @ParameterizedTest
@@ -82,7 +82,7 @@ class MirToLLVMLoweringTest {
     "return if (1 == 1) 1 else 2"
   })
   void testPassingConditionalWithInlineExpression(String code) {
-    Assertions.assertEquals(1, Plang.codeToResult(code).returnCode());
+    Assertions.assertEquals(1, Plang.codeToResult(code).resultValue());
   }
 
   @ParameterizedTest
@@ -91,7 +91,7 @@ class MirToLLVMLoweringTest {
     "return if (1 == 2) 1 else 2"
   })
   void testFailingConditionalWithInlineExpression(String code) {
-    Assertions.assertEquals(2, Plang.codeToResult(code).returnCode());
+    Assertions.assertEquals(2, Plang.codeToResult(code).resultValue());
   }
 
   @ParameterizedTest
@@ -100,13 +100,13 @@ class MirToLLVMLoweringTest {
     "if (1 == 2) 1 2"
   })
   void testImplicitReturn(String code) {
-    Assertions.assertEquals(2, Plang.codeToResult(code).returnCode());
+    Assertions.assertEquals(2, Plang.codeToResult(code).resultValue());
   }
 
   @Test
   void testCompactImplicitReturn() {
     Assertions.assertEquals(
-      2, Plang.codeToResult("if (1 == 1) 1 2").returnCode(),
+      2, Plang.codeToResult("if (1 == 1) 1 2").resultValue(),
       "2, since 1 is discarded and 2 turned into implicit return"
     );
   }
@@ -118,30 +118,28 @@ class MirToLLVMLoweringTest {
 
   @Test
   void testReturnVariable() {
-    Assertions.assertEquals(10, Plang.codeToResult("val a = 10; return a;").returnCode());
-    Assertions.assertEquals(11, Plang.codeToResult("val a = 10; return a + 1;").returnCode());
+    Assertions.assertEquals(10, Plang.codeToResult("val a = 10; return a;").resultValue());
+    Assertions.assertEquals(11, Plang.codeToResult("val a = 10; return a + 1;").resultValue());
   }
 
   @Test
-  @Disabled
   void testBinaryOperationDivideTwoIntegersWithLoss() {
 
-    final var result = Plang.codeToResult("val v = 1 / 2; printf('%.2f', v); return 0");
-    Assertions.assertEquals(0, result.returnCode());
-    Assertions.assertEquals("0.00", result.output());
+    final var result = Plang.codeToResult("val v = 1 / 2; return v");
+    Assertions.assertEquals(0, result.resultValue());
+//    Assertions.assertEquals("0.00", result.output());
   }
 
   @ParameterizedTest
   @ValueSource(strings = {
-    "val v = 1 / 2.0; printf('%.2f', v); return 0",
-    "val v = 1.0 / 2; printf('%.2f', v); 0",
+    "1 / 2.0",
+    "1.0 / 2",
   })
-  @Disabled
   void testBinaryOperationDivideFloats(String code) {
 
-    final var result = Plang.codeToResult(code);
-    Assertions.assertEquals(0, result.returnCode());
-    Assertions.assertEquals("0.50", result.output());
+    final var result = Plang.<Double>codeToResult(code);
+    Assertions.assertEquals(0.5d, result.resultValue(), 0.001d);
+//    Assertions.assertEquals("0.50", result.output());
   }
 
   @ParameterizedTest
@@ -151,25 +149,25 @@ class MirToLLVMLoweringTest {
     "val a = 10 val b = a + 1 b + 1"
   })
   void testChainedVariableAssignments(String code) {
-    Assertions.assertEquals(12, Plang.codeToResult(code).returnCode());
+    Assertions.assertEquals(12, Plang.codeToResult(code).resultValue());
   }
 
   @Test
   void testLoop() {
     final var code = "var a = 0; for (var i = 0; i < 10; i += 1) { a += i; } return a;";
-    Assertions.assertEquals(45, Plang.codeToResult(code).returnCode());
+    Assertions.assertEquals(45, Plang.codeToResult(code).resultValue());
   }
 
   @Test
   void testAssign() {
     final var code = "var a = 0; var b = 1; var c = a + b + 1; return c;";
-    Assertions.assertEquals(2, Plang.codeToResult(code).returnCode());
+    Assertions.assertEquals(2, Plang.codeToResult(code).resultValue());
   }
 
   @Test
   void testMove() {
     final var code = "var a = 1; var b = 2; var temp = a; a = b; b = temp; return b;";
-    Assertions.assertEquals(1, Plang.codeToResult(code).returnCode());
+    Assertions.assertEquals(1, Plang.codeToResult(code).resultValue());
   }
 
   @ParameterizedTest
@@ -178,7 +176,7 @@ class MirToLLVMLoweringTest {
     "val a = 10; a",
   })
   void testScopes(String code) {
-    Assertions.assertEquals(10, Plang.codeToResult(code).returnCode());
+    Assertions.assertEquals(10, Plang.codeToResult(code).resultValue());
   }
 
   @ParameterizedTest
@@ -186,6 +184,6 @@ class MirToLLVMLoweringTest {
     "var a = 10; a += 2; a -= 1; a"
   })
   void testScopes2(String code) {
-    Assertions.assertEquals(11, Plang.codeToResult(code).returnCode());
+    Assertions.assertEquals(11, Plang.codeToResult(code).resultValue());
   }
 }

@@ -6,10 +6,11 @@ import java.util.Objects;
 
 public interface Ty {
 
-  Ty INFER = new TyNamed("INFER");
-  Ty INVALID = new TyNamed("INVALID");
-  Ty UNKNOWN = new TyNamed("UNKNOWN");
-  Ty VOID = new TyNamed("VOID");
+  Ty INFER = Tys.intern(new TyNamed("INFER"));
+  Ty INVALID = Tys.intern(new TyNamed("INVALID"));
+  Ty UNKNOWN = Tys.intern(new TyNamed("UNKNOWN"));
+  Ty DEADEND = Tys.intern(new TyNamed("DEADEND"));
+  Ty VOID = Tys.intern(new TyNamed("VOID"));
 
   TyValueNumberInteger INTEGER = Tys.intern(new TyValueNumberInteger((byte) 10, 32, true, EnumSet.noneOf(TyFlags.class)));
   TyValueNumberInteger LONG = Tys.intern(new TyValueNumberInteger((byte) 10, 64, true, EnumSet.noneOf(TyFlags.class)));

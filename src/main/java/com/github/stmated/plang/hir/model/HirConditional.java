@@ -5,4 +5,9 @@ public record HirConditional(
     HirExpression pass,
     HirExpression fail
 ) implements HirExpression {
+
+  @Override
+  public String toString() {
+    return STR."if (\{this.predicate()}) then {\{this.pass()}} else {\{this.fail()}}";
+  }
 }

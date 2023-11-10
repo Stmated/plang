@@ -7,6 +7,7 @@ public record AstConditional(
     AstExpression pass,
     AstExpression fail
 ) implements AstExpression {
+
   @Override
   public <R, V extends AstVisitor<R>> R visit(V visitor) {
     return visitor.visitConditional(this);

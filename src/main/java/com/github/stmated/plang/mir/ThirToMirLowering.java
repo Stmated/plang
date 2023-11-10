@@ -88,6 +88,8 @@ public class ThirToMirLowering {
       scopeStack.pop();
     }
 
+    MirNodeTyPass.startNodeTyPass(startNode);
+
     return startNode;
   }
 
@@ -174,7 +176,7 @@ public class ThirToMirLowering {
           // It is up to later optimization stages to remove if it turns out empty.
           nodeStack.pop();
 
-          // TODO: This seems very bad, it will never get properly popped off!
+          // Think of it as less of a nested stack and more like a pointer to the where the writing head it.
           nodeStack.push(node_after);
         }
       } finally {
@@ -361,7 +363,11 @@ public class ThirToMirLowering {
         addConnection(fail_node, node_merge);
       }
 
-      final var instruction = new MirInstrConditionalJump(predicate_operand, pass_node, fail_node);
+      final var instruction = new MirInstrConditionalJump(
+        predicate_operand,
+        pass_node, fail_node
+//        thirRepository.getTypeOrThrow(hir)
+      );
       parent.instructions().add(instruction);
 
       // TODO: Need to find all overwrites of all variables that are in our current scope, and create phi-nodes from it.
@@ -415,9 +421,6 @@ public class ThirToMirLowering {
           phiTy
         );
 
-//        final var iid = scope.newUniqueId(phi_entry.getKey());
-//        phi.name(iid);
-
         nodeStack.peek().instructions().add(phi);
         scope.add(phi_entry.getKey(), phi);
       }
@@ -426,24 +429,19 @@ public class ThirToMirLowering {
       // But it is up to optimization passes to remove any terminal paths.
 
       return getMirInstrPhi(hir, pass_node, fail_node);
-
-    } else if (pass_node.isTerminal() && fail_node.isTerminal()) {
-
-      final var instruction = new MirInstrConditionalJump(predicate_operand, pass_node, fail_node);
-      nodeStack.peek().instructions().add(instruction);
-
-      // NOTE: Most likely wrong; should return the instruction/void. Up to caller if that instruction should be used (which it should not)
-      return null;
-
-    } else {
-
-      // Both paths are terminal, so there is no need for a merge node.
-      final var instruction = new MirInstrConditionalJump(predicate_operand, pass_node, fail_node);
-      nodeStack.peek().instructions().add(instruction);
-
-      // TODO: Should probably return something? Even if just some kind of "void" instruction?
-      return getMirInstrPhi(hir, pass_node, fail_node);
     }
+
+    final var instruction = new MirInstrConditionalJump(
+      predicate_operand,
+      pass_node, fail_node
+//      thirRepository.getTypeOrThrow(hir)
+    );
+    nodeStack.peek().instructions().add(instruction);
+
+    return (pass_node.isTerminal() && fail_node.isTerminal())
+      // NOTE: Most likely wrong; should return the instruction/void. Up to caller if that instruction should be used (which it should not)
+      ? null
+      : getMirInstrPhi(hir, pass_node, fail_node);
   }
 
   private MirInstr getMirInstrPhi(HirConditional hir, MirNode pass_node, MirNode fail_node) {

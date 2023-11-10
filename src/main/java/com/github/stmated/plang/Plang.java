@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Plang {
 
-  public record Result(int returnCode, String output, String error) {}
+  public record Result<T>(T resultValue, String output, String error) {}
 
   public static AstProgram codeToAst(String code) {
 
@@ -66,19 +66,19 @@ public class Plang {
     return Plang.hirToMir(hir);
   }
 
-  public static Result hirToResult(HirProgram hir) {
+  public static <T> Result<T> hirToResult(HirProgram hir) {
 
     final var mir = Plang.hirToMir(hir);
     return Plang.mirToResult(mir);
   }
 
-  public static Result mirToResult(MirNode mir) {
+  public static <T> Result<T> mirToResult(MirNode mir) {
 
     final var llvmLowering = new MirToLLVMLowering();
     return llvmLowering.lower_script(mir, "script");
   }
 
-  public static Result codeToResult(String code) {
+  public static <T> Result<T> codeToResult(String code) {
 
     final var ast = Plang.codeToAst(code);
     final var hir = Plang.astToHir(ast);

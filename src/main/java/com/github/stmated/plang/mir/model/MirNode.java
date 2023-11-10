@@ -1,18 +1,34 @@
 package com.github.stmated.plang.mir.model;
 
+import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.util.Box;
 import java.util.ArrayList;
 import java.util.List;
+import org.codehaus.commons.nullanalysis.NotNull;
 
 public record MirNode(
   String name,
+  @NotNull
   List<MirInstr> instructions,
+  @NotNull
   List<MirNode> predecessors,
-  List<MirNode> successors
+  @NotNull
+  List<MirNode> successors,
+  @NotNull
+  Box<Ty> ty
 ) {
 
   public MirNode(String name) {
-    this(name, new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+    this(name, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new Box<>());
   }
+
+//  public Ty ty() {
+//    return this.instructions().getLast().ty();
+//  }
+//
+//  public Ty resultingTy() {
+//    return this.instructions().getLast().resultingTy();
+//  }
 
   public boolean isTerminal() {
 
