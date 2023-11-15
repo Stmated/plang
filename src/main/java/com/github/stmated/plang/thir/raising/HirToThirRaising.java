@@ -8,19 +8,24 @@ import com.github.stmated.plang.hir.model.HirBinaryOperation;
 import com.github.stmated.plang.hir.model.HirCall;
 import com.github.stmated.plang.hir.model.HirConditional;
 import com.github.stmated.plang.hir.model.HirExpression;
-import com.github.stmated.plang.hir.model.HirExpressionCollection;
+import com.github.stmated.plang.hir.model.HirExpressions;
+import com.github.stmated.plang.hir.model.HirFunction;
+import com.github.stmated.plang.hir.model.HirFunctionSignature;
 import com.github.stmated.plang.hir.model.HirIdentifier;
 import com.github.stmated.plang.hir.model.HirLiteral;
 import com.github.stmated.plang.hir.model.HirLoop;
 import com.github.stmated.plang.hir.model.HirLoopBreak;
 import com.github.stmated.plang.hir.model.HirLoopContinue;
 import com.github.stmated.plang.hir.model.HirMutabilityKind;
+import com.github.stmated.plang.hir.model.HirParameter;
 import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.hir.model.HirReturn;
+import com.github.stmated.plang.hir.model.HirTy;
 import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyIdentifier;
-import com.github.stmated.plang.ty.TyPointer;
+import com.github.stmated.plang.ty.TyParam;
 import com.github.stmated.plang.ty.util.Tys;
 import java.util.HashMap;
 import java.util.Map;
@@ -42,7 +47,7 @@ public class HirToThirRaising {
     return map.get(e);
   }
 
-  public ThirRepository raise(HirExpression e) {
+  public ThirRaiseResult raise(HirExpression e) {
 
     // Call investigate on the expression.
     // Then the map inside this raising should contain all relevant types.
@@ -53,7 +58,7 @@ public class HirToThirRaising {
       scopeStack.pop();
     }
 
-    return new ThirRepository(e, map);
+    return new ThirRaiseResult(e, map);
   }
 
   private Ty investigate(HirExpression e) {
@@ -64,6 +69,10 @@ public class HirToThirRaising {
     }
 
     final var ty = investigate_inner(e);
+
+//    if (ty == Ty.INFER && !(e instanceof HirTy)) {
+//      throw new IllegalArgumentException(STR."Not allowed to set \{e} as \{Ty.INFER} in THIR stage");
+//    }
 
     map.put(e, ty);
     return ty;
@@ -80,30 +89,106 @@ public class HirToThirRaising {
       case HirIdentifier it -> investigate_identifier(it);
       case HirConditional it -> investigate_conditional(it);
       case HirLoop it -> investigate_loop(it);
-      case HirExpressionCollection it -> investigate_expressions(it.children());
+      case HirExpressions it -> investigate_expressions(it.children());
       case HirCall it -> investigate_call(it);
       case HirArgument it -> investigate_argument(it);
       case HirLoopContinue it -> investigate_loop_continue(it);
       case HirLoopBreak it -> investigate_loop_break(it);
       case HirProgram it -> investigate_program(it);
+      case HirFunction it -> investigate_function(it);
+      case HirFunctionSignature it -> investigate_function_signature(it);
+      case HirTy it -> it.ty();
+      case HirParameter it -> throw new IllegalArgumentException(STR."A Parameter itself (\{it}) does not have a type (yet?). Resolve it higher in call chain");
       default -> throw new UnexpectedExpressionException(e);
     };
   }
 
-  private Ty investigate_argument(HirArgument it) {
-    return investigate(it.value());
-  }
+  private TyFn investigate_function_signature(HirFunctionSignature hir) {
 
-  private Ty investigate_call(HirCall it) {
+    final var parameterTys = new TyParam[hir.parameters().length];
+    for (var i = 0; i < hir.parameters().length; i++) {
 
-    for (final var argument : it.arguments()) {
-      final var parameterType = investigate(argument);
-      if (log.isTraceEnabled()) {
-        log.trace(STR."Fn '\{it.functionReference().function().identifier().name()}' param type: \{parameterType.toShortString()}");
-      }
+      final var parameter = hir.parameters()[i];
+      final var parameterName = switch (parameter.identifier()) {
+        case HirIdentifier id -> id.name();
+        default -> throw new NotImplementedException(STR."Do not know how to get name from '\{parameter.identifier()}'");
+      };
+
+      parameterTys[i] = new TyParam(
+        parameterName,
+        investigate_type_expression(parameter.type())
+      );
     }
 
-    return it.functionReference().function().returnType();
+    final var returnTy = investigate_type_expression(hir.returnType());
+
+    return new TyFn(parameterTys, hir.vararg(), returnTy);
+  }
+
+  private Ty investigate_function(HirFunction hir) {
+
+    final var signatureTy = investigate_function_signature(hir.signature());
+    if (hir.body() != null && (signatureTy.returnTy() == null || signatureTy.returnTy() == Ty.INFER)) {
+
+      // If the signature does not contain a ty but we have a body, then we investigate it for a ty.
+
+      Ty bodyReturnTy;
+      try {
+
+        final var scope = new ThirScope(scopeStack.peek(), "fn");
+        scopeStack.push(scope);
+
+        for (final var parameter : signatureTy.parameters()) {
+          scope.map().put(parameter.name(), parameter.ty());
+        }
+
+        bodyReturnTy = investigate(hir.body());
+      } finally {
+        scopeStack.pop();
+      }
+
+      return new TyFn(
+        signatureTy.parameters(),
+        signatureTy.vararg(),
+        Objects.requireNonNull(bodyReturnTy, "No return kind could be inferred")
+      );
+    }
+
+    return signatureTy;
+  }
+
+  private Ty investigate_argument(HirArgument hir) {
+    return investigate(hir.value());
+  }
+
+  private Ty investigate_call(HirCall hir) {
+
+//    for (final var argument : hir.arguments()) {
+//      final var argumentTy = investigate(argument);
+//    }
+
+    final var target = hir.target();
+    final var loweredTarget = investigate(target);
+//    switch (loweredTarget)
+
+    if (loweredTarget instanceof TyFn tyFn) {
+      return tyFn.returnTy();
+    } else if (loweredTarget != null && loweredTarget != Ty.INFER) {
+      return loweredTarget;
+    }
+
+    // NOTE: Hopefully we never here? Since I guess all call targets ought to be functions?
+    return switch (target) {
+      // NOTE: This seems od. Will it ever be the function signature?
+      case HirFunctionSignature fns -> investigate(fns.returnType());
+      // Now lookup by identifier is completely fine.
+      case HirIdentifier id -> {
+
+        final var v = scopeStack.peek().get(id.name());
+        yield Objects.requireNonNull(v, STR."No function called '\{id.name()}' found in scope");
+      }
+      default -> throw new UnexpectedExpressionException(target);
+    };
   }
 
   private Ty investigate_loop(HirLoop hir) {
@@ -160,14 +245,31 @@ public class HirToThirRaising {
     return Tys.merge(branch_types);
   }
 
+  /**
+   * Call when the context is trying to resolve a kind.
+   * <p>
+   * TODO: In a future pass it would be preferential to resolve these inline and replace/rebuild the expressions.
+   */
+  private Ty investigate_type_expression(HirExpression hir) {
+
+    return switch (hir) {
+      case HirIdentifier id -> {
+        final var knownTypeByName = Tys.fromString(id.name());
+        if (knownTypeByName != null) {
+          map.put(hir, knownTypeByName);
+          yield knownTypeByName;
+        } else {
+          yield investigate(hir);
+        }
+      }
+      default -> investigate(hir);
+    };
+  }
+
   private Ty investigate_identifier(HirIdentifier hir) {
 
-    // TODO: Very bad. Needs serious change later.
-    if ("stdout".equals(hir.name())) {
-      return new TyPointer<>(Ty.CHAR);
-    }
-
-    return Objects.requireNonNull(scopeStack.peek().get(hir.name()), STR."Cannot get '\{hir.name()}' since its type is unknown");
+    final var resolvedVariable = scopeStack.peek().get(hir.name());
+    return Objects.requireNonNull(resolvedVariable, STR."Cannot get '\{hir.name()}' since its type is unknown");
   }
 
   private Ty investigate_assignment(HirAssignment hir) {
@@ -215,7 +317,7 @@ public class HirToThirRaising {
 
       if (scopeStack.peek().map().containsKey(identifierName)) {
 
-        // NOTE: In the future it might be useful to have a type of "lower bound" + "stated type" + "higher bound"
+        // NOTE: In the future it might be useful to have a kind of "lower bound" + "stated kind" + "higher bound"
         //        So we can know what it was said to be, and what it *actually* contains at a certain point
 
       } else {
@@ -223,7 +325,7 @@ public class HirToThirRaising {
       }
     }
 
-    // Assignment itself returns void type
+    // Assignment itself returns void kind
     return Ty.VOID;
   }
 
@@ -248,7 +350,7 @@ public class HirToThirRaising {
   }
 
   private Ty investigate_program(HirProgram hir) {
-    return investigate_expressions(hir.expressions());
+    return investigate(hir.expressions());
   }
 
   private Ty investigate_expressions(HirExpression[] expressions) {

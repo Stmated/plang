@@ -1,20 +1,26 @@
 package com.github.stmated.plang.parser;
 
-import static com.github.stmated.plang.lexer.TokenType.ADD;
-import static com.github.stmated.plang.lexer.TokenType.LITERAL_INTEGER;
-import static com.github.stmated.plang.lexer.TokenType.SUBTRACT;
-
 import com.github.stmated.plang.Plang;
-import com.github.stmated.plang.ast.model.*;
 import com.github.stmated.plang.ast.AstVisitor;
+import com.github.stmated.plang.ast.model.AstBinaryOperation;
+import com.github.stmated.plang.ast.model.AstBinaryOperationKind;
+import com.github.stmated.plang.ast.model.AstCall;
+import com.github.stmated.plang.ast.model.AstCallable;
+import com.github.stmated.plang.ast.model.AstExpression;
+import com.github.stmated.plang.ast.model.AstExpressions;
+import com.github.stmated.plang.ast.model.AstIdentifier;
+import com.github.stmated.plang.ast.model.AstLabeling;
+import com.github.stmated.plang.ast.model.AstLiteral;
+import com.github.stmated.plang.ast.model.AstMutabilityKind;
+import com.github.stmated.plang.ast.model.AstNegate;
+import com.github.stmated.plang.ast.model.AstParen;
+import com.github.stmated.plang.ast.model.AstProgram;
 import com.github.stmated.plang.lexer.PlangLexer;
 import com.github.stmated.plang.lexer.PlangLexerSteps;
 import com.github.stmated.plang.ty.Ty;
-import com.sun.source.tree.AssertTree;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -28,23 +34,24 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @Slf4j
-class PlangAstParserTest {
+class TokenToAstRaisingTest {
 
   @Test
   void testParse() {
 
     final var program = this.parseProgram("1 + 1");
+    final var expressions = toExpressions(program.children());
 
     Assertions.assertNotNull(program);
-    Assertions.assertEquals(1, program.children().length);
+    Assertions.assertEquals(1, expressions.length);
 
-    final var ibo = assertType(AstBinaryOperation.class, program.children()[0]);
+    final var ibo = assertType(AstBinaryOperation.class, expressions[0]);
 
     final var lhs = assertType(AstLiteral.class, ibo.lhs());
     final var rhs = assertType(AstLiteral.class, ibo.rhs());
 
     Assertions.assertEquals("1", lhs.content());
-    Assertions.assertEquals(AstBinaryOperationKind.ADD, ibo.type());
+    Assertions.assertEquals(AstBinaryOperationKind.ADD, ibo.kind());
     Assertions.assertEquals("1", rhs.content());
   }
 
@@ -53,17 +60,18 @@ class PlangAstParserTest {
   void testOperatorPrecedence2() {
 
     final var program = this.parseProgram("a < 1 && b > 2");
+    final var expressions = toExpressions(program.children());
 
     Assertions.assertNotNull(program);
-    Assertions.assertEquals(1, program.children().length);
+    Assertions.assertEquals(1, expressions.length);
 
-    final var ibo = assertType(AstBinaryOperation.class, program.children()[0]);
+    final var ibo = assertType(AstBinaryOperation.class, expressions[0]);
     final var lhs = assertType(AstBinaryOperation.class, ibo.lhs());
     final var rhs = assertType(AstBinaryOperation.class, ibo.rhs());
 
-    Assertions.assertEquals(AstBinaryOperationKind.AND, ibo.type());
-    Assertions.assertEquals(AstBinaryOperationKind.LT, lhs.type());
-    Assertions.assertEquals(AstBinaryOperationKind.GT, rhs.type());
+    Assertions.assertEquals(AstBinaryOperationKind.AND, ibo.kind());
+    Assertions.assertEquals(AstBinaryOperationKind.LT, lhs.kind());
+    Assertions.assertEquals(AstBinaryOperationKind.GT, rhs.kind());
   }
 
   // TODO: Create tests that checks exact result of:
@@ -91,23 +99,6 @@ class PlangAstParserTest {
       case null, default -> {
       }
     }
-
-//    as(program.children()[0], AstLoopFor.class, loop -> {
-//      is(loop.assignments()[0].lhs(), AstVariableDeclaration.class, it -> it.identifier().name(), "i");
-//
-//      as(loop.predicate(), AstBinaryOperation.class, pred -> {
-//        isIdentifier(pred.lhs(), "i");
-//        Assertions.assertEquals(AstBinaryOperationKind.LT, pred.type());
-//        isLiteral(pred.rhs(), 10);
-//      });
-//
-//      as(loop.steppers()[0], AstDotAccess.class, stepper_0 -> {
-//        isIdentifier(stepper_0.lhs(), "i");
-//        as(stepper_0.rhs(), AstCall.class, call -> {
-//          isIdentifier(call.target(), "increment");
-//        });
-//      });
-//    });
   }
 
   @Test
@@ -115,25 +106,26 @@ class PlangAstParserTest {
   void testOperatorPrecedence3() {
 
     final var program = this.parseProgram("a < 1 && b > 2 || x == 3");
+    final var expressions = toExpressions(program.children());
 
     Assertions.assertNotNull(program);
-    Assertions.assertEquals(1, program.children().length);
+    Assertions.assertEquals(1, expressions.length);
 
-    as(program.children()[0], AstBinaryOperation.class, ibo -> {
+    as(expressions[0], AstBinaryOperation.class, ibo -> {
 
       as(ibo.lhs(), AstBinaryOperation.class, lhs -> {
-        Assertions.assertEquals(AstBinaryOperationKind.LT, lhs.type());
+        Assertions.assertEquals(AstBinaryOperationKind.LT, lhs.kind());
       });
 
       as(ibo.rhs(), AstBinaryOperation.class, rhs -> {
-        Assertions.assertEquals(AstBinaryOperationKind.OR, rhs.type());
+        Assertions.assertEquals(AstBinaryOperationKind.OR, rhs.kind());
 
         as(rhs.lhs(), AstBinaryOperation.class, rhs_lhs -> {
-          Assertions.assertEquals(AstBinaryOperationKind.GT, rhs_lhs.type());
+          Assertions.assertEquals(AstBinaryOperationKind.GT, rhs_lhs.kind());
         });
 
         as(rhs.rhs(), AstBinaryOperation.class, rhs_rhs -> {
-          Assertions.assertEquals(AstBinaryOperationKind.EQUALS, rhs_rhs.type());
+          Assertions.assertEquals(AstBinaryOperationKind.EQUALS, rhs_rhs.kind());
         });
       });
     });
@@ -144,25 +136,26 @@ class PlangAstParserTest {
   void testImportExport() {
 
     final var program = this.parseProgram("a < 1 && b > 2 || x == 3");
+    final var expressions = toExpressions(program.children());
 
     Assertions.assertNotNull(program);
-    Assertions.assertEquals(1, program.children().length);
+    Assertions.assertEquals(1, expressions.length);
 
-    as(program.children()[0], AstBinaryOperation.class, ibo -> {
+    as(expressions[0], AstBinaryOperation.class, ibo -> {
 
       as(ibo.lhs(), AstBinaryOperation.class, lhs -> {
-        Assertions.assertEquals(AstBinaryOperationKind.LT, lhs.type());
+        Assertions.assertEquals(AstBinaryOperationKind.LT, lhs.kind());
       });
 
       as(ibo.rhs(), AstBinaryOperation.class, rhs -> {
-        Assertions.assertEquals(AstBinaryOperationKind.OR, rhs.type());
+        Assertions.assertEquals(AstBinaryOperationKind.OR, rhs.kind());
 
         as(rhs.lhs(), AstBinaryOperation.class, rhs_lhs -> {
-          Assertions.assertEquals(AstBinaryOperationKind.GT, rhs_lhs.type());
+          Assertions.assertEquals(AstBinaryOperationKind.GT, rhs_lhs.kind());
         });
 
         as(rhs.rhs(), AstBinaryOperation.class, rhs_rhs -> {
-          Assertions.assertEquals(AstBinaryOperationKind.EQUALS, rhs_rhs.type());
+          Assertions.assertEquals(AstBinaryOperationKind.EQUALS, rhs_rhs.kind());
         });
       });
     });
@@ -183,7 +176,7 @@ class PlangAstParserTest {
 
     try (final var tokens = new PlangLexer(Files.newInputStream(path))) {
       final var transformed = steps.transform(tokens);
-      final var parser = new PlangAstParser(transformed);
+      final var parser = new TokenToAstRaising(transformed);
       final var program = parser.parse();
       Assertions.assertNotNull(program);
     }
@@ -197,7 +190,7 @@ class PlangAstParserTest {
     final var path = Path.of("src/test/resources/plang/valid_parse/valid_generics.plang").toAbsolutePath();
     try (final var tokens = new PlangLexer(Files.newInputStream(path))) {
       final var transformed = pass2.transform(tokens);
-      final var parser = new PlangAstParser(transformed);
+      final var parser = new TokenToAstRaising(transformed);
       final var program = parser.parse();
       Assertions.assertNotNull(program);
     }
@@ -211,7 +204,7 @@ class PlangAstParserTest {
     final var path = Path.of("src/test/resources/plang/valid_parse/valid_iterate.plang").toAbsolutePath();
     try (final var tokens = new PlangLexer(Files.newInputStream(path))) {
       final var transformed = pass2.transform(tokens);
-      final var parser = new PlangAstParser(transformed);
+      final var parser = new TokenToAstRaising(transformed);
       final var program = parser.parse();
       Assertions.assertNotNull(program);
 
@@ -228,9 +221,9 @@ class PlangAstParserTest {
   })
   void testNegativeNumber(String code) {
 
-    final var ast = Plang.codeToAst(code);
+    final var ast = toExpressions(Plang.codeToAst(code));
 
-    as(ast.children()[0], AstLiteral.class, literal -> {
+    as(ast[0], AstLiteral.class, literal -> {
       Assertions.assertEquals("-1", literal.content());
     });
   }
@@ -242,9 +235,9 @@ class PlangAstParserTest {
     " - something "
   })
   void testUnaryNegate(String code) {
-    final var ast = Plang.codeToAst(code);
+    final var ast = toExpressions(Plang.codeToAst(code));
 
-    as(ast.children()[0], AstNegate.class, negate -> {
+    as(ast[0], AstNegate.class, negate -> {
       as(negate.expression(), AstIdentifier.class, id -> {
         Assertions.assertEquals("something", id.name());
       });
@@ -258,12 +251,76 @@ class PlangAstParserTest {
     " + 1 "
   })
   void testPositiveNumber(String code) {
-    final var ast = Plang.codeToAst(code);
-    as(ast.children()[0], AstLiteral.class, literal -> {
+    final var ast = toExpressions(Plang.codeToAst(code));
+    as(ast[0], AstLiteral.class, literal -> {
 
       Assertions.assertEquals("1", literal.content());
       Assertions.assertEquals(Ty.INTEGER, literal.ty());
     });
+  }
+
+  @Test
+  void testAnonymousFnWithDirectCall() {
+
+    final var ast = toExpressions(Plang.codeToAst("((a: int, b: int) => a + b)(5, 5)"));
+
+    // TODO: Fix test case :) And make sure all tests still work properly
+    //        ... is it worth looking into making a function call a binary operation? Would that make it easier to parse and still understandable?
+
+    Assertions.assertEquals(1, ast.length);
+
+    // TODO: Convert this into some common format that is common in lang dev -- need to find some known format
+    //        So we can easily compare against a string, and make it understandable for others
+    as(ast[0], AstCall.class, call -> {
+      as(call.target(), AstParen.class, paren -> {
+        as(paren.expression(), AstCallable.class, callable -> {
+          as(callable.lhs(), AstParen.class, call_lhs_paren -> {
+            as(call_lhs_paren.expression(), AstExpressions.class, call_lhs_exprs -> {
+              as(call_lhs_exprs.children()[0], AstLabeling.class, labeling -> {
+                as(labeling.lhs(), AstIdentifier.class, id -> {
+                  Assertions.assertEquals("a", id.name());
+                });
+                as(labeling.rhs(), AstIdentifier.class, id -> {
+                  Assertions.assertEquals("int", id.name());
+                });
+              });
+              as(call_lhs_exprs.children()[1], AstLabeling.class, labeling -> {
+                as(labeling.lhs(), AstIdentifier.class, id -> {
+                  Assertions.assertEquals("b", id.name());
+                });
+                as(labeling.rhs(), AstIdentifier.class, id -> {
+                  Assertions.assertEquals("int", id.name());
+                });
+              });
+            });
+          });
+
+          as(callable.rhs(), AstBinaryOperation.class, bop -> {
+            Assertions.assertEquals(AstBinaryOperationKind.ADD, bop.kind());
+          });
+        });
+      });
+
+      as(call.paren(), AstParen.class, paren -> {
+        as(paren.expression(), AstExpressions.class, exprs -> {
+          as(exprs.children()[0], AstLiteral.class, literal -> Assertions.assertEquals("5", literal.content()));
+          as(exprs.children()[1], AstLiteral.class, literal -> Assertions.assertEquals("5", literal.content()));
+        });
+      });
+    });
+
+
+  }
+
+  private AstExpression[] toExpressions(AstExpression expr) {
+
+    if (expr instanceof AstExpressions exprs) {
+      return exprs.children();
+    } else if (expr instanceof AstProgram program) {
+      return toExpressions(program.children());
+    } else {
+      return new AstExpression[]{expr};
+    }
   }
 
   private <T> void as(AstExpression exp, Class<T> clazz, Consumer<T> then) {
@@ -284,13 +341,13 @@ class PlangAstParserTest {
   private void isIdentifier(AstExpression exp, String expected) {
 
     Assertions.assertInstanceOf(AstIdentifier.class, exp);
-    Assertions.assertEquals(expected, ((AstIdentifier)exp).name());
+    Assertions.assertEquals(expected, ((AstIdentifier) exp).name());
   }
 
   private void isLiteral(AstExpression exp, String expected) {
 
     Assertions.assertInstanceOf(AstLiteral.class, exp);
-    Assertions.assertEquals(expected, ((AstLiteral)exp).content());
+    Assertions.assertEquals(expected, ((AstLiteral) exp).content());
   }
 
   private <T, R> void is(AstExpression exp, Class<T> clazz, Function<T, R> mapper, Object expected) {
@@ -305,7 +362,7 @@ class PlangAstParserTest {
   private AstProgram parseProgram(String code) {
 
     try (final var tokens = new PlangLexer(PlangTestUtil.stringToStream(code))) {
-      final var parser = new PlangAstParser(tokens);
+      final var parser = new TokenToAstRaising(tokens);
 
       return parser.parse();
     }

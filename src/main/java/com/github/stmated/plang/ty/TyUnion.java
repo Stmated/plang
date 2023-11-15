@@ -9,7 +9,7 @@ public record TyUnion(Ty[] types) implements Ty {
 
     for (final var type : types) {
       if (type == null) {
-        throw new IllegalArgumentException("No type is allowed to be null");
+        throw new IllegalArgumentException("No kind is allowed to be null");
       }
     }
   }

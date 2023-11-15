@@ -1,13 +1,14 @@
 package com.github.stmated.plang.llvm.lowering;
 
-import com.github.stmated.plang.mir.model.MirFn;
+import com.github.stmated.plang.mir.model.MirInstrCreateFn;
 import java.util.function.Consumer;
 import lombok.Value;
 
 @Value
 public class LLVMFunctionLoweringRequest {
 
-  Ctx ctx;
-  MirFn fn;
+  MirToLLVMCtx mirToLlvmCtx;
+  MirInstrCreateFn fn;
+  String name;
   Consumer<LLVMFunctionLoweringResult> callback;
 }

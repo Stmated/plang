@@ -10,6 +10,11 @@ public class MirIdentifierId {
   int id;
 
   public String getUniqueName() {
+
+    if (id == 0) {
+      return name;
+    }
+
     return STR."\{name()}_\{id()}";
   }
 

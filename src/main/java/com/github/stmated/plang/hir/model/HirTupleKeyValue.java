@@ -5,7 +5,7 @@ public record HirTupleKeyValue(HirIdentifier key, HirExpression value) implement
 //  @Override
 //  public HirType getResultType() {
 //
-//    // TODO: Needs to implement the type of "trait" -- should be very generic
+//    // TODO: Needs to implement the kind of "trait" -- should be very generic
 //    return null;
 //  }
 }

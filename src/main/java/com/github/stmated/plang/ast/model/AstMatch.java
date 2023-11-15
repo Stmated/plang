@@ -4,7 +4,7 @@ import com.github.stmated.plang.ast.AstVisitor;
 
 public record AstMatch(
     AstExpression target,
-    AstExpressionCollection children
+    AstExpressions children
 ) implements AstExpression {
   @Override
   public <R, V extends AstVisitor<R>> R visit(V visitor) {

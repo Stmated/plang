@@ -5,6 +5,7 @@ import com.github.stmated.plang.exceptions.UnreachableCodeLLVMException;
 import com.github.stmated.plang.hir.model.HirBinaryOperation;
 import com.github.stmated.plang.hir.model.HirBinaryOperationKind;
 import com.github.stmated.plang.hir.model.HirExpression;
+import com.github.stmated.plang.hir.model.HirExpressions;
 import com.github.stmated.plang.hir.model.HirLiteral;
 import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.hir.model.HirReturn;
@@ -20,7 +21,7 @@ class MirToLLVMLoweringTest {
   @Test
   void testBinaryOperationFromHir() {
 
-    final var program = new HirProgram(new HirExpression[]{
+    final var program = new HirProgram(new HirExpressions(new HirExpression[]{
       new HirReturn(
         new HirBinaryOperation(
           new HirLiteral("1", Ty.INTEGER),
@@ -28,9 +29,9 @@ class MirToLLVMLoweringTest {
           new HirLiteral("2", Ty.INTEGER)
         )
       )
-    });
+    }));
 
-    Assertions.assertEquals(3, Plang.hirToResult(program).resultValue());
+    Assertions.assertEquals(3, Plang.hirToResult(program, new Object[0]).resultValue());
   }
 
   @Test
@@ -127,7 +128,6 @@ class MirToLLVMLoweringTest {
 
     final var result = Plang.codeToResult("val v = 1 / 2; return v");
     Assertions.assertEquals(0, result.resultValue());
-//    Assertions.assertEquals("0.00", result.output());
   }
 
   @ParameterizedTest
@@ -139,7 +139,17 @@ class MirToLLVMLoweringTest {
 
     final var result = Plang.<Double>codeToResult(code);
     Assertions.assertEquals(0.5d, result.resultValue(), 0.001d);
-//    Assertions.assertEquals("0.50", result.output());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val a = 8; val b = 2; val c = a + b; return c;",
+  })
+  void testSimpleAssignment(String code) {
+
+    // TODO: Something is wrong with this simple code -- fix this and other things might/should/could get better as well :)
+
+    Assertions.assertEquals(10, Plang.codeToResult(code).resultValue());
   }
 
   @ParameterizedTest
@@ -185,5 +195,54 @@ class MirToLLVMLoweringTest {
   })
   void testScopes2(String code) {
     Assertions.assertEquals(11, Plang.codeToResult(code).resultValue());
+  }
+
+  @Test
+  void testCreateArray() {
+    final var code = "val a = [0, 1]; return 1;";
+    Assertions.assertEquals(1, Plang.codeToResult(code).resultValue());
+  }
+
+  @Test
+  void testCreateAndAccessArray() {
+    final var code = "val a = [10, 20]; return a[1];";
+    Assertions.assertEquals(10, Plang.codeToResult(code).resultValue());
+  }
+
+  @Test
+  void testCreateAndAccessAndUseArray() {
+    final var code = "val a = [10, 20]; return a[0] + a[1];";
+    Assertions.assertEquals(30, Plang.codeToResult(code).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    // TODO: All these should be "const", or at least have the same tests again but with const and other order of instructions
+    "val fn = () => 10; fn()",
+    "val fn = (): int => 10; fn()",
+    "val fn = (): uint => 10; fn()",
+    "val fn = (): sint => 10; fn()",
+    "val fn = (): int32 => 10; fn()",
+    "val fn = (): int64 => 10; fn()",
+    "val fn = (): int64 => 10L; fn()",
+    "val fn = (): uint128 => 10; fn()",
+    "val fn = () => 10; return fn()",
+    "val fn = (a: int, b: int) => a + b; fn(5, 5)",
+    "val fn = (a: int, b: int) => a + b; fn(10, 0)",
+    "val fn = (a: int, b: int) => a + b; fn(0, 10)",
+    "((a: int, b: int) => a + b)(5, 5)",
+    "val fn = (a: int, b: int) => a + b; fn(2, 3) + fn(3, 2)"
+  })
+  void testFnCall(String code) {
+    Assertions.assertEquals(10, Plang.codeToResult(code).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val fn = (a: int, ...x: [int]) => a + x[0] + x[1]; fn(1, 5, 4)",
+    // Add more dynamic approaches once things like `x.length` exists, or iterators
+  })
+  void testFnVararg(String code) {
+    Assertions.assertEquals(10, Plang.codeToResult(code).resultValue());
   }
 }

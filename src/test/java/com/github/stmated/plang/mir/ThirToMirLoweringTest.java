@@ -21,7 +21,7 @@ class ThirToMirLoweringTest {
   @Test
   void testBinaryOperation() {
 
-    final var mir = Plang.codeToMir("1 + 1");
+    final var mir = Plang.codeToMir("1 + 1").initNode();
 
     Assertions.assertEquals(0, mir.predecessors().size());
     Assertions.assertEquals(0, mir.successors().size());
@@ -31,7 +31,7 @@ class ThirToMirLoweringTest {
   @Test
   void testDeclarationAndReassignment() {
 
-    final var mir = Plang.codeToMir("var a = 0; a = a + 1; return a");
+    final var mir = Plang.codeToMir("var a = 0; a = a + 1; return a").initNode();
 
     Assertions.assertEquals(0, mir.predecessors().size());
     Assertions.assertEquals(0, mir.successors().size());
@@ -48,7 +48,7 @@ class ThirToMirLoweringTest {
   @Test
   void testAssignments() {
 
-    final var mir = Plang.codeToMir("var a = 0; var b = a + 1; return b;");
+    final var mir = Plang.codeToMir("var a = 0; var b = a + 1; return b;").initNode();
 
     Assertions.assertEquals(0, mir.predecessors().size());
     Assertions.assertEquals(0, mir.successors().size());
@@ -65,7 +65,7 @@ class ThirToMirLoweringTest {
   @Test
   void testConditional() {
 
-    final var mir = Plang.codeToMir("var a = 0; if (a == 0) { a = 10; } else { a = 20; } return a;");
+    final var mir = Plang.codeToMir("var a = 0; if (a == 0) { a = 10; } else { a = 20; } return a;").initNode();
 
     Assertions.assertEquals(5, mir.instructions().size());
 
@@ -76,8 +76,8 @@ class ThirToMirLoweringTest {
     Assertions.assertInstanceOf(MirInstrConditionalJump.class, mir.instructions().get(4));
 
     assertEdges(mir, new Edge[]{
-      new Edge("start", "conditional_pass"),
-      new Edge("start", "conditional_fail"),
+      new Edge("main", "conditional_pass"),
+      new Edge("main", "conditional_fail"),
       new Edge("conditional_pass", "conditional_merge"),
       new Edge("conditional_fail", "conditional_merge")
     });
@@ -112,7 +112,7 @@ class ThirToMirLoweringTest {
 
     // TODO: There also needs to be some way of describing the structure, but that seems almost impossible?
 
-    final var mir = Plang.codeToMir("var a = 0; for (var i = 0; i < 10; i += 1) { a += i } return a;");
+    final var mir = Plang.codeToMir("var a = 0; for (var i = 0; i < 10; i += 1) { a += i } return a;").initNode();
 
     Assertions.assertEquals(0, mir.predecessors().size());
     Assertions.assertEquals(1, mir.successors().size());
@@ -125,7 +125,7 @@ class ThirToMirLoweringTest {
     Assertions.assertInstanceOf(MirInstrJump.class, mir.instructions().get(4));
 
     assertEdges(mir, new Edge[]{
-      new Edge("start", "loop_body"),
+      new Edge("main", "loop_body"),
       new Edge("loop_body", "loop_body_conditional_pass"),
       new Edge("loop_body", "loop_body_conditional_fail"),
       new Edge("loop_body_conditional_pass", "loop_body"),

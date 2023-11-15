@@ -1,0 +1,21 @@
+package com.github.stmated.plang.mir;
+
+import com.github.stmated.plang.mir.model.MirNode;
+import com.github.stmated.plang.mir.model.MirNodeEntry;
+
+/**
+ * A lowering can result in multiple nodes, where each node in essence is a function.
+ * <p>
+ * TODO: Need a way of saying that a node is capturing context of another node.
+ *        So we can know that it should be backed by a struct of captured data or whatever.
+ *
+ * @param nodes
+ */
+public record MirLoweringResult(
+
+//  boolean isScript,
+  MirNode initNode,
+  MirNodeEntry[] nodes
+) {
+
+}

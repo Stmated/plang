@@ -12,6 +12,7 @@ import com.github.stmated.plang.ty.TyValue;
 import com.github.stmated.plang.ty.TyValueKind;
 import com.github.stmated.plang.ty.TyValueNumber;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
+import com.github.stmated.plang.ty.RealKind;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
 import com.github.stmated.plang.ty.TyValueNumberScaled;
 import java.util.Arrays;
@@ -36,13 +37,13 @@ public class Tys {
 
   public static TyResult<Ty> getCommonDenominator(Ty a, Ty b) {
 
-    final var reordered = reorder(a, b);
-    a = reordered.a();
-    b = reordered.b();
-
     if (a == b) {
       return new TyResult<>(a);
     }
+
+    final var reordered = reorder(a, b);
+    a = reordered.a();
+    b = reordered.b();
 
     if (a == Ty.UNKNOWN || b == Ty.UNKNOWN) {
       return new TyResult<>(Ty.UNKNOWN, TyDiffKind.UNKNOWN);
@@ -85,6 +86,12 @@ public class Tys {
       };
       default -> new TyResult<>(null, TyDiffKind.INCOMPATIBLE);
     };
+  }
+
+  public static TyDiffKind[] getDifferences(Ty a, Ty b) {
+
+    final var common = getCommonDenominator(a, b);
+    return common.diffs();
   }
 
   public static Ty toNonConstIfRequired(Ty ty, HirMutabilityKind mutabilityKind) {
@@ -144,7 +151,7 @@ public class Tys {
   }
 
   /**
-   * TODO: Should not only be union. If they are representable as common type, then we give the common denominator
+   * TODO: Should not only be union. If they are representable as common kind, then we give the common denominator
    */
   public static Ty merge(Ty... types) {
     return union(types);
@@ -182,9 +189,76 @@ public class Tys {
 
   public static Ty simplify(Ty ty) {
 
-    // TODO: Simplify the type as much as possible
-    //        Used to be able to find a single type that LLVM can use
+    // TODO: Simplify the kind as much as possible
+    //        Used to be able to find a single kind that LLVM can use
 
     return ty;
+  }
+
+  public static Ty dereference(Ty ty) {
+    if (ty instanceof TyPointer<?> tp) {
+      return tp.inner();
+    } else {
+      return ty;
+    }
+  }
+
+  public static int getReferenceDepth(Ty ty) {
+    if (ty instanceof TyPointer<?> tp) {
+      return getReferenceDepth(tp.inner()) + 1;
+    } else {
+      return 0;
+    }
+  }
+
+  public static Ty dereferenceRecursively(Ty ty) {
+    if (ty instanceof TyPointer<?> tp) {
+      return dereferenceRecursively(tp.inner());
+    } else {
+      return ty;
+    }
+  }
+
+
+  /**
+   * TODO: Likely very slow, will need to be faster and smarter :)
+   */
+  public static Ty fromString(String name) {
+
+    if (name.startsWith("int") || name.startsWith("sint")) {
+
+      final var width = getWidthFromName(name, Ty.INTEGER.width());
+      return new TyValueNumberInteger(Ty.INTEGER.radix(), width, true, EnumSet.noneOf(TyFlags.class)).intern();
+    } else if (name.startsWith("uint")) {
+
+      final var width = getWidthFromName(name, Ty.INTEGER.width());
+      return new TyValueNumberInteger(Ty.INTEGER.radix(), width, false, EnumSet.noneOf(TyFlags.class)).intern();
+    } else if (name.startsWith("float")) {
+
+      final var width = getWidthFromName(name, Ty.FLOAT.width());
+      return new TyValueNumberPrecisioned(RealKind.FLOAT, width, Ty.FLOAT.precision(), true, EnumSet.noneOf(TyFlags.class)).intern();
+    }
+
+    return switch (name) {
+      case "string" -> Ty.STRING;
+      case "long" -> Ty.LONG;
+      case "short" -> Ty.SHORT;
+      case "ushort" -> Ty.USHORT;
+      case "double" -> Ty.DOUBLE;
+      case "decimal" -> Ty.DECIMAL;
+      case "bool" -> Ty.BOOLEAN;
+      default -> null;
+    };
+  }
+
+  private int getWidthFromName(String name, int defaultWidth) {
+
+    final var lastIndex = (name.length() - 1);
+    var numberIndex = lastIndex;
+    while (Character.isDigit(name.charAt(numberIndex))) {
+      numberIndex--;
+    }
+
+    return (numberIndex != lastIndex) ? Integer.parseInt(name.substring(numberIndex + 1, lastIndex + 1)) : defaultWidth;
   }
 }

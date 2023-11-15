@@ -4,31 +4,30 @@ import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.util.Box;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Value;
+import lombok.experimental.NonFinal;
 import org.codehaus.commons.nullanalysis.NotNull;
 
-public record MirNode(
-  String name,
+@Value
+@NonFinal
+@AllArgsConstructor
+public class MirNode {
+
+  String name;
+
   @NotNull
-  List<MirInstr> instructions,
+  List<MirInstr> instructions;
   @NotNull
-  List<MirNode> predecessors,
+  List<MirNode> predecessors;
   @NotNull
-  List<MirNode> successors,
+  List<MirNode> successors;
   @NotNull
-  Box<Ty> ty
-) {
+  Box<Ty> ty;
 
   public MirNode(String name) {
     this(name, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new Box<>());
   }
-
-//  public Ty ty() {
-//    return this.instructions().getLast().ty();
-//  }
-//
-//  public Ty resultingTy() {
-//    return this.instructions().getLast().resultingTy();
-//  }
 
   public boolean isTerminal() {
 

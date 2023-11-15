@@ -3,7 +3,7 @@ package com.github.stmated.plang.hir.model;
 import java.util.Arrays;
 import java.util.Objects;
 
-public record HirExpressionCollection(HirExpression[] children) implements HirExpression {
+public record HirExpressions(HirExpression[] children) implements HirExpression {
 
   @Override
   public String toString() {

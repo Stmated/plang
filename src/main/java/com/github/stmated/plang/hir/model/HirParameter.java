@@ -1,11 +1,17 @@
 package com.github.stmated.plang.hir.model;
 
-import com.github.stmated.plang.ty.Ty;
+import org.codehaus.commons.nullanalysis.NotNull;
 
-public record HirParameter(HirIdentifier identifier, Ty ty) implements HirExpression {
+public record HirParameter(
+  @NotNull
+  HirExpression identifier,
+  @NotNull
+  HirExpression type,
+  boolean vararg
+) implements HirExpression {
 
-//  @Override
-//  public HirType getResultType() {
-//    return this.type();
-//  }
+  @Override
+  public String toString() {
+    return STR."\{identifier}:\{type}";
+  }
 }

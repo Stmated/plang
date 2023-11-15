@@ -4,7 +4,7 @@ import java.util.EnumSet;
 import java.util.Objects;
 
 public record TyValueNumberPrecisioned(
-  TyValueNumberPrecisionKind kind,
+  RealKind kind,
   int width,
   int precision,
   boolean signed,

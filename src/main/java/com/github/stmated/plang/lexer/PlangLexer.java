@@ -562,7 +562,7 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
         } else {
 
           // This is a regular number.
-          // We will move the probable number type to the number type, since we've confirmed there are numbers remaining.
+          // We will move the probable number kind to the number kind, since we've confirmed there are numbers remaining.
           numberType = probableNumberType;
         }
       }

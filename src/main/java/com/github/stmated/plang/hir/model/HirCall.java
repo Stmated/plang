@@ -1,6 +1,10 @@
 package com.github.stmated.plang.hir.model;
 
-public record HirCall(HirFunctionReference functionReference, HirArgument[] arguments, boolean partial) implements HirExpression {
+public record HirCall(
+  HirExpression target,
+  HirArgument[] arguments,
+  boolean partial
+) implements HirExpression {
 
 //  @Override
 //  public HirType getResultType() {

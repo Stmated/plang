@@ -1,9 +1,12 @@
 package com.github.stmated.plang.llvm.lowering;
 
+import com.github.stmated.plang.mir.model.MirInstrCreateFn;
 import com.github.stmated.plang.mir.model.MirInstr;
 import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.util.Pair;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Stack;
@@ -14,7 +17,7 @@ import org.bytedeco.llvm.LLVM.LLVMOrcThreadSafeContextRef;
 import org.bytedeco.llvm.LLVM.LLVMValueRef;
 import org.bytedeco.llvm.global.LLVM;
 
-class Ctx {
+class MirToLLVMCtx {
 
   private final Map<String, LLVMValueRef> globalStringCache = new HashMap<>();
   private final Map<Byte, LLVMValueRef> cachedBytes = new HashMap<>();
@@ -22,13 +25,13 @@ class Ctx {
   private final Map<MirInstr, LLVMValueRef> valueLookup = new HashMap<>();
   private final Map<MirNode, LLVMBasicBlockRef> blockLookup = new HashMap<>();
 
-  private final Stack<LLVMValueRef> fnStack = new Stack<>();
+  private final Stack<Pair<MirInstrCreateFn, LLVMValueRef>> fnStack = new Stack<>();
 
   final LLVMOrcThreadSafeContextRef threadContext;
   final LLVMContextRef context;
   final LLVMBuilderRef builder;
 
-  public Ctx(LLVMOrcThreadSafeContextRef threadContext, LLVMContextRef context, LLVMBuilderRef builder) {
+  public MirToLLVMCtx(LLVMOrcThreadSafeContextRef threadContext, LLVMContextRef context, LLVMBuilderRef builder) {
     this.threadContext = threadContext;
     this.context = context;
     this.builder = builder;
@@ -76,7 +79,7 @@ class Ctx {
     return Objects.requireNonNull(blockLookup.get(node), STR."Node '\{node}' was not found in first pass of CFG");
   }
 
-  public void enterFunction(LLVMValueRef fnRef, Runnable runnable) {
+  public void enterFunction(Pair<MirInstrCreateFn, LLVMValueRef> fnRef, Runnable runnable) {
 
     try {
       fnStack.push(fnRef);
@@ -89,7 +92,11 @@ class Ctx {
     }
   }
 
-  public LLVMValueRef getFunction() {
+  public Pair<MirInstrCreateFn, LLVMValueRef> getFunction() {
     return fnStack.peek();
+  }
+
+  public Iterator<Pair<MirInstrCreateFn, LLVMValueRef>> getFunctionIterator() {
+    return fnStack.reversed().iterator();
   }
 }

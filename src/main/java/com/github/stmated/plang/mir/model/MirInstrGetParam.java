@@ -6,14 +6,17 @@ import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
-public class MirCall extends AbstractMirInstr {
+public class MirInstrGetParam extends AbstractMirInstr {
 
-  MirInstr target;
-  MirFnSignature fnSignature;
-  MirFnArgument[] arguments;
+  MirFnParameter parameter;
 
   @Override
   public Ty ty() {
-    return fnSignature.returnType();
+    return parameter.ty();
+  }
+
+  @Override
+  public String toString() {
+    return STR."param:\{parameter.name()}";
   }
 }

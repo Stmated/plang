@@ -1,5 +1,6 @@
 package com.github.stmated.plang.hir.raising;
 
+import com.github.stmated.plang.Plang;
 import com.github.stmated.plang.ast.model.AstBinaryOperation;
 import com.github.stmated.plang.ast.model.AstBinaryOperationKind;
 import com.github.stmated.plang.ast.model.AstBlock;
@@ -9,7 +10,12 @@ import com.github.stmated.plang.ast.model.AstLiteral;
 import com.github.stmated.plang.ast.model.AstReturn;
 import com.github.stmated.plang.hir.model.HirBinaryOperation;
 import com.github.stmated.plang.hir.model.HirBinaryOperationKind;
+import com.github.stmated.plang.hir.model.HirCall;
+import com.github.stmated.plang.hir.model.HirExpression;
+import com.github.stmated.plang.hir.model.HirFunction;
 import com.github.stmated.plang.hir.model.HirLiteral;
+import com.github.stmated.plang.hir.model.HirProgram;
+import com.github.stmated.plang.hir.model.HirReturn;
 import com.github.stmated.plang.ty.Ty;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -49,5 +55,20 @@ class AstToHirRaisingTest {
     Assertions.assertInstanceOf(HirLiteral.class, hbo.lhs());
     Assertions.assertEquals(HirBinaryOperationKind.EQUALS, hbo.kind());
     Assertions.assertInstanceOf(HirLiteral.class, hbo.lhs());
+  }
+
+  @Test
+  void testAnonymousFnWithDirectCall() {
+
+    final var thir = Plang.codeToThir("((a: int, b: int) => a + b)(5, 5)");
+    final var hir = thir.root();
+    Assertions.assertNotNull(hir);
+    Assertions.assertInstanceOf(HirProgram.class, hir);
+    final var program = ((HirProgram) hir);
+    Assertions.assertInstanceOf(HirReturn.class, program.expressions());
+    final var ret = ((HirReturn) program.expressions());
+    Assertions.assertInstanceOf(HirCall.class, ret.expression());
+    final var call = ((HirCall) ret.expression());
+    Assertions.assertInstanceOf(HirFunction.class, call.target());
   }
 }

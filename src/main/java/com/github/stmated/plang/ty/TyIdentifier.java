@@ -1,9 +1,9 @@
 package com.github.stmated.plang.ty;
 
 /**
- * This is a placeholder type that should be resolved by the THIR step of compilation.
+ * This is a placeholder kind that should be resolved by the THIR step of compilation.
  * <p>
- * It refers to a name of a type that might be accessible somewhere in the scope.
+ * It refers to a name of a kind that might be accessible somewhere in the scope.
  *
  * @param name
  */

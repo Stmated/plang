@@ -6,11 +6,11 @@ import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.lexer.PlangLexer;
 import com.github.stmated.plang.lexer.PlangLexerSteps;
 import com.github.stmated.plang.llvm.lowering.MirToLLVMLowering;
+import com.github.stmated.plang.mir.MirLoweringResult;
 import com.github.stmated.plang.mir.ThirToMirLowering;
-import com.github.stmated.plang.mir.model.MirNode;
-import com.github.stmated.plang.parser.PlangAstParser;
+import com.github.stmated.plang.parser.TokenToAstRaising;
 import com.github.stmated.plang.thir.raising.HirToThirRaising;
-import com.github.stmated.plang.thir.raising.ThirRepository;
+import com.github.stmated.plang.thir.raising.ThirRaiseResult;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -26,7 +26,7 @@ public class Plang {
     final var pass2 = new PlangLexerSteps();
     try (final var tokens = new PlangLexer(stringToStream(code))) {
       final var transformed = pass2.transform(tokens);
-      final var parser = new PlangAstParser(transformed);
+      final var parser = new TokenToAstRaising(transformed);
 
       return parser.parse();
     } catch (Exception e) {
@@ -38,52 +38,56 @@ public class Plang {
     return new AstToHirRaising().lower_program(ast);
   }
 
-  public static ThirRepository hirToThir(HirProgram hir) {
+  public static ThirRaiseResult hirToThir(HirProgram hir) {
     return new HirToThirRaising().raise(hir);
   }
 
-  public static MirNode hirToMir(HirProgram hir) {
+  public static MirLoweringResult hirToMir(HirProgram hir) {
 
     final var thir = new HirToThirRaising().raise(hir);
     return thirToMir(thir);
   }
 
-  public static MirNode thirToMir(ThirRepository thir) {
-    return new ThirToMirLowering(thir).lower();
+  public static MirLoweringResult thirToMir(ThirRaiseResult thir) {
+    return ThirToMirLowering.lower(thir);
   }
 
-  public static ThirRepository codeToThir(String code) {
+  public static ThirRaiseResult codeToThir(String code) {
 
     final var ast = Plang.codeToAst(code);
     final var hir = Plang.astToHir(ast);
     return Plang.hirToThir(hir);
   }
 
-  public static MirNode codeToMir(String code) {
+  public static MirLoweringResult codeToMir(String code) {
 
     final var ast = Plang.codeToAst(code);
     final var hir = Plang.astToHir(ast);
     return Plang.hirToMir(hir);
   }
 
-  public static <T> Result<T> hirToResult(HirProgram hir) {
+  public static <T> Result<T> hirToResult(HirProgram hir, Object[] arguments) {
 
     final var mir = Plang.hirToMir(hir);
-    return Plang.mirToResult(mir);
+    return Plang.mirToResult(mir, arguments);
   }
 
-  public static <T> Result<T> mirToResult(MirNode mir) {
+  public static <T> Result<T> mirToResult(MirLoweringResult mir, Object[] arguments) {
 
     final var llvmLowering = new MirToLLVMLowering();
-    return llvmLowering.lower_script(mir, "script");
+    return llvmLowering.lower_script(mir, "script", arguments);
   }
 
   public static <T> Result<T> codeToResult(String code) {
+    return codeToResult(code, new Object[0]);
+  }
+
+  public static <T> Result<T> codeToResult(String code, Object[] arguments) {
 
     final var ast = Plang.codeToAst(code);
     final var hir = Plang.astToHir(ast);
     final var mir = Plang.hirToMir(hir);
-    return Plang.mirToResult(mir);
+    return Plang.mirToResult(mir, arguments);
   }
 
   private static InputStream stringToStream(String str) {

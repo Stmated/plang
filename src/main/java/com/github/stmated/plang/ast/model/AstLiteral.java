@@ -14,7 +14,7 @@ public record AstLiteral(
 
   @Override
   public String toString() {
-    return STR."\{content} (\{ty})";
+    return STR."\{content}:\{ty}";
   }
 
   @Override

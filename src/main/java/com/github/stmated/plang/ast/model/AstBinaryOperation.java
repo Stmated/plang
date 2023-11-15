@@ -4,13 +4,13 @@ import com.github.stmated.plang.ast.AstVisitor;
 
 public record AstBinaryOperation(
   AstExpression lhs,
-  AstBinaryOperationKind type,
+  AstBinaryOperationKind kind,
   AstExpression rhs
 ) implements AstExpression {
 
   @Override
   public String toString() {
-    return lhs + " " + type + " " + rhs;
+    return STR."\{lhs} \{kind} \{rhs}";
   }
 
   @Override

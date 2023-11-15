@@ -1,6 +1,6 @@
 package com.github.stmated.plang.ty;
 
-public enum TyValueNumberPrecisionKind {
+public enum RealKind {
 
   FLOAT,
   DOUBLE,

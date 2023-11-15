@@ -14,7 +14,7 @@ import com.github.stmated.plang.ast.model.AstConditional;
 import com.github.stmated.plang.ast.model.AstDotAccess;
 import com.github.stmated.plang.ast.model.AstExport;
 import com.github.stmated.plang.ast.model.AstExpression;
-import com.github.stmated.plang.ast.model.AstExpressionCollection;
+import com.github.stmated.plang.ast.model.AstExpressions;
 import com.github.stmated.plang.ast.model.AstIdentifier;
 import com.github.stmated.plang.ast.model.AstImpl;
 import com.github.stmated.plang.ast.model.AstImport;
@@ -41,12 +41,12 @@ import com.github.stmated.plang.ast.model.AstParen;
 import com.github.stmated.plang.ast.model.AstProgram;
 import com.github.stmated.plang.ast.model.AstRange;
 import com.github.stmated.plang.ast.model.AstReturn;
+import com.github.stmated.plang.ast.model.AstSpread;
 import com.github.stmated.plang.ast.model.AstStaticAccess;
 import com.github.stmated.plang.ast.model.AstStruct;
 import com.github.stmated.plang.ast.model.AstThen;
 import com.github.stmated.plang.ast.model.AstTrait;
 import com.github.stmated.plang.ast.model.AstTypePlaceholder;
-import com.github.stmated.plang.ast.model.AstVarargs;
 import com.github.stmated.plang.ast.model.AstVariableDeclaration;
 import com.github.stmated.plang.ast.model.AstVariableSink;
 import com.github.stmated.plang.ast.model.AstWhere;
@@ -62,7 +62,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class PlangAstParser {
+public class TokenToAstRaising {
 
   private final Iterator<Token> iterator;
 
@@ -70,7 +70,7 @@ public class PlangAstParser {
 
   private final Deque<Token> queuedTokens = new ArrayDeque<>();
 
-  public PlangAstParser(Iterator<Token> iterator) {
+  public TokenToAstRaising(Iterator<Token> iterator) {
     this.iterator = iterator;
   }
 
@@ -88,7 +88,7 @@ public class PlangAstParser {
       throw new IllegalArgumentException("Exception '%s' after parsed:\n%s".formatted(ex.getMessage(), expressionStrings), ex);
     }
 
-    return new AstProgram(children.toArray(new AstExpression[0]));
+    return new AstProgram(new AstExpressions(children.toArray(new AstExpression[0])));
   }
 
   /**
@@ -507,7 +507,7 @@ public class PlangAstParser {
       return null;
     }
 
-    return switch (token.type()) {
+    final var callableAst = switch (token.type()) {
       case LITERAL_INTEGER -> new AstLiteral(token.content(), Ty.INTEGER);
       // TODO: Need to add all the other precision number types, like double, float, etc. Especially with variable width...
       //        Right now the default decimal number is FLOAT, to make things easier in LLVM. But DECIMAL should be DECIMAL ^^;
@@ -521,40 +521,52 @@ public class PlangAstParser {
       case LITERAL_INTEGER_HEX -> new AstLiteral(token.content(), Ty.INTEGER_HEX);
       case LITERAL_INTEGER_OCTAL -> new AstLiteral(token.content(), Ty.INTEGER_OCTAL);
       case LITERAL_INTEGER_LONG -> new AstLiteral(token.content(), Ty.LONG);
-      case ADD -> parsePotentialDeclaredPositiveLiteralNumber();
-      case SUBTRACT -> parsePotentialDeclaredNegativeLiteralNumber();
       case UNDERSCORE -> new AstVariableSink();
-      case BANG -> new AstNot(parseExpression());
       case OPEN_BRACE -> parseBlock();
       case OPEN_PAREN -> parseParen();
       case OPEN_BRACKET -> parseBracket();
       case REF -> parseRef();
-      case VAL, VAR -> parseVarVal(token);
-      case STRUCT -> parseStruct();
-      case TRAIT -> parseTrait();
-      case IMPL -> parseImpl();
       case IF -> parseIf();
-      case THEN -> parseThen();
-      case RETURN -> parseReturn();
-      case NEW -> parseNew();
-      case SEMI_COLON, END -> new AstNoOp();
-      case IDENTIFIER -> parseIdentifierLike();
-      case EXPORT -> parseExport();
-      case IMPORT -> parseImport();
-      case BECOME -> parseBecome();
-      case META -> parseCompTime();
-      case COMMENT_SINGLE_LINE, COMMENT_MULTI_LINE -> new AstComment(token.content());
-      case YIELD -> parseYield();
+      case IDENTIFIER -> parseIdentifier();
       case FOR -> parseFor();
       case DO -> parseDo();
       case WHILE -> parseWhile();
-      case MATCH -> parseMatch();
-      case WITH -> parseWith();
-      case TRIPLE_DOT -> new AstVarargs();
-      case DOLLAR -> parseDollar();
-      case INFER -> parseInfer();
-      default -> throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
+      default -> null;
     };
+
+    if (callableAst == null) {
+      return switch (token.type()) {
+        case ADD -> parsePotentialDeclaredPositiveLiteralNumber();
+        case SUBTRACT -> parsePotentialDeclaredNegativeLiteralNumber();
+        case BANG -> new AstNot(parseExpression());
+        case MATCH -> parseMatch();
+        case WITH -> parseWith();
+        case TRIPLE_DOT -> parseSpread();
+        case DOLLAR -> parseDollar();
+        case INFER -> parseInfer();
+        case VAL, VAR -> parseVarVal(token);
+        case STRUCT -> parseStruct();
+        case TRAIT -> parseTrait();
+        case IMPL -> parseImpl();
+        case THEN -> parseThen();
+        case RETURN -> parseReturn();
+        case NEW -> parseNew();
+        case SEMI_COLON, END -> new AstNoOp();
+        case EXPORT -> parseExport();
+        case IMPORT -> parseImport();
+        case BECOME -> parseBecome();
+        case META -> parseCompTime();
+        case COMMENT_SINGLE_LINE, COMMENT_MULTI_LINE -> new AstComment(token.content());
+        case YIELD -> parseYield();
+        default -> throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
+      };
+    } else {
+      return parsePotentialFnCall(callableAst);
+    }
+  }
+
+  private AstExpression parseSpread() {
+    return new AstSpread(parseExpression());
   }
 
   /**
@@ -649,6 +661,10 @@ public class PlangAstParser {
   private AstExpression parseIdentifierLike() {
 
     final var identifier = this.parseIdentifier();
+    return parsePotentialFnCall(identifier);
+  }
+
+  private AstExpression parsePotentialFnCall(AstExpression expr) {
 
     var n = next();
     if (n != null) {
@@ -673,7 +689,7 @@ public class PlangAstParser {
           }
         }
 
-        return new AstCall(identifier, paren, bubbleUp, partial);
+        return new AstCall(expr, paren, bubbleUp, partial);
 
       } else if (partial) {
         throw new IllegalArgumentException("Tilde (partial call indicator) must be followed by an opening parenthesis");
@@ -682,7 +698,7 @@ public class PlangAstParser {
       }
     }
 
-    return identifier;
+    return expr;
   }
 
   private <T extends AstExpression> List<T> parseExpressionCollection(
@@ -840,7 +856,7 @@ public class PlangAstParser {
 
     this.stayOrNext(TokenType.CLOSE_BRACE);
 
-    return new AstMatch(target, new AstExpressionCollection(collection.toArray(new AstExpression[0])));
+    return new AstMatch(target, new AstExpressions(collection.toArray(new AstExpression[0])));
   }
 
   private boolean ifNextAndBacktrack(TokenType tt) {
@@ -909,7 +925,7 @@ public class PlangAstParser {
     } else if (collection.isEmpty()) {
       return new AstParen(null);
     } else {
-      return new AstParen(new AstExpressionCollection(collection.toArray(new AstExpression[0])));
+      return new AstParen(new AstExpressions(collection.toArray(new AstExpression[0])));
     }
   }
 
@@ -1233,7 +1249,7 @@ public class PlangAstParser {
         this::parseLevel0
       );
 
-      return new AstNew(target, new AstExpressionCollection(collection.toArray(new AstExpression[0])));
+      return new AstNew(target, new AstExpressions(collection.toArray(new AstExpression[0])));
     }
 
     return new AstNew(target, null);

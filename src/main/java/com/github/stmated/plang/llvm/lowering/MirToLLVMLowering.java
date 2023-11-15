@@ -3,16 +3,21 @@ package com.github.stmated.plang.llvm.lowering;
 import com.github.stmated.plang.Plang.Result;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.llvm.util.LLVMTys;
+import com.github.stmated.plang.mir.MirIdentifierId;
+import com.github.stmated.plang.mir.MirLoweringResult;
 import com.github.stmated.plang.mir.MirNodeTyPass;
-import com.github.stmated.plang.mir.model.MirFn;
+import com.github.stmated.plang.mir.ThirToMirLowering;
+import com.github.stmated.plang.mir.model.MirInstrCreateFn;
 import com.github.stmated.plang.mir.model.MirFnParameter;
-import com.github.stmated.plang.mir.model.MirNode;
+import com.github.stmated.plang.mir.model.MirFnSignature;
+import com.github.stmated.plang.mir.model.MirNodeEntry;
+import com.github.stmated.plang.ty.RealKind;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
-import com.github.stmated.plang.ty.TyValueNumberPrecisionKind;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
 import com.github.stmated.plang.ty.util.Tys;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.javacpp.BooleanPointer;
@@ -44,17 +49,45 @@ public class MirToLLVMLowering {
   /**
    * Call with a node and it will be wrapped inside a function that will be executed
    */
-  public <T> Result<T> lower_script(MirNode node, String name) {
+  public <T> Result<T> lower_script(MirLoweringResult mirResult, String name, Object[] arguments) {
 
-    // TODO: Must find out the return type of the node, and automatically use that instead of INTEGER
-    // TODO: Must figure out a way of allowing both "script" form and actual main form. If main method exists, then we use that.
-    final var mirFnTy = Objects.requireNonNull(node.ty().value(), STR."You must run \{MirNodeTyPass.class.getSimpleName()}");
-    final var simplifiedTy = Tys.simplify(mirFnTy);
-    final var llvmTy = LLVMTys.normalize(simplifiedTy);
+    if (mirResult.initNode() != null) {
 
-    final var mirFn = new MirFn("script_entry", node, new MirFnParameter[0], false, llvmTy);
+      // There are init instructions in an init node.
+      // We will wrap this inside a function which will be our main method.
+      // Then it is up to that code to do whatever it wants to with any other entry nodes that were found.
 
-    return lower_fn(mirFn, new Object[0], name);
+      if (arguments != null && arguments.length > 0) {
+        throw new IllegalArgumentException("Not allowed to send arguments to a script");
+      }
+
+      // TODO: Must find out the return kind of the node, and automatically use that instead of INTEGER
+      // TODO: Must figure out a way of allowing both "script" form and actual main form. If main method exists, then we use that.
+      final var mirFnTy = Objects.requireNonNull(mirResult.initNode().ty().value(), STR."You must run \{MirNodeTyPass.class.getSimpleName()}");
+      final var simplifiedTy = Tys.simplify(mirFnTy);
+      final var llvmTy = LLVMTys.normalize(simplifiedTy);
+
+      // TODO: This is not always true. It depends on the MirLoweringResult above, what it gave us.
+      final var mirFnSignature = new MirFnSignature(new MirFnParameter[0], false, llvmTy);
+      final var mirFn = new MirInstrCreateFn(mirResult.initNode(), mirFnSignature, ThirToMirLowering.signatureToTy(mirFnSignature));
+      mirFn.name(new MirIdentifierId(mirResult.initNode().name(), null, 0)); // TODO: Wrong
+
+      return lower_fn(mirFn, new Object[0], name);
+    } else {
+
+      // It is up to the coder to have actually given a main function.
+      final MirNodeEntry mainNode = Arrays.stream(mirResult.nodes())
+        .filter(it -> it.name().equals("main"))
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException("There must be a 'main' node if not creating a script"));
+
+//      final var mirFnName = Objects.requireNonNullElse(mainNode.name(), "main");
+      final var mirFn = new MirInstrCreateFn(mainNode, mainNode.fnSignature(), ThirToMirLowering.signatureToTy(mainNode.fnSignature()));
+      mirFn.name(new MirIdentifierId(mainNode.name(), null, 0)); // TODO: Wrong
+//      mirFn.name();
+
+      return lower_fn(mirFn, arguments, name);
+    }
   }
 
   /**
@@ -62,7 +95,7 @@ public class MirToLLVMLowering {
    * <p>
    * Should be used later when we have a way of finding the main-method.
    */
-  public <T> Result<T> lower_fn(MirFn mirFn, Object[] arguments, String name) {
+  public <T> Result<T> lower_fn(MirInstrCreateFn mirInstrCreateFn, Object[] arguments, String name) {
 
     final var disposals = new ArrayList<Runnable>();
 
@@ -77,8 +110,9 @@ public class MirToLLVMLowering {
     final var module = LLVM.LLVMModuleCreateWithNameInContext(name, context);
 
     final var functionLoweringRequest = new LLVMFunctionLoweringRequest(
-      new Ctx(threadContext, context, builder),
-      mirFn,
+      new MirToLLVMCtx(threadContext, context, builder),
+      mirInstrCreateFn,
+      name,
       result -> LLVM.LLVMLinkModules2(module, result.module())
     );
 
@@ -131,7 +165,7 @@ public class MirToLLVMLowering {
         throw new RuntimeException(message);
       }
 
-      return callFn(jit, mirFn, arguments);
+      return callFn(jit, mirInstrCreateFn, arguments);
     } finally {
 
       LLVM.LLVMOrcDisposeLLJIT(jit);
@@ -143,24 +177,20 @@ public class MirToLLVMLowering {
     }
   }
 
-  private <T> Result<T> callFn(LLVMOrcLLJITRef jit, MirFn mirFn, Object[] arguments) {
+  private <T> Result<T> callFn(LLVMOrcLLJITRef jit, MirInstrCreateFn mirInstrCreateFn, Object[] arguments) {
 
     LLVMErrorRef err;
     final var res = new LongPointer(1);
-    if ((err = LLVM.LLVMOrcLLJITLookup(jit, res, mirFn.name())) != null) {
-      final var message = STR."Failed to look up 'sum' symbol: \{LLVM.LLVMGetErrorMessage(err).getString()}";
-      LLVM.LLVMConsumeError(err);
+    if ((err = LLVM.LLVMOrcLLJITLookup(jit, res, mirInstrCreateFn.name().getUniqueName())) != null) {
+      final var message = STR."Failed to look up function symbol: \{LLVM.LLVMGetErrorMessage(err).getString()}";
       throw new RuntimeException(message);
     }
 
-    final var argTypes = (mirFn.parameters().length == 0) ? null : new PointerPointer<>(mirFn.parameters().length);
-    final var argValues = (mirFn.parameters().length == 0) ? null : new PointerPointer<>(mirFn.parameters().length);
-    final var javaReturnType = toJavaType(mirFn.returnType());
-    final var ffiReturnType = tyToFfiType(javaReturnType); // ffi.ffi_type_sint();
+    final var argTypes = (mirInstrCreateFn.signature().parameters().length == 0) ? null : new PointerPointer<>(mirInstrCreateFn.signature().parameters().length);
+    final var argValues = (mirInstrCreateFn.signature().parameters().length == 0) ? null : new PointerPointer<>(mirInstrCreateFn.signature().parameters().length);
+    final var javaReturnType = toJavaType(mirInstrCreateFn.signature().returnType());
+    final var ffiReturnType = tyToFfiType(javaReturnType);
     final var returnPointer = toFfiValuePointer(javaReturnType);
-      //new IntPointer(1); // TODO: Change depending on return type
-
-//    final var p = new FloatPointer()
 
     for (var i = 0; i < arguments.length; i++) {
 
@@ -170,7 +200,7 @@ public class MirToLLVMLowering {
 
     final var cif = new ffi_cif();
 
-    if (ffi.ffi_prep_cif(cif, ffi.FFI_DEFAULT_ABI(), mirFn.parameters().length, ffiReturnType, argTypes) != ffi.FFI_OK) {
+    if (ffi.ffi_prep_cif(cif, ffi.FFI_DEFAULT_ABI(), mirInstrCreateFn.signature().parameters().length, ffiReturnType, argTypes) != ffi.FFI_OK) {
       throw new RuntimeException("Failed to prepare the libffi cif");
     }
 
@@ -180,8 +210,8 @@ public class MirToLLVMLowering {
 
     ffi.ffi_call(cif, ffiFnPointer, returnPointer, argValues);
 
-    final var result = (T) getValue(returnPointer, mirFn.returnType());
-    return new Result<>( result, "", "");
+    final var result = (T) getValue(returnPointer, mirInstrCreateFn.signature().returnType());
+    return new Result<>(result, "", "");
   }
 
   private Object getValue(Pointer pointer, Ty ty) {
@@ -224,12 +254,12 @@ public class MirToLLVMLowering {
     if (ty instanceof TyValueNumberInteger) {
       return Integer.class;
     } else if (ty instanceof TyValueNumberPrecisioned vnp) {
-      if (vnp.kind() == TyValueNumberPrecisionKind.FLOAT) {
+      if (vnp.kind() == RealKind.FLOAT) {
         return Float.class;
       } else {
         return Double.class;
       }
-    }  else {
+    } else {
       throw new NotImplementedException(STR."Not implemented ty conversion for '\{ty}'");
     }
   }

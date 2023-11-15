@@ -4,10 +4,12 @@ import com.github.stmated.plang.ast.model.AstAssignment;
 import com.github.stmated.plang.ast.model.AstBinaryOperation;
 import com.github.stmated.plang.ast.model.AstBinaryOperationKind;
 import com.github.stmated.plang.ast.model.AstBlock;
+import com.github.stmated.plang.ast.model.AstBracket;
 import com.github.stmated.plang.ast.model.AstCall;
+import com.github.stmated.plang.ast.model.AstCallable;
 import com.github.stmated.plang.ast.model.AstConditional;
 import com.github.stmated.plang.ast.model.AstExpression;
-import com.github.stmated.plang.ast.model.AstExpressionCollection;
+import com.github.stmated.plang.ast.model.AstExpressions;
 import com.github.stmated.plang.ast.model.AstIdentifier;
 import com.github.stmated.plang.ast.model.AstLabeling;
 import com.github.stmated.plang.ast.model.AstLiteral;
@@ -16,6 +18,7 @@ import com.github.stmated.plang.ast.model.AstNoOp;
 import com.github.stmated.plang.ast.model.AstParen;
 import com.github.stmated.plang.ast.model.AstProgram;
 import com.github.stmated.plang.ast.model.AstReturn;
+import com.github.stmated.plang.ast.model.AstSpread;
 import com.github.stmated.plang.ast.model.AstThen;
 import com.github.stmated.plang.ast.model.AstType;
 import com.github.stmated.plang.ast.model.AstVariableDeclaration;
@@ -28,10 +31,11 @@ import com.github.stmated.plang.hir.model.HirBlock;
 import com.github.stmated.plang.hir.model.HirCall;
 import com.github.stmated.plang.hir.model.HirConditional;
 import com.github.stmated.plang.hir.model.HirExpression;
-import com.github.stmated.plang.hir.model.HirExpressionCollection;
+import com.github.stmated.plang.hir.model.HirExpressions;
 import com.github.stmated.plang.hir.model.HirFunction;
-import com.github.stmated.plang.hir.model.HirFunctionReference;
+import com.github.stmated.plang.hir.model.HirFunctionSignature;
 import com.github.stmated.plang.hir.model.HirIdentifier;
+import com.github.stmated.plang.hir.model.HirLabeling;
 import com.github.stmated.plang.hir.model.HirLiteral;
 import com.github.stmated.plang.hir.model.HirLoop;
 import com.github.stmated.plang.hir.model.HirLoopBreak;
@@ -42,37 +46,51 @@ import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.hir.model.HirReturn;
 import com.github.stmated.plang.hir.model.HirTuple;
 import com.github.stmated.plang.hir.model.HirTupleKeyValue;
+import com.github.stmated.plang.hir.model.HirTy;
 import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 import com.github.stmated.plang.ty.Ty;
-import com.github.stmated.plang.ty.TyPointer;
-import org.bytedeco.llvm.LLVM.LLVMTypeRef;
-import org.bytedeco.llvm.LLVM.LLVMValueRef;
-import org.bytedeco.llvm.global.LLVM;
+import java.util.ArrayList;
 
 public class AstToHirRaising {
 
   public HirProgram lower_program(AstProgram astProgram) {
-    return new HirProgram(implicit_return(lower_expressions(astProgram.children())));
+    return new HirProgram(implicit_return(lower_expression(astProgram.children())));
   }
 
-  private HirExpression[] implicit_return(HirExpression[] expressions) {
+  private HirExpression implicit_return(HirExpression expression) {
 
-    if (expressions.length > 0) {
+    if (expression instanceof HirExpressions exprs) {
 
-      // TODO: This is bad since it will add a "return" even if all paths inside this are terminal
-      //        We would need a visitor pattern to visit the last expression of every node, and see if it is terminal
-      //        Only then should we add this implicit return...
-      final var last = expressions[expressions.length - 1];
-      if (!(last instanceof HirReturn)) {
+      final var children = exprs.children();
+      if (children.length > 1) {
 
-        final var implicitReturn = new HirReturn(last);
-        expressions[expressions.length - 1] = implicitReturn;
+        // TODO: This is bad since it will add a "return" even if all paths inside this are terminal
+        //        We would need a visitor pattern to visit the last expression of every node, and see if it is terminal
+        //        Only then should we add this implicit return...
+        final var last = children[children.length - 1];
+        if (!(last instanceof HirReturn)) {
 
-        return expressions;
+          final var implicitReturn = new HirReturn(last);
+          children[children.length - 1] = implicitReturn;
+
+          return exprs;
+        } else {
+          return expression;
+        }
+      } else if (children.length > 0) {
+        expression = children[0];
+      } else {
+
+        // TODO: This should probably just give VOID. Implement a way to return void as a literal.
+        throw new IllegalArgumentException("There was no expression");
       }
     }
 
-    return expressions;
+    if (expression instanceof HirReturn) {
+      return expression;
+    } else {
+      return new HirReturn(expression);
+    }
   }
 
   private HirExpression[] lower_expressions(AstExpression[] astExpressions) {
@@ -109,14 +127,92 @@ public class AstToHirRaising {
       case AstCall ast -> lower_call(ast);
       case AstIdentifier ast -> lower_identifier(ast);
       case AstParen ast -> lower_paren(ast);
+      case AstBracket ast -> lower_bracket(ast);
       case AstThen ast -> lower_expression(ast.expression());
       case AstVariableDeclaration ast -> lower_variable_declaration(ast);
       case AstAssignment ast -> lower_assignment(ast);
+      case AstLabeling ast -> lower_labeling(ast);
+      case AstCallable ast -> lower_callable(ast);
+      case AstExpressions ast -> new HirExpressions(lower_expressions(ast.children()));
       // TODO: Important that a NoOp means "nothing" if last expression of block.
       //        Since everything is an expression, if "x" is last expression, then give back "x"
       //        But if it's "x;" then it means we should return "nothing".
       case AstNoOp _ -> null;
       default -> throw new IllegalArgumentException(STR."Unknown AST Expression (\{expr.getClass().getSimpleName()}) '\{expr}'");
+    };
+  }
+
+  private HirExpression lower_bracket(AstBracket ast) {
+
+    throw new NotImplementedException();
+  }
+
+  private HirExpression lower_labeling(AstLabeling ast) {
+
+    final var lhs = lower_expression(ast.lhs());
+    final var rhs = lower_expression(ast.rhs());
+
+    return new HirLabeling(lhs, rhs);
+  }
+
+  private HirExpression lower_callable(AstCallable ast) {
+
+    final var signature = find_and_lower_parameters(ast.lhs());
+    final var body = implicit_return(lower_expression(ast.rhs()));
+
+    return new HirFunction(signature, body);
+  }
+
+  private HirFunctionSignature find_and_lower_parameters(AstExpression ast) {
+
+    return switch (ast) {
+      case AstLabeling labeling -> {
+
+        final var signature = find_and_lower_parameters(labeling.lhs());
+        final var returnTypeExpr = lower_expression(labeling.rhs());
+
+        yield new HirFunctionSignature(signature.parameters(), signature.vararg(), returnTypeExpr);
+      }
+      case AstParen paren -> {
+
+        final var signature = (paren.expression() == null) ? null : find_and_lower_parameters_inner(paren.expression());
+        final var parameters = (signature == null) ? new HirParameter[0] : signature.parameters();
+        final var vararg = signature != null && signature.vararg();
+
+        yield new HirFunctionSignature(parameters, vararg, new HirTy(Ty.INFER));
+      }
+      default -> find_and_lower_parameters_inner(ast);
+    };
+  }
+
+  private HirFunctionSignature find_and_lower_parameters_inner(AstExpression ast) {
+
+    final var parameters = new ArrayList<HirParameter>();
+
+    switch (ast) {
+      case AstExpressions it -> {
+        for (final var astParam : it.children()) {
+          final var param = lower_parameter(astParam);
+          parameters.add(param);
+        }
+      }
+      default -> throw new NotImplementedException(STR."Do not know how to handle '\{ast}' as callable lhs");
+    }
+
+    final var isVarArg = parameters.stream().anyMatch(HirParameter::vararg);
+    return new HirFunctionSignature(parameters.toArray(new HirParameter[0]), isVarArg, null);
+  }
+
+  private HirParameter lower_parameter(AstExpression expr) {
+
+    return switch (expr) {
+      case AstSpread spread -> new HirParameter(lower_expression(spread.expression()), new HirTy(Ty.INFER), true);
+      case AstLabeling labeling -> {
+        final var labelingLhs = lower_parameter(labeling.lhs());
+        final var labelingRhs = lower_expression(labeling.rhs());
+        yield new HirParameter(labelingLhs.identifier(), labelingRhs, labelingLhs.vararg());
+      }
+      default -> new HirParameter(lower_expression(expr), new HirTy(Ty.INFER), false);
     };
   }
 
@@ -160,96 +256,25 @@ public class AstToHirRaising {
   private HirCall lower_call(AstCall ast) {
 
     final var target = lower_expression(ast.target());
-    String targetName = switch (target) {
-      case HirIdentifier hir -> hir.name();
-      default -> throw new IllegalArgumentException(STR."Unknown call target '\{target}'");
-    };
-
     final var hirParen = lower_paren(ast.paren());
 
     // TODO: This could be a HirTuple, but it is badly handled right now, and awful support for mixing positional and named arguments
     final var hirArgumentExpressions = switch (hirParen) {
-      case HirExpressionCollection hir -> hir.children();
+      case HirExpressions hir -> hir.children();
       case HirTuple hir -> hir.children();
       default -> throw new NotImplementedException();
     };
 
-    final var varArgIndex = getKnownFunctionVarargIndex(targetName);
-
-    // TODO: This is all rather stupid. We should NOT define functions based on the caller.
-    //        This must be done in some other way, where we already have the available functions mapped.
-    //        Will probably need to do multiple passes.
-    //        OR -- This is partially fine and we are just describing what we believe the function will look like.
-    //              Then it is up to later stages to validate and match them up.
     final var hirArguments = new HirArgument[hirArgumentExpressions.length];
-    final var hirParameters = new HirParameter[hirArgumentExpressions.length - (varArgIndex == -1 ? 0 : (hirArgumentExpressions.length - varArgIndex))];
     for (var i = 0; i < hirArgumentExpressions.length; i++) {
 
       hirArguments[i] = switch (hirArgumentExpressions[i]) {
         case HirTupleKeyValue kv -> new HirArgument(kv.key().name(), kv.value());
         default -> new HirArgument(null, hirArgumentExpressions[i]);
       };
-
-      if (varArgIndex == -1 || i < varArgIndex) {
-
-        // TODO: Can this be better partially resolved now, or just leave it to later stages to figure out?
-        // TODO: Right now we only guessed the target ty from the literal, but might be a related but different type.
-        final var parameterTy = switch (hirArguments[i].value()) {
-          case HirLiteral literal -> literal.ty();
-          case HirIdentifier it -> {
-            // TODO: Extremely ugly! Need to be fixed!
-            if (it.name().equals("stdout")) {
-              yield new TyPointer<>(Ty.CHAR).intern();
-            } else {
-              yield Ty.UNKNOWN;
-            }
-          }
-          default -> Ty.UNKNOWN;
-        };
-
-        hirParameters[i] = new HirParameter(null, parameterTy);
-      }
     }
 
-    // TODO: This is wrong. Or the best we can do at the moment? Up to later stages to actually resolve it?
-    final var function = new HirFunction(
-      new HirIdentifier(targetName),
-      hirParameters,
-      // TODO: These two are very hacky
-      varArgIndex != -1,
-      getKnownFunctionReturnTypes(targetName)
-    );
-
-    return new HirCall(
-      new HirFunctionReference(function),
-      hirArguments,
-      false
-    );
-  }
-
-  private Ty getKnownFunctionReturnTypes(String fnName) {
-
-    // freopen("myfile.txt", "w", stdout);
-    // declare i8* @freopen(i8*, i8*, i8*)
-
-    // @stdout = external dso_local global i8*, align 8
-
-    // %file = call i8* @freopen(i8* getelementptr inbounds ([11 x i8], [11 x i8]* @.filename, i32 0, i32 0), i8*
-    // getelementptr inbounds ([2 x i8], [2 x i8]* @.mode, i32 0, i32 0), i8* bitcast (%struct._IO_FILE** @stdout to i8*))
-
-    return switch (fnName) {
-      case "printf" -> Ty.INTEGER;
-      case "freopen" -> new TyPointer<>(Ty.CHAR).intern();
-      default -> Ty.UNKNOWN;
-    };
-  }
-
-  private int getKnownFunctionVarargIndex(String fnName) {
-
-    return switch (fnName) {
-      case "printf" -> 1;
-      default -> -1;
-    };
+    return new HirCall(target, hirArguments, ast.partial());
   }
 
   private HirExpression lower_block(AstBlock ast) {
@@ -273,7 +298,7 @@ public class AstToHirRaising {
 
   private HirExpression lower_binary_operation(AstBinaryOperation ast) {
 
-    AstBinaryOperationKind expandedKind = switch (ast.type()) {
+    AstBinaryOperationKind expandedKind = switch (ast.kind()) {
       case ADDITION_ASSIGNMENT -> AstBinaryOperationKind.ADD;
       case SUBTRACTION_ASSIGNMENT -> AstBinaryOperationKind.SUBTRACT;
       case MULTIPLY_ASSIGNMENT -> AstBinaryOperationKind.MULTIPLY;
@@ -292,7 +317,7 @@ public class AstToHirRaising {
 
     return new HirBinaryOperation(
       lower_expression(ast.lhs()),
-      lower_binary_operation_type(ast.type()),
+      lower_binary_operation_type(ast.kind()),
       lower_expression(ast.rhs())
     );
   }
@@ -334,7 +359,7 @@ public class AstToHirRaising {
     final HirExpression loopAction;
 
     switch (loweredHead) {
-      case HirExpressionCollection head -> {
+      case HirExpressions head -> {
         if (head.children().length == 3) {
 
           final var first = head.children()[0];
@@ -361,7 +386,7 @@ public class AstToHirRaising {
           final var third = head.children()[2];
           switch (third) {
 //            case HirBinaryOperation hir -> {
-//              if (hir.type().isAction()) {
+//              if (hir.kind().isAction()) {
 //                hirAction = hir;
 //              } else {
 //                throw new IllegalArgumentException(STR."The third for-loop part must be an action binary op, not '\{hir}'");
@@ -387,7 +412,7 @@ public class AstToHirRaising {
       // Q: Is it better if this was flipped and do nothing on fail but break on pass? Less branching???
       new HirConditional(
         loopPredicate,
-        new HirExpressionCollection(new HirExpression[]{
+        new HirExpressions(new HirExpression[]{
           loweredBody,
           loopAction,
           new HirLoopContinue()
@@ -397,27 +422,30 @@ public class AstToHirRaising {
       )
     );
 
-    return new HirExpressionCollection(loopExpressions);
+    return new HirExpressions(loopExpressions);
   }
 
   private HirExpression lower_paren(AstParen astParen) {
 
     final var astExpr = astParen.expression();
+    if (astExpr == null) {
+      return new HirExpressions(new HirExpression[0]);
+    }
 
     return switch (astExpr) {
-      case AstExpressionCollection collection -> lower_paren_expression_collection(collection);
+      case AstExpressions collection -> lower_paren_expression_collection(collection);
       default -> lower_expression(astExpr);
 
       //throw new NotImplementedException(STR."Unknown expression '\{astExpr}'");
     };
   }
 
-  private HirExpression lower_paren_expression_collection(AstExpressionCollection astExpressionCollection) {
+  private HirExpression lower_paren_expression_collection(AstExpressions astExpressions) {
 
     var labeledExpressionCount = 0;
     var unlabeledExpressionCount = 0;
 
-    final var children = astExpressionCollection.children();
+    final var children = astExpressions.children();
     var children_lowered = new HirExpression[children.length];
 
     var targetIndex = 0;
@@ -455,7 +483,7 @@ public class AstToHirRaising {
       );
 
     } else {
-      return new HirExpressionCollection(children_lowered);
+      return new HirExpressions(children_lowered);
     }
   }
 

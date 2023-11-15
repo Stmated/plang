@@ -72,11 +72,6 @@ record MirScope(
 
   public void add(String name, MirInstr instruction) {
 
-//    final var iid = Objects.requireNonNull(
-//      name,
-//      "To add a scoped instruction, it must be identifiable"
-//    );
-
     final var e = this.map.computeIfAbsent(
       Objects.requireNonNull(name, "To add scoped instruction it must be named"),
       n -> new ArrayList<>()

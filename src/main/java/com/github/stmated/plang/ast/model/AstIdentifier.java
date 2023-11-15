@@ -6,7 +6,7 @@ public record AstIdentifier(String name) implements AstExpression {
 
   @Override
   public String toString() {
-    return "[" + name + "]";
+    return name;
   }
 
   @Override

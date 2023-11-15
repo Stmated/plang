@@ -9,7 +9,7 @@ public record AstLabeling(
 
   @Override
   public String toString() {
-    return lhs + ": " + rhs;
+    return STR."\{lhs}:\{rhs}";
   }
 
   @Override

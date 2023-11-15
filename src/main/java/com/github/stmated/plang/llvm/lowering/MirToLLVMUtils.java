@@ -4,6 +4,7 @@ import com.github.stmated.plang.exceptions.GenericLLVMException;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.exceptions.UnreachableCodeLLVMException;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyPointerAddressSpace;
 import com.github.stmated.plang.ty.TyValueArray;
@@ -17,7 +18,6 @@ import java.util.Locale;
 import lombok.experimental.UtilityClass;
 import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.PointerPointer;
-import org.bytedeco.llvm.LLVM.LLVMBuilderRef;
 import org.bytedeco.llvm.LLVM.LLVMContextRef;
 import org.bytedeco.llvm.LLVM.LLVMModuleRef;
 import org.bytedeco.llvm.LLVM.LLVMTypeRef;
@@ -27,25 +27,8 @@ import org.bytedeco.llvm.global.LLVM;
 @UtilityClass
 public class MirToLLVMUtils {
 
-  public static LLVMFunctionCallInfo createMainFunction(LLVMContextRef context, LLVMModuleRef module, LLVMBuilderRef builder) {
-
-    final var i32Type = LLVM.LLVMInt32TypeInContext(context);
-    final var i8Type = LLVM.LLVMInt8TypeInContext(context);
-    final var i8PointerType = LLVM.LLVMPointerType(i8Type, 0);
-    final var i8PointerPointerType = LLVM.LLVMPointerType(i8PointerType, 0);
-    final var mainArgs = new LLVMTypeRef[]{i32Type, i8PointerPointerType};
-
-    final var mainFnArgs = new PointerPointer<>(mainArgs);
-    final var mainFnType = LLVM.LLVMFunctionType(i32Type, mainFnArgs, mainArgs.length, 0);
-    final var mainFn = LLVM.LLVMAddFunction(module, "main", mainFnType);
-
-    final var entryBlock = LLVM.LLVMAppendBasicBlockInContext(context, mainFn, "entry");
-
-    return new LLVMFunctionCallInfo(mainFnType, mainFn, mainFnArgs, mainArgs.length, "main", entryBlock);
-  }
-
-  public static LLVMTypeRef toLLVMType(Ctx ctx, Ty ty) {
-    return toLLVMType(ctx.context, ty);
+  public static LLVMTypeRef toLLVMType(MirToLLVMCtx mirToLlvmCtx, Ty ty) {
+    return toLLVMType(mirToLlvmCtx.context, ty);
   }
 
   public static LLVMTypeRef toLLVMType(LLVMContextRef context, Ty ty) {
@@ -85,6 +68,22 @@ public class MirToLLVMUtils {
 
 //      case  np when np.width() == 128 -> LLVM.LLVMTypeInContext(context);
 
+      case TyFn fn -> {
+
+        // TODO: BAD! This needs to be cached or set earlier in a centralized way. It is insane to recreate this very time it is called.
+        final var fnParams = new LLVMTypeRef[fn.parameters().length];
+        for (var i = 0; i < fn.parameters().length; i++) {
+          final var param = fn.parameters()[i];
+          fnParams[i] = MirToLLVMUtils.toLLVMType(context, param.ty());
+        }
+
+        yield LLVM.LLVMFunctionType(
+          toLLVMType(context, fn.returnTy()),
+          new PointerPointer<>(fnParams),
+          fn.parameters().length,
+          fn.vararg() ? 1 : 0
+        );
+      }
       default -> throw new IllegalArgumentException(STR."Do not know how to convert '\{ty.toShortString()}' (\{ty.getClass().getSimpleName()}) into an LLVM type");
     };
   }
@@ -104,20 +103,20 @@ public class MirToLLVMUtils {
 
   public record ArrayAndSize(LLVMValueRef ref, TyValueArray ty) {}
 
-  public static ArrayAndSize createCharArray(Ctx ctx, LLVMModuleRef module, String str) {
+  public static ArrayAndSize createCharArray(MirToLLVMCtx mirToLlvmCtx, LLVMModuleRef module, String str) {
 
     final var bytes = (STR."\{str}\0").getBytes(StandardCharsets.UTF_8);
     final var charArray = new LLVMValueRef[bytes.length];
     final var elementTy = Ty.CHAR;
-    final var charType = MirToLLVMUtils.toLLVMType(ctx, elementTy);
+    final var charType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, elementTy);
     for (int i = 0; i < bytes.length; i++) {
-      charArray[i] = ctx.getByte(bytes[i]);
+      charArray[i] = mirToLlvmCtx.getByte(bytes[i]);
     }
 
     final var strArray = LLVM.LLVMConstArray2(charType, new PointerPointer<>(charArray), bytes.length);
 
     final var arrayTy = new TyValueArray(elementTy, bytes.length);
-    final var charArrayType = toLLVMType(ctx, arrayTy);
+    final var charArrayType = toLLVMType(mirToLlvmCtx, arrayTy);
     final var globalVar = LLVM.LLVMAddGlobal(module, charArrayType, "gs");
     LLVM.LLVMSetInitializer(globalVar, strArray);
 

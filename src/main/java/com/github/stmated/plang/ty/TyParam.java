@@ -1,14 +1,13 @@
-package com.github.stmated.plang.mir.model;
+package com.github.stmated.plang.ty;
 
-import com.github.stmated.plang.ty.Ty;
-
-public record MirFnParameter(
+public record TyParam(
   String name,
   Ty ty
 ) {
 
   @Override
   public String toString() {
+
     return STR."\{name}:\{ty.toShortString()}";
   }
 }

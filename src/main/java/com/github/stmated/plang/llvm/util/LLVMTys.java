@@ -18,8 +18,8 @@ public class LLVMTys {
   private static final TyPointer<TyValueNumberInteger> STR_CHAR_POINTER = Tys.intern(new TyPointer<>(Ty.CHAR));
 
   /**
-   * TODO: Create a new type object called LowTy that has things like: "isGlobal" "original" and "low"
-   *        Then use it everywhere in this lowering -- so we can be sure we're working with a lowered type (but access the original)
+   * TODO: Create a new kind object called LowTy that has things like: "isGlobal" "original" and "low"
+   *        Then use it everywhere in this lowering -- so we can be sure we're working with a lowered kind (but access the original)
    */
   public static Ty getLowTy(Ty ty) {
 

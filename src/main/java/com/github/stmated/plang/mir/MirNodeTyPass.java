@@ -10,7 +10,7 @@ import java.util.List;
 
 public class MirNodeTyPass {
 
-  public static void startNodeTyPass(MirNode node) {
+  public static void startPass(MirNode node) {
 
     final var pass = new MirNodeTyPass();
     pass.enter(node);

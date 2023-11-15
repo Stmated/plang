@@ -79,7 +79,7 @@ public interface AstVisitor<T> {
     return visit(expr.exported());
   }
 
-  default T visitExpressionCollection(AstExpressionCollection expr) {
+  default T visitExpressionCollection(AstExpressions expr) {
     return visit(expr.children());
   }
 
@@ -198,10 +198,6 @@ public interface AstVisitor<T> {
     return visit(expr.identifier());
   }
 
-  default T visitVarargs(AstVarargs expr) {
-    return this.noValue();
-  }
-
   default T visitVariableDeclaration(AstVariableDeclaration expr) {
     return aggregate(visit(expr.identifier()), visit(expr.type()));
   }
@@ -243,6 +239,10 @@ public interface AstVisitor<T> {
   }
 
   default T visitNegate(AstNegate expr) {
+    return visit(expr.expression());
+  }
+
+  default T visitSpread(AstSpread expr) {
     return visit(expr.expression());
   }
 }

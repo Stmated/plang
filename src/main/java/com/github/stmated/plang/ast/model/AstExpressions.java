@@ -4,7 +4,7 @@ import com.github.stmated.plang.ast.AstVisitor;
 
 import java.util.Arrays;
 
-public record AstExpressionCollection(
+public record AstExpressions(
   AstExpression[] children
 ) implements AstExpression {
 

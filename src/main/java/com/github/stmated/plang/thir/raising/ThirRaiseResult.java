@@ -9,7 +9,7 @@ import org.codehaus.commons.nullanalysis.NotNull;
 import org.codehaus.commons.nullanalysis.Nullable;
 
 @Value
-public class ThirRepository {
+public class ThirRaiseResult {
 
   HirExpression root;
   Map<HirExpression, Ty> map;
@@ -17,7 +17,7 @@ public class ThirRepository {
   @Nullable
   public Ty getType(HirExpression e) {
 
-    // TODO: Throw exception if not found? Since it *should* always be found. All expressions should always have a resulting type.
+    // TODO: Throw exception if not found? Since it *should* always be found. All expressions should always have a resulting kind.
     return map.get(e);
   }
 
