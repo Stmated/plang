@@ -1,8 +1,8 @@
 package com.github.stmated.plang;
 
 import com.github.stmated.plang.ast.model.AstProgram;
-import com.github.stmated.plang.hir.raising.AstToHirRaising;
 import com.github.stmated.plang.hir.model.HirProgram;
+import com.github.stmated.plang.hir.raising.AstToHirRaising;
 import com.github.stmated.plang.lexer.PlangLexer;
 import com.github.stmated.plang.lexer.PlangLexerSteps;
 import com.github.stmated.plang.llvm.lowering.MirToLLVMLowering;
@@ -19,7 +19,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Plang {
 
-  public record Result<T>(T resultValue, String output, String error) {}
+  public record Result<T>(T resultValue, String output, String error) {
+
+  }
 
   public static AstProgram codeToAst(String code) {
 
@@ -52,10 +54,14 @@ public class Plang {
     return ThirToMirLowering.lower(thir);
   }
 
+  public static HirProgram codeToHir(String code) {
+    final var ast = Plang.codeToAst(code);
+    return Plang.astToHir(ast);
+  }
+
   public static ThirRaiseResult codeToThir(String code) {
 
-    final var ast = Plang.codeToAst(code);
-    final var hir = Plang.astToHir(ast);
+    final var hir = Plang.codeToHir(code);
     return Plang.hirToThir(hir);
   }
 

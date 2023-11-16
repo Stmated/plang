@@ -34,27 +34,27 @@ public class MirToLLVMUtils {
   public static LLVMTypeRef toLLVMType(LLVMContextRef context, Ty ty) {
 
     return switch (ty) {
-      case TyValueNumberInteger ni when ni.width() == 128 -> LLVM.LLVMInt128TypeInContext(context);
-      case TyValueNumberInteger ni when ni.width() == 64 -> LLVM.LLVMInt64TypeInContext(context);
-      case TyValueNumberInteger ni when ni.width() == 32 -> LLVM.LLVMInt32TypeInContext(context);
-      case TyValueNumberInteger ni when ni.width() == 16 -> LLVM.LLVMInt16TypeInContext(context);
-      case TyValueNumberInteger ni when ni.width() == 8 -> LLVM.LLVMInt8TypeInContext(context);
-      case TyValueNumberInteger ni when ni.width() == 1 -> LLVM.LLVMInt1TypeInContext(context);
-      case TyValueNumberInteger ni -> LLVM.LLVMIntTypeInContext(context, ni.width());
+      case TyValueNumberInteger ni when ni.width().value() == 128 -> LLVM.LLVMInt128TypeInContext(context);
+      case TyValueNumberInteger ni when ni.width().value() == 64 -> LLVM.LLVMInt64TypeInContext(context);
+      case TyValueNumberInteger ni when ni.width().value() == 32 -> LLVM.LLVMInt32TypeInContext(context);
+      case TyValueNumberInteger ni when ni.width().value() == 16 -> LLVM.LLVMInt16TypeInContext(context);
+      case TyValueNumberInteger ni when ni.width().value() == 8 -> LLVM.LLVMInt8TypeInContext(context);
+      case TyValueNumberInteger ni when ni.width().value() == 1 -> LLVM.LLVMInt1TypeInContext(context);
+      case TyValueNumberInteger ni -> LLVM.LLVMIntTypeInContext(context, ni.width().value());
 
-      case TyValueNumberPrecisioned np when np.width() == 128 -> LLVM.LLVMFP128TypeInContext(context);
-      case TyValueNumberPrecisioned np when np.width() == 80 -> LLVM.LLVMX86FP80TypeInContext(context);
-      case TyValueNumberPrecisioned np when np.width() == 64 -> LLVM.LLVMDoubleTypeInContext(context);
-      case TyValueNumberPrecisioned np when np.width() == 32 -> LLVM.LLVMFloatTypeInContext(context);
-      case TyValueNumberPrecisioned np when np.width() == 16 -> LLVM.LLVMHalfTypeInContext(context);
+      case TyValueNumberPrecisioned np when np.width().value() == 128 -> LLVM.LLVMFP128TypeInContext(context);
+      case TyValueNumberPrecisioned np when np.width().value() == 80 -> LLVM.LLVMX86FP80TypeInContext(context);
+      case TyValueNumberPrecisioned np when np.width().value() == 64 -> LLVM.LLVMDoubleTypeInContext(context);
+      case TyValueNumberPrecisioned np when np.width().value() == 32 -> LLVM.LLVMFloatTypeInContext(context);
+      case TyValueNumberPrecisioned np when np.width().value() == 16 -> LLVM.LLVMHalfTypeInContext(context);
 
       // It is completely up to any code that uses these types to know that they are integers and need special care based on scale.
-      case TyValueNumberScaled ni when ni.width() == 128 -> LLVM.LLVMInt128TypeInContext(context);
-      case TyValueNumberScaled ni when ni.width() == 64 -> LLVM.LLVMInt64TypeInContext(context);
-      case TyValueNumberScaled ni when ni.width() == 32 -> LLVM.LLVMInt32TypeInContext(context);
-      case TyValueNumberScaled ni when ni.width() == 16 -> LLVM.LLVMInt16TypeInContext(context);
-      case TyValueNumberScaled ni when ni.width() == 8 -> LLVM.LLVMInt8TypeInContext(context);
-      case TyValueNumberScaled ni when ni.width() == 1 -> LLVM.LLVMInt1TypeInContext(context);
+      case TyValueNumberScaled ni when ni.width().value() == 128 -> LLVM.LLVMInt128TypeInContext(context);
+      case TyValueNumberScaled ni when ni.width().value() == 64 -> LLVM.LLVMInt64TypeInContext(context);
+      case TyValueNumberScaled ni when ni.width().value() == 32 -> LLVM.LLVMInt32TypeInContext(context);
+      case TyValueNumberScaled ni when ni.width().value() == 16 -> LLVM.LLVMInt16TypeInContext(context);
+      case TyValueNumberScaled ni when ni.width().value() == 8 -> LLVM.LLVMInt8TypeInContext(context);
+      case TyValueNumberScaled ni when ni.width().value() == 1 -> LLVM.LLVMInt1TypeInContext(context);
 
       case TyValueString s -> toLLVMType(context, new TyPointer<>(Ty.CHAR));
 

@@ -5,6 +5,7 @@ import com.github.stmated.plang.ast.model.AstBinaryOperation;
 import com.github.stmated.plang.ast.model.AstBinaryOperationKind;
 import com.github.stmated.plang.ast.model.AstBlock;
 import com.github.stmated.plang.ast.model.AstBracket;
+import com.github.stmated.plang.ast.model.AstBracketAccess;
 import com.github.stmated.plang.ast.model.AstCall;
 import com.github.stmated.plang.ast.model.AstCallable;
 import com.github.stmated.plang.ast.model.AstConditional;
@@ -24,6 +25,8 @@ import com.github.stmated.plang.ast.model.AstType;
 import com.github.stmated.plang.ast.model.AstVariableDeclaration;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.hir.model.HirArgument;
+import com.github.stmated.plang.hir.model.HirArray;
+import com.github.stmated.plang.hir.model.HirArrayAccess;
 import com.github.stmated.plang.hir.model.HirAssignment;
 import com.github.stmated.plang.hir.model.HirBinaryOperation;
 import com.github.stmated.plang.hir.model.HirBinaryOperationKind;
@@ -48,9 +51,22 @@ import com.github.stmated.plang.hir.model.HirTuple;
 import com.github.stmated.plang.hir.model.HirTupleKeyValue;
 import com.github.stmated.plang.hir.model.HirTy;
 import com.github.stmated.plang.hir.model.HirVariableDeclaration;
+import com.github.stmated.plang.thir.raising.HirToThirRaising;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyValueNumber;
+import com.github.stmated.plang.ty.TyValueNumberInteger;
+import com.github.stmated.plang.ty.util.Tys;
 import java.util.ArrayList;
+import java.util.Objects;
 
+/**
+ * The AstToHirRaising class is responsible for converting an AST program into a HIR program.
+ * <p/>
+ * Note that the AST representation does not necessarily have to match the logical tree-structure of the code.
+ * <p>
+ * The AST is rather a very high-level representation of the flow of the code, and not its meaning. For example an array access is an expression of some sort
+ * followed by a bracket syntax. It is up to this AST -> HIR raising to notice the contextual significance of those brackets and turn it into an array access.
+ */
 public class AstToHirRaising {
 
   public HirProgram lower_program(AstProgram astProgram) {
@@ -125,6 +141,7 @@ public class AstToHirRaising {
       case AstReturn ast -> lower_return(ast);
       case AstBlock ast -> lower_block(ast);
       case AstCall ast -> lower_call(ast);
+      case AstBracketAccess ast -> lower_bracket_access(ast);
       case AstIdentifier ast -> lower_identifier(ast);
       case AstParen ast -> lower_paren(ast);
       case AstBracket ast -> lower_bracket(ast);
@@ -144,7 +161,95 @@ public class AstToHirRaising {
 
   private HirExpression lower_bracket(AstBracket ast) {
 
-    throw new NotImplementedException();
+    final var elements = new ArrayList<HirExpression>();
+    var section = 0;
+
+    final var sections = new HirExpression[3];
+
+    for (final var entry : ast.children()) {
+
+      if (entry instanceof AstNoOp) {
+        section++;
+        continue;
+      }
+
+      final var lowered = lower_expression(entry);
+
+      if (section == 0) {
+        elements.add(lowered);
+      } else {
+        if (sections[section] == null) {
+          sections[section] = lowered;
+        } else {
+          throw new IllegalArgumentException("Illegal array syntax, only one initializer allowed");
+        }
+      }
+    }
+
+    // 0: [0, 1, 2] -- initialize with values
+    // 1: [0u8; 500] -- initialize with 0, type inferred uint8, size 500
+    // 2: [;uint8;500] -- do not initialize, type uint8, size 500
+    // 2: [1,2,3;uint8;500] -- initialize with 1,2,3 repeating, type uint8, size 500
+
+    final var elementArray = elements.toArray(new HirExpression[0]);
+
+    if (section == 0) {
+
+      // There are only elements. We will derive the rest from that.
+      final var tyExpr = new HirTy((elementArray.length > 0) ? getTy(elementArray[0]) : Ty.INFER);
+      return new HirArray(elementArray, tyExpr, new HirLiteral(Objects.toString(elementArray.length), Ty.INTEGER));
+
+    } else if (section == 1) {
+
+      final var tyExpr = new HirTy((elementArray.length > 0) ? getTy(elementArray[0]) : Ty.INFER);
+      final var size = sections[1];
+      return new HirArray(elementArray, tyExpr, size);
+
+    } else if (section == 2) {
+
+      final var tyExpr = sections[1];
+      final var explArrayElementTy = getTyFromType(tyExpr);
+
+      if (explArrayElementTy instanceof TyValueNumber vn) {
+        for (var i = 0; i < elementArray.length; i++) {
+
+          final var element = elementArray[i];
+          if (element instanceof HirLiteral lit && lit.ty() instanceof TyValueNumber litTy_n) {
+            if (!litTy_n.width().explicit() && (litTy_n.width().value() != vn.width().value() || litTy_n.signed() != vn.signed())) {
+
+              // val array = [1, 2, 3; uint8]
+              // val array = [1, 2, 3; uint]
+              // Should automatically translate non-explicit integers in array to stated type.
+              elementArray[i] = new HirLiteral(lit.content(), vn);
+            }
+          }
+        }
+      }
+
+      final var size = sections[2];
+      return new HirArray(elementArray, tyExpr, size);
+
+    } else {
+      throw new IllegalArgumentException("Unknown array syntax");
+    }
+  }
+
+  private Ty getTy(HirExpression expr) {
+
+    final var thir = new HirToThirRaising(true);
+    final var found = thir.raise(expr).getType(expr);
+    return Objects.requireNonNullElse(found, Ty.INFER);
+  }
+
+  private Ty getTyFromType(HirExpression expr) {
+
+    final var thir = new HirToThirRaising(true);
+    var found = thir.investigate_type_expression(expr);
+    if (found == null) {
+      found = thir.raise(expr).getType(expr);
+    }
+
+    return Objects.requireNonNullElse(found, Ty.INFER);
   }
 
   private HirExpression lower_labeling(AstLabeling ast) {
@@ -251,6 +356,24 @@ public class AstToHirRaising {
 
   private HirIdentifier lower_identifier(AstIdentifier ast) {
     return new HirIdentifier(ast.name());
+  }
+
+  private HirArrayAccess lower_bracket_access(AstBracketAccess ast) {
+
+    final var target = lower_expression(ast.target());
+    final var astAccessors = ast.accessor().children();
+    final var hirAccessors = new HirExpression[astAccessors.length];
+    for (var i = 0; i < astAccessors.length; i++) {
+      hirAccessors[i] = lower_expression(astAccessors[i]);
+    }
+
+    if (hirAccessors.length == 0) {
+      throw new IllegalArgumentException("Missing array access index");
+    } else if (hirAccessors.length == 1) {
+      return new HirArrayAccess(target, hirAccessors[0]);
+    } else {
+      return new HirArrayAccess(target, new HirExpressions(hirAccessors));
+    }
   }
 
   private HirCall lower_call(AstCall ast) {
@@ -385,13 +508,6 @@ public class AstToHirRaising {
 
           final var third = head.children()[2];
           switch (third) {
-//            case HirBinaryOperation hir -> {
-//              if (hir.kind().isAction()) {
-//                hirAction = hir;
-//              } else {
-//                throw new IllegalArgumentException(STR."The third for-loop part must be an action binary op, not '\{hir}'");
-//              }
-//            }
             case HirAssignment hir -> loopAction = hir;
             default -> throw new IllegalArgumentException(STR."The second for-loop part cannot be a '\{third}'");
           }
@@ -400,7 +516,6 @@ public class AstToHirRaising {
           throw new IllegalArgumentException(STR."A for-loop is a three-part expression list, not '\{loweredHead}'");
         }
       }
-//      case HirTuple tuple ->
       default -> throw new NotImplementedException(STR."Unknown head expression '\{loweredHead}'");
     }
 
@@ -435,8 +550,6 @@ public class AstToHirRaising {
     return switch (astExpr) {
       case AstExpressions collection -> lower_paren_expression_collection(collection);
       default -> lower_expression(astExpr);
-
-      //throw new NotImplementedException(STR."Unknown expression '\{astExpr}'");
     };
   }
 

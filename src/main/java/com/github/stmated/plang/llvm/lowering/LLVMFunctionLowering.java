@@ -4,15 +4,20 @@ import static org.bytedeco.llvm.global.LLVM.LLVMAddIncoming;
 import static org.bytedeco.llvm.global.LLVM.LLVMBuildCondBr;
 import static org.bytedeco.llvm.global.LLVM.LLVMBuildPhi;
 
+import com.github.stmated.plang.ast.model.AstLiteral;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.exceptions.UnexpectedExpressionException;
+import com.github.stmated.plang.exceptions.UnexpectedTokenException;
+import com.github.stmated.plang.lexer.Token;
 import com.github.stmated.plang.llvm.util.LLVMTys;
 import com.github.stmated.plang.mir.model.MirCall;
 import com.github.stmated.plang.mir.model.MirInstr;
 import com.github.stmated.plang.mir.model.MirInstrBinaryOperation;
 import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
+import com.github.stmated.plang.mir.model.MirInstrCreateArray;
 import com.github.stmated.plang.mir.model.MirInstrCreateFn;
 import com.github.stmated.plang.mir.model.MirInstrCreateLiteral;
+import com.github.stmated.plang.mir.model.MirInstrGetArrayElement;
 import com.github.stmated.plang.mir.model.MirInstrGetGlobal;
 import com.github.stmated.plang.mir.model.MirInstrGetParam;
 import com.github.stmated.plang.mir.model.MirInstrJump;
@@ -20,8 +25,10 @@ import com.github.stmated.plang.mir.model.MirInstrPhi;
 import com.github.stmated.plang.mir.model.MirInstrStore;
 import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.mir.model.MirReturn;
+import com.github.stmated.plang.ty.BitWidth;
 import com.github.stmated.plang.ty.RealKind;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyFlags;
 import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyValueArray;
 import com.github.stmated.plang.ty.TyValueBoolean;
@@ -33,11 +40,14 @@ import com.github.stmated.plang.ty.util.Pair;
 import com.github.stmated.plang.ty.util.Tys;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.llvm.LLVM.LLVMModuleRef;
@@ -183,6 +193,8 @@ class LLVMFunctionLowering {
       case MirInstrStore it -> lower_store(it);
       case MirInstrGetGlobal it -> lower_get_global(it);
       case MirInstrGetParam it -> lower_get_param(it);
+      case MirInstrCreateArray it -> lower_create_array(it);
+      case MirInstrGetArrayElement it -> lower_get_array_element(it);
       default -> throw new UnexpectedExpressionException(miri);
     };
 
@@ -190,6 +202,89 @@ class LLVMFunctionLowering {
     mirToLlvmCtx.register(miri, valueRef);
 
     return valueRef;
+  }
+
+  private LLVMValueRef lower_create_array(MirInstrCreateArray mir) {
+
+    // TODO: Need to be able to handle const/global arrays, and not allocate them like this every time.
+
+    final var elementType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, mir.elementTy());
+
+    final var i32Type = LLVM.LLVMInt32TypeInContext(mirToLlvmCtx.context);
+
+    final var arraySizeStatic = switch (mir.ty()) {
+      case TyValueArray array -> array.size();
+      default -> null;
+    };
+
+    final var arraySizeRef = (arraySizeStatic != null || mir.length() == null)
+      ? LLVM.LLVMConstInt(i32Type, Objects.requireNonNullElse(arraySizeStatic, mir.elements().length), 0)
+      : lower_instruction(mir.length());
+
+    // TODO: We should only use this for VERY SMALL arrays, since it is allocated on the stack!
+    //        Should instead use LLVMConstArray2
+    final var arrayRef = LLVM.LLVMBuildArrayAlloca(mirToLlvmCtx.builder, elementType, arraySizeRef, "arr");
+
+    final var elementRefs = new LLVMValueRef[mir.elements().length];
+
+    for (var i = 0; i < mir.elements().length; i++) {
+
+      final var elementRef = lower_instruction(mir.elements()[i]); ;
+      elementRefs[i] = elementRef;
+
+      final var indices = new PointerPointer<>(1);
+      indices.put(0, LLVM.LLVMConstInt(i32Type, i, 0));
+
+      final var elementPtr = LLVM.LLVMBuildInBoundsGEP2(mirToLlvmCtx.builder, elementType, arrayRef, indices, 1, STR."arr_ptr_\{i}");
+      LLVM.LLVMBuildStore(mirToLlvmCtx.builder, elementRef, elementPtr);
+    }
+
+    if (mir.length() != null && mir.elements().length > 0) {
+
+      // We have been given a length, which might not be the same length as the elements that were given.
+      if (arraySizeStatic != null) {
+
+        // If the array type has a known size, then we'll just go with that, and add inline instructions for each initialization.
+        for (var i = mir.elements().length; i < arraySizeStatic; i++) {
+
+          final var elementRef = elementRefs[i % elementRefs.length];
+
+          final var indices = new PointerPointer<>(1);
+          indices.put(0, LLVM.LLVMConstInt(i32Type, i, 0));
+
+          final var elementPtr = LLVM.LLVMBuildInBoundsGEP2(mirToLlvmCtx.builder, elementType, arrayRef, indices, 1, STR."arr_ptr_\{i}");
+          LLVM.LLVMBuildStore(mirToLlvmCtx.builder, elementRef, elementPtr);
+        }
+
+      } else {
+
+        // TODO: Need to implement this! Add a counter and code that loops until the right amount of init has been done.
+      }
+    }
+
+    return arrayRef;
+  }
+
+  private LLVMValueRef lower_get_array_element(MirInstrGetArrayElement it) {
+
+    final var arrayRef = lower_instruction(it.target());
+    final var indexRef = lower_instruction(it.accessor());
+
+    final var accessorTy = it.accessor().ty();
+    final var expectedTy = Tys.dereference(accessorTy);
+    final var dereferencedIndexRef = convert(indexRef, accessorTy, expectedTy, it.accessor());
+
+    // This is the type of the result..
+    // TODO: This does currently not support things like slices and ranges. Need to properly handle all non-simple/non-integer access methods!
+    // TODO: "resultType" will then not be same as a future "elementType" that we will use to construct the expected "resultType".
+    final var resultType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, it.ty());
+
+    final var indices = new PointerPointer<>(1);
+    indices.put(0, dereferencedIndexRef);
+
+    final var ptr = LLVM.LLVMBuildGEP2(mirToLlvmCtx.builder, resultType, arrayRef, indices, 1, "arr_gep");
+
+    return LLVM.LLVMBuildLoad2(mirToLlvmCtx.builder, resultType, ptr, "arr_gep_loaded");
   }
 
   private LLVMValueRef lower_get_param(MirInstrGetParam mir) {
@@ -367,6 +462,46 @@ class LLVMFunctionLowering {
     return pair;
   }
 
+  private LLVMValueRef convert(LLVMValueRef ref, Ty given, Ty expected, MirInstr owner) {
+
+    if (given instanceof TyValueArray va) {
+      if (expected instanceof TyPointer) {
+
+        // global variables are actually treated as single-item arrays.
+        // So index 0 of the global item, then index 0 of that array.
+
+        // TODO: Need to know if it actually is a global or not -- it does not have to be
+
+        final var indices = new PointerPointer<>(2);
+        indices.put(0, LLVM.LLVMConstInt(MirToLLVMUtils.toLLVMType(mirToLlvmCtx, Ty.INTEGER), 0, 0));
+        indices.put(1, LLVM.LLVMConstInt(MirToLLVMUtils.toLLVMType(mirToLlvmCtx, Ty.INTEGER), 0, 0));
+
+        final var targetType = va.elementType();
+        final var gepType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, targetType);
+
+        final var name = getInstrName(owner, "gep", "gep");
+        return LLVM.LLVMBuildGEP2(mirToLlvmCtx.builder, gepType, ref, indices, 2, name);
+      }
+    } else if (Tys.getReferenceDepth(given) > Tys.getReferenceDepth(expected)) {
+
+      final var rootTypeGiven = Tys.dereferenceRecursively(given);
+      final var rootTypeExpected = Tys.dereferenceRecursively(expected);
+      final var differences = Tys.getDifferences(rootTypeGiven, rootTypeExpected);
+
+      if (!Tys.isGenerallyCompatible(differences)) {
+
+        // TODO: This should NOT be thrown here -- it should have been thrown earlier in the THIR stage when types are verified.
+        throw new IllegalArgumentException("Cannot convert between types! Do not check this here. Throw in earlier stages!");
+      }
+
+      final var type = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, expected);
+      final var name = getInstrName(owner, "load", "load");
+      return LLVM.LLVMBuildLoad2(mirToLlvmCtx.builder, type, ref, name);
+    }
+
+    return ref;
+  }
+
   private LLVMValueRef lower_phi(MirInstrPhi mir) {
 
     final var phiValues = new PointerPointer<>(mir.operands().length);
@@ -458,16 +593,28 @@ class LLVMFunctionLowering {
     return array.ref();
   }
 
+  private final Pattern PATTERN_INTEGER_SUFFIX = Pattern.compile("(\\d+)([iu])(\\d+)");
+
   private LLVMValueRef lower_literal_number_integer(MirInstrCreateLiteral literal, TyValueNumberInteger ty) {
 
     // TODO: Wrong? Or can it handle octal, hex and binary? Need tests
 
     final var content = literal.content();
-    final var v = Integer.parseInt(content, ty.radix());
+    final var v = parseLiteralInteger(content, ty.radix());
     final var typeRef = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, ty);
     final var constant = LLVM.LLVMConstInt(typeRef, v, ty.signed() ? 1 : 0);
 
     return giveConstantOrAlloca(constant, typeRef, literal, ty);
+  }
+
+  private int parseLiteralInteger(String content, int radix) {
+
+    final var matcher = PATTERN_INTEGER_SUFFIX.matcher(content);
+    if (matcher.find()) {
+      return Integer.parseInt(matcher.group(1), radix);
+    }
+
+    return Integer.parseInt(content, radix);
   }
 
   private LLVMValueRef lower_literal_number_precisioned(String content, MirInstr instr, TyValueNumberPrecisioned ty) {
@@ -648,25 +795,13 @@ class LLVMFunctionLowering {
 
     final var v = pair.ref();
 
-//    if (a instanceof TyValueNumber an && b instanceof TyValueNumber bn) {
-//      if (an.signed() != bn.signed()) {
-//
-//        // Return pair as-is, and it is then up to other code to see that they are (depending on context) incompatible.
-//        return pair;
-//      }
-//    }
-
     // TODO: Speed would increase by making all Ty created from singleton factory,
     //  where each unique is same instance, so comparison above quickly matches.
     return switch (a) {
       case TyValueNumberInteger ani -> switch (b) {
         case TyValueNumberInteger bni when ani.width() != bni.width() -> {
 
-//          if (pair.ty() == bni) {
-//            yield pair;
-//          }
-
-          final var newWidth = Math.max(ani.width(), bni.width());
+          final var newWidth = BitWidth.merge(ani.width(), bni.width());
           final var newFlags = Tys.mixFlags(ani.flags(), bni.flags());
           final var newTy = Tys.intern(new TyValueNumberInteger(ani.radix(), newWidth, ani.signed() || bni.signed(), newFlags));
           final var newType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, newTy);
@@ -685,9 +820,14 @@ class LLVMFunctionLowering {
           }
 
           // TODO: Probably wrong with the width; need to take into account the precision size
-          final var newWidth = Math.max(ani.width(), bnp.width());
-          final var newFlags = Tys.mixFlags(ani.flags(), bnp.flags());
-          final var newTy = Tys.intern(new TyValueNumberPrecisioned(RealKind.FLOAT, newWidth, bnp.precision(), ani.signed(), newFlags));
+
+          final var newTy = Ty.FLOAT.toBuilder()
+            .width(BitWidth.merge(ani.width(), bnp.width()))
+            .flags(Tys.mixFlags(ani.flags(), bnp.flags()))
+            .signed(ani.signed())
+            .build()
+            .intern();
+
           final var newType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, newTy);
 
           final var built = ani.signed()
@@ -701,13 +841,4 @@ class LLVMFunctionLowering {
       default -> throw new NotImplementedException(STR."Implement widening for '\{a}'");
     };
   }
-
-//  private RefTyPair normalizeSign(RefTyPair pair, boolean isSigned, boolean toBeSigned) {
-//
-//    if (isSigned == toBeSigned) {
-//      return pair;
-//    }
-//
-//    LLVM.LLVMBuildSExtOrBitCast()
-//  }
 }

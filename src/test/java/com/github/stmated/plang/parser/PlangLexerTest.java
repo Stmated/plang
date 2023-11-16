@@ -129,6 +129,42 @@ class PlangLexerTest {
     Assertions.assertEquals("1.1", tokens.getFirst().content());
   }
 
+  @Test
+  void testIntegerSuffix1() {
+    final var tokens = this.execute("1u8");
+    Assertions.assertEquals(1, tokens.size());
+    Assertions.assertEquals(LITERAL_INTEGER, tokens.getFirst().type());
+    Assertions.assertEquals(0, tokens.getFirst().start());
+    Assertions.assertEquals(3, tokens.getFirst().end());
+  }
+
+  @Test
+  void testIntegerSuffix2() {
+    final var tokens = this.execute("11u8");
+    Assertions.assertEquals(1, tokens.size());
+    Assertions.assertEquals(LITERAL_INTEGER, tokens.getFirst().type());
+    Assertions.assertEquals(0, tokens.getFirst().start());
+    Assertions.assertEquals(4, tokens.getFirst().end());
+  }
+
+  @Test
+  void testIntegerSuffix3() {
+    final var tokens = this.execute("123u128");
+    Assertions.assertEquals(1, tokens.size());
+    Assertions.assertEquals(LITERAL_INTEGER, tokens.getFirst().type());
+    Assertions.assertEquals(0, tokens.getFirst().start());
+    Assertions.assertEquals(7, tokens.getFirst().end());
+  }
+
+  @Test
+  void testIntegerSuffix4() {
+    final var tokens = this.execute("123i64");
+    Assertions.assertEquals(1, tokens.size());
+    Assertions.assertEquals(LITERAL_INTEGER, tokens.getFirst().type());
+    Assertions.assertEquals(0, tokens.getFirst().start());
+    Assertions.assertEquals(6, tokens.getFirst().end());
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {
     "1 + 1",
@@ -227,21 +263,6 @@ class PlangLexerTest {
     Assertions.assertEquals("1", tokenList.get(2).content());
   }
 
-  public static Stream<Arguments> allValidTestFiles() throws IOException {
-    return PlangTestUtil.testShouldSucceedSource();
-  }
-
-//  @ParameterizedTest
-//  @MethodSource("allValidTestFiles")
-//  @SneakyThrows
-//  void testAllFiles(Path path) {
-//
-//    // Does not test real validity, just that it does not crash.
-//    try (final var tokens = new PlangLexer(Files.newInputStream(path))) {
-//       this.iteratorToList(tokens);
-//    }
-//  }
-
   @Test
   void testTokenizerErrors() {
     Assertions.assertThrows(InvalidDecimalsException.class, () ->  this.execute("123.123.123"));
@@ -271,7 +292,8 @@ class PlangLexerTest {
     Assertions.assertEquals(expected, actual);
   }
 
-  private List<Token> execute(String from) throws Exception {
+  @SneakyThrows
+  private List<Token> execute(String from) {
 
     final var pass2 = new PlangLexerSteps();
     try (final var tokens = new PlangLexer(PlangTestUtil.stringToStream(from))) {

@@ -58,6 +58,16 @@ class AstToHirRaisingTest {
   }
 
   @Test
+  void testCreateAndAccessArray() {
+    final var code = "a[10]";
+    final var hir = Plang.codeToHir(code);
+
+    Assertions.assertNotNull(hir);
+
+    Assertions.assertInstanceOf(HirProgram.class, hir);
+  }
+
+  @Test
   void testAnonymousFnWithDirectCall() {
 
     final var thir = Plang.codeToThir("((a: int, b: int) => a + b)(5, 5)");

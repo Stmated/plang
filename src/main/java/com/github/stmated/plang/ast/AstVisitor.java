@@ -245,4 +245,12 @@ public interface AstVisitor<T> {
   default T visitSpread(AstSpread expr) {
     return visit(expr.expression());
   }
+
+  default T visitBracketAccess(AstBracketAccess expr) {
+    return aggregate(visit(expr.target()), visit(expr.accessor()));
+  }
+
+  default T visitRest(AstRest expr) {
+    return noValue();
+  }
 }

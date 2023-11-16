@@ -1,8 +1,11 @@
 package com.github.stmated.plang.thir.raising;
 
+import com.github.stmated.plang.exceptions.InvalidTypeConversionException;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.exceptions.UnexpectedExpressionException;
 import com.github.stmated.plang.hir.model.HirArgument;
+import com.github.stmated.plang.hir.model.HirArray;
+import com.github.stmated.plang.hir.model.HirArrayAccess;
 import com.github.stmated.plang.hir.model.HirAssignment;
 import com.github.stmated.plang.hir.model.HirBinaryOperation;
 import com.github.stmated.plang.hir.model.HirCall;
@@ -26,7 +29,10 @@ import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyIdentifier;
 import com.github.stmated.plang.ty.TyParam;
+import com.github.stmated.plang.ty.TyValueArray;
+import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.util.Tys;
+import com.github.stmated.plang.util.JavaUtil;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -42,9 +48,14 @@ public class HirToThirRaising {
 
   private final Map<HirExpression, Ty> map = new HashMap<>();
   private final Stack<ThirScope> scopeStack = new Stack<>();
+  private final boolean lenient;
 
-  public Ty getType(HirExpression e) {
-    return map.get(e);
+  public HirToThirRaising() {
+    this(false);
+  }
+
+  public HirToThirRaising(boolean lenient) {
+    this.lenient = lenient;
   }
 
   public ThirRaiseResult raise(HirExpression e) {
@@ -70,10 +81,6 @@ public class HirToThirRaising {
 
     final var ty = investigate_inner(e);
 
-//    if (ty == Ty.INFER && !(e instanceof HirTy)) {
-//      throw new IllegalArgumentException(STR."Not allowed to set \{e} as \{Ty.INFER} in THIR stage");
-//    }
-
     map.put(e, ty);
     return ty;
   }
@@ -98,9 +105,74 @@ public class HirToThirRaising {
       case HirFunction it -> investigate_function(it);
       case HirFunctionSignature it -> investigate_function_signature(it);
       case HirTy it -> it.ty();
+      case HirArray it -> investigate_array(it);
+      case HirArrayAccess it -> investigate_array_access(it);
       case HirParameter it -> throw new IllegalArgumentException(STR."A Parameter itself (\{it}) does not have a type (yet?). Resolve it higher in call chain");
       default -> throw new UnexpectedExpressionException(e);
     };
+  }
+
+  private Ty investigate_array_access(HirArrayAccess it) {
+
+    final var targetTy = investigate(it.target());
+    final var accessorTy = investigate(it.accessor());
+
+    final var isRange = switch (accessorTy) {
+      case TyValueArray _ -> true;
+      default -> false;
+    };
+
+    return switch (targetTy) {
+      // The below should not return array type if is range, it should return a slice, which is different.
+      case TyValueArray arrayTy -> isRange ? arrayTy : arrayTy.elementType();
+      default -> throw new UnexpectedExpressionException(it.target());
+    };
+  }
+
+  private Object resolveLiteralValue(HirExpression expr) {
+
+    return switch (expr) {
+      case HirLiteral literal -> switch (literal.ty()) {
+        case TyValueNumberInteger vni -> Integer.parseInt(literal.content(), vni.radix());
+        default -> null;
+      };
+      case HirBinaryOperation bop -> {
+        final var lhs = resolveLiteralValue(bop.lhs());
+        final var rhs = resolveLiteralValue(bop.rhs());
+
+        yield switch (bop.kind()) {
+          case ADD -> JavaUtil.add(lhs, rhs);
+          case SUBTRACT -> JavaUtil.subtract(lhs, rhs);
+          case MULTIPLY -> JavaUtil.multiply(lhs, rhs);
+          default -> null;
+        };
+      }
+      default -> null;
+    };
+  }
+
+  private Ty investigate_array(HirArray it) {
+
+    var arrayElementTy = investigate_type_expression(it.elementType());
+    for (final var element : it.elements()) {
+      final var elementTy = investigate(element);
+      if (arrayElementTy == Ty.INFER) {
+        arrayElementTy = elementTy;
+      } else {
+
+        final var common = Tys.getCommonDenominator(arrayElementTy, elementTy);
+        final var diffs = common.diffs();
+        if (!Tys.isSizeCompatible(diffs)) {
+          throw new InvalidTypeConversionException("Array types must be size-compatible", elementTy, arrayElementTy);
+        }
+      }
+    }
+
+    Object literalValue = resolveLiteralValue(it.length());
+    Integer arrayLength = (literalValue == null) ? null : ((Number) literalValue).intValue();
+
+    // The element ty can still be INFER -- it will be used for late type decisions.
+    return new TyValueArray(arrayElementTy, arrayLength).intern();
   }
 
   private TyFn investigate_function_signature(HirFunctionSignature hir) {
@@ -250,7 +322,7 @@ public class HirToThirRaising {
    * <p>
    * TODO: In a future pass it would be preferential to resolve these inline and replace/rebuild the expressions.
    */
-  private Ty investigate_type_expression(HirExpression hir) {
+  public Ty investigate_type_expression(HirExpression hir) {
 
     return switch (hir) {
       case HirIdentifier id -> {
@@ -269,6 +341,10 @@ public class HirToThirRaising {
   private Ty investigate_identifier(HirIdentifier hir) {
 
     final var resolvedVariable = scopeStack.peek().get(hir.name());
+    if (lenient && resolvedVariable == null) {
+      return null;
+    }
+
     return Objects.requireNonNull(resolvedVariable, STR."Cannot get '\{hir.name()}' since its type is unknown");
   }
 

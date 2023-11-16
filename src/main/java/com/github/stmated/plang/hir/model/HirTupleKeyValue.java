@@ -1,11 +1,14 @@
 package com.github.stmated.plang.hir.model;
 
-public record HirTupleKeyValue(HirIdentifier key, HirExpression value) implements HirExpression {
+import org.codehaus.commons.nullanalysis.NotNull;
+import org.codehaus.commons.nullanalysis.Nullable;
 
-//  @Override
-//  public HirType getResultType() {
-//
-//    // TODO: Needs to implement the kind of "trait" -- should be very generic
-//    return null;
-//  }
+public record HirTupleKeyValue(
+  @Nullable
+  HirIdentifier key,
+  @NotNull
+  HirExpression value
+) implements HirExpression {
+
+
 }

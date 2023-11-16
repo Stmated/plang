@@ -1,6 +1,7 @@
 package com.github.stmated.plang.llvm.lowering;
 
 import com.github.stmated.plang.Plang;
+import com.github.stmated.plang.exceptions.InvalidTypeConversionException;
 import com.github.stmated.plang.exceptions.UnreachableCodeLLVMException;
 import com.github.stmated.plang.hir.model.HirBinaryOperation;
 import com.github.stmated.plang.hir.model.HirBinaryOperationKind;
@@ -9,9 +10,11 @@ import com.github.stmated.plang.hir.model.HirExpressions;
 import com.github.stmated.plang.hir.model.HirLiteral;
 import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.hir.model.HirReturn;
+import com.github.stmated.plang.ty.BitWidth;
 import com.github.stmated.plang.ty.Ty;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -205,14 +208,78 @@ class MirToLLVMLoweringTest {
 
   @Test
   void testCreateAndAccessArray() {
-    final var code = "val a = [10, 20]; return a[1];";
+    final var code = "val a = [10, 20]; return a[0];";
     Assertions.assertEquals(10, Plang.codeToResult(code).resultValue());
+  }
+
+  @Test
+  void testCreateAndAccessArrayWithInitializer() {
+    final var code = "val a = [666; 500]; return a[499];";
+    Assertions.assertEquals(666, Plang.codeToResult(code).resultValue());
+  }
+
+  @Test
+  void testCreateAndAccessArrayWithAlternatingInitializer() {
+    final var code = "val a = [1, 2, 3, 4; 500]; return a[0] + a[3] + a[5];";
+    Assertions.assertEquals(1 + 4 + 2, Plang.codeToResult(code).resultValue());
   }
 
   @Test
   void testCreateAndAccessAndUseArray() {
     final var code = "val a = [10, 20]; return a[0] + a[1];";
     Assertions.assertEquals(30, Plang.codeToResult(code).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val a = [1, 2, 3, 4, 5;uint;10]; var t = 0; for (var i = 0; i < 100; i += 1) { t += a[i] } return t;",
+    "val a = [1, 2, 3, 4, 5;uint32;10]; var t = 0; for (var i = 0; i < 100; i += 1) { t += a[i] } return t;",
+    "val a = [1, 2, 3, 4, 5;uint64;10]; var t = 0; for (var i = 0; i < 100; i += 1) { t += a[i] } return t;",
+    "val a = [1, 2, 3, 4, 5;uint8;10]; var t = 0; for (var i = 0; i < 100; i += 1) { t += a[i] } return t;"
+  })
+  void testCreateAndIterateArray(String code) {
+    Assertions.assertNotEquals(0, Plang.codeToResult(code).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val a = 10i32; val b = 20u8; a + b",
+    "val a = 10u32; val b = 20i8; a + b",
+    "val a = 10i32; val b = 20i8; a + b",
+    "val a = 10u32; val b = 20u8; a + b",
+    "val a = 10i8; val b = 20u32; a + b",
+    "val a = 10u8; val b = 20i32; a + b",
+    "val a = 10i8; val b = 20i32; a + b",
+    "val a = 10u8; val b = 20u32; a + b",
+  })
+  void testAddIntegersOfDifferentWidths(String code) {
+    Assertions.assertEquals(30, Plang.codeToResult(code).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val a = [1i8, 2i8, 3i8, 4i8, 5i8;int8;10]; var t = 0; for (var i = 0; i < 100; i += 1) { t += a[i] } return t;"
+  })
+  void testCreateAndIterateExplicitUint8Array(String code) {
+    Assertions.assertNotEquals(0, Plang.codeToResult(code).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val a = [1i32, 2i32, 3i32, 4i32, 5i32;uint8;10]; var t = 0; for (var i = 0; i < 100; i += 1) { t += a[i] } return t;"
+  })
+  void when_create_array_of_uint8_but_give_int_values_expect_exception(String code) {
+    final var ex = Assertions.assertThrows(InvalidTypeConversionException.class, () -> Plang.codeToResult(code).resultValue());
+    Assertions.assertEquals(Ty.INTEGER, ex.given());
+    Assertions.assertEquals(Ty.CHAR, ex.expected());
+  }
+
+  @RepeatedTest(10)
+  void when_creating_array_without_initialization_expect_garbage() {
+
+    // Slight chance it actually might be zero, but very, very, very low
+    final var code = "val a = [;int;100]; var t = 0; for (var i = 0; i < 100; i += 1) t += a[i]; return t;";
+    Assertions.assertNotEquals(0, Plang.codeToResult(code).resultValue());
   }
 
   @ParameterizedTest
@@ -236,6 +303,9 @@ class MirToLLVMLoweringTest {
   void testFnCall(String code) {
     Assertions.assertEquals(10, Plang.codeToResult(code).resultValue());
   }
+
+  // TODO: Make TyArrayConst that is a const array with constant values. Should it just take the HirArray?
+  //        Also need to match the situation below where the type is an array of a certain type -- how is that syntax? [int;] ? Also support [int; 0..5] ?
 
   @ParameterizedTest
   @ValueSource(strings = {

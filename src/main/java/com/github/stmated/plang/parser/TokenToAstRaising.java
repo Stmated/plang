@@ -6,6 +6,7 @@ import com.github.stmated.plang.ast.model.AstBinaryOperation;
 import com.github.stmated.plang.ast.model.AstBinaryOperationKind;
 import com.github.stmated.plang.ast.model.AstBlock;
 import com.github.stmated.plang.ast.model.AstBracket;
+import com.github.stmated.plang.ast.model.AstBracketAccess;
 import com.github.stmated.plang.ast.model.AstCall;
 import com.github.stmated.plang.ast.model.AstCallable;
 import com.github.stmated.plang.ast.model.AstComment;
@@ -40,6 +41,7 @@ import com.github.stmated.plang.ast.model.AstNot;
 import com.github.stmated.plang.ast.model.AstParen;
 import com.github.stmated.plang.ast.model.AstProgram;
 import com.github.stmated.plang.ast.model.AstRange;
+import com.github.stmated.plang.ast.model.AstRest;
 import com.github.stmated.plang.ast.model.AstReturn;
 import com.github.stmated.plang.ast.model.AstSpread;
 import com.github.stmated.plang.ast.model.AstStaticAccess;
@@ -52,15 +54,22 @@ import com.github.stmated.plang.ast.model.AstVariableSink;
 import com.github.stmated.plang.ast.model.AstWhere;
 import com.github.stmated.plang.ast.model.AstWith;
 import com.github.stmated.plang.ast.model.AstYield;
+import com.github.stmated.plang.exceptions.UnexpectedTokenException;
 import com.github.stmated.plang.lexer.Token;
 import com.github.stmated.plang.lexer.TokenType;
+import com.github.stmated.plang.ty.BitWidth;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyFlags;
+import com.github.stmated.plang.ty.TyValueNumberInteger;
+import com.github.stmated.plang.ty.util.Tys;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 public class TokenToAstRaising {
 
@@ -508,7 +517,7 @@ public class TokenToAstRaising {
     }
 
     final var callableAst = switch (token.type()) {
-      case LITERAL_INTEGER -> new AstLiteral(token.content(), Ty.INTEGER);
+      case LITERAL_INTEGER -> parseLiteralInteger(token);
       // TODO: Need to add all the other precision number types, like double, float, etc. Especially with variable width...
       //        Right now the default decimal number is FLOAT, to make things easier in LLVM. But DECIMAL should be DECIMAL ^^;
       case LITERAL_DECIMAL -> new AstLiteral(token.content(), Ty.DECIMAL);
@@ -561,12 +570,68 @@ public class TokenToAstRaising {
         default -> throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
       };
     } else {
-      return parsePotentialFnCall(callableAst);
+      var prefixed = parsePotentialFnCall(callableAst);
+      if (prefixed == callableAst) {
+        prefixed = parsePotentialBracketAccess(callableAst);
+      }
+
+      return prefixed;
     }
   }
 
+  private final Pattern PATTERN_INTEGER_SUFFIX = Pattern.compile("\\d+([iu])(\\d+)");
+
+  private AstLiteral parseLiteralInteger(Token token) {
+
+    final var matcher = PATTERN_INTEGER_SUFFIX.matcher(token.content());
+    if (matcher.find()) {
+
+      final var radix = Ty.INTEGER.radix();
+      final var width = Integer.parseInt(matcher.group(2));
+
+      final var ty = switch (matcher.group(1)) {
+        case "i" -> new TyValueNumberInteger(radix, new BitWidth(width, true), true, EnumSet.noneOf(TyFlags.class));
+        case "u" -> new TyValueNumberInteger(radix, new BitWidth(width, true), false, EnumSet.noneOf(TyFlags.class));
+        default -> throw new UnexpectedTokenException(token);
+      };
+
+      return new AstLiteral(token.content(), Tys.intern(ty));
+    }
+
+    return new AstLiteral(token.content(), Ty.INTEGER);
+  }
+
+  private AstExpression parsePotentialBracketAccess(AstExpression expr) {
+
+    var n = next();
+    if (n != null) {
+
+      if (n.type() == TokenType.OPEN_BRACKET) {
+        final var bracket = this.parseBracket();
+        return new AstBracketAccess(expr, bracket);
+      } else {
+        queuedTokens.add(n);
+      }
+    }
+
+    return expr;
+  }
+
   private AstExpression parseSpread() {
-    return new AstSpread(parseExpression());
+
+    final var next = next();
+    if (next == null) {
+      return null;
+    }
+
+    final var t = next.type();
+    if (t == TokenType.IDENTIFIER || t == TokenType.OPEN_PAREN || t == TokenType.OPEN_BRACKET || t == TokenType.OPEN_BRACE) {
+      queuedTokens.push(next);
+      return new AstSpread(parseExpression());
+    } else {
+      queuedTokens.push(next);
+      return new AstRest();
+    }
   }
 
   /**

@@ -6,7 +6,7 @@ public interface TyValueNumber extends TyValue {
 
   byte radix();
 
-  int width();
+  BitWidth width();
 
   boolean signed();
 

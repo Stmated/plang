@@ -2,10 +2,12 @@ package com.github.stmated.plang.ty;
 
 import java.util.EnumSet;
 import java.util.Objects;
+import lombok.Builder;
 
+@Builder(toBuilder = true)
 public record TyValueNumberPrecisioned(
   RealKind kind,
-  int width,
+  BitWidth width,
   int precision,
   boolean signed,
   EnumSet<TyFlags> flags
@@ -34,7 +36,7 @@ public record TyValueNumberPrecisioned(
       return false;
     }
     TyValueNumberPrecisioned that = (TyValueNumberPrecisioned) o;
-    return width == that.width && precision == that.precision && signed == that.signed && kind == that.kind
+    return Objects.equals(width, that.width) && precision == that.precision && signed == that.signed && kind == that.kind
            && Objects.equals(flags, that.flags);
   }
 

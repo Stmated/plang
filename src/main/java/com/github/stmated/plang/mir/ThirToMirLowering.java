@@ -3,6 +3,8 @@ package com.github.stmated.plang.mir;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.exceptions.UnexpectedExpressionException;
 import com.github.stmated.plang.hir.model.HirArgument;
+import com.github.stmated.plang.hir.model.HirArray;
+import com.github.stmated.plang.hir.model.HirArrayAccess;
 import com.github.stmated.plang.hir.model.HirAssignment;
 import com.github.stmated.plang.hir.model.HirBinaryOperation;
 import com.github.stmated.plang.hir.model.HirBlock;
@@ -23,14 +25,16 @@ import com.github.stmated.plang.hir.model.HirTy;
 import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 import com.github.stmated.plang.mir.model.MirBinaryOperationKind;
 import com.github.stmated.plang.mir.model.MirCall;
-import com.github.stmated.plang.mir.model.MirInstrCreateFn;
 import com.github.stmated.plang.mir.model.MirFnArgument;
 import com.github.stmated.plang.mir.model.MirFnParameter;
 import com.github.stmated.plang.mir.model.MirFnSignature;
 import com.github.stmated.plang.mir.model.MirInstr;
 import com.github.stmated.plang.mir.model.MirInstrBinaryOperation;
 import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
+import com.github.stmated.plang.mir.model.MirInstrCreateArray;
+import com.github.stmated.plang.mir.model.MirInstrCreateFn;
 import com.github.stmated.plang.mir.model.MirInstrCreateLiteral;
+import com.github.stmated.plang.mir.model.MirInstrGetArrayElement;
 import com.github.stmated.plang.mir.model.MirInstrGetParam;
 import com.github.stmated.plang.mir.model.MirInstrJump;
 import com.github.stmated.plang.mir.model.MirInstrPhi;
@@ -43,6 +47,7 @@ import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyParam;
 import com.github.stmated.plang.ty.TyPointer;
+import com.github.stmated.plang.ty.TyValueArray;
 import com.github.stmated.plang.ty.TyValueString;
 import com.github.stmated.plang.ty.util.Tys;
 import java.util.ArrayList;
@@ -51,7 +56,6 @@ import java.util.List;
 import java.util.Objects;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.bytedeco.llvm.global.LLVM;
 
 /**
  * NOTE: There will be quite some references from the MIR to the HIR, for sake of faster development compiler-side. It is however a goal to try and specialize
@@ -133,9 +137,67 @@ public class ThirToMirLowering {
       case HirProgram v -> lower(v.expressions());
       case HirFunction it -> lower_function(it);
       case HirFunctionSignature it -> lower_function_signature(it);
+      case HirArray it -> lower_array(it);
+      case HirArrayAccess it -> lower_array_access(it);
 
       default -> throw new NotImplementedException(STR."Do not know how to handle '\{expr}'");
     };
+  }
+
+  private MirInstr lower_array(HirArray hir) {
+
+    final var entries = new MirInstr[hir.elements().length];
+    for (var i = 0; i < entries.length; i++) {
+      final var child = hir.elements()[i];
+      entries[i] = lower(child);
+    }
+
+//    final var initializer = (hir.initializer() == null) ? null : lower(hir.initializer());
+    final var givenTy = mirCtx.thirRaiseResult().getTypeOrThrow(hir);
+    final Ty arrayTy;
+    final Ty elementTy;
+    final Integer arrayLength;
+    switch (givenTy) {
+      case TyValueArray array -> {
+        arrayTy = array;
+        elementTy = array.elementType();
+        arrayLength = array.size();
+      }
+      default -> throw new UnexpectedExpressionException(givenTy);
+    }
+
+    final MirInstr lengthInstr;
+    if (hir.length() == null) {
+
+      final var literalSize = new MirInstrCreateLiteral(Objects.toString(arrayLength), Ty.INTEGER);
+      mirCtx.nodeStack().peek().instructions().add(literalSize);
+      lengthInstr = literalSize;
+    } else {
+      lengthInstr = lower(hir.length());
+    }
+
+    if (lengthInstr == null) {
+      throw new IllegalArgumentException(STR."There is no known size of '\{hir}'");
+    }
+
+    final var arrayInstr = new MirInstrCreateArray(entries, lengthInstr, arrayTy, elementTy);
+
+    mirCtx.nodeStack().peek().instructions().add(arrayInstr);
+
+    return arrayInstr;
+  }
+
+  private MirInstr lower_array_access(HirArrayAccess hir) {
+
+    final var mirTarget = lower(hir.target());
+    final var mirAccessor = lower(hir.accessor());
+
+    final var resultTy = mirCtx.thirRaiseResult().getTypeOrThrow(hir);
+
+    final var instr = new MirInstrGetArrayElement(mirTarget, mirAccessor, resultTy);
+    mirCtx.nodeStack().peek().instructions().add(instr);
+
+    return instr;
   }
 
   private MirInstr lower_expressions(HirExpression[] expressions) {
@@ -411,24 +473,30 @@ public class ThirToMirLowering {
 
     // TODO: Make use of "declare" again, in whatever way is needed
 
-    MirInstrStore store;
-    if (rhs instanceof MirInstrStore s) {
-      store = s;
+    // TODO: This code below is wrong and too specific. Can probably be generalized somehow.
+    //        Maybe it is enough if the ty of the rhs is a pointer (or pointer-like as array or string) then just store that.
+    MirInstr instr;
+    if (rhs instanceof MirInstrCreateArray ica) {
+      instr = ica;
+    } else if (rhs instanceof MirInstrStore is) {
+      instr = is;
     } else {
       if (scopeValue == null) {
-        store = new MirInstrStore(null, rhs, new TyPointer<>(rhs.ty()));
-        store.name(new MirIdentifierId(name, null, 0));
-        mirCtx.nodeStack().peek().instructions().add(store);
+        instr = new MirInstrStore(null, rhs, new TyPointer<>(rhs.ty()));
+        if (instr instanceof MirInstrStore is) {
+          is.name(new MirIdentifierId(name, null, 0));
+        }
+        mirCtx.nodeStack().peek().instructions().add(instr);
       } else if (scopeValue instanceof MirInstrStore originalStore) {
-        store = new MirInstrStore(originalStore, rhs, new TyPointer<>(rhs.ty()));
-        mirCtx.nodeStack().peek().instructions().add(store);
+        instr = new MirInstrStore(originalStore, rhs, new TyPointer<>(rhs.ty()));
+        mirCtx.nodeStack().peek().instructions().add(instr);
       } else {
         throw new IllegalArgumentException("Should this be allowed to happen?");
       }
     }
 
-    scope.add(name, store);
-    return store;
+    scope.add(name, instr);
+    return instr;
   }
 
   private MirInstr lower_variable_declaration(HirVariableDeclaration hir) {
@@ -692,7 +760,7 @@ public class ThirToMirLowering {
           yield instruction;
         }
         default -> throw new IllegalArgumentException(
-            STR."The target is a \{HirFunction.class.getSimpleName()} but did not lower to \{MirInstrCreateFn.class.getSimpleName()}"
+          STR."The target is a \{HirFunction.class.getSimpleName()} but did not lower to \{MirInstrCreateFn.class.getSimpleName()}"
         );
       };
     }

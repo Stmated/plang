@@ -3,7 +3,7 @@ package com.github.stmated.plang.ty;
 import java.util.EnumSet;
 import java.util.Objects;
 
-public record TyValueNumberScaled(int width, int scale, boolean signed, EnumSet<TyFlags> flags) implements TyValueNumber {
+public record TyValueNumberScaled(BitWidth width, int scale, boolean signed, EnumSet<TyFlags> flags) implements TyValueNumber {
 
   @Override
   public TyValueKind getValueKind() {
@@ -24,7 +24,7 @@ public record TyValueNumberScaled(int width, int scale, boolean signed, EnumSet<
       return false;
     }
     TyValueNumberScaled that = (TyValueNumberScaled) o;
-    return width == that.width && scale == that.scale && signed == that.signed;
+    return Objects.equals(width, that.width) && scale == that.scale && signed == that.signed;
   }
 
   @Override

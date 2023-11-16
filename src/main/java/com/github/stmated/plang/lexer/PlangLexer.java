@@ -538,20 +538,34 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
               return this.newToken(numberType);
             }
 
-            if (c == 'f' || c == 'F') {
+            final var lower = Character.toLowerCase(c);
+
+            // TODO: Support 123uint8
+
+            if (lower == 'f') {
               return this.newToken(TokenType.LITERAL_FLOAT, 0, 1);
-            } else if (c == 'd' || c == 'D') {
+            } else if (lower == 'd') {
               return this.newToken(TokenType.LITERAL_DOUBLE, 0, 1);
-            } else if (c == 'm' || c == 'M') {
+            } else if (lower == 'm') {
               return this.newToken(TokenType.LITERAL_DECIMAL, 0, 1);
-            } else if (c == 'l' || c == 'L') {
+            } else if (lower == 'l') {
               if (dotIndex != -1) {
                 throw new IllegalArgumentException("Longs cannot contain decimal marks");
               }
 
               return this.newToken(TokenType.LITERAL_INTEGER_LONG, 0, 1);
-            } else {
+            } else if (lower == 'u' || lower == 'i') {
 
+              final var integerToken = this.newToken(numberType, 0, 0);
+              final var widthToken = advanceNumber();
+              if (widthToken.content() == null || widthToken.content().isBlank()) {
+                throw new IllegalArgumentException("Expected a number after 'u' suffix");
+              } else {
+                final var fullContent = integerToken.content() + widthToken.content();
+                return new Token(integerToken.type(), integerToken.start(), widthToken.end(), fullContent);
+              }
+
+            } else {
               throw new IllegalArgumentException(STR."Unknown number suffix '\{c}'");
             }
           } else {

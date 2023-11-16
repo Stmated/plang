@@ -2,8 +2,11 @@ package com.github.stmated.plang.ty;
 
 import java.util.EnumSet;
 import java.util.Objects;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 
-public record TyValueNumberInteger(byte radix, int width, boolean signed, EnumSet<TyFlags> flags) implements TyValueNumber {
+@Builder(toBuilder = true)
+public record TyValueNumberInteger(byte radix, BitWidth width, boolean signed, EnumSet<TyFlags> flags) implements TyValueNumber {
 
   @Override
   public TyValueKind getValueKind() {
@@ -34,7 +37,7 @@ public record TyValueNumberInteger(byte radix, int width, boolean signed, EnumSe
       return false;
     }
     TyValueNumberInteger that = (TyValueNumberInteger) o;
-    return radix == that.radix && width == that.width && signed == that.signed && Objects.equals(flags, that.flags);
+    return radix == that.radix && Objects.equals(width, that.width) && signed == that.signed && Objects.equals(flags, that.flags);
   }
 
   @Override

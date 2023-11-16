@@ -45,7 +45,7 @@ class HirToThirRaisingTest {
     final var thir = Plang.codeToThir(code);
 
     Assertions.assertInstanceOf(TyValueNumber.class, thir.getType(thir.root()));
-    Assertions.assertEquals(64, ((TyValueNumber)thir.getType(thir.root())).width());
+    Assertions.assertEquals(64, ((TyValueNumber)thir.getType(thir.root())).width().value());
   }
 
   /**
@@ -61,7 +61,7 @@ class HirToThirRaisingTest {
     final var thir = Plang.codeToThir(code);
 
     Assertions.assertInstanceOf(TyValueNumber.class, thir.getType(thir.root()));
-    Assertions.assertEquals(32, ((TyValueNumber)thir.getType(thir.root())).width());
+    Assertions.assertEquals(32, ((TyValueNumber)thir.getType(thir.root())).width().value());
   }
 
   @ParameterizedTest

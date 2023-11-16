@@ -1,11 +1,11 @@
 package com.github.stmated.plang.hir.model;
 
+import java.util.Arrays;
+
 public record HirTuple(HirTupleKeyValue[] children) implements HirExpression {
 
-//  @Override
-//  public HirType getResultType() {
-//
-//    // TODO: Needs to implement the kind of "trait" -- should be very generic
-//    return null;
-//  }
+  @Override
+  public String toString() {
+    return STR."(\{String.join(", ", Arrays.stream(children).map(Record::toString).toList())})";
+  }
 }

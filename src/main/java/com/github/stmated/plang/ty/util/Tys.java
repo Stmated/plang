@@ -1,6 +1,7 @@
 package com.github.stmated.plang.ty.util;
 
 import com.github.stmated.plang.hir.model.HirMutabilityKind;
+import com.github.stmated.plang.ty.BitWidth;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyDiffKind;
 import com.github.stmated.plang.ty.TyFlags;
@@ -58,8 +59,9 @@ public class Tys {
           if (ani.radix() != bni.radix()) {
             yield new TyResult<>(Ty.INTEGER, TyDiffKind.DIFF_RADIX);
           }
-          if (ani.width() != bni.width()) {
-            final var newWidth = Math.max(ani.width(), bni.width());
+          if (ani.width().value() != bni.width().value()) {
+            final var newWidthValue = Math.max(ani.width().value(), bni.width().value());
+            final var newWidth = new BitWidth(newWidthValue, ani.width().explicit() || bni.width().explicit());
             final var newFlags = mixFlags(ani.flags(), bni.flags());
             yield new TyResult<>(
               new TyValueNumberInteger((byte) 10, newWidth, ani.signed(), newFlags),
@@ -183,6 +185,11 @@ public class Tys {
     return diffs == null || diffs.length == 0;
   }
 
+  public boolean isSizeCompatible(TyDiffKind[] diffs) {
+    // TODO: Implement actual compatibility checks
+    return diffs == null || diffs.length == 0;
+  }
+
   public static boolean isUsable(Ty ty) {
     return ty != null && ty != Ty.INVALID;
   }
@@ -227,16 +234,18 @@ public class Tys {
 
     if (name.startsWith("int") || name.startsWith("sint")) {
 
-      final var width = getWidthFromName(name, Ty.INTEGER.width());
-      return new TyValueNumberInteger(Ty.INTEGER.radix(), width, true, EnumSet.noneOf(TyFlags.class)).intern();
+      final var width = getWidthFromName(name, Ty.INTEGER.width().value());
+      return Ty.INTEGER.toBuilder().width(new BitWidth(width, true)).signed(true).build().intern();
+
     } else if (name.startsWith("uint")) {
 
-      final var width = getWidthFromName(name, Ty.INTEGER.width());
-      return new TyValueNumberInteger(Ty.INTEGER.radix(), width, false, EnumSet.noneOf(TyFlags.class)).intern();
+      final var width = getWidthFromName(name, Ty.INTEGER.width().value());
+      return Ty.INTEGER.toBuilder().width(new BitWidth(width, false)).signed(false).build().intern();
+
     } else if (name.startsWith("float")) {
 
-      final var width = getWidthFromName(name, Ty.FLOAT.width());
-      return new TyValueNumberPrecisioned(RealKind.FLOAT, width, Ty.FLOAT.precision(), true, EnumSet.noneOf(TyFlags.class)).intern();
+      final var width = getWidthFromName(name, Ty.FLOAT.width().value());
+      return Ty.FLOAT.toBuilder().width(new BitWidth(width, true)).build().intern();
     }
 
     return switch (name) {
