@@ -8,6 +8,7 @@ import com.github.stmated.plang.hir.model.HirArray;
 import com.github.stmated.plang.hir.model.HirArrayAccess;
 import com.github.stmated.plang.hir.model.HirAssignment;
 import com.github.stmated.plang.hir.model.HirBinaryOperation;
+import com.github.stmated.plang.hir.model.HirBlock;
 import com.github.stmated.plang.hir.model.HirCall;
 import com.github.stmated.plang.hir.model.HirConditional;
 import com.github.stmated.plang.hir.model.HirExpression;
@@ -20,19 +21,27 @@ import com.github.stmated.plang.hir.model.HirLoop;
 import com.github.stmated.plang.hir.model.HirLoopBreak;
 import com.github.stmated.plang.hir.model.HirLoopContinue;
 import com.github.stmated.plang.hir.model.HirMutabilityKind;
+import com.github.stmated.plang.hir.model.HirNewByBlock;
+import com.github.stmated.plang.hir.model.HirNewByCtor;
 import com.github.stmated.plang.hir.model.HirParameter;
+import com.github.stmated.plang.hir.model.HirPath;
 import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.hir.model.HirReturn;
+import com.github.stmated.plang.hir.model.HirStruct;
 import com.github.stmated.plang.hir.model.HirTy;
 import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyField;
 import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyIdentifier;
 import com.github.stmated.plang.ty.TyParam;
+import com.github.stmated.plang.ty.TyStruct;
 import com.github.stmated.plang.ty.TyValueArray;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.util.Tys;
 import com.github.stmated.plang.util.JavaUtil;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -107,9 +116,77 @@ public class HirToThirRaising {
       case HirTy it -> it.ty();
       case HirArray it -> investigate_array(it);
       case HirArrayAccess it -> investigate_array_access(it);
+      case HirStruct it -> investigate_struct(it);
+      case HirNewByBlock it -> investigate_new_by_block(it);
+      case HirNewByCtor it -> investigate_new_by_ctor(it);
+      case HirPath it -> investigate_path(it);
+      case HirBlock it -> investigate(it.children());
       case HirParameter it -> throw new IllegalArgumentException(STR."A Parameter itself (\{it}) does not have a type (yet?). Resolve it higher in call chain");
       default -> throw new UnexpectedExpressionException(e);
     };
+  }
+
+  private Ty investigate_path(HirPath it) {
+
+    if (it.elements() == null || it.elements().length == 0) {
+      return Ty.INVALID;
+    }
+
+    var pointer = investigate(it.elements()[0]);
+    for (var i = 1; i < it.elements().length; i++) {
+
+      final var current = it.elements()[i];
+      switch (current) {
+        case HirIdentifier identifier -> {
+
+          switch (pointer) {
+            case TyStruct struct -> {
+
+              final var field = Arrays.stream(struct.fields())
+                .filter(f -> f.name().equals(identifier.name()))
+                .findFirst().orElseThrow();
+
+              pointer = field.ty();
+            }
+            default -> throw new UnexpectedExpressionException(current);
+          }
+        }
+        default -> throw new UnexpectedExpressionException(current);
+      }
+
+      // Register each step of the path. We will likely need it.
+      map.put(current, pointer);
+    }
+
+    // We have reached the end of the path and can give back the ty.
+    return pointer;
+  }
+
+  private Ty investigate_new_by_ctor(HirNewByCtor it) {
+
+    // TODO: The allocator can alter the type, so need to run it through the allocator's investigation.
+    return investigate_type_expression(it.target());
+  }
+
+  private Ty investigate_new_by_block(HirNewByBlock it) {
+
+    // TODO: The allocator can alter the type, so need to run it through the allocator's investigation.
+    return investigate_type_expression(it.target());
+  }
+
+  private Ty investigate_struct(HirStruct it) {
+
+    final var fields = new ArrayList<TyField>();
+
+    for (final var decl : it.declarations()) {
+
+      final var name = decl.identifier().name();
+      final var ty = investigate_type_expression(decl.type());
+
+      fields.add(new TyField(name, ty));
+    }
+
+    return new TyStruct(fields.toArray(new TyField[0]));
   }
 
   private Ty investigate_array_access(HirArrayAccess it) {
@@ -153,6 +230,9 @@ public class HirToThirRaising {
 
   private Ty investigate_array(HirArray it) {
 
+    // TODO: Problem is that array as a type and array as initializer need to behave differently!
+    //        One is silly, and one is not...
+
     var arrayElementTy = investigate_type_expression(it.elementType());
     for (final var element : it.elements()) {
       final var elementTy = investigate(element);
@@ -168,7 +248,7 @@ public class HirToThirRaising {
       }
     }
 
-    Object literalValue = resolveLiteralValue(it.length());
+    Object literalValue = (it.length() == null) ? null : resolveLiteralValue(it.length());
     Integer arrayLength = (literalValue == null) ? null : ((Number) literalValue).intValue();
 
     // The element ty can still be INFER -- it will be used for late type decisions.
@@ -186,10 +266,11 @@ public class HirToThirRaising {
         default -> throw new NotImplementedException(STR."Do not know how to get name from '\{parameter.identifier()}'");
       };
 
-      parameterTys[i] = new TyParam(
-        parameterName,
-        investigate_type_expression(parameter.type())
-      );
+      final var paramTy = investigate_type_expression(parameter.type());
+
+      map.put(parameter, paramTy);
+
+      parameterTys[i] = new TyParam(parameterName, paramTy);
     }
 
     final var returnTy = investigate_type_expression(hir.returnType());
@@ -235,13 +316,14 @@ public class HirToThirRaising {
 
   private Ty investigate_call(HirCall hir) {
 
-//    for (final var argument : hir.arguments()) {
-//      final var argumentTy = investigate(argument);
-//    }
-
     final var target = hir.target();
     final var loweredTarget = investigate(target);
-//    switch (loweredTarget)
+
+    for (final var argument : hir.arguments()) {
+
+      // Investigate it, but we do not really care about the result.
+      investigate(argument);
+    }
 
     if (loweredTarget instanceof TyFn tyFn) {
       return tyFn.returnTy();
@@ -365,6 +447,7 @@ public class HirToThirRaising {
     final var mutability = switch (hir.lhs()) {
       case HirVariableDeclaration it -> it.mutabilityKind();
       case HirIdentifier it -> HirMutabilityKind.MUTABLE;
+      case HirPath it -> HirMutabilityKind.MUTABLE;
       default -> throw new NotImplementedException(STR."Do not know how to find mutability of '\{hir.lhs()}'");
     };
 
@@ -380,9 +463,6 @@ public class HirToThirRaising {
           scopeStack.peek().map().put(identifierName, rhs);
         }
       }
-
-      // LHS is to be inferred, and obviously that is into the RHS.
-//      return rhs;
 
     } else {
 
@@ -413,6 +493,7 @@ public class HirToThirRaising {
 
     return switch (hir.type()) {
       case HirIdentifier it -> new TyIdentifier(it.name());
+      case HirTy it -> it.ty();
       default -> throw new UnexpectedExpressionException(hir.type());
     };
   }

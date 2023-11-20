@@ -1,6 +1,11 @@
 package com.github.stmated.plang.hir.model;
 
-public record HirPath(HirExpression owner, HirExpression member) implements HirExpression {
+import java.util.Arrays;
 
+public record HirPath(HirExpression[] elements) implements HirExpression {
 
+  @Override
+  public String toString() {
+    return Arrays.toString(elements);
+  }
 }

@@ -1,5 +1,13 @@
 package com.github.stmated.plang.ty;
 
-public record TyStruct(String name, TyField[] fields) implements Ty {
+import java.util.Arrays;
 
+public record TyStruct(
+  TyField[] fields
+) implements Ty {
+
+  @Override
+  public String toString() {
+    return STR."struct {\{Arrays.toString(fields)}}";
+  }
 }

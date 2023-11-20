@@ -44,7 +44,7 @@ public interface AstVisitor<T> {
   }
 
   default T visitBlock(AstBlock expr) {
-    return visit(expr.children());
+    return visit(expr.expression());
   }
 
   default T visitBracket(AstBracket expr) {
@@ -135,10 +135,6 @@ public interface AstVisitor<T> {
   }
 
   default T visitLoopFor(AstLoopFor expr) {
-
-//    final var a = aggregate(visit(expr.assignments()), visit(expr.predicate()));
-//    final var b = aggregate(visit(expr.steppers()), visit(expr.block()));
-
     return aggregate(visit(expr.head()), visit(expr.block()));
   }
 
@@ -155,7 +151,7 @@ public interface AstVisitor<T> {
   }
 
   default T visitNew(AstNew expr) {
-    return aggregate(visit(expr.target()), visit(expr.expressions()));
+    return aggregate(aggregate(visit(expr.allocator()), visit(expr.target())), visit(expr.arguments()));
   }
 
   default T visitNoOp(AstNoOp expr) {

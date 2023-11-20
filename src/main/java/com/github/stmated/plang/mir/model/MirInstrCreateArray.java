@@ -1,6 +1,7 @@
 package com.github.stmated.plang.mir.model;
 
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyValueArray;
 import java.util.Arrays;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -10,9 +11,8 @@ import lombok.Value;
 public class MirInstrCreateArray extends AbstractMirInstr {
 
   MirInstr[] elements;
-//  MirInstr initializer;
   MirInstr length;
-  Ty ty;
+  TyValueArray ty;
   Ty elementTy;
 
   @Override

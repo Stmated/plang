@@ -6,14 +6,15 @@ import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
-public class MirInstrStore extends AbstractMirInstr {
+public class MirInstrSetStructElement extends AbstractMirInstr {
 
-  MirInstrStore target;
+  MirInstr target;
+  int index;
   MirInstr value;
   Ty ty;
 
   @Override
   public String toString() {
-    return STR."Store (\{value.toShortString()})";
+    return STR."\{target()}[\{index}] = \{value}";
   }
 }

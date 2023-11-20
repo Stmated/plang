@@ -2,6 +2,8 @@ package com.github.stmated.plang.llvm.util;
 
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyPointer;
+import com.github.stmated.plang.ty.TyStruct;
+import com.github.stmated.plang.ty.TyValueArray;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.TyValueString;
 import com.github.stmated.plang.ty.util.Tys;
@@ -40,5 +42,14 @@ public class LLVMTys {
     }
 
     return ty;
+  }
+
+  public static boolean isPointer(Ty ty) {
+
+    if (ty instanceof TyPointer<?> || ty instanceof TyStruct || ty instanceof TyValueArray) {
+      return true;
+    }
+
+    return false;
   }
 }

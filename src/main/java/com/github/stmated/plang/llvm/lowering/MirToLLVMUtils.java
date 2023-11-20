@@ -7,6 +7,7 @@ import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyPointerAddressSpace;
+import com.github.stmated.plang.ty.TyStruct;
 import com.github.stmated.plang.ty.TyValueArray;
 import com.github.stmated.plang.ty.TyValueBoolean;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
@@ -25,13 +26,16 @@ import org.bytedeco.llvm.LLVM.LLVMValueRef;
 import org.bytedeco.llvm.global.LLVM;
 
 @UtilityClass
-public class MirToLLVMUtils {
+class MirToLLVMUtils {
 
-  public static LLVMTypeRef toLLVMType(MirToLLVMCtx mirToLlvmCtx, Ty ty) {
-    return toLLVMType(mirToLlvmCtx.context, ty);
-  }
+  static LLVMTypeRef toLLVMType(MirToLLVMCtx ctx, Ty ty) {
 
-  public static LLVMTypeRef toLLVMType(LLVMContextRef context, Ty ty) {
+    final var cached = ctx.resolveType(ty);
+    if (cached != null) {
+      return cached;
+    }
+
+    LLVMContextRef context = ctx.context;
 
     return switch (ty) {
       case TyValueNumberInteger ni when ni.width().value() == 128 -> LLVM.LLVMInt128TypeInContext(context);
@@ -56,11 +60,11 @@ public class MirToLLVMUtils {
       case TyValueNumberScaled ni when ni.width().value() == 8 -> LLVM.LLVMInt8TypeInContext(context);
       case TyValueNumberScaled ni when ni.width().value() == 1 -> LLVM.LLVMInt1TypeInContext(context);
 
-      case TyValueString s -> toLLVMType(context, new TyPointer<>(Ty.CHAR));
+      case TyValueString s -> toLLVMType(ctx, new TyPointer<>(Ty.CHAR));
 
-      case TyPointer p -> LLVM.LLVMPointerType(toLLVMType(context, p.inner()), getAddressSpace(p.addressSpace()));
-      case TyValueArray a when a.size() >= 0 -> LLVM.LLVMArrayType2(toLLVMType(context, a.elementType()), a.size());
-      case TyValueArray a -> LLVM.LLVMPointerType(toLLVMType(context, a.elementType()), 0);
+      case TyPointer p -> LLVM.LLVMPointerType(toLLVMType(ctx, p.inner()), getAddressSpace(p.addressSpace()));
+      case TyValueArray a when a.size() != null && a.size() >= 0 -> LLVM.LLVMArrayType2(toLLVMType(ctx, a.elementType()), a.size());
+      case TyValueArray a -> LLVM.LLVMPointerType(toLLVMType(ctx, a.elementType()), 0);
 
       case TyValueBoolean b -> LLVM.LLVMInt1TypeInContext(context);
 
@@ -68,17 +72,32 @@ public class MirToLLVMUtils {
 
 //      case  np when np.width() == 128 -> LLVM.LLVMTypeInContext(context);
 
+      case TyStruct s -> {
+
+        // TODO: Need to keep track of the ty and type, so we get back the same type. Up to caller?
+
+        final var types = new PointerPointer<>(s.fields().length);
+        for (var i = 0; i < s.fields().length; i++) {
+          types.put(i, toLLVMType(ctx, s.fields()[i].ty()));
+        }
+
+        final var type = LLVM.LLVMStructTypeInContext(context, types, s.fields().length, 0);
+        ctx.registerType(s, type);
+
+        yield type;
+      }
+
       case TyFn fn -> {
 
         // TODO: BAD! This needs to be cached or set earlier in a centralized way. It is insane to recreate this very time it is called.
         final var fnParams = new LLVMTypeRef[fn.parameters().length];
         for (var i = 0; i < fn.parameters().length; i++) {
           final var param = fn.parameters()[i];
-          fnParams[i] = MirToLLVMUtils.toLLVMType(context, param.ty());
+          fnParams[i] = MirToLLVMUtils.toLLVMType(ctx, param.ty());
         }
 
         yield LLVM.LLVMFunctionType(
-          toLLVMType(context, fn.returnTy()),
+          toLLVMType(ctx, fn.returnTy()),
           new PointerPointer<>(fnParams),
           fn.parameters().length,
           fn.vararg() ? 1 : 0

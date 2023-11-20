@@ -19,8 +19,12 @@ import com.github.stmated.plang.hir.model.HirLiteral;
 import com.github.stmated.plang.hir.model.HirLoop;
 import com.github.stmated.plang.hir.model.HirLoopBreak;
 import com.github.stmated.plang.hir.model.HirLoopContinue;
+import com.github.stmated.plang.hir.model.HirNewByBlock;
+import com.github.stmated.plang.hir.model.HirNewByCtor;
+import com.github.stmated.plang.hir.model.HirPath;
 import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.hir.model.HirReturn;
+import com.github.stmated.plang.hir.model.HirStruct;
 import com.github.stmated.plang.hir.model.HirTy;
 import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 import com.github.stmated.plang.mir.model.MirBinaryOperationKind;
@@ -33,9 +37,12 @@ import com.github.stmated.plang.mir.model.MirInstrBinaryOperation;
 import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
 import com.github.stmated.plang.mir.model.MirInstrCreateArray;
 import com.github.stmated.plang.mir.model.MirInstrCreateFn;
+import com.github.stmated.plang.mir.model.MirInstrCreateInstance;
 import com.github.stmated.plang.mir.model.MirInstrCreateLiteral;
+import com.github.stmated.plang.mir.model.MirInstrCreateStruct;
 import com.github.stmated.plang.mir.model.MirInstrGetArrayElement;
 import com.github.stmated.plang.mir.model.MirInstrGetParam;
+import com.github.stmated.plang.mir.model.MirInstrGetStructElement;
 import com.github.stmated.plang.mir.model.MirInstrJump;
 import com.github.stmated.plang.mir.model.MirInstrPhi;
 import com.github.stmated.plang.mir.model.MirInstrStore;
@@ -47,10 +54,12 @@ import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyParam;
 import com.github.stmated.plang.ty.TyPointer;
+import com.github.stmated.plang.ty.TyStruct;
 import com.github.stmated.plang.ty.TyValueArray;
 import com.github.stmated.plang.ty.TyValueString;
 import com.github.stmated.plang.ty.util.Tys;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -139,9 +148,99 @@ public class ThirToMirLowering {
       case HirFunctionSignature it -> lower_function_signature(it);
       case HirArray it -> lower_array(it);
       case HirArrayAccess it -> lower_array_access(it);
+      case HirStruct it -> lower_struct(it);
+      case HirNewByBlock it -> lower_new_by_block(it);
+      case HirNewByCtor it -> lower_new_by_ctor(it);
+      case HirPath it -> lower_path(it);
 
-      default -> throw new NotImplementedException(STR."Do not know how to handle '\{expr}'");
+      default -> throw new NotImplementedException(STR."Do not know how to handle '\{expr}' (\{expr.getClass().getSimpleName()})");
     };
+  }
+
+  private MirInstr lower_path(HirPath it) {
+
+    // The first path element must be accessible as any other base-level item, such as an identifier or type.
+    var lastInstr = lower(it.elements()[0]);
+
+    for (var i = 1; i < it.elements().length; i++) {
+
+      final var hirPrevious = it.elements()[i - 1];
+      final var previousTy = mirCtx.thirRaiseResult().getTypeOrThrow(hirPrevious);
+      final var hirElement = it.elements()[i];
+      lastInstr = switch (hirElement) {
+        case HirIdentifier id -> switch (previousTy) {
+					case TyStruct struct -> {
+
+						for (var n = 0; n < struct.fields().length; n++) {
+
+							final var field = struct.fields()[n];
+							if (field.name().equals(id.name())) {
+								yield new MirInstrGetStructElement(lastInstr, n, field.ty());
+							}
+						}
+
+						throw new IllegalArgumentException(STR."Unknown field '\{id.name()}'");
+					}
+					default -> throw new UnexpectedExpressionException(previousTy);
+				};
+        default -> throw new UnexpectedExpressionException(hirElement);
+      };
+
+      mirCtx.nodeStack().peek().instructions().add(lastInstr);
+    }
+
+    return Objects.requireNonNull(lastInstr, STR."Path '\{it}' could not be converted into an instruction");
+  }
+
+  private MirInstr lower_new_by_block(HirNewByBlock it) {
+
+    final var ty = mirCtx.thirRaiseResult().getTypeOrThrow(it);
+    final MirInstr allocatorInstr = null; // lower(it.allocator()); // TODO: Lower allocator one day
+
+    MirInstr[] arguments;
+    switch (ty) {
+      case TyStruct struct -> {
+
+        arguments = new MirInstr[struct.fields().length];
+        for (var i = 0; i < struct.fields().length; i++) {
+
+          final var field = struct.fields()[i];
+          final var assignment = Arrays.stream(it.fields())
+            .filter(f -> switch (f.lhs()) {
+              case HirIdentifier id -> field.name().equals(id.name());
+              default -> throw new UnexpectedExpressionException(f.lhs());
+            })
+            .findFirst().orElseThrow(() -> new IllegalArgumentException(STR."Could not find assignment for '\{field.name()}'"));
+
+          final var rhsInstr = lower(assignment.rhs());
+          arguments[i] = rhsInstr;
+        }
+      }
+      default -> throw new UnexpectedExpressionException(ty);
+    }
+
+    return new MirInstrCreateInstance(ty, allocatorInstr, arguments);
+  }
+
+  private MirInstr lower_new_by_ctor(HirNewByCtor it) {
+
+    // TODO: This should convert into same thing as HirNewByBlock.
+    //        The constructor is a function that creates a garbage version of the struct,
+    //        and then fills all fields with data -- all fields must be set or struct will be in illegal state
+    //        So we will create the memory for the struct (give no fields), and then call constructor function!
+    //        It will then be up to some future type-safety system that makes us unable to access uninitialized fields
+
+    throw new NotImplementedException();
+  }
+
+  private MirInstr lower_struct(HirStruct it) {
+
+    final var ty = mirCtx.thirRaiseResult().getTypeOrThrow(it);
+    assert ty instanceof TyStruct;
+
+    final var tyStruct = (TyStruct) ty;
+
+    return new MirInstrCreateStruct(tyStruct);
   }
 
   private MirInstr lower_array(HirArray hir) {
@@ -152,9 +251,8 @@ public class ThirToMirLowering {
       entries[i] = lower(child);
     }
 
-//    final var initializer = (hir.initializer() == null) ? null : lower(hir.initializer());
     final var givenTy = mirCtx.thirRaiseResult().getTypeOrThrow(hir);
-    final Ty arrayTy;
+    final TyValueArray arrayTy;
     final Ty elementTy;
     final Integer arrayLength;
     switch (givenTy) {
@@ -247,7 +345,6 @@ public class ThirToMirLowering {
     final var mirFnSignature = lower_function_signature_silent(hirSignature);
     final var fnTy = new TyPointer<>(signatureToTy(mirFnSignature));
     final var externalFn = new MirInstrCreateFn(null, mirFnSignature, fnTy);
-//    final var createFnDeclaration = new MirInstrCreateFn(externalFn);
 
     mirCtx.nodeStack().peek().instructions().add(externalFn);
 
@@ -326,11 +423,10 @@ public class ThirToMirLowering {
     return switch (hir) {
       case HirTy it -> it.ty();
       case HirLiteral literal -> switch (literal.ty()) {
-        case TyValueString vs -> Tys.fromString(literal.content());
+        case TyValueString _ -> Tys.fromString(literal.content());
         default -> throw new IllegalArgumentException(STR."Not valid literal '\{literal}'");
       };
-      case HirIdentifier id -> this.mirCtx.thirRaiseResult().getTypeOrThrow(id);
-      default -> throw new UnexpectedExpressionException(hir);
+      default -> this.mirCtx.thirRaiseResult().getTypeOrThrow(hir);
     };
   }
 
@@ -427,6 +523,17 @@ public class ThirToMirLowering {
       return assignment;
     }
 
+    final var paramInstr = getParamGetInstr(identifierName);
+    if (paramInstr != null) {
+      mirCtx.nodeStack().peek().instructions().add(paramInstr);
+      return paramInstr;
+    }
+
+    throw new IllegalArgumentException(STR."There is no variable '\{hir.name()}' found in scope");
+  }
+
+  private MirInstrGetParam getParamGetInstr(String identifierName) {
+
     final var fnIterator = mirCtx.nodeStack().descendingIterator();
     while (fnIterator.hasNext()) {
 
@@ -438,33 +545,32 @@ public class ThirToMirLowering {
           final var param = entry.fnSignature().parameters()[i];
           if (param.name().equals(identifierName)) {
 
-            final var paramInstr = new MirInstrGetParam(param);
-            mirCtx.nodeStack().peek().instructions().add(paramInstr);
-
-            return paramInstr;
+            return new MirInstrGetParam(param);
           }
         }
       }
     }
 
-    throw new IllegalArgumentException(STR."There is no variable '\{hir.name()}' found in scope");
+    return null;
   }
 
   private MirInstr lower_assignment(HirAssignment hir) {
 
-    final String name;
-    final boolean declare;
-    switch (hir.lhs()) {
-      case HirVariableDeclaration lhs -> {
-        name = lhs.identifier().name();
-        declare = true;
-      }
-      case HirIdentifier lhs -> {
-        name = lhs.name();
-        declare = false;
-      }
+    return switch (hir.lhs()) {
+      case HirVariableDeclaration lhs -> lower_assignment_root_level(hir, lhs.identifier().name(), true);
+      case HirIdentifier lhs -> lower_assignment_root_level(hir, lhs.name(), false);
+      case HirPath lhs -> lower_assignment_to_path(hir, lhs);
       default -> throw new UnexpectedExpressionException(hir.lhs());
-    }
+    };
+  }
+
+  private MirInstr lower_assignment_to_path(HirAssignment hir, HirPath path) {
+
+
+    throw new NotImplementedException();
+  }
+
+  private MirInstr lower_assignment_root_level(HirAssignment hir, String name, boolean declare) {
 
     // TODO: If it is a function, then if it is "const" then save it to global and store that
     final var rhs = lower(hir.rhs());
@@ -480,22 +586,25 @@ public class ThirToMirLowering {
       instr = ica;
     } else if (rhs instanceof MirInstrStore is) {
       instr = is;
+    } else if (rhs instanceof MirInstrCreateFn is) {
+      instr = is;
     } else {
       if (scopeValue == null) {
-        instr = new MirInstrStore(null, rhs, new TyPointer<>(rhs.ty()));
-        if (instr instanceof MirInstrStore is) {
-          is.name(new MirIdentifierId(name, null, 0));
-        }
-        mirCtx.nodeStack().peek().instructions().add(instr);
+        final var is = new MirInstrStore(null, rhs, new TyPointer<>(rhs.ty()));
+        is.name(new MirIdentifierId(name, null, 0));
+        instr = is;
       } else if (scopeValue instanceof MirInstrStore originalStore) {
         instr = new MirInstrStore(originalStore, rhs, new TyPointer<>(rhs.ty()));
-        mirCtx.nodeStack().peek().instructions().add(instr);
       } else {
         throw new IllegalArgumentException("Should this be allowed to happen?");
       }
+
+      mirCtx.nodeStack().peek().instructions().add(instr);
     }
 
+    // TODO: Should this actually be needed at all? Should it not be deduced some other way?
     scope.add(name, instr);
+
     return instr;
   }
 
@@ -665,9 +774,6 @@ public class ThirToMirLowering {
 
     if (resultTy != Ty.VOID) {
 
-//      final var passTy = Objects.requireNonNull(mirCtx.thirRaiseResult().getType(hir.pass()), "Pass branch must have a result kind");
-//      final var failTy = Objects.requireNonNull(mirCtx.thirRaiseResult().getType(hir.fail()), "Fail branch must have a result kind");
-
       final var last_pass = getLastValueInstruction(pass_node);
       final var last_fail = getLastValueInstruction(fail_node);
 
@@ -698,7 +804,11 @@ public class ThirToMirLowering {
     for (var i = node.instructions().size() - 1; i >= 0; i--) {
 
       final var instr = node.instructions().get(i);
-      if (instr instanceof MirInstrJump || instr instanceof MirInstrConditionalJump) {
+      if (instr instanceof MirInstrJump jump) {
+        continue;
+        //return getLastValueInstruction(jump.node());
+      } else if (instr instanceof MirInstrConditionalJump) {
+        // TODO: Can this be solved?
         continue;
       } else {
         return instr;
@@ -712,24 +822,31 @@ public class ThirToMirLowering {
   private MirInstr lower_block(HirBlock hir) {
 
     // TODO: This is wrong, since it never does a jump to the new block node. Should it even?
-    final var block_node = new MirNode(getNodePathName("block"));
-    final var block_scope = new MirScope(mirCtx.scopeStack().peek(), "block");
+//    final var block_node = new MirNode(getNodePathName("block"));
+//    final var block_scope = new MirScope(mirCtx.scopeStack().peek(), "block");
 
-    try {
+//    try {
+//
+////      mirCtx.scopeStack().push(block_scope);
+//      try {
 
-      mirCtx.scopeStack().push(block_scope);
-      try {
+//        final var parent = mirCtx.nodeStack().pop();
 
-        mirCtx.nodeStack().peek().addSuccessor(block_node);
-        mirCtx.nodeStack().push(block_node);
+//        parent.addSuccessor(block_node);
+//        parent.instructions().add(new MirInstrJump(block_node));
 
-        return lower_expressions(hir.children());
-      } finally {
-        mirCtx.nodeStack().pop();
-      }
-    } finally {
-      mirCtx.scopeStack().pop();
-    }
+//        mirCtx.nodeStack().push(block_node);
+
+        return lower(hir.children());
+//      } finally {
+////        mirCtx.nodeStack().pop();
+//      }
+//    } finally {
+//
+//      // Any values inside here are lost since we just pop it
+//
+////      mirCtx.scopeStack().pop();
+//    }
   }
 
   private MirInstr lower_argument(HirArgument hir) {
@@ -789,6 +906,11 @@ public class ThirToMirLowering {
         }
         default -> throw new UnexpectedExpressionException(store.value());
       };
+      case MirInstrCreateFn createFn -> {
+        final var instruction = new MirCall(fnInstr, createFn.signature(), mirFnArguments);
+        mirCtx.nodeStack().peek().instructions().add(instruction);
+        yield instruction;
+      }
       default -> throw new UnexpectedExpressionException(fnInstr);
     };
   }

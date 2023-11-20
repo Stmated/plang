@@ -14,6 +14,7 @@ import org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import org.bytedeco.llvm.LLVM.LLVMBuilderRef;
 import org.bytedeco.llvm.LLVM.LLVMContextRef;
 import org.bytedeco.llvm.LLVM.LLVMOrcThreadSafeContextRef;
+import org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import org.bytedeco.llvm.LLVM.LLVMValueRef;
 import org.bytedeco.llvm.global.LLVM;
 
@@ -22,7 +23,11 @@ class MirToLLVMCtx {
   private final Map<String, LLVMValueRef> globalStringCache = new HashMap<>();
   private final Map<Byte, LLVMValueRef> cachedBytes = new HashMap<>();
 
-  private final Map<MirInstr, LLVMValueRef> valueLookup = new HashMap<>();
+  private final Map<MirInstr, LoweringResult> valueLookup = new HashMap<>();
+  /**
+   * TODO: Could perhaps one day be removed in favor of keeping the type reference being sent along the chain?
+   */
+  private final Map<Ty, LLVMTypeRef> typeLookup = new HashMap<>();
   private final Map<MirNode, LLVMBasicBlockRef> blockLookup = new HashMap<>();
 
   private final Stack<Pair<MirInstrCreateFn, LLVMValueRef>> fnStack = new Stack<>();
@@ -45,22 +50,22 @@ class MirToLLVMCtx {
 
     // Q: Is this worth it? Try with and without.
     final var ty = Ty.CHAR;
-    final var charType = MirToLLVMUtils.toLLVMType(context, ty);
+    final var charType = MirToLLVMUtils.toLLVMType(this, ty);
     return cachedBytes.computeIfAbsent(bite, b -> LLVM.LLVMConstInt(charType, b, ty.signed() ? 1 : 0));
   }
 
-  public LLVMValueRef resolve(MirInstr miri) {
+  public LoweringResult resolve(MirInstr miri) {
     return Objects.requireNonNull(
       this.valueLookup.get(miri),
       "Every instruction that we lookup must be a handled predecessor of when we need to resolve it"
     );
   }
 
-  public LLVMValueRef resolveIfAvailable(MirInstr miri) {
+  public LoweringResult resolveIfAvailable(MirInstr miri) {
     return this.valueLookup.get(miri);
   }
 
-  public void register(MirInstr miri, LLVMValueRef ref) {
+  public void register(MirInstr miri, LoweringResult ref) {
     if (this.valueLookup.containsKey(miri)) {
       throw new IllegalArgumentException(STR."Not allowed to register a value ref for '\{miri}' twice!");
     }
@@ -98,5 +103,13 @@ class MirToLLVMCtx {
 
   public Iterator<Pair<MirInstrCreateFn, LLVMValueRef>> getFunctionIterator() {
     return fnStack.reversed().iterator();
+  }
+
+  public void registerType(Ty ty, LLVMTypeRef typeRef) {
+    typeLookup.put(ty, typeRef);
+  }
+
+  public LLVMTypeRef resolveType(Ty ty) {
+    return typeLookup.get(ty);
   }
 }

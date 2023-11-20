@@ -6,5 +6,8 @@ public record HirVariableDeclaration(
   HirExpression type
 ) implements HirExpression {
 
-
+  @Override
+  public String toString() {
+    return STR."\{mutabilityKind} \{identifier}:\{type}";
+  }
 }

@@ -9,7 +9,7 @@
 val Enum = A: uint8 | B: nominal uint8 | C: symbol;
 
 // They must all be callable in this fashion:
-val e1 = new Enum.B { 1 }; // NOTE: Is this ugly? We do "alloc" something by giving value (?)
+val e1 = new stack Enum.B { 1 }; // NOTE: Is this ugly? We do "alloc" something by giving value (?)
 val e2 = Enum.C;
 
 match (e2) {

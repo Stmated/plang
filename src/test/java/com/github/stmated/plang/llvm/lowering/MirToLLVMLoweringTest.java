@@ -1,6 +1,7 @@
 package com.github.stmated.plang.llvm.lowering;
 
 import com.github.stmated.plang.Plang;
+import com.github.stmated.plang.exceptions.InvalidImplementationException;
 import com.github.stmated.plang.exceptions.InvalidTypeConversionException;
 import com.github.stmated.plang.exceptions.UnreachableCodeLLVMException;
 import com.github.stmated.plang.hir.model.HirBinaryOperation;
@@ -298,7 +299,8 @@ class MirToLLVMLoweringTest {
     "val fn = (a: int, b: int) => a + b; fn(10, 0)",
     "val fn = (a: int, b: int) => a + b; fn(0, 10)",
     "((a: int, b: int) => a + b)(5, 5)",
-    "val fn = (a: int, b: int) => a + b; fn(2, 3) + fn(3, 2)"
+    "val fn = (a: int, b: int) => a + b; fn(2, 3) + fn(3, 2)",
+    "val fn1 = (a: int, b: int) => a + b; val fn2 = (a: int, b: int) => a - b; val fn3 = fn2; return fn1(10, 10) + fn3(30, 40);"
   })
   void testFnCall(String code) {
     Assertions.assertEquals(10, Plang.codeToResult(code).resultValue());
@@ -310,9 +312,50 @@ class MirToLLVMLoweringTest {
   @ParameterizedTest
   @ValueSource(strings = {
     "val fn = (a: int, ...x: [int]) => a + x[0] + x[1]; fn(1, 5, 4)",
-    // Add more dynamic approaches once things like `x.length` exists, or iterators
   })
-  void testFnVararg(String code) {
+  void testFnImplVararg(String code) {
+    Assertions.assertThrows(InvalidImplementationException.class, () -> Plang.codeToResult(code).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val fn = (a: int, x: [;int;]) => a + x[0] + x[1]; fn(1, [5, 4])",
+  })
+  void testFnWithArray(String code) {
     Assertions.assertEquals(10, Plang.codeToResult(code).resultValue());
+  }
+
+  @Test
+  void testStruct() {
+
+    final var code = """
+      val S = struct {
+        val a: int;
+        val b: int;
+      };
+      
+      val v = new heap S { a = 4, b = 6 };
+      return v.a + v.b;
+      """;
+
+    Assertions.assertEquals(10, Plang.codeToResult(code).resultValue());
+  }
+
+  @Test
+  void testSetToStructField() {
+
+    final var code = """
+      val S = struct {
+        val a: int;
+        val b: int;
+      };
+      
+      val v = new heap S { a = 4, b = 6 };
+      v.a = 20;
+      v.b = 10;
+      return v.a + v.b;
+      """;
+
+    Assertions.assertEquals(30, Plang.codeToResult(code).resultValue());
   }
 }

@@ -2,13 +2,13 @@ package com.github.stmated.plang.ast.model;
 
 import com.github.stmated.plang.ast.AstVisitor;
 
-import java.util.Arrays;
+import java.util.Objects;
 
-public record AstBlock(AstExpression[] children) implements AstExpression {
+public record AstBlock(AstExpression expression) implements AstExpression {
 
   @Override
   public String toString() {
-    return Arrays.toString(children);
+    return Objects.toString(expression);
   }
 
   @Override

@@ -4,12 +4,13 @@ import com.github.stmated.plang.ast.AstVisitor;
 
 public record AstNew(
     AstExpression target,
-    AstExpression expressions
+    AstIdentifier allocator,
+    AstExpression arguments
 ) implements AstExpression {
 
   @Override
   public String toString() {
-    return "new " + target + "(" + expressions + ")";
+    return STR."new \{allocator} \{target}(\{arguments})";
   }
 
   @Override

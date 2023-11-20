@@ -9,7 +9,7 @@ public record AstDotAccess(
 
   @Override
   public String toString() {
-    return lhs + "." + rhs;
+    return STR."\{lhs}.\{rhs}";
   }
 
   @Override

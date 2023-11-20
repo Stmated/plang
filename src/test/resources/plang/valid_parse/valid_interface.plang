@@ -4,8 +4,8 @@ val Point = (
   y: uint64;
 );
 
-val p1 = new Point { 10, 20 };
-val p2 = new Point { y = 20, x = 10 };
+val p1 = new stack Point { 10, 20 };
+val p2 = new stack Point { y = 20, x = 10 };
 
 val implicit_p1 = (
     x = 10,

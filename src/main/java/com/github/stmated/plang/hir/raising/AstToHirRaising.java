@@ -9,21 +9,24 @@ import com.github.stmated.plang.ast.model.AstBracketAccess;
 import com.github.stmated.plang.ast.model.AstCall;
 import com.github.stmated.plang.ast.model.AstCallable;
 import com.github.stmated.plang.ast.model.AstConditional;
+import com.github.stmated.plang.ast.model.AstDotAccess;
 import com.github.stmated.plang.ast.model.AstExpression;
 import com.github.stmated.plang.ast.model.AstExpressions;
 import com.github.stmated.plang.ast.model.AstIdentifier;
 import com.github.stmated.plang.ast.model.AstLabeling;
 import com.github.stmated.plang.ast.model.AstLiteral;
 import com.github.stmated.plang.ast.model.AstLoopFor;
+import com.github.stmated.plang.ast.model.AstNew;
 import com.github.stmated.plang.ast.model.AstNoOp;
 import com.github.stmated.plang.ast.model.AstParen;
 import com.github.stmated.plang.ast.model.AstProgram;
 import com.github.stmated.plang.ast.model.AstReturn;
 import com.github.stmated.plang.ast.model.AstSpread;
+import com.github.stmated.plang.ast.model.AstStruct;
 import com.github.stmated.plang.ast.model.AstThen;
-import com.github.stmated.plang.ast.model.AstType;
 import com.github.stmated.plang.ast.model.AstVariableDeclaration;
 import com.github.stmated.plang.exceptions.NotImplementedException;
+import com.github.stmated.plang.exceptions.UnexpectedExpressionException;
 import com.github.stmated.plang.hir.model.HirArgument;
 import com.github.stmated.plang.hir.model.HirArray;
 import com.github.stmated.plang.hir.model.HirArrayAccess;
@@ -44,9 +47,13 @@ import com.github.stmated.plang.hir.model.HirLoop;
 import com.github.stmated.plang.hir.model.HirLoopBreak;
 import com.github.stmated.plang.hir.model.HirLoopContinue;
 import com.github.stmated.plang.hir.model.HirMutabilityKind;
+import com.github.stmated.plang.hir.model.HirNewByBlock;
+import com.github.stmated.plang.hir.model.HirNewByCtor;
 import com.github.stmated.plang.hir.model.HirParameter;
+import com.github.stmated.plang.hir.model.HirPath;
 import com.github.stmated.plang.hir.model.HirProgram;
 import com.github.stmated.plang.hir.model.HirReturn;
+import com.github.stmated.plang.hir.model.HirStruct;
 import com.github.stmated.plang.hir.model.HirTuple;
 import com.github.stmated.plang.hir.model.HirTupleKeyValue;
 import com.github.stmated.plang.hir.model.HirTy;
@@ -54,8 +61,6 @@ import com.github.stmated.plang.hir.model.HirVariableDeclaration;
 import com.github.stmated.plang.thir.raising.HirToThirRaising;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyValueNumber;
-import com.github.stmated.plang.ty.TyValueNumberInteger;
-import com.github.stmated.plang.ty.util.Tys;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -70,7 +75,7 @@ import java.util.Objects;
 public class AstToHirRaising {
 
   public HirProgram lower_program(AstProgram astProgram) {
-    return new HirProgram(implicit_return(lower_expression(astProgram.children())));
+    return new HirProgram(implicit_return(lower(astProgram.children())));
   }
 
   private HirExpression implicit_return(HirExpression expression) {
@@ -114,7 +119,7 @@ public class AstToHirRaising {
     final var lowered = new HirExpression[astExpressions.length];
     var targetIndex = 0;
     for (var i = 0; i < astExpressions.length; i++) {
-      final var hir = lower_expression(astExpressions[i]); ;
+      final var hir = lower(astExpressions[i]); ;
       if (hir != null) {
         lowered[targetIndex] = hir;
         targetIndex++;
@@ -131,7 +136,7 @@ public class AstToHirRaising {
     return lowered;
   }
 
-  public HirExpression lower_expression(AstExpression expr) {
+  public HirExpression lower(AstExpression expr) {
 
     return switch (expr) {
       case AstLoopFor ast -> lower_loop_for(ast);
@@ -145,17 +150,92 @@ public class AstToHirRaising {
       case AstIdentifier ast -> lower_identifier(ast);
       case AstParen ast -> lower_paren(ast);
       case AstBracket ast -> lower_bracket(ast);
-      case AstThen ast -> lower_expression(ast.expression());
+      case AstThen ast -> lower(ast.expression());
       case AstVariableDeclaration ast -> lower_variable_declaration(ast);
       case AstAssignment ast -> lower_assignment(ast);
       case AstLabeling ast -> lower_labeling(ast);
       case AstCallable ast -> lower_callable(ast);
       case AstExpressions ast -> new HirExpressions(lower_expressions(ast.children()));
+      case AstStruct ast -> lower_struct(ast);
+      case AstNew ast -> lower_new(ast);
+      case AstDotAccess ast -> lower_dot_access(ast);
       // TODO: Important that a NoOp means "nothing" if last expression of block.
       //        Since everything is an expression, if "x" is last expression, then give back "x"
       //        But if it's "x;" then it means we should return "nothing".
       case AstNoOp _ -> null;
       default -> throw new IllegalArgumentException(STR."Unknown AST Expression (\{expr.getClass().getSimpleName()}) '\{expr}'");
+    };
+  }
+
+  private HirExpression lower_dot_access(AstDotAccess ast) {
+
+    final var elements = new ArrayList<HirExpression>();
+
+    AstExpression pointer = ast;
+    while (pointer instanceof AstDotAccess dot) {
+
+      final var lhs = lower(dot.lhs());
+      elements.add(lhs);
+
+      pointer = ast.rhs();
+    }
+
+    // The last child of the path should be added.
+    final var edge = lower(pointer);
+    assert edge != null;
+    elements.add(edge);
+
+    return new HirPath(elements.toArray(new HirExpression[0]));
+  }
+
+  private HirExpression lower_new(AstNew ast) {
+
+    final var target = lower(ast.target());
+    final var allocator = lower_identifier(ast.allocator());
+    final var argumentExpr = lower(ast.arguments());
+
+    return switch (argumentExpr) {
+      // This is a creation using `new Obj { Val = '1' }` syntax. Which all structs inherently can do.
+      case HirBlock block -> {
+        final var assignments = new ArrayList<HirAssignment>();
+        for (final var expr : expand(block.children())) {
+          switch (expr) {
+            case HirAssignment assignment -> assignments.add(assignment);
+            default -> throw new UnexpectedExpressionException(expr);
+          }
+        }
+
+        yield new HirNewByBlock(target, allocator, assignments.toArray(new HirAssignment[0]));
+      }
+
+      // This is a creation using `new Obj('1')` syntax, meaning it is trying to call a manually added constructor.
+      case HirExpressions exprs -> new HirNewByCtor(target, allocator, exprs);
+      default -> throw new UnexpectedExpressionException(argumentExpr);
+    };
+  }
+
+  private HirExpression lower_struct(AstStruct ast) {
+
+    final var declarations = new ArrayList<HirVariableDeclaration>();
+    final var block = lower(ast.block().expression());
+
+    for (final var field : expand(block)){
+
+      switch (field) {
+        case HirVariableDeclaration dec -> {
+          declarations.add(dec);
+        }
+        default -> throw new UnexpectedExpressionException(field);
+      }
+    }
+
+    return new HirStruct(declarations.toArray(new HirVariableDeclaration[0]));
+  }
+
+  private HirExpression[] expand(HirExpression expr) {
+    return switch (expr) {
+      case HirExpressions exprs -> exprs.children();
+      default -> new HirExpression[]{expr};
     };
   }
 
@@ -173,7 +253,7 @@ public class AstToHirRaising {
         continue;
       }
 
-      final var lowered = lower_expression(entry);
+      final var lowered = lower(entry);
 
       if (section == 0) {
         elements.add(lowered);
@@ -254,8 +334,8 @@ public class AstToHirRaising {
 
   private HirExpression lower_labeling(AstLabeling ast) {
 
-    final var lhs = lower_expression(ast.lhs());
-    final var rhs = lower_expression(ast.rhs());
+    final var lhs = lower(ast.lhs());
+    final var rhs = lower(ast.rhs());
 
     return new HirLabeling(lhs, rhs);
   }
@@ -263,7 +343,7 @@ public class AstToHirRaising {
   private HirExpression lower_callable(AstCallable ast) {
 
     final var signature = find_and_lower_parameters(ast.lhs());
-    final var body = implicit_return(lower_expression(ast.rhs()));
+    final var body = implicit_return(lower(ast.rhs()));
 
     return new HirFunction(signature, body);
   }
@@ -274,7 +354,7 @@ public class AstToHirRaising {
       case AstLabeling labeling -> {
 
         final var signature = find_and_lower_parameters(labeling.lhs());
-        final var returnTypeExpr = lower_expression(labeling.rhs());
+        final var returnTypeExpr = lower(labeling.rhs());
 
         yield new HirFunctionSignature(signature.parameters(), signature.vararg(), returnTypeExpr);
       }
@@ -311,13 +391,13 @@ public class AstToHirRaising {
   private HirParameter lower_parameter(AstExpression expr) {
 
     return switch (expr) {
-      case AstSpread spread -> new HirParameter(lower_expression(spread.expression()), new HirTy(Ty.INFER), true);
+      case AstSpread spread -> new HirParameter(lower(spread.expression()), new HirTy(Ty.INFER), true);
       case AstLabeling labeling -> {
         final var labelingLhs = lower_parameter(labeling.lhs());
-        final var labelingRhs = lower_expression(labeling.rhs());
+        final var labelingRhs = lower(labeling.rhs());
         yield new HirParameter(labelingLhs.identifier(), labelingRhs, labelingLhs.vararg());
       }
-      default -> new HirParameter(lower_expression(expr), new HirTy(Ty.INFER), false);
+      default -> new HirParameter(lower(expr), new HirTy(Ty.INFER), false);
     };
   }
 
@@ -329,27 +409,28 @@ public class AstToHirRaising {
         case Immutable -> HirMutabilityKind.IMMUTABLE;
         case Mutable -> HirMutabilityKind.MUTABLE;
       },
-      ast.type() == null ? null : lower_type(ast.type())
+      ast.type() == null ? new HirTy(Ty.INFER) : lower(ast.type())
     );
   }
 
-  private HirExpression lower_type(AstExpression expression) {
-
-    return switch (expression) {
-      case AstType ast -> lower_identifier(ast.identifier());
-      default -> throw new NotImplementedException(STR."Do not know how to handle '\{expression}'");
-    };
-  }
+//  private HirExpression lower_type(AstExpression expression) {
+//
+//    return switch (expression) {
+//      case AstType ast -> lower_identifier(ast.identifier());
+//      default -> throw new NotImplementedException(STR."Do not know how to handle '\{expression}' (\{expression.getClass().getSimpleName()}})");
+//    };
+//  }
 
   private HirExpression lower_assignment(AstAssignment ast) {
 
     final var target = switch (ast.lhs()) {
-      case AstVariableDeclaration lhs -> lower_expression(lhs);
-      case AstIdentifier lhs -> lower_expression(lhs);
-      default -> throw new NotImplementedException(STR."Do not know how to handle '\{ast.lhs()}' in assignment");
+      case AstVariableDeclaration lhs -> lower(lhs);
+      case AstIdentifier lhs -> lower(lhs);
+      case AstDotAccess lhs -> lower(lhs);
+      default -> throw new UnexpectedExpressionException(ast.lhs());
     };
 
-    final var source = lower_expression(ast.rhs());
+    final var source = lower(ast.rhs());
 
     return new HirAssignment(target, source);
   }
@@ -360,11 +441,11 @@ public class AstToHirRaising {
 
   private HirArrayAccess lower_bracket_access(AstBracketAccess ast) {
 
-    final var target = lower_expression(ast.target());
+    final var target = lower(ast.target());
     final var astAccessors = ast.accessor().children();
     final var hirAccessors = new HirExpression[astAccessors.length];
     for (var i = 0; i < astAccessors.length; i++) {
-      hirAccessors[i] = lower_expression(astAccessors[i]);
+      hirAccessors[i] = lower(astAccessors[i]);
     }
 
     if (hirAccessors.length == 0) {
@@ -378,7 +459,7 @@ public class AstToHirRaising {
 
   private HirCall lower_call(AstCall ast) {
 
-    final var target = lower_expression(ast.target());
+    final var target = lower(ast.target());
     final var hirParen = lower_paren(ast.paren());
 
     // TODO: This could be a HirTuple, but it is badly handled right now, and awful support for mixing positional and named arguments
@@ -402,17 +483,12 @@ public class AstToHirRaising {
 
   private HirExpression lower_block(AstBlock ast) {
 
-    final var lowered = lower_expressions(ast.children());
-
-    if (lowered.length == 1) {
-      return lowered[0];
-    }
-
+    final var lowered = lower(ast.expression());
     return new HirBlock(lowered);
   }
 
   private HirReturn lower_return(AstReturn ast) {
-    return new HirReturn(lower_expression(ast.expression()));
+    return new HirReturn(lower(ast.expression()));
   }
 
   private HirLiteral lower_literal(AstLiteral ast) {
@@ -430,7 +506,7 @@ public class AstToHirRaising {
     };
 
     if (expandedKind != null) {
-      return lower_expression(new AstAssignment(ast.lhs(), new AstBinaryOperation(ast.lhs(), expandedKind, ast.rhs())));
+      return lower(new AstAssignment(ast.lhs(), new AstBinaryOperation(ast.lhs(), expandedKind, ast.rhs())));
     }
 
     return lower_binary_operation_explicit(ast);
@@ -439,9 +515,9 @@ public class AstToHirRaising {
   private HirBinaryOperation lower_binary_operation_explicit(AstBinaryOperation ast) {
 
     return new HirBinaryOperation(
-      lower_expression(ast.lhs()),
+      lower(ast.lhs()),
       lower_binary_operation_type(ast.kind()),
-      lower_expression(ast.rhs())
+      lower(ast.rhs())
     );
   }
 
@@ -474,8 +550,8 @@ public class AstToHirRaising {
 
   private HirExpression lower_loop_for(AstLoopFor astLoopFor) {
 
-    final var loweredHead = lower_expression(astLoopFor.head());
-    final var loweredBody = lower_expression(astLoopFor.block());
+    final var loweredHead = lower(astLoopFor.head());
+    final var loweredBody = lower(astLoopFor.block());
 
     final HirExpression[] loopFields;
     final HirExpression loopPredicate;
@@ -549,7 +625,7 @@ public class AstToHirRaising {
 
     return switch (astExpr) {
       case AstExpressions collection -> lower_paren_expression_collection(collection);
-      default -> lower_expression(astExpr);
+      default -> lower(astExpr);
     };
   }
 
@@ -571,7 +647,7 @@ public class AstToHirRaising {
         }
         default -> {
           unlabeledExpressionCount++;
-          yield lower_expression(children[i]);
+          yield lower(children[i]);
         }
       };
 
@@ -604,7 +680,7 @@ public class AstToHirRaising {
 
     return new HirTupleKeyValue(
       lower_expression_to_identifier(astLabeling.lhs()),
-      lower_expression(astLabeling.rhs())
+      lower(astLabeling.rhs())
     );
   }
 
@@ -617,11 +693,11 @@ public class AstToHirRaising {
 
     final var fail = (astConditional.fail() == null)
       ? null
-      : lower_expression(astConditional.fail());
+      : lower(astConditional.fail());
 
     return new HirConditional(
-      lower_expression(astConditional.predicate()),
-      lower_expression(astConditional.pass()),
+      lower(astConditional.predicate()),
+      lower(astConditional.pass()),
       fail
     );
   }

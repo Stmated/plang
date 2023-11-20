@@ -887,7 +887,7 @@ public class TokenToAstRaising {
       children.add(this.parseLevel0());
     }
 
-    return new AstBlock(children.toArray(new AstExpression[0]));
+    return new AstBlock(AstExpressions.from(children));
   }
 
   private AstStruct parseStruct() {
@@ -1300,24 +1300,29 @@ public class TokenToAstRaising {
 
     this.stayOrNext(TokenType.NEW);
 
+    final var allocator = parseIdentifier();
     final var target = parseLevel0();
 
     final var t1 = next();
-    if (t1 != null && t1.type() == TokenType.OPEN_BRACE) {
+    if (t1 != null) {
 
-      final var collection = parseExpressionCollection(
-        new TokenType[]{
-          TokenType.CLOSE_BRACE,
-          TokenType.CLOSE_PAREN,
-          TokenType.CLOSE_BRACKET,
-        },
-        this::parseLevel0
-      );
+      if (t1.type() == TokenType.OPEN_BRACE || t1.type() == TokenType.OPEN_PAREN) {
 
-      return new AstNew(target, new AstExpressions(collection.toArray(new AstExpression[0])));
+        final var collection = parseExpressionCollection(
+          new TokenType[]{TokenType.CLOSE_BRACE, TokenType.CLOSE_PAREN, TokenType.CLOSE_BRACKET},
+          this::parseLevel0
+        );
+
+        final var exprs = AstExpressions.from(collection);
+        final var arguments = (t1.type() == TokenType.OPEN_BRACE)
+          ? new AstBlock(exprs)
+          : new AstParen(exprs);
+
+        return new AstNew(target, allocator, arguments);
+      }
     }
 
-    return new AstNew(target, null);
+    return new AstNew(target, allocator, null);
   }
 
   private AstYield parseYield() {

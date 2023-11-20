@@ -6,12 +6,12 @@ import com.github.stmated.plang.ast.model.AstBinaryOperationKind;
 import com.github.stmated.plang.ast.model.AstBlock;
 import com.github.stmated.plang.ast.model.AstConditional;
 import com.github.stmated.plang.ast.model.AstExpression;
+import com.github.stmated.plang.ast.model.AstExpressions;
 import com.github.stmated.plang.ast.model.AstLiteral;
 import com.github.stmated.plang.ast.model.AstReturn;
 import com.github.stmated.plang.hir.model.HirBinaryOperation;
 import com.github.stmated.plang.hir.model.HirBinaryOperationKind;
 import com.github.stmated.plang.hir.model.HirCall;
-import com.github.stmated.plang.hir.model.HirExpression;
 import com.github.stmated.plang.hir.model.HirFunction;
 import com.github.stmated.plang.hir.model.HirLiteral;
 import com.github.stmated.plang.hir.model.HirProgram;
@@ -32,18 +32,22 @@ class AstToHirRaisingTest {
         new AstLiteral("1", Ty.INTEGER)
       ),
       new AstBlock(
-        new AstExpression[] {
-          new AstReturn(
-            new AstLiteral("10", Ty.INTEGER)
-          )
-        }
+        new AstExpressions(
+          new AstExpression[]{
+            new AstReturn(
+              new AstLiteral("10", Ty.INTEGER)
+            )
+          }
+        )
       ),
       new AstBlock(
-        new AstExpression[] {
-          new AstReturn(
-            new AstLiteral("20", Ty.INTEGER)
-          )
-        }
+        new AstExpressions(
+          new AstExpression[]{
+            new AstReturn(
+              new AstLiteral("20", Ty.INTEGER)
+            )
+          }
+        )
       )
     );
 

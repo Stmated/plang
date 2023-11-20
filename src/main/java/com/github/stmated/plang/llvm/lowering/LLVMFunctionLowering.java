@@ -1,14 +1,13 @@
 package com.github.stmated.plang.llvm.lowering;
 
+import static org.bytedeco.llvm.global.LLVM.LLVMAddGlobal;
 import static org.bytedeco.llvm.global.LLVM.LLVMAddIncoming;
 import static org.bytedeco.llvm.global.LLVM.LLVMBuildCondBr;
 import static org.bytedeco.llvm.global.LLVM.LLVMBuildPhi;
 
-import com.github.stmated.plang.ast.model.AstLiteral;
+import com.github.stmated.plang.exceptions.InvalidImplementationException;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.exceptions.UnexpectedExpressionException;
-import com.github.stmated.plang.exceptions.UnexpectedTokenException;
-import com.github.stmated.plang.lexer.Token;
 import com.github.stmated.plang.llvm.util.LLVMTys;
 import com.github.stmated.plang.mir.model.MirCall;
 import com.github.stmated.plang.mir.model.MirInstr;
@@ -16,20 +15,23 @@ import com.github.stmated.plang.mir.model.MirInstrBinaryOperation;
 import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
 import com.github.stmated.plang.mir.model.MirInstrCreateArray;
 import com.github.stmated.plang.mir.model.MirInstrCreateFn;
+import com.github.stmated.plang.mir.model.MirInstrCreateInstance;
 import com.github.stmated.plang.mir.model.MirInstrCreateLiteral;
+import com.github.stmated.plang.mir.model.MirInstrCreateStruct;
 import com.github.stmated.plang.mir.model.MirInstrGetArrayElement;
 import com.github.stmated.plang.mir.model.MirInstrGetGlobal;
 import com.github.stmated.plang.mir.model.MirInstrGetParam;
+import com.github.stmated.plang.mir.model.MirInstrGetStructElement;
 import com.github.stmated.plang.mir.model.MirInstrJump;
 import com.github.stmated.plang.mir.model.MirInstrPhi;
+import com.github.stmated.plang.mir.model.MirInstrSetStructElement;
 import com.github.stmated.plang.mir.model.MirInstrStore;
 import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.mir.model.MirReturn;
 import com.github.stmated.plang.ty.BitWidth;
-import com.github.stmated.plang.ty.RealKind;
 import com.github.stmated.plang.ty.Ty;
-import com.github.stmated.plang.ty.TyFlags;
 import com.github.stmated.plang.ty.TyPointer;
+import com.github.stmated.plang.ty.TyStruct;
 import com.github.stmated.plang.ty.TyValueArray;
 import com.github.stmated.plang.ty.TyValueBoolean;
 import com.github.stmated.plang.ty.TyValueNumber;
@@ -40,7 +42,6 @@ import com.github.stmated.plang.ty.util.Pair;
 import com.github.stmated.plang.ty.util.Tys;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -67,6 +68,18 @@ class LLVMFunctionLowering {
 
   private final MirToLLVMCtx mirToLlvmCtx;
 
+  private final Map<String, LLVMValueRef> globalStringCache = new HashMap<>();
+
+  private final Pattern PATTERN_INTEGER_SUFFIX = Pattern.compile("(\\d+)([iu])(\\d+)");
+
+  private record ExternalFn(LLVMValueRef fn, LLVMTypeRef fnType, LLVMTypeRef[] params) {
+
+  }
+
+  private record RefTyPair(LLVMValueRef ref, Ty ty) {
+
+  }
+
   private LLVMFunctionLowering(MirToLLVMCtx mirToLlvmCtx, String name) {
     this.mirToLlvmCtx = mirToLlvmCtx;
     this.module = LLVM.LLVMModuleCreateWithNameInContext(name, mirToLlvmCtx.context);
@@ -92,26 +105,29 @@ class LLVMFunctionLowering {
 
   private ExternalFn createFnDeclaration(MirInstrCreateFn mirInstrCreateFn) {
 
-    final var fnSignature = mirInstrCreateFn.signature();
-    final var fnReturnType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx.context, fnSignature.returnType());
-    final var fnParams = new LLVMTypeRef[fnSignature.parameters().length];
-    for (var i = 0; i < fnSignature.parameters().length; i++) {
+    final var mirFnSignature = mirInstrCreateFn.signature();
+    final var fnReturnType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, mirFnSignature.returnType());
+    final var mirParameters = mirFnSignature.parameters();
+    final var actualParamCount = mirFnSignature.vararg() ? mirParameters.length - 1 : mirParameters.length;
+    final var fnParams = new LLVMTypeRef[actualParamCount];
+    for (var i = 0; i < actualParamCount; i++) {
 
-      final var mirParam = fnSignature.parameters()[i];
+      final var mirParam = mirParameters[i];
       final var mirParamType = mirParam.ty();
 
-      fnParams[i] = MirToLLVMUtils.toLLVMType(mirToLlvmCtx.context, mirParamType);
+      fnParams[i] = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, mirParamType);
     }
 
-    final var vararg = fnSignature.vararg() ? 1 : 0;
+    final var vararg = mirFnSignature.vararg() ? 1 : 0;
     final var fnType = LLVM.LLVMFunctionType(fnReturnType, new PointerPointer<>(fnParams), fnParams.length, vararg);
-    final var fnName = (mirInstrCreateFn.name() == null) ? "fn"
-      : mirInstrCreateFn.name().getUniqueName(); // TODO: Give better name? Or never unique name? Let LLVM name it uniquely?
+    final var fnName = (mirInstrCreateFn.name() == null)
+      ? "fn" // TODO: Give better name one day
+      : mirInstrCreateFn.name().getUniqueName();
     final var fn = LLVM.LLVMAddFunction(module, fnName, fnType);
 
-    for (var i = 0; i < fnSignature.parameters().length; i++) {
+    for (var i = 0; i < fnParams.length; i++) {
 
-      final var mirParam = fnSignature.parameters()[i];
+      final var mirParam = mirParameters[i];
       if (mirParam.name() != null) {
 
         final var param = LLVM.LLVMGetParam(fn, i);
@@ -156,12 +172,12 @@ class LLVMFunctionLowering {
     forEachNode(root, this::move_to_and_lower_node);
   }
 
-  private LLVMValueRef move_to_and_lower_node(MirNode node) {
+  private LoweringResult move_to_and_lower_node(MirNode node) {
 
     final var nodeBlock = mirToLlvmCtx.resolveBlock(node);
     LLVM.LLVMPositionBuilderAtEnd(mirToLlvmCtx.builder, nodeBlock);
 
-    LLVMValueRef last = null;
+    LoweringResult last = null;
     for (final var instruction : node.instructions()) {
       last = lower_instruction(instruction);
     }
@@ -169,7 +185,7 @@ class LLVMFunctionLowering {
     return last;
   }
 
-  private LLVMValueRef lower_instruction(MirInstr miri) {
+  private LoweringResult lower_instruction(MirInstr miri) {
 
     final var ref = mirToLlvmCtx.resolveIfAvailable(miri);
     if (ref != null) {
@@ -179,9 +195,9 @@ class LLVMFunctionLowering {
     return lower_instruction_inner(miri);
   }
 
-  private LLVMValueRef lower_instruction_inner(MirInstr miri) {
+  private LoweringResult lower_instruction_inner(MirInstr miri) {
 
-    final LLVMValueRef valueRef = switch (miri) {
+    final LoweringResult valueRes = switch (miri) {
       case MirInstrCreateLiteral it -> lower_literal(it);
       case MirInstrCreateFn it -> lower_create_fn(it);
       case MirInstrBinaryOperation it -> lower_binary_operation(it);
@@ -195,16 +211,68 @@ class LLVMFunctionLowering {
       case MirInstrGetParam it -> lower_get_param(it);
       case MirInstrCreateArray it -> lower_create_array(it);
       case MirInstrGetArrayElement it -> lower_get_array_element(it);
+      case MirInstrGetStructElement it -> lower_get_struct_element(it);
+      case MirInstrSetStructElement it -> lower_set_struct_element(it);
+      case MirInstrCreateStruct it -> lower_create_struct(it);
+      case MirInstrCreateInstance it -> lower_create_instance(it);
       default -> throw new UnexpectedExpressionException(miri);
     };
 
-    // All instructions will always result in a valueRef, even if it is a void value.
-    mirToLlvmCtx.register(miri, valueRef);
+    // Most instructions will always result in a valueRef, even if it is a void value.
+    mirToLlvmCtx.register(miri, valueRes);
 
-    return valueRef;
+    return valueRes;
   }
 
-  private LLVMValueRef lower_create_array(MirInstrCreateArray mir) {
+  private LoweringResult lower_create_instance(MirInstrCreateInstance it) {
+
+    final var typeRef = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, it.ty());
+
+    return switch (it.ty()) {
+      case TyStruct struct -> {
+
+        // TODO: Need a way of knowing if the value is a constant or not. The assignment that named the ty should alter the ty.
+
+        // TODO: Need a way to signify scope, so we can know to Alloca or Malloc and when and how to de-allocate
+
+        final var ptr = LLVM.LLVMBuildAlloca(mirToLlvmCtx.builder, typeRef, "");
+
+        // We should trust the earlier stages to have given the correct arguments in the correct order.
+        for (var i = 0; i < it.arguments().length; i++) {
+
+          final var argument = it.arguments()[i];
+//          final var argumentTy = argument.ty();
+//          final var argumentTypeRef = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, argumentTy);
+          final var valueRef = lower_instruction(argument);
+
+          final var gep = LLVM.LLVMBuildStructGEP2(mirToLlvmCtx.builder, typeRef, ptr, i, STR."sgep\{i}");
+          LLVM.LLVMBuildStore(mirToLlvmCtx.builder, valueRef.value(), gep);
+        }
+
+        yield new LoweringResult(ptr, typeRef);
+      }
+      default -> throw new UnexpectedExpressionException(it.ty());
+    };
+  }
+
+  private LoweringResult lower_create_struct(MirInstrCreateStruct it) {
+
+    // TODO: Need to use LLVMStructCreateNamed if the type is at any time self-referential, to create an opaque type
+
+    final var typeRef = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, it.ty());
+//    mirToLlvmCtx.registerType(it.ty(), typeRef);
+
+    // TODO: Add this to the path resolving thingies -- should be based on MirInstrGetArrayElement?
+    //        Because we can deduce the required arguments for it, no?
+    //LLVM.LLVMBuildStructGEP2()
+
+//    final var typePointerTypeRef = LLVM.LLVMPointerType(typeRef, 0);
+
+
+    return new LoweringResult(null, typeRef);
+  }
+
+  private LoweringResult lower_create_array(MirInstrCreateArray mir) {
 
     // TODO: Need to be able to handle const/global arrays, and not allocate them like this every time.
 
@@ -212,31 +280,28 @@ class LLVMFunctionLowering {
 
     final var i32Type = LLVM.LLVMInt32TypeInContext(mirToLlvmCtx.context);
 
-    final var arraySizeStatic = switch (mir.ty()) {
-      case TyValueArray array -> array.size();
-      default -> null;
-    };
+    final var arraySizeStatic = mir.ty().size();
 
     final var arraySizeRef = (arraySizeStatic != null || mir.length() == null)
-      ? LLVM.LLVMConstInt(i32Type, Objects.requireNonNullElse(arraySizeStatic, mir.elements().length), 0)
+      ? new LoweringResult(LLVM.LLVMConstInt(i32Type, Objects.requireNonNullElse(arraySizeStatic, mir.elements().length), 0))
       : lower_instruction(mir.length());
 
     // TODO: We should only use this for VERY SMALL arrays, since it is allocated on the stack!
     //        Should instead use LLVMConstArray2
-    final var arrayRef = LLVM.LLVMBuildArrayAlloca(mirToLlvmCtx.builder, elementType, arraySizeRef, "arr");
+    final var arrayRef = LLVM.LLVMBuildArrayAlloca(mirToLlvmCtx.builder, elementType, arraySizeRef.value(), "arr");
 
     final var elementRefs = new LLVMValueRef[mir.elements().length];
 
     for (var i = 0; i < mir.elements().length; i++) {
 
       final var elementRef = lower_instruction(mir.elements()[i]); ;
-      elementRefs[i] = elementRef;
+      elementRefs[i] = elementRef.value();
 
       final var indices = new PointerPointer<>(1);
       indices.put(0, LLVM.LLVMConstInt(i32Type, i, 0));
 
       final var elementPtr = LLVM.LLVMBuildInBoundsGEP2(mirToLlvmCtx.builder, elementType, arrayRef, indices, 1, STR."arr_ptr_\{i}");
-      LLVM.LLVMBuildStore(mirToLlvmCtx.builder, elementRef, elementPtr);
+      LLVM.LLVMBuildStore(mirToLlvmCtx.builder, elementRef.value(), elementPtr);
     }
 
     if (mir.length() != null && mir.elements().length > 0) {
@@ -262,17 +327,17 @@ class LLVMFunctionLowering {
       }
     }
 
-    return arrayRef;
+    return new LoweringResult(arrayRef);
   }
 
-  private LLVMValueRef lower_get_array_element(MirInstrGetArrayElement it) {
+  private LoweringResult lower_get_array_element(MirInstrGetArrayElement it) {
 
     final var arrayRef = lower_instruction(it.target());
     final var indexRef = lower_instruction(it.accessor());
 
     final var accessorTy = it.accessor().ty();
     final var expectedTy = Tys.dereference(accessorTy);
-    final var dereferencedIndexRef = convert(indexRef, accessorTy, expectedTy, it.accessor());
+    final var dereferencedIndexRef = convert(indexRef.value(), accessorTy, expectedTy, it.accessor());
 
     // This is the type of the result..
     // TODO: This does currently not support things like slices and ranges. Need to properly handle all non-simple/non-integer access methods!
@@ -282,12 +347,45 @@ class LLVMFunctionLowering {
     final var indices = new PointerPointer<>(1);
     indices.put(0, dereferencedIndexRef);
 
-    final var ptr = LLVM.LLVMBuildGEP2(mirToLlvmCtx.builder, resultType, arrayRef, indices, 1, "arr_gep");
+    final var ptr = LLVM.LLVMBuildGEP2(mirToLlvmCtx.builder, resultType, arrayRef.value(), indices, 1, "arr_gep");
 
-    return LLVM.LLVMBuildLoad2(mirToLlvmCtx.builder, resultType, ptr, "arr_gep_loaded");
+    // TODO: Do not load every time, it is up to caller what should be done
+    return new LoweringResult(LLVM.LLVMBuildLoad2(mirToLlvmCtx.builder, resultType, ptr, "arr_gep_loaded"));
   }
 
-  private LLVMValueRef lower_get_param(MirInstrGetParam mir) {
+  private LoweringResult lower_get_struct_element(MirInstrGetStructElement it) {
+
+    final var structRef = lower_instruction(it.target());
+
+    final var structType = Objects.requireNonNullElseGet(
+      structRef.type(),
+      () -> {
+        log.warn(STR."Did not receive the type from '\{it.target()}', will re-create using its ty");
+        final var structTy = LLVMTys.normalize(it.target().ty());
+        return MirToLLVMUtils.toLLVMType(mirToLlvmCtx, structTy);
+      }
+    );
+
+    final var resultType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, it.ty());
+
+    // TODO: FIX! Problem right now is that it is a pointer to a pointer! It is indirected one too many times! ... or something ;D
+    final var ptr = LLVM.LLVMBuildStructGEP2(mirToLlvmCtx.builder, structType, structRef.value(), it.index(), "struct_gep");
+
+    // TODO: Do not load every time, it is up to caller what should be done
+    final var valueRef = LLVM.LLVMBuildLoad2(mirToLlvmCtx.builder, resultType, ptr, "struct_gep_loaded");
+
+    return new LoweringResult(valueRef, resultType);
+  }
+
+  private LoweringResult lower_set_struct_element(MirInstrSetStructElement it) {
+
+    // TODO: Set it :)
+
+    return null;
+  }
+
+  // TODO: Need to take special care if the parameter is actually a vararg parameter!
+  private LoweringResult lower_get_param(MirInstrGetParam mir) {
 
     final var iterator = mirToLlvmCtx.getFunctionIterator();
     while (iterator.hasNext()) {
@@ -299,7 +397,7 @@ class LLVMFunctionLowering {
 
         // Q: Will this work well, or should we match by name instead? Since we do not allow for variable overloading.
         if (parameters[i] == mir.parameter()) {
-          return LLVM.LLVMGetParam(fn.b(), i);
+          return new LoweringResult(LLVM.LLVMGetParam(fn.b(), i));
         }
       }
     }
@@ -307,7 +405,11 @@ class LLVMFunctionLowering {
     throw new IllegalArgumentException(STR."Could not find param '\{mir.parameter().name()}'");
   }
 
-  private LLVMValueRef lower_create_fn(MirInstrCreateFn mir) {
+  private LoweringResult lower_create_fn(MirInstrCreateFn mir) {
+
+    if (mir.signature().vararg()) {
+      throw new InvalidImplementationException("Language does not support implementing your own vararg-receiving functions");
+    }
 
     final var declaration = createFnDeclaration(mir);
 
@@ -327,33 +429,40 @@ class LLVMFunctionLowering {
     final var lastBlock = LLVM.LLVMGetLastBasicBlock(mirToLlvmCtx.getFunction().b());
     LLVM.LLVMPositionBuilderAtEnd(mirToLlvmCtx.builder, lastBlock);
 
-    return fnRef;
+    return new LoweringResult(fnRef);
   }
 
-  private LLVMValueRef lower_call(MirCall mir) {
+  private LoweringResult lower_call(MirCall mir) {
 
-    final var llvmArgs = new LLVMValueRef[mir.arguments().length];
+    final var mirFnSignature = mir.fnSignature();
+    final var parameters = mirFnSignature.parameters();
+    final var argsPtr = new PointerPointer<>(mir.arguments().length);
     for (var i = 0; i < mir.arguments().length; i++) {
 
       final var arg = mir.arguments()[i];
       final var ref = lower_instruction(arg.instruction());
-      final var refTy = new RefTyPair(ref, arg.instruction().ty());
-      final var mirFnSignature = mir.fnSignature();
+      final var refTy = new RefTyPair(ref.value(), arg.instruction().ty());
 
       // There can be less params than args if the function uses varargs.
-      if (i < mirFnSignature.parameters().length) {
+      Ty targetTy;
+      if (i < parameters.length) {
+        targetTy = parameters[i].ty();
+      } else if (mirFnSignature.vararg()) {
 
-        final var mirParam = mirFnSignature.parameters()[i];
-        final var convertedPair = convert(refTy, mirParam.ty(), arg.instruction());
-        llvmArgs[i] = convertedPair.ref();
+        final var mirParam = parameters[parameters.length - 1];
+        targetTy = switch (mirParam.ty()) {
+          case TyValueArray array -> array.elementType();
+          default -> throw new IllegalArgumentException("The last vararg parameter must be an array");
+        };
+
       } else {
-
-        final var normalized = normalizeToType(refTy, arg.instruction());
-        llvmArgs[i] = normalized.ref();
+        throw new IllegalArgumentException("Sending more arguments than required to a non-vararg function");
       }
+
+      final var convertedPair = convert(refTy, targetTy, arg.instruction());
+      argsPtr.put(i, convertedPair.ref());
     }
 
-    final var argsPtr = new PointerPointer<>(llvmArgs);
     final var fnName = getInstrName(mir, "fn_res", "fn_res_");
 
     var fnRef = mirToLlvmCtx.resolve(mir.target());
@@ -364,43 +473,56 @@ class LLVMFunctionLowering {
       // We are nice in this situation and just keep de-referencing until we have the actual function pointer.
       fnTy = Tys.dereference(fnTy);
       final var dereferencedType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, fnTy);
-      fnRef = LLVM.LLVMBuildLoad2(mirToLlvmCtx.builder, dereferencedType, fnRef, "fn_ptr_deref");
+      fnRef = new LoweringResult(LLVM.LLVMBuildLoad2(mirToLlvmCtx.builder, dereferencedType, fnRef.value(), "fn_ptr_deref"));
     }
 
-    // De-reference one more time, so we get the actual function type and not the function pointer type.
-    final var fnSignatureType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, Tys.dereference(fnTy));
+    // De-reference all the way, so we get the actual function type and not the function pointer type.
+    final var fnSignatureType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, Tys.dereferenceRecursively(fnTy));
 
-    return LLVM.LLVMBuildCall2(mirToLlvmCtx.builder, fnSignatureType, fnRef, argsPtr, llvmArgs.length, fnName);
+    return new LoweringResult(LLVM.LLVMBuildCall2(mirToLlvmCtx.builder, fnSignatureType, fnRef.value(), argsPtr, mir.arguments().length, fnName));
   }
 
-  private LLVMValueRef lower_get_global(MirInstrGetGlobal it) {
-    return LLVM.LLVMGetNamedGlobal(module, it.globalName());
+  private LoweringResult lower_get_global(MirInstrGetGlobal it) {
+    return new LoweringResult(LLVM.LLVMGetNamedGlobal(module, it.globalName()));
   }
 
-  private LLVMValueRef lower_store(MirInstrStore mir) {
+  private LoweringResult lower_store(MirInstrStore mir) {
 
-    final var valueRef = lower_instruction(mir.value());
+    final var valueRes = lower_instruction(mir.value());
 
-    var allocationRef = (mir.target() == null) ? mirToLlvmCtx.resolveIfAvailable(mir) : mirToLlvmCtx.resolveIfAvailable(mir.target());
-    if (allocationRef == null) {
+    if (valueRes.value() != null) {
 
-      final var name = getInstrName(mir, null, mir.ty().toShortString());
+      // TODO: If it's already a ty that must be a pointer, then no point (ehehehe) storing it again
 
-      final var typeRef = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, mir.value().ty());
-      allocationRef = LLVM.LLVMBuildAlloca(mirToLlvmCtx.builder, typeRef, name);
+      var allocationRes = (mir.target() == null)
+        ? mirToLlvmCtx.resolveIfAvailable(mir)
+        : mirToLlvmCtx.resolveIfAvailable(mir.target());
+
+      if (allocationRes == null) {
+
+        if (LLVMTys.isPointer(mir.value().ty())) {
+
+          // TODO: Should not need the isPointer function -- the ty SHOULD be TyPointer, if it is not then something is broken!
+          return valueRes;
+
+        } else {
+
+          final var name = getInstrName(mir, null, mir.ty().toShortString());
+          final var typeRef = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, mir.value().ty());
+          final var allocationRef = LLVM.LLVMBuildAlloca(mirToLlvmCtx.builder, typeRef, name);
+
+          allocationRes = new LoweringResult(allocationRef);
+        }
+      }
+
+      LLVM.LLVMBuildStore(mirToLlvmCtx.builder, valueRes.value(), allocationRes.value());
+
+      return allocationRes; // new LoweringResult(allocationRes.value());
+    } else if (valueRes.type() != null) {
+      return valueRes;
+    } else {
+      throw new IllegalArgumentException("No value nor type");
     }
-
-    LLVM.LLVMBuildStore(mirToLlvmCtx.builder, valueRef, allocationRef);
-
-    return allocationRef;
-  }
-
-  private record ExternalFn(LLVMValueRef fn, LLVMTypeRef fnType, LLVMTypeRef[] params) {
-
-  }
-
-  private record RefTyPair(LLVMValueRef ref, Ty ty) {
-
   }
 
   /**
@@ -502,13 +624,13 @@ class LLVMFunctionLowering {
     return ref;
   }
 
-  private LLVMValueRef lower_phi(MirInstrPhi mir) {
+  private LoweringResult lower_phi(MirInstrPhi mir) {
 
     final var phiValues = new PointerPointer<>(mir.operands().length);
     for (var i = 0; i < mir.operands().length; i++) {
 
       final var valueRef = lower_instruction(mir.operands()[i]);
-      phiValues.put(i, valueRef);
+      phiValues.put(i, valueRef.value());
     }
 
     final var phiBlocks = new PointerPointer<>(mir.from().length);
@@ -524,39 +646,39 @@ class LLVMFunctionLowering {
 
     LLVMAddIncoming(phi, phiValues, phiBlocks, mir.from().length);
 
-    return phi;
+    return new LoweringResult(phi);
   }
 
-  private LLVMValueRef lower_jump(MirInstrJump it) {
+  private LoweringResult lower_jump(MirInstrJump it) {
     final var known = mirToLlvmCtx.resolveBlock(it.node());
-    return LLVM.LLVMBuildBr(mirToLlvmCtx.builder, known);
+    return new LoweringResult(LLVM.LLVMBuildBr(mirToLlvmCtx.builder, known));
   }
 
-  private LLVMValueRef lower_conditional_jump(MirInstrConditionalJump it) {
+  private LoweringResult lower_conditional_jump(MirInstrConditionalJump it) {
 
     final var instr_predicate = lower_instruction(it.predicate());
 
     final var passBlock = mirToLlvmCtx.resolveBlock(it.pass());
     final var failBlock = mirToLlvmCtx.resolveBlock(it.fail());
 
-    return LLVMBuildCondBr(mirToLlvmCtx.builder, instr_predicate, passBlock, failBlock);
+    return new LoweringResult(LLVMBuildCondBr(mirToLlvmCtx.builder, instr_predicate.value(), passBlock, failBlock));
   }
 
-  private LLVMValueRef lower_return(MirReturn mir) {
+  private LoweringResult lower_return(MirReturn mir) {
 
     // We do not do any casts or convert here.
     // It is up to the THIR and MIR to add compatibility instructions.
 
     final var ref = lower_instruction(mir.instr());
-    final var normalized = normalizeToType(new RefTyPair(ref, mir.instr().ty()), mir.instr());
+    final var normalized = normalizeToType(new RefTyPair(ref.value(), mir.instr().ty()), mir.instr());
 
     final var fn = mirToLlvmCtx.getFunction().a();
     final var widened = widen(normalized, fn.signature().returnType(), mir);
 
-    return LLVM.LLVMBuildRet(mirToLlvmCtx.builder, widened.ref());
+    return new LoweringResult(LLVM.LLVMBuildRet(mirToLlvmCtx.builder, widened.ref()));
   }
 
-  private LLVMValueRef lower_literal(MirInstrCreateLiteral literal) {
+  private LoweringResult lower_literal(MirInstrCreateLiteral literal) {
 
     return switch (literal.ty()) {
       case TyValueString str -> lower_literal_string(literal.content(), str);
@@ -567,18 +689,16 @@ class LLVMFunctionLowering {
     };
   }
 
-  private LLVMValueRef lower_literal_boolean(String strValue, TyValueBoolean b) {
+  private LoweringResult lower_literal_boolean(String strValue, TyValueBoolean b) {
     final var value = Boolean.parseBoolean(strValue);
-    return LLVM.LLVMConstInt(MirToLLVMUtils.toLLVMType(mirToLlvmCtx, b), value ? 1 : 0, 0);
+    return new LoweringResult(LLVM.LLVMConstInt(MirToLLVMUtils.toLLVMType(mirToLlvmCtx, b), value ? 1 : 0, 0));
   }
-
-  private final Map<String, LLVMValueRef> globalStringCache = new HashMap<>();
 
   private LLVMValueRef getGlobalStringPtr(String str) {
     return globalStringCache.computeIfAbsent(str, s -> LLVM.LLVMBuildGlobalStringPtr(mirToLlvmCtx.builder, s, "str"));
   }
 
-  private LLVMValueRef lower_literal_string(String content, TyValueString str) {
+  private LoweringResult lower_literal_string(String content, TyValueString str) {
 
     // TODO: Like in Rust, should we separate the different kinds of strings into different types? Global, char array, others?
 
@@ -590,12 +710,10 @@ class LLVMFunctionLowering {
     final var array = MirToLLVMUtils.createCharArray(mirToLlvmCtx, module, content);
 //    overridingTypes.put(array.ref(), array.ty());
 
-    return array.ref();
+    return new LoweringResult(array.ref());
   }
 
-  private final Pattern PATTERN_INTEGER_SUFFIX = Pattern.compile("(\\d+)([iu])(\\d+)");
-
-  private LLVMValueRef lower_literal_number_integer(MirInstrCreateLiteral literal, TyValueNumberInteger ty) {
+  private LoweringResult lower_literal_number_integer(MirInstrCreateLiteral literal, TyValueNumberInteger ty) {
 
     // TODO: Wrong? Or can it handle octal, hex and binary? Need tests
 
@@ -604,7 +722,7 @@ class LLVMFunctionLowering {
     final var typeRef = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, ty);
     final var constant = LLVM.LLVMConstInt(typeRef, v, ty.signed() ? 1 : 0);
 
-    return giveConstantOrAlloca(constant, typeRef, literal, ty);
+    return new LoweringResult(giveConstantOrAlloca(constant, typeRef, literal, ty));
   }
 
   private int parseLiteralInteger(String content, int radix) {
@@ -617,13 +735,13 @@ class LLVMFunctionLowering {
     return Integer.parseInt(content, radix);
   }
 
-  private LLVMValueRef lower_literal_number_precisioned(String content, MirInstr instr, TyValueNumberPrecisioned ty) {
+  private LoweringResult lower_literal_number_precisioned(String content, MirInstr instr, TyValueNumberPrecisioned ty) {
 
     final var v = Double.parseDouble(content);
     final var typeRef = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, ty);
     final var constant = LLVM.LLVMConstReal(typeRef, v);
 
-    return giveConstantOrAlloca(constant, typeRef, instr, ty);
+    return new LoweringResult(giveConstantOrAlloca(constant, typeRef, instr, ty));
   }
 
   private String getInstrName(MirInstr instr, String prefix, String fallback) {
@@ -673,13 +791,13 @@ class LLVMFunctionLowering {
 //    }
   }
 
-  private LLVMValueRef lower_binary_operation(MirInstrBinaryOperation mir) {
+  private LoweringResult lower_binary_operation(MirInstrBinaryOperation mir) {
 
     // TODO: Need to figure out a BETTER way of knowing what we WANT it to be!
     //        Do we want to allow automatic widening of numeric types?
     //        Is the conversion something that should be done here, or added in the THIR or MIR to be explicit?
-    final var lhs_pair = new RefTyPair(lower_instruction(mir.lhs()), mir.lhs().ty());
-    final var rhs_pair = new RefTyPair(lower_instruction(mir.rhs()), mir.rhs().ty());
+    final var lhs_pair = new RefTyPair(lower_instruction(mir.lhs()).value(), mir.lhs().ty());
+    final var rhs_pair = new RefTyPair(lower_instruction(mir.rhs()).value(), mir.rhs().ty());
 
     final var nlhs = normalizeToType(lhs_pair, mir.lhs());
     final var nrhs = normalizeToType(rhs_pair, mir.rhs());
@@ -695,7 +813,7 @@ class LLVMFunctionLowering {
 
     final var instrName = mir.kind().toString().toLowerCase(Locale.ROOT);
 
-    return switch (lhst) {
+    final LLVMValueRef valueRef = switch (lhst) {
       case TyValueNumberInteger lni -> switch (rhst) {
         case TyValueNumberInteger rni -> switch (mir.kind()) {
           // TODO: Look into LLVMBuildNSWSub and LLVMBuildNUWSub (No Wrap variants -- would work if we KNOW it will not wrap)
@@ -769,6 +887,8 @@ class LLVMFunctionLowering {
       };
       default -> throw new NotImplementedException("Unknown ty");
     };
+
+    return new LoweringResult(valueRef);
   }
 
   /**
