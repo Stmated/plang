@@ -1,6 +1,7 @@
 package com.github.stmated.plang.llvm.lowering;
 
 import com.github.stmated.plang.Plang;
+import com.github.stmated.plang.PlangRunOptions;
 import com.github.stmated.plang.exceptions.InvalidImplementationException;
 import com.github.stmated.plang.exceptions.InvalidTypeConversionException;
 import com.github.stmated.plang.exceptions.UnreachableCodeLLVMException;
@@ -34,7 +35,7 @@ class MirToLLVMLoweringTest {
       )
     }));
 
-    Assertions.assertEquals(3, Plang.hirToResult(program, new Object[0]).resultValue());
+    Assertions.assertEquals(3, Plang.hirToResult(program, PlangRunOptions.builder().build()).resultValue());
   }
 
   @Test
@@ -324,24 +325,27 @@ class MirToLLVMLoweringTest {
     Assertions.assertEquals(10, Plang.codeToResult(code).resultValue());
   }
 
-  @Test
-  void testStruct() {
+  @ParameterizedTest
+  @ValueSource(ints = {0, 1, 2, 3})
+  void testStruct(int optLevel) {
 
     final var code = """
       val S = struct {
         val a: int;
         val b: int;
       };
-      
+            
       val v = new heap S { a = 4, b = 6 };
       return v.a + v.b;
       """;
 
-    Assertions.assertEquals(10, Plang.codeToResult(code).resultValue());
+    final var options = PlangRunOptions.builder().optLevel(optLevel).build();
+    Assertions.assertEquals(10, Plang.codeToResult(code, options).resultValue());
   }
 
-  @Test
-  void testSetToStructField() {
+  @ParameterizedTest
+  @ValueSource(ints = {0, 1, 2, 3})
+  void testSetToStructField(int optLevel) {
 
     final var code = """
       val S = struct {
@@ -355,6 +359,36 @@ class MirToLLVMLoweringTest {
       return v.a + v.b;
       """;
 
-    Assertions.assertEquals(30, Plang.codeToResult(code).resultValue());
+    final var options = PlangRunOptions.builder().optLevel(optLevel).build();
+    Assertions.assertEquals(30, Plang.codeToResult(code, options).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "0=0",
+    "1=10",
+    "2=20",
+    "3=30"
+  })
+  void testSetToStructField(String argAndExpected) {
+
+    final var parts = argAndExpected.split("=");
+    final var arg = Integer.parseInt(parts[0]);
+    final var expected = Integer.parseInt(parts[1]);
+
+    final var code = """
+      (multiplier: int) => {
+        val S = struct {
+          val a: int;
+          val b: int;
+        };
+              
+        val v = new heap S { a = 4, b = 6 };
+        return (v.a + v.b) * multiplier;
+      };
+      """;
+
+    final var options = PlangRunOptions.builder().arguments(new Object[] {arg}).build();
+    Assertions.assertEquals(expected, Plang.codeToResult(code, options).resultValue());
   }
 }

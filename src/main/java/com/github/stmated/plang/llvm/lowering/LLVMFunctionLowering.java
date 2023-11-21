@@ -100,7 +100,7 @@ class LLVMFunctionLowering {
     final var fnType = LLVM.LLVMFunctionType(fnReturnType, new PointerPointer<>(fnParams), fnParams.length, vararg);
     final var fnName = (instrCreateFn.name() == null)
       ? "fn" // TODO: Give better name one day
-      : instrCreateFn.name().getUniqueName();
+      : Objects.requireNonNullElse(instrCreateFn.name().getUniqueName(), "fn");
     final var fn = LLVM.LLVMAddFunction(module, fnName, fnType);
 
     for (var i = 0; i < fnParams.length; i++) {
@@ -358,8 +358,22 @@ class LLVMFunctionLowering {
   private LoweringResult lower_set_struct_element(Mir.InstrSetStructElement it) {
 
     // TODO: Set it :)
+    final var structRef = lower_instruction(it.target());
 
-    return null;
+    final var structType = Objects.requireNonNullElseGet(
+      structRef.type(),
+      () -> {
+        log.warn(STR."Did not receive the type from '\{it.target()}', will re-create using its ty");
+        final var structTy = LLVMTys.normalize(it.target().ty());
+        return MirToLLVMUtils.toLLVMType(mirToLlvmCtx, structTy);
+      }
+    );
+
+    final var ptr = LLVM.LLVMBuildStructGEP2(mirToLlvmCtx.builder, structType, structRef.value(), it.index(), "struct_gep");
+    final var valueRef = lower_instruction(it.value());
+
+    // TODO: Should this return void instead?
+    return new LoweringResult(LLVM.LLVMBuildStore(mirToLlvmCtx.builder, valueRef.value(), ptr));
   }
 
   // TODO: Need to take special care if the parameter is actually a vararg parameter!

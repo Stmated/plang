@@ -72,7 +72,7 @@ class MirToLLVMCtx {
 
     this.valueLookup.put(
       Objects.requireNonNull(miri, "Must give an instruction to register the llvm value ref to"),
-      Objects.requireNonNull(ref, "LLVMValueRef you register must not be null")
+      Objects.requireNonNull(ref, () -> STR."LLVMValueRef of '\{miri}' you registeredd must not be null")
     );
   }
 

@@ -55,11 +55,6 @@
       <artifactId>logback-classic</artifactId>
       <version>1.4.11</version>
     </dependency>
-<!--    <dependency>-->
-<!--      <groupId>org.codehaus.janino</groupId>-->
-<!--      <artifactId>janino</artifactId>-->
-<!--      <version>3.1.10</version>-->
-<!--    </dependency>-->
 
     <dependency>
       <groupId>jakarta.annotation</groupId>

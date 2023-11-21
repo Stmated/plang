@@ -1,23 +1,24 @@
 package com.github.stmated.plang.llvm.lowering;
 
 import com.github.stmated.plang.Plang.Result;
+import com.github.stmated.plang.PlangRunOptions;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.llvm.util.LLVMTys;
+import com.github.stmated.plang.mir.Mir;
+import com.github.stmated.plang.mir.Mir.InstrCreateFn;
 import com.github.stmated.plang.mir.MirIdentifierId;
 import com.github.stmated.plang.mir.MirLoweringResult;
 import com.github.stmated.plang.mir.MirNodeTyPass;
 import com.github.stmated.plang.mir.ThirToMirLowering;
-import com.github.stmated.plang.mir.Mir.InstrCreateFn;
 import com.github.stmated.plang.mir.model.MirFnParameter;
 import com.github.stmated.plang.mir.model.MirFnSignature;
-import com.github.stmated.plang.mir.model.MirNodeEntry;
 import com.github.stmated.plang.ty.RealKind;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
 import com.github.stmated.plang.ty.util.Tys;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.javacpp.BooleanPointer;
@@ -36,6 +37,7 @@ import org.bytedeco.libffi.ffi_type;
 import org.bytedeco.libffi.global.ffi;
 import org.bytedeco.llvm.LLVM.LLVMErrorRef;
 import org.bytedeco.llvm.LLVM.LLVMOrcLLJITRef;
+import org.bytedeco.llvm.LLVM.LLVMTargetRef;
 import org.bytedeco.llvm.global.LLVM;
 
 @Slf4j
@@ -49,44 +51,37 @@ public class MirToLLVMLowering {
   /**
    * Call with a node and it will be wrapped inside a function that will be executed
    */
-  public <T> Result<T> lower_script(MirLoweringResult mirResult, String name, Object[] arguments) {
+  public <T> Result<T> lower_script(MirLoweringResult mirResult, String name, PlangRunOptions opt) {
 
-    if (mirResult.initNode() != null) {
+    final MirFnSignature fnSignature;
+    final var initNode = mirResult.initNode();
+    if (initNode.instructions().getLast() instanceof Mir.InstrReturn ret && ret.instr() instanceof Mir.InstrCreateFn createFn) {
 
-      // There are init instructions in an init node.
-      // We will wrap this inside a function which will be our main method.
-      // Then it is up to that code to do whatever it wants to with any other entry nodes that were found.
-
-      if (arguments != null && arguments.length > 0) {
-        throw new IllegalArgumentException("Not allowed to send arguments to a script");
+      // Return type of the script is a function, we will make it main and call it later with our arguments
+      if (createFn.name() == null) {
+        createFn.name(new MirIdentifierId("main", null, 0)); // TODO: Wrong
       }
 
-      // TODO: Must find out the return kind of the node, and automatically use that instead of INTEGER
-      // TODO: Must figure out a way of allowing both "script" form and actual main form. If main method exists, then we use that.
+      return lower_fn(createFn, opt.arguments(), name, opt.optLevel());
+
+    } else {
+
+      // The return type is not a function, so we will create a main function and wrap our instructions inside it.
+      if (opt.arguments() != null && opt.arguments().length > 0) {
+        throw new IllegalArgumentException("Not allowed to send arguments to a script that does not return a function");
+      }
+
       final var mirFnTy = Objects.requireNonNull(mirResult.initNode().ty().value(), STR."You must run \{MirNodeTyPass.class.getSimpleName()}");
       final var simplifiedTy = Tys.simplify(mirFnTy);
       final var llvmTy = LLVMTys.normalize(simplifiedTy);
 
-      // TODO: This is not always true. It depends on the MirLoweringResult above, what it gave us.
-      final var mirFnSignature = new MirFnSignature(new MirFnParameter[0], false, llvmTy);
-      final var mirFn = new InstrCreateFn(mirResult.initNode(), mirFnSignature, ThirToMirLowering.signatureToTy(mirFnSignature));
-      mirFn.name(new MirIdentifierId(mirResult.initNode().name(), null, 0)); // TODO: Wrong
+      fnSignature = new MirFnSignature(new MirFnParameter[0], false, llvmTy);
 
-      return lower_fn(mirFn, new Object[0], name);
-    } else {
+      final var mirFn = new InstrCreateFn(mirResult.initNode(), fnSignature, ThirToMirLowering.signatureToTy(fnSignature));
+      final var mirFnName = Objects.requireNonNullElse(mirResult.initNode().name(), "main");
+      mirFn.name(new MirIdentifierId(mirFnName, null, 0)); // TODO: Wrong
 
-      // It is up to the coder to have actually given a main function.
-      final MirNodeEntry mainNode = Arrays.stream(mirResult.nodes())
-        .filter(it -> it.name().equals("main"))
-        .findFirst()
-        .orElseThrow(() -> new IllegalArgumentException("There must be a 'main' node if not creating a script"));
-
-//      final var mirFnName = Objects.requireNonNullElse(mainNode.name(), "main");
-      final var mirFn = new InstrCreateFn(mainNode, mainNode.fnSignature(), ThirToMirLowering.signatureToTy(mainNode.fnSignature()));
-      mirFn.name(new MirIdentifierId(mainNode.name(), null, 0)); // TODO: Wrong
-//      mirFn.name();
-
-      return lower_fn(mirFn, arguments, name);
+      return lower_fn(mirFn, opt.arguments(), name, opt.optLevel());
     }
   }
 
@@ -95,7 +90,7 @@ public class MirToLLVMLowering {
    * <p>
    * Should be used later when we have a way of finding the main-method.
    */
-  public <T> Result<T> lower_fn(InstrCreateFn instrCreateFn, Object[] arguments, String name) {
+  public <T> Result<T> lower_fn(InstrCreateFn instrCreateFn, Object[] arguments, String name, int optLevel) {
 
     final var disposals = new ArrayList<Runnable>();
 
@@ -118,24 +113,32 @@ public class MirToLLVMLowering {
 
     LLVMFunctionLowering.lower(functionLoweringRequest);
 
-//    var pm = LLVM.LLVMCreatePassManager();
-//    LLVM.LLVMAddAggressiveInstCombinerPass(pm);
-//    LLVM.LLVMAddInstructionCombiningPass(pm);
-//    LLVM.LLVMAddEarlyCSEPass(pm); // Common Subexpression Elimination
-//    LLVM.LLVMAddPromoteMemoryToRegisterPass(pm);
-//    LLVM.LLVMAddInstructionCombiningPass(pm);
-//    LLVM.LLVMAddReassociatePass(pm); // Change order of operations, making constants ranked better, etc
-//    LLVM.LLVMAddNewGVNPass(pm); // Global Value Numbering pass
-//    LLVM.LLVMAddCFGSimplificationPass(pm);
-//    LLVM.LLVMAddLICMPass(pm); // Loop Invariant Code Motion -- hoise code to header or exit
-//    LLVM.LLVMAddIndVarSimplifyPass(pm);
-//    LLVM.LLVMAddLoopIdiomPass(); // Replace idioms like zeroing array content with one memset
-//    LLVM.LLVMAddLoopUnrollPass(pm);
-//    LLVM.LLVMAddAggressiveInstCombinerPass(pm);
-//    LLVM.LLVMAddInstructionCombiningPass(pm);
-//    LLVM.LLVMAddAggressiveDCEPass(); // Dead Code Elimination
+    final var passBuilderOptions = LLVM.LLVMCreatePassBuilderOptions();
 
-//    LLVM.LLVMRunPassManager(pm, module);
+    final var cpuName = LLVM.LLVMGetHostCPUName();
+    final var cpuFeatures = LLVM.LLVMGetHostCPUFeatures();
+    final var targetTriple = LLVM.LLVMGetDefaultTargetTriple();
+
+    LLVMTargetRef targetRef = new LLVMTargetRef();
+
+    final var errorPointer = new BytePointer();
+    if (LLVM.LLVMGetTargetFromTriple(targetTriple, targetRef, errorPointer) != 0) {
+      var i = 0;
+    }
+
+    final var targetMachine = LLVM.LLVMCreateTargetMachine(
+      targetRef, targetTriple, cpuName, cpuFeatures,
+      switch ((Integer) optLevel) {
+        case Integer i when i <= 0 -> LLVM.LLVMCodeGenLevelNone;
+        case 1 -> LLVM.LLVMCodeGenLevelLess;
+        case 2 -> LLVM.LLVMCodeGenLevelDefault;
+        default -> LLVM.LLVMCodeGenLevelAggressive;
+      },
+      LLVM.LLVMRelocDefault,
+      LLVM.LLVMCodeModelDefault
+    );
+
+    LLVM.LLVMRunPasses(module, STR."default<O\{optLevel}>", targetMachine, passBuilderOptions);
 
     if (log.isTraceEnabled()) {
       log.trace(LLVM.LLVMPrintModuleToString(module).getString());
@@ -181,7 +184,8 @@ public class MirToLLVMLowering {
 
     LLVMErrorRef err;
     final var res = new LongPointer(1);
-    if ((err = LLVM.LLVMOrcLLJITLookup(jit, res, instrCreateFn.name().getUniqueName())) != null) {
+    final var fnName = instrCreateFn.name().getUniqueName();
+    if ((err = LLVM.LLVMOrcLLJITLookup(jit, res, fnName)) != null) {
       final var message = STR."Failed to look up function symbol: \{LLVM.LLVMGetErrorMessage(err).getString()}";
       throw new RuntimeException(message);
     }
@@ -192,10 +196,12 @@ public class MirToLLVMLowering {
     final var ffiReturnType = tyToFfiType(javaReturnType);
     final var returnPointer = toFfiValuePointer(javaReturnType);
 
-    for (var i = 0; i < arguments.length; i++) {
+    if (arguments != null) {
+      for (var i = 0; i < arguments.length; i++) {
 
-      argTypes.put(i, tyToFfiType(arguments[i].getClass()));
-      argValues.put(i, toFfiValuePointer(arguments[i]));
+        argTypes.put(i, tyToFfiType(arguments[i].getClass()));
+        argValues.put(i, toFfiValuePointer(arguments[i]));
+      }
     }
 
     final var cif = new ffi_cif();

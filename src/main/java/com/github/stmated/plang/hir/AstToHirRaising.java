@@ -3,8 +3,8 @@ package com.github.stmated.plang.hir;
 import com.github.stmated.plang.ast.Ast;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.exceptions.UnexpectedExpressionException;
-import com.github.stmated.plang.hir.Hir;
 import com.github.stmated.plang.thir.raising.HirToThirRaising;
+import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyValueNumber;
 import java.util.ArrayList;
 import java.util.Objects;
@@ -20,10 +20,14 @@ import java.util.Objects;
 public class AstToHirRaising {
 
   public Hir.Program lower_program(Ast.Program astProgram) {
-    return new Hir.Program(implicit_return(lower(astProgram.children())));
+    return new Hir.Program(implicit_return(lower(astProgram.children()), true));
   }
 
-  private Hir.Expression implicit_return(Hir.Expression expression) {
+  private Hir.Expression implicit_return(Hir.Expression expression, boolean program) {
+
+    if (expression instanceof Hir.Block block) {
+      expression = block.children();
+    }
 
     if (expression instanceof Hir.Expressions exprs) {
 
@@ -52,7 +56,10 @@ public class AstToHirRaising {
       }
     }
 
-    if (expression instanceof Hir.Return) {
+    if (program && expression instanceof Hir.Assignment ass && ass.rhs() instanceof Hir.Function fn) {
+      // Do not make the function declaration into a return.
+      return expression;
+    } else if (expression instanceof Hir.Return) {
       return expression;
     } else {
       return new Hir.Return(expression);
@@ -221,12 +228,12 @@ public class AstToHirRaising {
     if (section == 0) {
 
       // There are only elements. We will derive the rest from that.
-      final var tyExpr = new Hir.TyExpr((elementArray.length > 0) ? getTy(elementArray[0]) : com.github.stmated.plang.ty.Ty.INFER);
-      return new Hir.Array(elementArray, tyExpr, new Hir.Literal(Objects.toString(elementArray.length), com.github.stmated.plang.ty.Ty.INTEGER));
+      final var tyExpr = new Hir.TyExpr((elementArray.length > 0) ? getTy(elementArray[0]) : Ty.INFER);
+      return new Hir.Array(elementArray, tyExpr, new Hir.Literal(Objects.toString(elementArray.length), Ty.INTEGER));
 
     } else if (section == 1) {
 
-      final var tyExpr = new Hir.TyExpr((elementArray.length > 0) ? getTy(elementArray[0]) : com.github.stmated.plang.ty.Ty.INFER);
+      final var tyExpr = new Hir.TyExpr((elementArray.length > 0) ? getTy(elementArray[0]) : Ty.INFER);
       final var size = sections[1];
       return new Hir.Array(elementArray, tyExpr, size);
 
@@ -259,14 +266,14 @@ public class AstToHirRaising {
     }
   }
 
-  private com.github.stmated.plang.ty.Ty getTy(Hir.Expression expr) {
+  private Ty getTy(Hir.Expression expr) {
 
     final var thir = new HirToThirRaising(true);
     final var found = thir.raise(expr).root().ty(); //.getType(expr);
-    return Objects.requireNonNullElse(found, com.github.stmated.plang.ty.Ty.INFER);
+    return Objects.requireNonNullElse(found, Ty.INFER);
   }
 
-  private com.github.stmated.plang.ty.Ty getTyFromType(Hir.Expression expr) {
+  private Ty getTyFromType(Hir.Expression expr) {
 
     final var thir = new HirToThirRaising(true);
     var found = thir.investigate_type_expression(expr);
@@ -274,7 +281,7 @@ public class AstToHirRaising {
       found = thir.raise(expr).root().ty(); //.getType(expr);
     }
 
-    return Objects.requireNonNullElse(found, com.github.stmated.plang.ty.Ty.INFER);
+    return Objects.requireNonNullElse(found, Ty.INFER);
   }
 
   private Hir.Expression lower_labeling(Ast.Labeling ast) {
@@ -288,7 +295,7 @@ public class AstToHirRaising {
   private Hir.Expression lower_callable(Ast.Callable ast) {
 
     final var signature = find_and_lower_parameters(ast.lhs());
-    final var body = implicit_return(lower(ast.rhs()));
+    final var body = implicit_return(lower(ast.rhs()), false);
 
     return new Hir.Function(signature, body);
   }
@@ -309,7 +316,7 @@ public class AstToHirRaising {
         final var parameters = (signature == null) ? new Hir.Parameter[0] : signature.parameters();
         final var vararg = signature != null && signature.vararg();
 
-        yield new Hir.FunctionSignature(parameters, vararg, new Hir.TyExpr(com.github.stmated.plang.ty.Ty.INFER));
+        yield new Hir.FunctionSignature(parameters, vararg, new Hir.TyExpr(Ty.INFER));
       }
       default -> find_and_lower_parameters_inner(ast);
     };
@@ -326,7 +333,9 @@ public class AstToHirRaising {
           parameters.add(param);
         }
       }
-      default -> throw new NotImplementedException(STR."Do not know how to handle '\{ast}' as callable lhs");
+      default -> parameters.add(lower_parameter(ast));
+
+        //throw new UnexpectedExpressionException(ast);
     }
 
     final var isVarArg = parameters.stream().anyMatch(Hir.Parameter::vararg);
@@ -336,13 +345,13 @@ public class AstToHirRaising {
   private Hir.Parameter lower_parameter(Ast.Expression expr) {
 
     return switch (expr) {
-      case Ast.Spread spread -> new Hir.Parameter(lower(spread.expression()), new Hir.TyExpr(com.github.stmated.plang.ty.Ty.INFER), true);
+      case Ast.Spread spread -> new Hir.Parameter(lower(spread.expression()), new Hir.TyExpr(Ty.INFER), true);
       case Ast.Labeling labeling -> {
         final var labelingLhs = lower_parameter(labeling.lhs());
         final var labelingRhs = lower(labeling.rhs());
         yield new Hir.Parameter(labelingLhs.identifier(), labelingRhs, labelingLhs.vararg());
       }
-      default -> new Hir.Parameter(lower(expr), new Hir.TyExpr(com.github.stmated.plang.ty.Ty.INFER), false);
+      default -> new Hir.Parameter(lower(expr), new Hir.TyExpr(Ty.INFER), false);
     };
   }
 
@@ -354,17 +363,9 @@ public class AstToHirRaising {
         case Immutable -> Hir.MutabilityKind.IMMUTABLE;
         case Mutable -> Hir.MutabilityKind.MUTABLE;
       },
-      ast.type() == null ? new Hir.TyExpr(com.github.stmated.plang.ty.Ty.INFER) : lower(ast.type())
+      ast.type() == null ? new Hir.TyExpr(Ty.INFER) : lower(ast.type())
     );
   }
-
-//  private HirExpression lower_type(Expression expression) {
-//
-//    return switch (expression) {
-//      case Type ast -> lower_identifier(ast.identifier());
-//      default -> throw new NotImplementedException(STR."Do not know how to handle '\{expression}' (\{expression.getClass().getSimpleName()}})");
-//    };
-//  }
 
   private Hir.Expression lower_assignment(Ast.Assignment ast) {
 

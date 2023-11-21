@@ -1,7 +1,7 @@
 package com.github.stmated.plang.mir;
 
 import com.github.stmated.plang.mir.model.MirNode;
-import com.github.stmated.plang.mir.model.MirNodeEntry;
+import jakarta.annotation.Nonnull;
 
 /**
  * A lowering can result in multiple nodes, where each node in essence is a function.
@@ -13,9 +13,8 @@ import com.github.stmated.plang.mir.model.MirNodeEntry;
  */
 public record MirLoweringResult(
 
-//  boolean isScript,
-  MirNode initNode,
-  MirNodeEntry[] nodes
+  @Nonnull
+  MirNode initNode
 ) {
 
 }

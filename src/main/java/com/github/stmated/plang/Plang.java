@@ -72,28 +72,28 @@ public class Plang {
     return Plang.hirToMir(hir);
   }
 
-  public static <T> Result<T> hirToResult(Hir.Program hir, Object[] arguments) {
+  public static <T> Result<T> hirToResult(Hir.Program hir, PlangRunOptions options) {
 
     final var mir = Plang.hirToMir(hir);
-    return Plang.mirToResult(mir, arguments);
+    return Plang.mirToResult(mir, options);
   }
 
-  public static <T> Result<T> mirToResult(MirLoweringResult mir, Object[] arguments) {
+  public static <T> Result<T> mirToResult(MirLoweringResult mir, PlangRunOptions options) {
 
     final var llvmLowering = new MirToLLVMLowering();
-    return llvmLowering.lower_script(mir, "script", arguments);
+    return llvmLowering.lower_script(mir, "script", options);
   }
 
   public static <T> Result<T> codeToResult(String code) {
-    return codeToResult(code, new Object[0]);
+    return codeToResult(code, PlangRunOptions.builder().build());
   }
 
-  public static <T> Result<T> codeToResult(String code, Object[] arguments) {
+  public static <T> Result<T> codeToResult(String code, PlangRunOptions options) {
 
     final var ast = Plang.codeToAst(code);
     final var hir = Plang.astToHir(ast);
     final var mir = Plang.hirToMir(hir);
-    return Plang.mirToResult(mir, arguments);
+    return Plang.mirToResult(mir, options);
   }
 
   private static InputStream stringToStream(String str) {

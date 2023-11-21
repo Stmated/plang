@@ -16,6 +16,7 @@ import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
 import com.github.stmated.plang.ty.TyValueNumberScaled;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -29,7 +30,7 @@ public class Tys {
 
   public static final Comparator<Ty> TY_COMPARATOR = Comparator.comparing(it -> it.getClass().getSimpleName());
 
-  private static final Map<Ty, Ty> tyInternMap = new HashMap<>();
+  private static final Map<Ty, Ty> tyInternMap = Collections.synchronizedMap(new HashMap<>());
 
   public static <T extends Ty> T intern(T ty) {
     return (T) tyInternMap.computeIfAbsent(ty, it -> it);

@@ -1,5 +1,6 @@
 package com.github.stmated.plang.mir;
 
+import java.util.Objects;
 import lombok.Value;
 
 @Value
@@ -8,6 +9,12 @@ public class MirIdentifierId {
   String name;
   String label;
   int id;
+
+  public MirIdentifierId(String name, String label, int id) {
+    this.name = Objects.requireNonNull(name);
+    this.label = label;
+    this.id = id;
+  }
 
   public String getUniqueName() {
 
