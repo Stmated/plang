@@ -4,14 +4,13 @@ import com.github.stmated.plang.Plang;
 import com.github.stmated.plang.exceptions.InvalidImplementationException;
 import com.github.stmated.plang.exceptions.InvalidTypeConversionException;
 import com.github.stmated.plang.exceptions.UnreachableCodeLLVMException;
-import com.github.stmated.plang.hir.model.HirBinaryOperation;
-import com.github.stmated.plang.hir.model.HirBinaryOperationKind;
-import com.github.stmated.plang.hir.model.HirExpression;
-import com.github.stmated.plang.hir.model.HirExpressions;
-import com.github.stmated.plang.hir.model.HirLiteral;
-import com.github.stmated.plang.hir.model.HirProgram;
-import com.github.stmated.plang.hir.model.HirReturn;
-import com.github.stmated.plang.ty.BitWidth;
+import com.github.stmated.plang.hir.Hir.BinaryOperation;
+import com.github.stmated.plang.hir.Hir.BinaryOperationKind;
+import com.github.stmated.plang.hir.Hir.Expression;
+import com.github.stmated.plang.hir.Hir.Expressions;
+import com.github.stmated.plang.hir.Hir.Literal;
+import com.github.stmated.plang.hir.Hir.Program;
+import com.github.stmated.plang.hir.Hir.Return;
 import com.github.stmated.plang.ty.Ty;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
@@ -25,12 +24,12 @@ class MirToLLVMLoweringTest {
   @Test
   void testBinaryOperationFromHir() {
 
-    final var program = new HirProgram(new HirExpressions(new HirExpression[]{
-      new HirReturn(
-        new HirBinaryOperation(
-          new HirLiteral("1", Ty.INTEGER),
-          HirBinaryOperationKind.ADD,
-          new HirLiteral("2", Ty.INTEGER)
+    final var program = new Program(new Expressions(new Expression[]{
+      new Return(
+        new BinaryOperation(
+          new Literal("1", Ty.INTEGER),
+          BinaryOperationKind.ADD,
+          new Literal("2", Ty.INTEGER)
         )
       )
     }));

@@ -1,33 +1,11 @@
 package com.github.stmated.plang.llvm.lowering;
 
-import static org.bytedeco.llvm.global.LLVM.LLVMAddGlobal;
-import static org.bytedeco.llvm.global.LLVM.LLVMAddIncoming;
-import static org.bytedeco.llvm.global.LLVM.LLVMBuildCondBr;
-import static org.bytedeco.llvm.global.LLVM.LLVMBuildPhi;
-
 import com.github.stmated.plang.exceptions.InvalidImplementationException;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.exceptions.UnexpectedExpressionException;
 import com.github.stmated.plang.llvm.util.LLVMTys;
-import com.github.stmated.plang.mir.model.MirCall;
-import com.github.stmated.plang.mir.model.MirInstr;
-import com.github.stmated.plang.mir.model.MirInstrBinaryOperation;
-import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
-import com.github.stmated.plang.mir.model.MirInstrCreateArray;
-import com.github.stmated.plang.mir.model.MirInstrCreateFn;
-import com.github.stmated.plang.mir.model.MirInstrCreateInstance;
-import com.github.stmated.plang.mir.model.MirInstrCreateLiteral;
-import com.github.stmated.plang.mir.model.MirInstrCreateStruct;
-import com.github.stmated.plang.mir.model.MirInstrGetArrayElement;
-import com.github.stmated.plang.mir.model.MirInstrGetGlobal;
-import com.github.stmated.plang.mir.model.MirInstrGetParam;
-import com.github.stmated.plang.mir.model.MirInstrGetStructElement;
-import com.github.stmated.plang.mir.model.MirInstrJump;
-import com.github.stmated.plang.mir.model.MirInstrPhi;
-import com.github.stmated.plang.mir.model.MirInstrSetStructElement;
-import com.github.stmated.plang.mir.model.MirInstrStore;
+import com.github.stmated.plang.mir.Mir;
 import com.github.stmated.plang.mir.model.MirNode;
-import com.github.stmated.plang.mir.model.MirReturn;
 import com.github.stmated.plang.ty.BitWidth;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyPointer;
@@ -103,9 +81,9 @@ class LLVMFunctionLowering {
     request.callback().accept(new LLVMFunctionLoweringResult(module));
   }
 
-  private ExternalFn createFnDeclaration(MirInstrCreateFn mirInstrCreateFn) {
+  private ExternalFn createFnDeclaration(Mir.InstrCreateFn instrCreateFn) {
 
-    final var mirFnSignature = mirInstrCreateFn.signature();
+    final var mirFnSignature = instrCreateFn.signature();
     final var fnReturnType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, mirFnSignature.returnType());
     final var mirParameters = mirFnSignature.parameters();
     final var actualParamCount = mirFnSignature.vararg() ? mirParameters.length - 1 : mirParameters.length;
@@ -120,9 +98,9 @@ class LLVMFunctionLowering {
 
     final var vararg = mirFnSignature.vararg() ? 1 : 0;
     final var fnType = LLVM.LLVMFunctionType(fnReturnType, new PointerPointer<>(fnParams), fnParams.length, vararg);
-    final var fnName = (mirInstrCreateFn.name() == null)
+    final var fnName = (instrCreateFn.name() == null)
       ? "fn" // TODO: Give better name one day
-      : mirInstrCreateFn.name().getUniqueName();
+      : instrCreateFn.name().getUniqueName();
     final var fn = LLVM.LLVMAddFunction(module, fnName, fnType);
 
     for (var i = 0; i < fnParams.length; i++) {
@@ -185,7 +163,7 @@ class LLVMFunctionLowering {
     return last;
   }
 
-  private LoweringResult lower_instruction(MirInstr miri) {
+  private LoweringResult lower_instruction(Mir.Instr miri) {
 
     final var ref = mirToLlvmCtx.resolveIfAvailable(miri);
     if (ref != null) {
@@ -195,26 +173,26 @@ class LLVMFunctionLowering {
     return lower_instruction_inner(miri);
   }
 
-  private LoweringResult lower_instruction_inner(MirInstr miri) {
+  private LoweringResult lower_instruction_inner(Mir.Instr miri) {
 
     final LoweringResult valueRes = switch (miri) {
-      case MirInstrCreateLiteral it -> lower_literal(it);
-      case MirInstrCreateFn it -> lower_create_fn(it);
-      case MirInstrBinaryOperation it -> lower_binary_operation(it);
-      case MirReturn it -> lower_return(it);
-      case MirInstrConditionalJump it -> lower_conditional_jump(it);
-      case MirInstrJump it -> lower_jump(it);
-      case MirInstrPhi it -> lower_phi(it);
-      case MirCall it -> lower_call(it);
-      case MirInstrStore it -> lower_store(it);
-      case MirInstrGetGlobal it -> lower_get_global(it);
-      case MirInstrGetParam it -> lower_get_param(it);
-      case MirInstrCreateArray it -> lower_create_array(it);
-      case MirInstrGetArrayElement it -> lower_get_array_element(it);
-      case MirInstrGetStructElement it -> lower_get_struct_element(it);
-      case MirInstrSetStructElement it -> lower_set_struct_element(it);
-      case MirInstrCreateStruct it -> lower_create_struct(it);
-      case MirInstrCreateInstance it -> lower_create_instance(it);
+      case Mir.InstrCreateLiteral it -> lower_literal(it);
+      case Mir.InstrCreateFn it -> lower_create_fn(it);
+      case Mir.InstrBinaryOperation it -> lower_binary_operation(it);
+      case Mir.InstrReturn it -> lower_return(it);
+      case Mir.InstrConditionalJump it -> lower_conditional_jump(it);
+      case Mir.InstrJump it -> lower_jump(it);
+      case Mir.InstrPhi it -> lower_phi(it);
+      case Mir.InstrCall it -> lower_call(it);
+      case Mir.InstrStore it -> lower_store(it);
+      case Mir.InstrGetGlobal it -> lower_get_global(it);
+      case Mir.InstrGetParam it -> lower_get_param(it);
+      case Mir.InstrCreateArray it -> lower_create_array(it);
+      case Mir.InstrGetArrayElement it -> lower_get_array_element(it);
+      case Mir.InstrGetStructElement it -> lower_get_struct_element(it);
+      case Mir.InstrSetStructElement it -> lower_set_struct_element(it);
+      case Mir.InstrCreateStruct it -> lower_create_struct(it);
+      case Mir.InstrCreateInstance it -> lower_create_instance(it);
       default -> throw new UnexpectedExpressionException(miri);
     };
 
@@ -224,7 +202,7 @@ class LLVMFunctionLowering {
     return valueRes;
   }
 
-  private LoweringResult lower_create_instance(MirInstrCreateInstance it) {
+  private LoweringResult lower_create_instance(Mir.InstrCreateInstance it) {
 
     final var typeRef = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, it.ty());
 
@@ -255,14 +233,14 @@ class LLVMFunctionLowering {
     };
   }
 
-  private LoweringResult lower_create_struct(MirInstrCreateStruct it) {
+  private LoweringResult lower_create_struct(Mir.InstrCreateStruct it) {
 
     // TODO: Need to use LLVMStructCreateNamed if the type is at any time self-referential, to create an opaque type
 
     final var typeRef = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, it.ty());
 //    mirToLlvmCtx.registerType(it.ty(), typeRef);
 
-    // TODO: Add this to the path resolving thingies -- should be based on MirInstrGetArrayElement?
+    // TODO: Add this to the path resolving thingies -- should be based on InstrGetArrayElement?
     //        Because we can deduce the required arguments for it, no?
     //LLVM.LLVMBuildStructGEP2()
 
@@ -272,7 +250,7 @@ class LLVMFunctionLowering {
     return new LoweringResult(null, typeRef);
   }
 
-  private LoweringResult lower_create_array(MirInstrCreateArray mir) {
+  private LoweringResult lower_create_array(Mir.InstrCreateArray mir) {
 
     // TODO: Need to be able to handle const/global arrays, and not allocate them like this every time.
 
@@ -330,7 +308,7 @@ class LLVMFunctionLowering {
     return new LoweringResult(arrayRef);
   }
 
-  private LoweringResult lower_get_array_element(MirInstrGetArrayElement it) {
+  private LoweringResult lower_get_array_element(Mir.InstrGetArrayElement it) {
 
     final var arrayRef = lower_instruction(it.target());
     final var indexRef = lower_instruction(it.accessor());
@@ -353,7 +331,7 @@ class LLVMFunctionLowering {
     return new LoweringResult(LLVM.LLVMBuildLoad2(mirToLlvmCtx.builder, resultType, ptr, "arr_gep_loaded"));
   }
 
-  private LoweringResult lower_get_struct_element(MirInstrGetStructElement it) {
+  private LoweringResult lower_get_struct_element(Mir.InstrGetStructElement it) {
 
     final var structRef = lower_instruction(it.target());
 
@@ -377,7 +355,7 @@ class LLVMFunctionLowering {
     return new LoweringResult(valueRef, resultType);
   }
 
-  private LoweringResult lower_set_struct_element(MirInstrSetStructElement it) {
+  private LoweringResult lower_set_struct_element(Mir.InstrSetStructElement it) {
 
     // TODO: Set it :)
 
@@ -385,7 +363,7 @@ class LLVMFunctionLowering {
   }
 
   // TODO: Need to take special care if the parameter is actually a vararg parameter!
-  private LoweringResult lower_get_param(MirInstrGetParam mir) {
+  private LoweringResult lower_get_param(Mir.InstrGetParam mir) {
 
     final var iterator = mirToLlvmCtx.getFunctionIterator();
     while (iterator.hasNext()) {
@@ -405,7 +383,7 @@ class LLVMFunctionLowering {
     throw new IllegalArgumentException(STR."Could not find param '\{mir.parameter().name()}'");
   }
 
-  private LoweringResult lower_create_fn(MirInstrCreateFn mir) {
+  private LoweringResult lower_create_fn(Mir.InstrCreateFn mir) {
 
     if (mir.signature().vararg()) {
       throw new InvalidImplementationException("Language does not support implementing your own vararg-receiving functions");
@@ -432,7 +410,7 @@ class LLVMFunctionLowering {
     return new LoweringResult(fnRef);
   }
 
-  private LoweringResult lower_call(MirCall mir) {
+  private LoweringResult lower_call(Mir.InstrCall mir) {
 
     final var mirFnSignature = mir.fnSignature();
     final var parameters = mirFnSignature.parameters();
@@ -482,11 +460,11 @@ class LLVMFunctionLowering {
     return new LoweringResult(LLVM.LLVMBuildCall2(mirToLlvmCtx.builder, fnSignatureType, fnRef.value(), argsPtr, mir.arguments().length, fnName));
   }
 
-  private LoweringResult lower_get_global(MirInstrGetGlobal it) {
+  private LoweringResult lower_get_global(Mir.InstrGetGlobal it) {
     return new LoweringResult(LLVM.LLVMGetNamedGlobal(module, it.globalName()));
   }
 
-  private LoweringResult lower_store(MirInstrStore mir) {
+  private LoweringResult lower_store(Mir.InstrStore mir) {
 
     final var valueRes = lower_instruction(mir.value());
 
@@ -532,14 +510,14 @@ class LLVMFunctionLowering {
    * @param pair  The value reference & The kind that the user thinks it is working with
    * @param owner The owner of the kind, for dignostics and label naming purposes
    */
-  private RefTyPair normalizeToType(RefTyPair pair, MirInstr owner) {
+  private RefTyPair normalizeToType(RefTyPair pair, Mir.Instr owner) {
 
     final var expected = LLVMTys.normalize(pair.ty());
 
     return convert(pair, expected, owner);
   }
 
-  private RefTyPair convert(RefTyPair pair, Ty expected, MirInstr owner) {
+  private RefTyPair convert(RefTyPair pair, Ty expected, Mir.Instr owner) {
 
     final var lowGiven = LLVMTys.getLowTy(pair.ty());
     final var lowExpected = LLVMTys.getLowTy(expected);
@@ -584,7 +562,7 @@ class LLVMFunctionLowering {
     return pair;
   }
 
-  private LLVMValueRef convert(LLVMValueRef ref, Ty given, Ty expected, MirInstr owner) {
+  private LLVMValueRef convert(LLVMValueRef ref, Ty given, Ty expected, Mir.Instr owner) {
 
     if (given instanceof TyValueArray va) {
       if (expected instanceof TyPointer) {
@@ -624,7 +602,7 @@ class LLVMFunctionLowering {
     return ref;
   }
 
-  private LoweringResult lower_phi(MirInstrPhi mir) {
+  private LoweringResult lower_phi(Mir.InstrPhi mir) {
 
     final var phiValues = new PointerPointer<>(mir.operands().length);
     for (var i = 0; i < mir.operands().length; i++) {
@@ -642,29 +620,29 @@ class LLVMFunctionLowering {
 
     final var actualTy = mir.ty(); // Objects.requireNonNullElse(overridingType, mir.ty());
     final var phiValueType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, actualTy);
-    final var phi = LLVMBuildPhi(mirToLlvmCtx.builder, phiValueType, "result");
+    final var phi = LLVM.LLVMBuildPhi(mirToLlvmCtx.builder, phiValueType, "result");
 
-    LLVMAddIncoming(phi, phiValues, phiBlocks, mir.from().length);
+    LLVM.LLVMAddIncoming(phi, phiValues, phiBlocks, mir.from().length);
 
     return new LoweringResult(phi);
   }
 
-  private LoweringResult lower_jump(MirInstrJump it) {
+  private LoweringResult lower_jump(Mir.InstrJump it) {
     final var known = mirToLlvmCtx.resolveBlock(it.node());
     return new LoweringResult(LLVM.LLVMBuildBr(mirToLlvmCtx.builder, known));
   }
 
-  private LoweringResult lower_conditional_jump(MirInstrConditionalJump it) {
+  private LoweringResult lower_conditional_jump(Mir.InstrConditionalJump it) {
 
     final var instr_predicate = lower_instruction(it.predicate());
 
     final var passBlock = mirToLlvmCtx.resolveBlock(it.pass());
     final var failBlock = mirToLlvmCtx.resolveBlock(it.fail());
 
-    return new LoweringResult(LLVMBuildCondBr(mirToLlvmCtx.builder, instr_predicate.value(), passBlock, failBlock));
+    return new LoweringResult(LLVM.LLVMBuildCondBr(mirToLlvmCtx.builder, instr_predicate.value(), passBlock, failBlock));
   }
 
-  private LoweringResult lower_return(MirReturn mir) {
+  private LoweringResult lower_return(Mir.InstrReturn mir) {
 
     // We do not do any casts or convert here.
     // It is up to the THIR and MIR to add compatibility instructions.
@@ -678,7 +656,7 @@ class LLVMFunctionLowering {
     return new LoweringResult(LLVM.LLVMBuildRet(mirToLlvmCtx.builder, widened.ref()));
   }
 
-  private LoweringResult lower_literal(MirInstrCreateLiteral literal) {
+  private LoweringResult lower_literal(Mir.InstrCreateLiteral literal) {
 
     return switch (literal.ty()) {
       case TyValueString str -> lower_literal_string(literal.content(), str);
@@ -713,7 +691,7 @@ class LLVMFunctionLowering {
     return new LoweringResult(array.ref());
   }
 
-  private LoweringResult lower_literal_number_integer(MirInstrCreateLiteral literal, TyValueNumberInteger ty) {
+  private LoweringResult lower_literal_number_integer(Mir.InstrCreateLiteral literal, TyValueNumberInteger ty) {
 
     // TODO: Wrong? Or can it handle octal, hex and binary? Need tests
 
@@ -735,7 +713,7 @@ class LLVMFunctionLowering {
     return Integer.parseInt(content, radix);
   }
 
-  private LoweringResult lower_literal_number_precisioned(String content, MirInstr instr, TyValueNumberPrecisioned ty) {
+  private LoweringResult lower_literal_number_precisioned(String content, Mir.Instr instr, TyValueNumberPrecisioned ty) {
 
     final var v = Double.parseDouble(content);
     final var typeRef = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, ty);
@@ -744,7 +722,7 @@ class LLVMFunctionLowering {
     return new LoweringResult(giveConstantOrAlloca(constant, typeRef, instr, ty));
   }
 
-  private String getInstrName(MirInstr instr, String prefix, String fallback) {
+  private String getInstrName(Mir.Instr instr, String prefix, String fallback) {
 
     if (instr != null) {
 
@@ -773,7 +751,7 @@ class LLVMFunctionLowering {
     return name.replace("*", "_ptr");
   }
 
-  private LLVMValueRef giveConstantOrAlloca(LLVMValueRef constant, LLVMTypeRef typeRef, MirInstr instr, TyValueNumber ty) {
+  private LLVMValueRef giveConstantOrAlloca(LLVMValueRef constant, LLVMTypeRef typeRef, Mir.Instr instr, TyValueNumber ty) {
 
     // TODO: Is it okay to always give back constant, and then let "store" be what makes it alloca? Need to run some code :)
 //    if (ty.isConstant()) {
@@ -791,7 +769,7 @@ class LLVMFunctionLowering {
 //    }
   }
 
-  private LoweringResult lower_binary_operation(MirInstrBinaryOperation mir) {
+  private LoweringResult lower_binary_operation(Mir.InstrBinaryOperation mir) {
 
     // TODO: Need to figure out a BETTER way of knowing what we WANT it to be!
     //        Do we want to allow automatic widening of numeric types?
@@ -894,7 +872,7 @@ class LLVMFunctionLowering {
   /**
    * To be able to do binary operations between numbers, we need to make the two values the same. We will blindly trust our kind system to be correct.
    */
-  private RefTyPair widen(RefTyPair pair, Ty other, MirInstr owner) {
+  private RefTyPair widen(RefTyPair pair, Ty other, Mir.Instr owner) {
 
     if (pair.ty() == other) {
       return pair;

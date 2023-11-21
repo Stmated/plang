@@ -3,34 +3,7 @@ package com.github.stmated.plang.thir.raising;
 import com.github.stmated.plang.exceptions.InvalidTypeConversionException;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.exceptions.UnexpectedExpressionException;
-import com.github.stmated.plang.hir.model.HirArgument;
-import com.github.stmated.plang.hir.model.HirArray;
-import com.github.stmated.plang.hir.model.HirArrayAccess;
-import com.github.stmated.plang.hir.model.HirAssignment;
-import com.github.stmated.plang.hir.model.HirBinaryOperation;
-import com.github.stmated.plang.hir.model.HirBlock;
-import com.github.stmated.plang.hir.model.HirCall;
-import com.github.stmated.plang.hir.model.HirConditional;
-import com.github.stmated.plang.hir.model.HirExpression;
-import com.github.stmated.plang.hir.model.HirExpressions;
-import com.github.stmated.plang.hir.model.HirFunction;
-import com.github.stmated.plang.hir.model.HirFunctionSignature;
-import com.github.stmated.plang.hir.model.HirIdentifier;
-import com.github.stmated.plang.hir.model.HirLiteral;
-import com.github.stmated.plang.hir.model.HirLoop;
-import com.github.stmated.plang.hir.model.HirLoopBreak;
-import com.github.stmated.plang.hir.model.HirLoopContinue;
-import com.github.stmated.plang.hir.model.HirMutabilityKind;
-import com.github.stmated.plang.hir.model.HirNewByBlock;
-import com.github.stmated.plang.hir.model.HirNewByCtor;
-import com.github.stmated.plang.hir.model.HirParameter;
-import com.github.stmated.plang.hir.model.HirPath;
-import com.github.stmated.plang.hir.model.HirProgram;
-import com.github.stmated.plang.hir.model.HirReturn;
-import com.github.stmated.plang.hir.model.HirStruct;
-import com.github.stmated.plang.hir.model.HirTy;
-import com.github.stmated.plang.hir.model.HirVariableDeclaration;
-import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.hir.Hir;
 import com.github.stmated.plang.ty.TyField;
 import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyIdentifier;
@@ -55,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class HirToThirRaising {
 
-  private final Map<HirExpression, Ty> map = new HashMap<>();
+  private final Map<Hir.Expression, com.github.stmated.plang.ty.Ty> map = new HashMap<>();
   private final Stack<ThirScope> scopeStack = new Stack<>();
   private final boolean lenient;
 
@@ -67,7 +40,7 @@ public class HirToThirRaising {
     this.lenient = lenient;
   }
 
-  public ThirRaiseResult raise(HirExpression e) {
+  public ThirRaiseResult raise(Hir.Expression e) {
 
     // Call investigate on the expression.
     // Then the map inside this raising should contain all relevant types.
@@ -81,7 +54,7 @@ public class HirToThirRaising {
     return new ThirRaiseResult(e, map);
   }
 
-  private Ty investigate(HirExpression e) {
+  private com.github.stmated.plang.ty.Ty investigate(Hir.Expression e) {
 
     final var existing = map.get(e);
     if (existing != null) {
@@ -94,42 +67,42 @@ public class HirToThirRaising {
     return ty;
   }
 
-  private Ty investigate_inner(HirExpression e) {
+  private com.github.stmated.plang.ty.Ty investigate_inner(Hir.Expression e) {
 
     return switch (e) {
-      case HirBinaryOperation it -> investigate_binary_operation(it);
-      case HirLiteral it -> investigate_literal(it);
-      case HirReturn it -> investigate_return(it);
-      case HirVariableDeclaration it -> investigate_variable_declaration(it);
-      case HirAssignment it -> investigate_assignment(it);
-      case HirIdentifier it -> investigate_identifier(it);
-      case HirConditional it -> investigate_conditional(it);
-      case HirLoop it -> investigate_loop(it);
-      case HirExpressions it -> investigate_expressions(it.children());
-      case HirCall it -> investigate_call(it);
-      case HirArgument it -> investigate_argument(it);
-      case HirLoopContinue it -> investigate_loop_continue(it);
-      case HirLoopBreak it -> investigate_loop_break(it);
-      case HirProgram it -> investigate_program(it);
-      case HirFunction it -> investigate_function(it);
-      case HirFunctionSignature it -> investigate_function_signature(it);
-      case HirTy it -> it.ty();
-      case HirArray it -> investigate_array(it);
-      case HirArrayAccess it -> investigate_array_access(it);
-      case HirStruct it -> investigate_struct(it);
-      case HirNewByBlock it -> investigate_new_by_block(it);
-      case HirNewByCtor it -> investigate_new_by_ctor(it);
-      case HirPath it -> investigate_path(it);
-      case HirBlock it -> investigate(it.children());
-      case HirParameter it -> throw new IllegalArgumentException(STR."A Parameter itself (\{it}) does not have a type (yet?). Resolve it higher in call chain");
+      case Hir.BinaryOperation it -> investigate_binary_operation(it);
+      case Hir.Literal it -> investigate_literal(it);
+      case Hir.Return it -> investigate_return(it);
+      case Hir.VariableDeclaration it -> investigate_variable_declaration(it);
+      case Hir.Assignment it -> investigate_assignment(it);
+      case Hir.Identifier it -> investigate_identifier(it);
+      case Hir.Conditional it -> investigate_conditional(it);
+      case Hir.Loop it -> investigate_loop(it);
+      case Hir.Expressions it -> investigate_expressions(it.children());
+      case Hir.Call it -> investigate_call(it);
+      case Hir.Argument it -> investigate_argument(it);
+      case Hir.LoopContinue it -> investigate_loop_continue(it);
+      case Hir.LoopBreak it -> investigate_loop_break(it);
+      case Hir.Program it -> investigate_program(it);
+      case Hir.Function it -> investigate_function(it);
+      case Hir.FunctionSignature it -> investigate_function_signature(it);
+      case Hir.TyExpr it -> it.ty();
+      case Hir.Array it -> investigate_array(it);
+      case Hir.ArrayAccess it -> investigate_array_access(it);
+      case Hir.Struct it -> investigate_struct(it);
+      case Hir.NewByBlock it -> investigate_new_by_block(it);
+      case Hir.NewByCtor it -> investigate_new_by_ctor(it);
+      case Hir.Path it -> investigate_path(it);
+      case Hir.Block it -> investigate(it.children());
+      case Hir.Parameter it -> throw new IllegalArgumentException(STR."A Parameter itself (\{it}) does not have a type (yet?). Resolve it higher in call chain");
       default -> throw new UnexpectedExpressionException(e);
     };
   }
 
-  private Ty investigate_path(HirPath it) {
+  private com.github.stmated.plang.ty.Ty investigate_path(Hir.Path it) {
 
     if (it.elements() == null || it.elements().length == 0) {
-      return Ty.INVALID;
+      return com.github.stmated.plang.ty.Ty.INVALID;
     }
 
     var pointer = investigate(it.elements()[0]);
@@ -137,7 +110,7 @@ public class HirToThirRaising {
 
       final var current = it.elements()[i];
       switch (current) {
-        case HirIdentifier identifier -> {
+        case Hir.Identifier identifier -> {
 
           switch (pointer) {
             case TyStruct struct -> {
@@ -162,19 +135,19 @@ public class HirToThirRaising {
     return pointer;
   }
 
-  private Ty investigate_new_by_ctor(HirNewByCtor it) {
+  private com.github.stmated.plang.ty.Ty investigate_new_by_ctor(Hir.NewByCtor it) {
 
     // TODO: The allocator can alter the type, so need to run it through the allocator's investigation.
     return investigate_type_expression(it.target());
   }
 
-  private Ty investigate_new_by_block(HirNewByBlock it) {
+  private com.github.stmated.plang.ty.Ty investigate_new_by_block(Hir.NewByBlock it) {
 
     // TODO: The allocator can alter the type, so need to run it through the allocator's investigation.
     return investigate_type_expression(it.target());
   }
 
-  private Ty investigate_struct(HirStruct it) {
+  private com.github.stmated.plang.ty.Ty investigate_struct(Hir.Struct it) {
 
     final var fields = new ArrayList<TyField>();
 
@@ -189,7 +162,7 @@ public class HirToThirRaising {
     return new TyStruct(fields.toArray(new TyField[0]));
   }
 
-  private Ty investigate_array_access(HirArrayAccess it) {
+  private com.github.stmated.plang.ty.Ty investigate_array_access(Hir.ArrayAccess it) {
 
     final var targetTy = investigate(it.target());
     final var accessorTy = investigate(it.accessor());
@@ -206,14 +179,14 @@ public class HirToThirRaising {
     };
   }
 
-  private Object resolveLiteralValue(HirExpression expr) {
+  private Object resolveLiteralValue(Hir.Expression expr) {
 
     return switch (expr) {
-      case HirLiteral literal -> switch (literal.ty()) {
+      case Hir.Literal literal -> switch (literal.ty()) {
         case TyValueNumberInteger vni -> Integer.parseInt(literal.content(), vni.radix());
         default -> null;
       };
-      case HirBinaryOperation bop -> {
+      case Hir.BinaryOperation bop -> {
         final var lhs = resolveLiteralValue(bop.lhs());
         final var rhs = resolveLiteralValue(bop.rhs());
 
@@ -228,7 +201,7 @@ public class HirToThirRaising {
     };
   }
 
-  private Ty investigate_array(HirArray it) {
+  private com.github.stmated.plang.ty.Ty investigate_array(Hir.Array it) {
 
     // TODO: Problem is that array as a type and array as initializer need to behave differently!
     //        One is silly, and one is not...
@@ -236,7 +209,7 @@ public class HirToThirRaising {
     var arrayElementTy = investigate_type_expression(it.elementType());
     for (final var element : it.elements()) {
       final var elementTy = investigate(element);
-      if (arrayElementTy == Ty.INFER) {
+      if (arrayElementTy == com.github.stmated.plang.ty.Ty.INFER) {
         arrayElementTy = elementTy;
       } else {
 
@@ -255,14 +228,14 @@ public class HirToThirRaising {
     return new TyValueArray(arrayElementTy, arrayLength).intern();
   }
 
-  private TyFn investigate_function_signature(HirFunctionSignature hir) {
+  private TyFn investigate_function_signature(Hir.FunctionSignature hir) {
 
     final var parameterTys = new TyParam[hir.parameters().length];
     for (var i = 0; i < hir.parameters().length; i++) {
 
       final var parameter = hir.parameters()[i];
       final var parameterName = switch (parameter.identifier()) {
-        case HirIdentifier id -> id.name();
+        case Hir.Identifier id -> id.name();
         default -> throw new NotImplementedException(STR."Do not know how to get name from '\{parameter.identifier()}'");
       };
 
@@ -278,14 +251,14 @@ public class HirToThirRaising {
     return new TyFn(parameterTys, hir.vararg(), returnTy);
   }
 
-  private Ty investigate_function(HirFunction hir) {
+  private com.github.stmated.plang.ty.Ty investigate_function(Hir.Function hir) {
 
     final var signatureTy = investigate_function_signature(hir.signature());
-    if (hir.body() != null && (signatureTy.returnTy() == null || signatureTy.returnTy() == Ty.INFER)) {
+    if (hir.body() != null && (signatureTy.returnTy() == null || signatureTy.returnTy() == com.github.stmated.plang.ty.Ty.INFER)) {
 
       // If the signature does not contain a ty but we have a body, then we investigate it for a ty.
 
-      Ty bodyReturnTy;
+      com.github.stmated.plang.ty.Ty bodyReturnTy;
       try {
 
         final var scope = new ThirScope(scopeStack.peek(), "fn");
@@ -310,11 +283,11 @@ public class HirToThirRaising {
     return signatureTy;
   }
 
-  private Ty investigate_argument(HirArgument hir) {
+  private com.github.stmated.plang.ty.Ty investigate_argument(Hir.Argument hir) {
     return investigate(hir.value());
   }
 
-  private Ty investigate_call(HirCall hir) {
+  private com.github.stmated.plang.ty.Ty investigate_call(Hir.Call hir) {
 
     final var target = hir.target();
     final var loweredTarget = investigate(target);
@@ -327,16 +300,16 @@ public class HirToThirRaising {
 
     if (loweredTarget instanceof TyFn tyFn) {
       return tyFn.returnTy();
-    } else if (loweredTarget != null && loweredTarget != Ty.INFER) {
+    } else if (loweredTarget != null && loweredTarget != com.github.stmated.plang.ty.Ty.INFER) {
       return loweredTarget;
     }
 
     // NOTE: Hopefully we never here? Since I guess all call targets ought to be functions?
     return switch (target) {
       // NOTE: This seems od. Will it ever be the function signature?
-      case HirFunctionSignature fns -> investigate(fns.returnType());
+      case Hir.FunctionSignature fns -> investigate(fns.returnType());
       // Now lookup by identifier is completely fine.
-      case HirIdentifier id -> {
+      case Hir.Identifier id -> {
 
         final var v = scopeStack.peek().get(id.name());
         yield Objects.requireNonNull(v, STR."No function called '\{id.name()}' found in scope");
@@ -345,31 +318,31 @@ public class HirToThirRaising {
     };
   }
 
-  private Ty investigate_loop(HirLoop hir) {
+  private com.github.stmated.plang.ty.Ty investigate_loop(Hir.Loop hir) {
     return investigate(hir.body());
   }
 
-  private Ty investigate_loop_break(HirLoopBreak it) {
+  private com.github.stmated.plang.ty.Ty investigate_loop_break(Hir.LoopBreak it) {
 
     if (it.value() != null) {
       return investigate(it.value());
     }
 
-    return Ty.VOID;
+    return com.github.stmated.plang.ty.Ty.VOID;
   }
 
-  private Ty investigate_loop_continue(HirLoopContinue hir) {
-    return Ty.VOID;
+  private com.github.stmated.plang.ty.Ty investigate_loop_continue(Hir.LoopContinue hir) {
+    return com.github.stmated.plang.ty.Ty.VOID;
   }
 
-  private Ty investigate_conditional(HirConditional hir) {
+  private com.github.stmated.plang.ty.Ty investigate_conditional(Hir.Conditional hir) {
 
     final var conditional_type = investigate(hir.predicate());
-    if (conditional_type != Ty.BOOLEAN) {
+    if (conditional_type != com.github.stmated.plang.ty.Ty.BOOLEAN) {
       throw new IllegalArgumentException(STR."The conditional predicate must produce a boolean value, not: \{conditional_type}");
     }
 
-    var branch_types = new Ty[2];
+    var branch_types = new com.github.stmated.plang.ty.Ty[2];
     if (hir.pass() != null) {
 
       try {
@@ -404,10 +377,10 @@ public class HirToThirRaising {
    * <p>
    * TODO: In a future pass it would be preferential to resolve these inline and replace/rebuild the expressions.
    */
-  public Ty investigate_type_expression(HirExpression hir) {
+  public com.github.stmated.plang.ty.Ty investigate_type_expression(Hir.Expression hir) {
 
     return switch (hir) {
-      case HirIdentifier id -> {
+      case Hir.Identifier id -> {
         final var knownTypeByName = Tys.fromString(id.name());
         if (knownTypeByName != null) {
           map.put(hir, knownTypeByName);
@@ -420,7 +393,7 @@ public class HirToThirRaising {
     };
   }
 
-  private Ty investigate_identifier(HirIdentifier hir) {
+  private com.github.stmated.plang.ty.Ty investigate_identifier(Hir.Identifier hir) {
 
     final var resolvedVariable = scopeStack.peek().get(hir.name());
     if (lenient && resolvedVariable == null) {
@@ -430,7 +403,7 @@ public class HirToThirRaising {
     return Objects.requireNonNull(resolvedVariable, STR."Cannot get '\{hir.name()}' since its type is unknown");
   }
 
-  private Ty investigate_assignment(HirAssignment hir) {
+  private com.github.stmated.plang.ty.Ty investigate_assignment(Hir.Assignment hir) {
 
     final var lhs = investigate(hir.lhs());
     final var rhs = investigate(hir.rhs());
@@ -439,21 +412,21 @@ public class HirToThirRaising {
     //        Also, we need to check that the lhs and rhs types are actually compatible.
 
     final var identifierName = switch (hir.lhs()) {
-      case HirVariableDeclaration it -> it.identifier().name();
-      case HirIdentifier it -> it.name();
+      case Hir.VariableDeclaration it -> it.identifier().name();
+      case Hir.Identifier it -> it.name();
       default -> null;
     };
 
     final var mutability = switch (hir.lhs()) {
-      case HirVariableDeclaration it -> it.mutabilityKind();
-      case HirIdentifier it -> HirMutabilityKind.MUTABLE;
-      case HirPath it -> HirMutabilityKind.MUTABLE;
+      case Hir.VariableDeclaration it -> it.mutabilityKind();
+      case Hir.Identifier it -> Hir.MutabilityKind.MUTABLE;
+      case Hir.Path it -> Hir.MutabilityKind.MUTABLE;
       default -> throw new NotImplementedException(STR."Do not know how to find mutability of '\{hir.lhs()}'");
     };
 
     // TODO: Make use of Tys.toNonConstIfRequired, to convert "a (const) + 10" to not const
 
-    if (lhs == Ty.INFER) {
+    if (lhs == com.github.stmated.plang.ty.Ty.INFER) {
 
       if (identifierName != null) {
 
@@ -482,38 +455,38 @@ public class HirToThirRaising {
     }
 
     // Assignment itself returns void kind
-    return Ty.VOID;
+    return com.github.stmated.plang.ty.Ty.VOID;
   }
 
-  private Ty investigate_variable_declaration(HirVariableDeclaration hir) {
+  private com.github.stmated.plang.ty.Ty investigate_variable_declaration(Hir.VariableDeclaration hir) {
 
     if (hir.type() == null) {
-      return Ty.INFER;
+      return com.github.stmated.plang.ty.Ty.INFER;
     }
 
     return switch (hir.type()) {
-      case HirIdentifier it -> new TyIdentifier(it.name());
-      case HirTy it -> it.ty();
+      case Hir.Identifier it -> new TyIdentifier(it.name());
+      case Hir.TyExpr it -> it.ty();
       default -> throw new UnexpectedExpressionException(hir.type());
     };
   }
 
-  private Ty investigate_return(HirReturn hir) {
+  private com.github.stmated.plang.ty.Ty investigate_return(Hir.Return hir) {
     return investigate(hir.expression());
   }
 
-  private Ty investigate_literal(HirLiteral hir) {
+  private com.github.stmated.plang.ty.Ty investigate_literal(Hir.Literal hir) {
     return hir.ty();
   }
 
-  private Ty investigate_program(HirProgram hir) {
+  private com.github.stmated.plang.ty.Ty investigate_program(Hir.Program hir) {
     return investigate(hir.expressions());
   }
 
-  private Ty investigate_expressions(HirExpression[] expressions) {
+  private com.github.stmated.plang.ty.Ty investigate_expressions(Hir.Expression[] expressions) {
 
     // NOTE: Most likely this is not correct?
-    Ty lastType = null;
+    com.github.stmated.plang.ty.Ty lastType = null;
     for (final var expression : expressions) {
       lastType = investigate(expression);
     }
@@ -525,10 +498,10 @@ public class HirToThirRaising {
     throw new IllegalArgumentException(STR."Could not find type of '\{expressions}'");
   }
 
-  private Ty investigate_binary_operation(HirBinaryOperation v) {
+  private com.github.stmated.plang.ty.Ty investigate_binary_operation(Hir.BinaryOperation v) {
 
     if (v.kind().isPredicate()) {
-      return Ty.BOOLEAN;
+      return com.github.stmated.plang.ty.Ty.BOOLEAN;
     }
 
     final var lhst = investigate(v.lhs());

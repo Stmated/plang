@@ -1,14 +1,14 @@
 package com.github.stmated.plang.mir;
 
 import com.github.stmated.plang.Plang;
-import com.github.stmated.plang.mir.model.MirInstrBinaryOperation;
-import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
-import com.github.stmated.plang.mir.model.MirInstrCreateLiteral;
-import com.github.stmated.plang.mir.model.MirInstrJump;
-import com.github.stmated.plang.mir.model.MirInstrStore;
+import com.github.stmated.plang.mir.Mir.InstrBinaryOperation;
+import com.github.stmated.plang.mir.Mir.InstrConditionalJump;
+import com.github.stmated.plang.mir.Mir.InstrCreateLiteral;
+import com.github.stmated.plang.mir.Mir.InstrJump;
+import com.github.stmated.plang.mir.Mir.InstrStore;
 import com.github.stmated.plang.mir.model.MirNode;
-import com.github.stmated.plang.mir.model.MirInstrPhi;
-import com.github.stmated.plang.mir.model.MirReturn;
+import com.github.stmated.plang.mir.Mir.InstrPhi;
+import com.github.stmated.plang.mir.Mir.InstrReturn;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -37,12 +37,12 @@ class ThirToMirLoweringTest {
     Assertions.assertEquals(0, mir.successors().size());
     Assertions.assertEquals(6, mir.instructions().size());
 
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(0));
-    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(1));
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(2));
-    Assertions.assertInstanceOf(MirInstrBinaryOperation.class, mir.instructions().get(3));
-    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(4));
-    Assertions.assertInstanceOf(MirReturn.class, mir.instructions().get(5));
+    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(0));
+    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(1));
+    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(2));
+    Assertions.assertInstanceOf(InstrBinaryOperation.class, mir.instructions().get(3));
+    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(4));
+    Assertions.assertInstanceOf(InstrReturn.class, mir.instructions().get(5));
   }
 
   @Test
@@ -54,12 +54,12 @@ class ThirToMirLoweringTest {
     Assertions.assertEquals(0, mir.successors().size());
     Assertions.assertEquals(6, mir.instructions().size());
 
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(0));
-    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(1));
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(2));
-    Assertions.assertInstanceOf(MirInstrBinaryOperation.class, mir.instructions().get(3));
-    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(4));
-    Assertions.assertInstanceOf(MirReturn.class, mir.instructions().get(5));
+    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(0));
+    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(1));
+    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(2));
+    Assertions.assertInstanceOf(InstrBinaryOperation.class, mir.instructions().get(3));
+    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(4));
+    Assertions.assertInstanceOf(InstrReturn.class, mir.instructions().get(5));
   }
 
   @Test
@@ -69,11 +69,11 @@ class ThirToMirLoweringTest {
 
     Assertions.assertEquals(5, mir.instructions().size());
 
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(0));
-    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(1));
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(2));
-    Assertions.assertInstanceOf(MirInstrBinaryOperation.class, mir.instructions().get(3));
-    Assertions.assertInstanceOf(MirInstrConditionalJump.class, mir.instructions().get(4));
+    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(0));
+    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(1));
+    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(2));
+    Assertions.assertInstanceOf(InstrBinaryOperation.class, mir.instructions().get(3));
+    Assertions.assertInstanceOf(InstrConditionalJump.class, mir.instructions().get(4));
 
     assertEdges(mir, new Edge[]{
       new Edge("main", "conditional_pass"),
@@ -85,22 +85,22 @@ class ThirToMirLoweringTest {
     final var conditional_pass = mir.successors().getFirst();
     Assertions.assertEquals("conditional_pass", conditional_pass.name());
     Assertions.assertEquals(3, conditional_pass.instructions().size());
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, conditional_pass.instructions().getFirst());
-    Assertions.assertInstanceOf(MirInstrStore.class, conditional_pass.instructions().get(1));
-    Assertions.assertInstanceOf(MirInstrJump.class, conditional_pass.instructions().getLast());
+    Assertions.assertInstanceOf(InstrCreateLiteral.class, conditional_pass.instructions().getFirst());
+    Assertions.assertInstanceOf(InstrStore.class, conditional_pass.instructions().get(1));
+    Assertions.assertInstanceOf(InstrJump.class, conditional_pass.instructions().getLast());
 
     final var conditional_fail = mir.successors().getLast();
     Assertions.assertEquals("conditional_fail", conditional_fail.name());
     Assertions.assertEquals(3, conditional_fail.instructions().size());
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, conditional_fail.instructions().getFirst());
-    Assertions.assertInstanceOf(MirInstrStore.class, conditional_fail.instructions().get(1));
-    Assertions.assertInstanceOf(MirInstrJump.class, conditional_fail.instructions().getLast());
+    Assertions.assertInstanceOf(InstrCreateLiteral.class, conditional_fail.instructions().getFirst());
+    Assertions.assertInstanceOf(InstrStore.class, conditional_fail.instructions().get(1));
+    Assertions.assertInstanceOf(InstrJump.class, conditional_fail.instructions().getLast());
 
     final var conditional_merge = conditional_fail.successors().getFirst();
     Assertions.assertEquals("conditional_merge", conditional_merge.name());
     Assertions.assertEquals(2, conditional_merge.instructions().size());
-    Assertions.assertInstanceOf(MirInstrPhi.class, conditional_merge.instructions().getFirst());
-    Assertions.assertInstanceOf(MirReturn.class, conditional_merge.instructions().getLast());
+    Assertions.assertInstanceOf(InstrPhi.class, conditional_merge.instructions().getFirst());
+    Assertions.assertInstanceOf(InstrReturn.class, conditional_merge.instructions().getLast());
   }
 
   @Test
@@ -118,11 +118,11 @@ class ThirToMirLoweringTest {
     Assertions.assertEquals(1, mir.successors().size());
     Assertions.assertEquals(5, mir.instructions().size());
 
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(0));
-    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(1));
-    Assertions.assertInstanceOf(MirInstrCreateLiteral.class, mir.instructions().get(2));
-    Assertions.assertInstanceOf(MirInstrStore.class, mir.instructions().get(3));
-    Assertions.assertInstanceOf(MirInstrJump.class, mir.instructions().get(4));
+    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(0));
+    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(1));
+    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(2));
+    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(3));
+    Assertions.assertInstanceOf(InstrJump.class, mir.instructions().get(4));
 
     assertEdges(mir, new Edge[]{
       new Edge("main", "loop_body"),

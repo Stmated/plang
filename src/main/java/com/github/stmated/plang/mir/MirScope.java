@@ -1,6 +1,6 @@
 package com.github.stmated.plang.mir;
 
-import com.github.stmated.plang.mir.model.MirInstr;
+import com.github.stmated.plang.mir.Mir.Instr;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 record MirScope(
   MirScope parent,
   String name,
-  Map<String, List<MirInstr>> map,
+  Map<String, List<Instr>> map,
   Map<String, AtomicInteger> idMap
 ) {
 
@@ -19,7 +19,7 @@ record MirScope(
     this(parent, name, new HashMap<>(), new HashMap<>());
   }
 
-  MirScope(MirScope parent, String name, Map<String, List<MirInstr>> map, Map<String, AtomicInteger> idMap) {
+  MirScope(MirScope parent, String name, Map<String, List<Instr>> map, Map<String, AtomicInteger> idMap) {
     this.parent = parent;
     this.name = name;
     this.map = map;
@@ -70,7 +70,7 @@ record MirScope(
     return earliestCounter;
   }
 
-  public void add(String name, MirInstr instruction) {
+  public void add(String name, Instr instruction) {
 
     final var e = this.map.computeIfAbsent(
       Objects.requireNonNull(name, "To add scoped instruction it must be named"),
@@ -80,7 +80,7 @@ record MirScope(
     e.add(instruction);
   }
 
-  public MirInstr get(String name) {
+  public Instr get(String name) {
 
     final var e = this.map.get(name);
     if (e != null) {

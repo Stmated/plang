@@ -1,7 +1,7 @@
 package com.github.stmated.plang.mir;
 
-import com.github.stmated.plang.mir.model.MirInstrConditionalJump;
-import com.github.stmated.plang.mir.model.MirInstrJump;
+import com.github.stmated.plang.mir.Mir.InstrConditionalJump;
+import com.github.stmated.plang.mir.Mir.InstrJump;
 import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.util.Tys;
@@ -34,8 +34,8 @@ public class MirNodeTyPass {
     if (lastInstruction != null) {
 
       final var ty = switch (lastInstruction) {
-        case MirInstrJump jump -> enter(jump.node());
-        case MirInstrConditionalJump jump -> {
+        case InstrJump jump -> enter(jump.node());
+        case InstrConditionalJump jump -> {
           final var a = enter(jump.pass());
           final var b = enter(jump.fail());
 

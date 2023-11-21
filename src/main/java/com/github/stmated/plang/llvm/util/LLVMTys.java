@@ -1,5 +1,6 @@
 package com.github.stmated.plang.llvm.util;
 
+import com.github.stmated.plang.mir.Mir.Instr;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyStruct;
@@ -33,7 +34,7 @@ public class LLVMTys {
   }
 
   /**
-   * NOTE: This might require a {@link com.github.stmated.plang.mir.model.MirInstr} to be given. To know context of usage.
+   * NOTE: This might require a {@link Instr} to be given. To know context of usage.
    */
   public static Ty normalize(Ty ty) {
 

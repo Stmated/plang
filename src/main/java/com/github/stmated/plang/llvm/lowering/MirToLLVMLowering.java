@@ -7,7 +7,7 @@ import com.github.stmated.plang.mir.MirIdentifierId;
 import com.github.stmated.plang.mir.MirLoweringResult;
 import com.github.stmated.plang.mir.MirNodeTyPass;
 import com.github.stmated.plang.mir.ThirToMirLowering;
-import com.github.stmated.plang.mir.model.MirInstrCreateFn;
+import com.github.stmated.plang.mir.Mir.InstrCreateFn;
 import com.github.stmated.plang.mir.model.MirFnParameter;
 import com.github.stmated.plang.mir.model.MirFnSignature;
 import com.github.stmated.plang.mir.model.MirNodeEntry;
@@ -69,7 +69,7 @@ public class MirToLLVMLowering {
 
       // TODO: This is not always true. It depends on the MirLoweringResult above, what it gave us.
       final var mirFnSignature = new MirFnSignature(new MirFnParameter[0], false, llvmTy);
-      final var mirFn = new MirInstrCreateFn(mirResult.initNode(), mirFnSignature, ThirToMirLowering.signatureToTy(mirFnSignature));
+      final var mirFn = new InstrCreateFn(mirResult.initNode(), mirFnSignature, ThirToMirLowering.signatureToTy(mirFnSignature));
       mirFn.name(new MirIdentifierId(mirResult.initNode().name(), null, 0)); // TODO: Wrong
 
       return lower_fn(mirFn, new Object[0], name);
@@ -82,7 +82,7 @@ public class MirToLLVMLowering {
         .orElseThrow(() -> new IllegalArgumentException("There must be a 'main' node if not creating a script"));
 
 //      final var mirFnName = Objects.requireNonNullElse(mainNode.name(), "main");
-      final var mirFn = new MirInstrCreateFn(mainNode, mainNode.fnSignature(), ThirToMirLowering.signatureToTy(mainNode.fnSignature()));
+      final var mirFn = new InstrCreateFn(mainNode, mainNode.fnSignature(), ThirToMirLowering.signatureToTy(mainNode.fnSignature()));
       mirFn.name(new MirIdentifierId(mainNode.name(), null, 0)); // TODO: Wrong
 //      mirFn.name();
 
@@ -95,7 +95,7 @@ public class MirToLLVMLowering {
    * <p>
    * Should be used later when we have a way of finding the main-method.
    */
-  public <T> Result<T> lower_fn(MirInstrCreateFn mirInstrCreateFn, Object[] arguments, String name) {
+  public <T> Result<T> lower_fn(InstrCreateFn instrCreateFn, Object[] arguments, String name) {
 
     final var disposals = new ArrayList<Runnable>();
 
@@ -111,7 +111,7 @@ public class MirToLLVMLowering {
 
     final var functionLoweringRequest = new LLVMFunctionLoweringRequest(
       new MirToLLVMCtx(threadContext, context, builder),
-      mirInstrCreateFn,
+      instrCreateFn,
       name,
       result -> LLVM.LLVMLinkModules2(module, result.module())
     );
@@ -165,7 +165,7 @@ public class MirToLLVMLowering {
         throw new RuntimeException(message);
       }
 
-      return callFn(jit, mirInstrCreateFn, arguments);
+      return callFn(jit, instrCreateFn, arguments);
     } finally {
 
       LLVM.LLVMOrcDisposeLLJIT(jit);
@@ -177,18 +177,18 @@ public class MirToLLVMLowering {
     }
   }
 
-  private <T> Result<T> callFn(LLVMOrcLLJITRef jit, MirInstrCreateFn mirInstrCreateFn, Object[] arguments) {
+  private <T> Result<T> callFn(LLVMOrcLLJITRef jit, InstrCreateFn instrCreateFn, Object[] arguments) {
 
     LLVMErrorRef err;
     final var res = new LongPointer(1);
-    if ((err = LLVM.LLVMOrcLLJITLookup(jit, res, mirInstrCreateFn.name().getUniqueName())) != null) {
+    if ((err = LLVM.LLVMOrcLLJITLookup(jit, res, instrCreateFn.name().getUniqueName())) != null) {
       final var message = STR."Failed to look up function symbol: \{LLVM.LLVMGetErrorMessage(err).getString()}";
       throw new RuntimeException(message);
     }
 
-    final var argTypes = (mirInstrCreateFn.signature().parameters().length == 0) ? null : new PointerPointer<>(mirInstrCreateFn.signature().parameters().length);
-    final var argValues = (mirInstrCreateFn.signature().parameters().length == 0) ? null : new PointerPointer<>(mirInstrCreateFn.signature().parameters().length);
-    final var javaReturnType = toJavaType(mirInstrCreateFn.signature().returnType());
+    final var argTypes = (instrCreateFn.signature().parameters().length == 0) ? null : new PointerPointer<>(instrCreateFn.signature().parameters().length);
+    final var argValues = (instrCreateFn.signature().parameters().length == 0) ? null : new PointerPointer<>(instrCreateFn.signature().parameters().length);
+    final var javaReturnType = toJavaType(instrCreateFn.signature().returnType());
     final var ffiReturnType = tyToFfiType(javaReturnType);
     final var returnPointer = toFfiValuePointer(javaReturnType);
 
@@ -200,7 +200,7 @@ public class MirToLLVMLowering {
 
     final var cif = new ffi_cif();
 
-    if (ffi.ffi_prep_cif(cif, ffi.FFI_DEFAULT_ABI(), mirInstrCreateFn.signature().parameters().length, ffiReturnType, argTypes) != ffi.FFI_OK) {
+    if (ffi.ffi_prep_cif(cif, ffi.FFI_DEFAULT_ABI(), instrCreateFn.signature().parameters().length, ffiReturnType, argTypes) != ffi.FFI_OK) {
       throw new RuntimeException("Failed to prepare the libffi cif");
     }
 
@@ -210,7 +210,7 @@ public class MirToLLVMLowering {
 
     ffi.ffi_call(cif, ffiFnPointer, returnPointer, argValues);
 
-    final var result = (T) getValue(returnPointer, mirInstrCreateFn.signature().returnType());
+    final var result = (T) getValue(returnPointer, instrCreateFn.signature().returnType());
     return new Result<>(result, "", "");
   }
 

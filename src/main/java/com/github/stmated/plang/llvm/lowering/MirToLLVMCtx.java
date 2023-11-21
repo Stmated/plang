@@ -1,7 +1,7 @@
 package com.github.stmated.plang.llvm.lowering;
 
-import com.github.stmated.plang.mir.model.MirInstrCreateFn;
-import com.github.stmated.plang.mir.model.MirInstr;
+import com.github.stmated.plang.mir.Mir.InstrCreateFn;
+import com.github.stmated.plang.mir.Mir.Instr;
 import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.util.Pair;
@@ -23,14 +23,14 @@ class MirToLLVMCtx {
   private final Map<String, LLVMValueRef> globalStringCache = new HashMap<>();
   private final Map<Byte, LLVMValueRef> cachedBytes = new HashMap<>();
 
-  private final Map<MirInstr, LoweringResult> valueLookup = new HashMap<>();
+  private final Map<Instr, LoweringResult> valueLookup = new HashMap<>();
   /**
    * TODO: Could perhaps one day be removed in favor of keeping the type reference being sent along the chain?
    */
   private final Map<Ty, LLVMTypeRef> typeLookup = new HashMap<>();
   private final Map<MirNode, LLVMBasicBlockRef> blockLookup = new HashMap<>();
 
-  private final Stack<Pair<MirInstrCreateFn, LLVMValueRef>> fnStack = new Stack<>();
+  private final Stack<Pair<InstrCreateFn, LLVMValueRef>> fnStack = new Stack<>();
 
   final LLVMOrcThreadSafeContextRef threadContext;
   final LLVMContextRef context;
@@ -54,18 +54,18 @@ class MirToLLVMCtx {
     return cachedBytes.computeIfAbsent(bite, b -> LLVM.LLVMConstInt(charType, b, ty.signed() ? 1 : 0));
   }
 
-  public LoweringResult resolve(MirInstr miri) {
+  public LoweringResult resolve(Instr miri) {
     return Objects.requireNonNull(
       this.valueLookup.get(miri),
       "Every instruction that we lookup must be a handled predecessor of when we need to resolve it"
     );
   }
 
-  public LoweringResult resolveIfAvailable(MirInstr miri) {
+  public LoweringResult resolveIfAvailable(Instr miri) {
     return this.valueLookup.get(miri);
   }
 
-  public void register(MirInstr miri, LoweringResult ref) {
+  public void register(Instr miri, LoweringResult ref) {
     if (this.valueLookup.containsKey(miri)) {
       throw new IllegalArgumentException(STR."Not allowed to register a value ref for '\{miri}' twice!");
     }
@@ -84,7 +84,7 @@ class MirToLLVMCtx {
     return Objects.requireNonNull(blockLookup.get(node), STR."Node '\{node}' was not found in first pass of CFG");
   }
 
-  public void enterFunction(Pair<MirInstrCreateFn, LLVMValueRef> fnRef, Runnable runnable) {
+  public void enterFunction(Pair<InstrCreateFn, LLVMValueRef> fnRef, Runnable runnable) {
 
     try {
       fnStack.push(fnRef);
@@ -97,11 +97,11 @@ class MirToLLVMCtx {
     }
   }
 
-  public Pair<MirInstrCreateFn, LLVMValueRef> getFunction() {
+  public Pair<InstrCreateFn, LLVMValueRef> getFunction() {
     return fnStack.peek();
   }
 
-  public Iterator<Pair<MirInstrCreateFn, LLVMValueRef>> getFunctionIterator() {
+  public Iterator<Pair<InstrCreateFn, LLVMValueRef>> getFunctionIterator() {
     return fnStack.reversed().iterator();
   }
 

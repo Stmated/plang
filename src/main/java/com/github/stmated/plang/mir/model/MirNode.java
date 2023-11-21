@@ -1,5 +1,6 @@
 package com.github.stmated.plang.mir.model;
 
+import com.github.stmated.plang.mir.Mir.Instr;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.util.Box;
 import java.util.ArrayList;
@@ -17,7 +18,7 @@ public class MirNode {
   String name;
 
   @NotNull
-  List<MirInstr> instructions;
+  List<Instr> instructions;
   @NotNull
   List<MirNode> predecessors;
   @NotNull

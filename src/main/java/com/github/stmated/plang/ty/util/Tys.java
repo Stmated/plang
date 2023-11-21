@@ -1,6 +1,6 @@
 package com.github.stmated.plang.ty.util;
 
-import com.github.stmated.plang.hir.model.HirMutabilityKind;
+import com.github.stmated.plang.hir.Hir.MutabilityKind;
 import com.github.stmated.plang.ty.BitWidth;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyDiffKind;
@@ -13,7 +13,6 @@ import com.github.stmated.plang.ty.TyValue;
 import com.github.stmated.plang.ty.TyValueKind;
 import com.github.stmated.plang.ty.TyValueNumber;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
-import com.github.stmated.plang.ty.RealKind;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
 import com.github.stmated.plang.ty.TyValueNumberScaled;
 import java.util.Arrays;
@@ -96,7 +95,7 @@ public class Tys {
     return common.diffs();
   }
 
-  public static Ty toNonConstIfRequired(Ty ty, HirMutabilityKind mutabilityKind) {
+  public static Ty toNonConstIfRequired(Ty ty, MutabilityKind mutabilityKind) {
 
     return switch (ty) {
       case TyValueNumberInteger ni -> {

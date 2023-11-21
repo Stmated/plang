@@ -1,8 +1,8 @@
 package com.github.stmated.plang.mir;
 
-import com.github.stmated.plang.mir.model.MirInstr;
+import com.github.stmated.plang.mir.Mir.Instr;
 import java.util.Collection;
 
-public record MirTyInvestigationContext(Collection<MirInstr> visited) {
+public record MirTyInvestigationContext(Collection<Instr> visited) {
 
 }

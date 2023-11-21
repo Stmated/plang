@@ -1,6 +1,6 @@
 package com.github.stmated.plang.mir.model;
 
-import com.github.stmated.plang.hir.model.HirBinaryOperationKind;
+import com.github.stmated.plang.hir.Hir.BinaryOperationKind;
 
 public enum MirBinaryOperationKind {
 
@@ -35,7 +35,7 @@ public enum MirBinaryOperationKind {
     return this == LTE || this == GTE || this == LT || this == GT || this == EQUALS || this == IS || this == OR || this == AND;
   }
 
-  public static MirBinaryOperationKind ofHirKind(HirBinaryOperationKind kind) {
+  public static MirBinaryOperationKind ofHirKind(BinaryOperationKind kind) {
 
     return switch (kind) {
       case ADD -> MirBinaryOperationKind.ADD;
