@@ -8,7 +8,7 @@ import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyStruct;
 import com.github.stmated.plang.ty.TyValueArray;
-import jakarta.validation.constraints.NotNull;
+import jakarta.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.Objects;
 import lombok.AccessLevel;
@@ -18,8 +18,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.Value;
 import lombok.experimental.UtilityClass;
-//import org.codehaus.commons.nullanalysis.NotNull;
-//import org.codehaus.commons.nullanalysis.Nullable;
 
 @UtilityClass
 public class Mir {
@@ -139,9 +137,9 @@ public class Mir {
   public static class InstrCreateFn extends AbstractInstr {
 
     MirNode entry;
-    @NotNull
+    @Nonnull
     MirFnSignature signature;
-    @NotNull
+    @Nonnull
     Ty ty;
 
     @Override

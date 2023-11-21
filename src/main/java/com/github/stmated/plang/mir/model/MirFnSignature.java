@@ -1,14 +1,14 @@
 package com.github.stmated.plang.mir.model;
 
 import com.github.stmated.plang.ty.Ty;
+import jakarta.annotation.Nonnull;
 import java.util.Arrays;
-import org.codehaus.commons.nullanalysis.NotNull;
 
 public record MirFnSignature(
-  @NotNull
+  @Nonnull
   MirFnParameter[] parameters,
   boolean vararg,
-  @NotNull
+  @Nonnull
   Ty returnType
 ) {
 

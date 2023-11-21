@@ -1,11 +1,7 @@
 package com.github.stmated.plang.thir.raising;
 
 import com.github.stmated.plang.hir.Hir;
-import com.github.stmated.plang.ty.Ty;
-import java.util.Objects;
 import lombok.Value;
-import org.codehaus.commons.nullanalysis.NotNull;
-import org.codehaus.commons.nullanalysis.Nullable;
 
 @Value
 public class ThirRaiseResult {

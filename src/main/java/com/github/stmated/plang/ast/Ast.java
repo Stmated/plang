@@ -2,6 +2,7 @@ package com.github.stmated.plang.ast;
 
 import com.github.stmated.plang.lexer.TokenType;
 import com.github.stmated.plang.ty.TyValue;
+import jakarta.annotation.Nullable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -9,7 +10,6 @@ import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.experimental.UtilityClass;
-import org.codehaus.commons.nullanalysis.Nullable;
 
 @UtilityClass
 public class Ast {

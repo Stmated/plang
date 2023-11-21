@@ -3,12 +3,12 @@ package com.github.stmated.plang.mir.model;
 import com.github.stmated.plang.mir.Mir.Instr;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.util.Box;
+import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 import lombok.experimental.NonFinal;
-import org.codehaus.commons.nullanalysis.NotNull;
 
 @Value
 @NonFinal
@@ -17,13 +17,13 @@ public class MirNode {
 
   String name;
 
-  @NotNull
+  @Nonnull
   List<Instr> instructions;
-  @NotNull
+  @Nonnull
   List<MirNode> predecessors;
-  @NotNull
+  @Nonnull
   List<MirNode> successors;
-  @NotNull
+  @Nonnull
   Box<Ty> ty;
 
   public MirNode(String name) {

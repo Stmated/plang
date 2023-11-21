@@ -2,13 +2,13 @@ package com.github.stmated.plang.hir;
 
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyValue;
+import jakarta.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.Objects;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
-import jakarta.validation.constraints.NotNull;
 
 @UtilityClass
 public class Hir {
@@ -38,7 +38,7 @@ public class Hir {
   public static class Argument implements Expression {
 
     final String label;
-    @NotNull
+    @Nonnull
     final Hir.Expression value;
     Ty ty;
   }
@@ -209,7 +209,7 @@ public class Hir {
   @RequiredArgsConstructor
   public static class FunctionSignature implements Expression {
 
-    @NotNull
+    @Nonnull
     final Parameter[] parameters;
     final boolean vararg;
     final Expression returnType;
@@ -228,7 +228,7 @@ public class Hir {
   @RequiredArgsConstructor
   public static class Identifier implements Expression {
 
-    @NotNull
+    @Nonnull
     final String name;
     Ty ty;
 
@@ -243,9 +243,9 @@ public class Hir {
   @RequiredArgsConstructor
   public static class Labeling implements Expression {
 
-    @NotNull
+    @Nonnull
     final Hir.Expression lhs;
-    @NotNull
+    @Nonnull
     final Hir.Expression rhs;
     Ty ty;
   }
@@ -362,9 +362,9 @@ public class Hir {
   @RequiredArgsConstructor
   public static class Parameter implements Expression {
 
-    @NotNull
+    @Nonnull
     final Hir.Expression identifier;
-    @NotNull
+    @Nonnull
     final Hir.Expression type;
     final boolean vararg;
     Ty ty;
@@ -380,7 +380,7 @@ public class Hir {
   @RequiredArgsConstructor
   public static class Path implements Expression {
 
-    @NotNull
+    @Nonnull
     final Expression[] elements;
     Ty ty;
 
@@ -463,7 +463,7 @@ public class Hir {
   public static class TupleKeyValue implements Expression {
 
     final Identifier key;
-    @NotNull
+    @Nonnull
     final Hir.Expression value;
     Ty ty;
   }

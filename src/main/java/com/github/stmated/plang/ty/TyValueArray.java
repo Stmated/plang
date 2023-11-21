@@ -1,10 +1,11 @@
 package com.github.stmated.plang.ty;
 
-import org.codehaus.commons.nullanalysis.NotNull;
-import org.codehaus.commons.nullanalysis.Nullable;
+
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 public record TyValueArray(
-  @NotNull
+  @Nonnull
   Ty elementType,
   @Nullable
   Integer size
