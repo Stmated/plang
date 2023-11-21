@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import jakarta.validation.constraints.NotNull;
 
@@ -14,20 +15,43 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
-  public static class Argument implements Expression {
+  @RequiredArgsConstructor
+  public static class Expressions implements Expression {
 
-    String label;
-    @NotNull
-    Hir.Expression value;
+    final Expression[] children;
+    Ty ty;
+
+    @Override
+    public String toString() {
+      final var childStrings = String.join("; ", Arrays.stream(children()).map(Objects::toString).toList());
+      return STR."[\{childStrings}]";
+    }
+  }
+
+  public interface Expression {
+    Ty ty();
   }
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
+  public static class Argument implements Expression {
+
+    final String label;
+    @NotNull
+    final Hir.Expression value;
+    Ty ty;
+  }
+
+  @Data
+  @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Array implements Expression {
 
-    Expression[] elements;
-    Expression elementType;
-    Expression length;
+    final Expression[] elements;
+    final Expression elementType;
+    final Expression length;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -41,10 +65,12 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class ArrayAccess implements Expression {
 
-    Expression target;
-    Expression accessor;
+    final Expression target;
+    final Expression accessor;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -54,10 +80,12 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Assignment implements Expression {
 
-    Expression lhs;
-    Expression rhs;
+    final Expression lhs;
+    final Expression rhs;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -67,11 +95,13 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class BinaryOperation implements Expression {
 
-    Expression lhs;
-    BinaryOperationKind kind;
-    Expression rhs;
+    final Expression lhs;
+    final BinaryOperationKind kind;
+    final Expression rhs;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -115,26 +145,43 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Block implements Expression {
-    Expression children;
+
+    final Expression children;
+    Ty ty;
+
+    @Override
+    public Ty ty() {
+
+      if (ty != null) {
+        return ty;
+      }
+
+      return children().ty();
+    }
   }
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Call implements Expression {
 
-    Expression target;
-    Argument[] arguments;
-    boolean partial;
+    final Expression target;
+    final Argument[] arguments;
+    final boolean partial;
+    Ty ty;
   }
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Conditional implements Expression {
 
-    Expression predicate;
-    Expression pass;
-    Expression fail;
+    final Expression predicate;
+    final Expression pass;
+    final Expression fail;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -144,27 +191,12 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
-  public static class Expressions implements Expression {
-
-    Expression[] children;
-
-    @Override
-    public String toString() {
-      final var childStrings = String.join("; ", Arrays.stream(children()).map(Objects::toString).toList());
-      return STR."[\{childStrings}]";
-    }
-  }
-
-  public interface Expression {
-
-  }
-
-  @Data
-  @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Function implements Expression {
 
-    FunctionSignature signature;
-    Expression body;
+    final FunctionSignature signature;
+    final Expression body;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -174,12 +206,14 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class FunctionSignature implements Expression {
 
     @NotNull
-    Parameter[] parameters;
-    boolean vararg;
-    Expression returnType;
+    final Parameter[] parameters;
+    final boolean vararg;
+    final Expression returnType;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -191,10 +225,12 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Identifier implements Expression {
 
     @NotNull
-    String name;
+    final String name;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -204,12 +240,14 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Labeling implements Expression {
 
     @NotNull
-    Hir.Expression lhs;
+    final Hir.Expression lhs;
     @NotNull
-    Hir.Expression rhs;
+    final Hir.Expression rhs;
+    Ty ty;
   }
 
   @Data
@@ -227,9 +265,11 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Loop implements Expression {
 
-    Expression body;
+    final Expression body;
+    Ty ty;
   }
 
   /**
@@ -238,9 +278,11 @@ public class Hir {
    */
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class LoopBreak implements Expression {
 
-    Expression value;
+    final Expression value;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -257,6 +299,11 @@ public class Hir {
   public static class LoopContinue implements Expression {
 
     @Override
+    public Ty ty() {
+      return Ty.VOID;
+    }
+
+    @Override
     public String toString() {
       return "continue";
     }
@@ -271,11 +318,13 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class NewByBlock implements Expression {
 
-    Expression target;
-    Identifier allocator;
-    Assignment[] fields;
+    final Expression target;
+    final Identifier allocator;
+    final Assignment[] fields;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -285,11 +334,13 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class NewByCtor implements Expression {
 
-    Expression target;
-    Identifier allocator;
-    Expression arguments;
+    final Expression target;
+    final Identifier allocator;
+    final Expression arguments;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -299,20 +350,24 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Not implements Expression {
 
-    Expression expression;
+    final Expression expression;
+    Ty ty;
   }
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Parameter implements Expression {
 
     @NotNull
-    Hir.Expression identifier;
+    final Hir.Expression identifier;
     @NotNull
-    Hir.Expression type;
-    boolean vararg;
+    final Hir.Expression type;
+    final boolean vararg;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -322,9 +377,12 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Path implements Expression {
 
-    Expression[] elements;
+    @NotNull
+    final Expression[] elements;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -334,22 +392,28 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Program implements Expression {
-    Expression expressions;
+    final Expression expressions;
+    Ty ty;
   }
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Range implements Expression {
-    Expression lower;
-    Expression higher;
+    final Expression lower;
+    final Expression higher;
+    Ty ty;
   }
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Return implements Expression {
 
-    Expression expression;
+    final Expression expression;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -359,9 +423,11 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Struct implements Expression {
 
-    VariableDeclaration[] declarations;
+    final VariableDeclaration[] declarations;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -371,15 +437,19 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Trait implements Expression {
-    Expression[] children;
+    final Expression[] children;
+    Ty ty;
   }
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Tuple implements Expression {
 
-    TupleKeyValue[] children;
+    final TupleKeyValue[] children;
+    Ty ty;
 
     @Override
     public String toString() {
@@ -389,11 +459,13 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class TupleKeyValue implements Expression {
 
-    Identifier key;
+    final Identifier key;
     @NotNull
-    Hir.Expression value;
+    final Hir.Expression value;
+    Ty ty;
   }
 
   @Data
@@ -410,11 +482,13 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class VariableDeclaration implements Expression {
 
-    Identifier identifier;
-    MutabilityKind mutabilityKind;
-    Expression type;
+    final Identifier identifier;
+    final MutabilityKind mutabilityKind;
+    final Expression type;
+    Ty ty;
 
     @Override
     public String toString() {

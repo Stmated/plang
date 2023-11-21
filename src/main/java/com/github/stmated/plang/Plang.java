@@ -8,7 +8,7 @@ import com.github.stmated.plang.lexer.PlangLexerSteps;
 import com.github.stmated.plang.llvm.lowering.MirToLLVMLowering;
 import com.github.stmated.plang.mir.MirLoweringResult;
 import com.github.stmated.plang.mir.ThirToMirLowering;
-import com.github.stmated.plang.ast.raising.TokenToAstRaising;
+import com.github.stmated.plang.ast.TokenToAstRaising;
 import com.github.stmated.plang.thir.raising.HirToThirRaising;
 import com.github.stmated.plang.thir.raising.ThirRaiseResult;
 import java.io.ByteArrayInputStream;

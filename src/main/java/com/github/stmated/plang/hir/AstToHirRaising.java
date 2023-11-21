@@ -262,7 +262,7 @@ public class AstToHirRaising {
   private com.github.stmated.plang.ty.Ty getTy(Hir.Expression expr) {
 
     final var thir = new HirToThirRaising(true);
-    final var found = thir.raise(expr).getType(expr);
+    final var found = thir.raise(expr).root().ty(); //.getType(expr);
     return Objects.requireNonNullElse(found, com.github.stmated.plang.ty.Ty.INFER);
   }
 
@@ -271,7 +271,7 @@ public class AstToHirRaising {
     final var thir = new HirToThirRaising(true);
     var found = thir.investigate_type_expression(expr);
     if (found == null) {
-      found = thir.raise(expr).getType(expr);
+      found = thir.raise(expr).root().ty(); //.getType(expr);
     }
 
     return Objects.requireNonNullElse(found, com.github.stmated.plang.ty.Ty.INFER);

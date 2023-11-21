@@ -1,20 +1,9 @@
 package com.github.stmated.plang.ast.raising;
 
 import com.github.stmated.plang.Plang;
-import com.github.stmated.plang.ast.Ast.BinaryOperation;
-import com.github.stmated.plang.ast.Ast.Callable;
-import com.github.stmated.plang.ast.Ast.Expression;
-import com.github.stmated.plang.ast.Ast.Identifier;
-import com.github.stmated.plang.ast.Ast.Labeling;
-import com.github.stmated.plang.ast.Ast.Literal;
-import com.github.stmated.plang.ast.Ast.Paren;
-import com.github.stmated.plang.ast.Ast.Program;
+import com.github.stmated.plang.ast.Ast;
 import com.github.stmated.plang.ast.AstVisitor;
-import com.github.stmated.plang.ast.Ast.BinaryOperationKind;
-import com.github.stmated.plang.ast.Ast.Call;
-import com.github.stmated.plang.ast.Ast.Expressions;
-import com.github.stmated.plang.ast.Ast.MutabilityKind;
-import com.github.stmated.plang.ast.Ast.Negate;
+import com.github.stmated.plang.ast.TokenToAstRaising;
 import com.github.stmated.plang.lexer.PlangLexer;
 import com.github.stmated.plang.lexer.PlangLexerSteps;
 import com.github.stmated.plang.parser.PlangTestUtil;
@@ -46,13 +35,13 @@ class TokenToAstRaisingTest {
     Assertions.assertNotNull(program);
     Assertions.assertEquals(1, expressions.length);
 
-    final var ibo = assertType(BinaryOperation.class, expressions[0]);
+    final var ibo = assertType(Ast.BinaryOperation.class, expressions[0]);
 
-    final var lhs = assertType(Literal.class, ibo.lhs());
-    final var rhs = assertType(Literal.class, ibo.rhs());
+    final var lhs = assertType(Ast.Literal.class, ibo.lhs());
+    final var rhs = assertType(Ast.Literal.class, ibo.rhs());
 
     Assertions.assertEquals("1", lhs.content());
-    Assertions.assertEquals(BinaryOperationKind.ADD, ibo.kind());
+    Assertions.assertEquals(Ast.BinaryOperationKind.ADD, ibo.kind());
     Assertions.assertEquals("1", rhs.content());
   }
 
@@ -66,13 +55,13 @@ class TokenToAstRaisingTest {
     Assertions.assertNotNull(program);
     Assertions.assertEquals(1, expressions.length);
 
-    final var ibo = assertType(BinaryOperation.class, expressions[0]);
-    final var lhs = assertType(BinaryOperation.class, ibo.lhs());
-    final var rhs = assertType(BinaryOperation.class, ibo.rhs());
+    final var ibo = assertType(Ast.BinaryOperation.class, expressions[0]);
+    final var lhs = assertType(Ast.BinaryOperation.class, ibo.lhs());
+    final var rhs = assertType(Ast.BinaryOperation.class, ibo.rhs());
 
-    Assertions.assertEquals(BinaryOperationKind.AND, ibo.kind());
-    Assertions.assertEquals(BinaryOperationKind.LT, lhs.kind());
-    Assertions.assertEquals(BinaryOperationKind.GT, rhs.kind());
+    Assertions.assertEquals(Ast.BinaryOperationKind.AND, ibo.kind());
+    Assertions.assertEquals(Ast.BinaryOperationKind.LT, lhs.kind());
+    Assertions.assertEquals(Ast.BinaryOperationKind.GT, rhs.kind());
   }
 
   // TODO: Create tests that checks exact result of:
@@ -88,13 +77,13 @@ class TokenToAstRaisingTest {
     Object o = null;
 
     switch (o) {
-      case Program astProgram -> {
+      case Ast.Program astProgram -> {
         var i = 0;
       }
-      case BinaryOperation astBinaryOperation -> {
+      case Ast.BinaryOperation astBinaryOperation -> {
         var i = 0;
       }
-      case MutabilityKind mutabilityKind -> {
+      case Ast.MutabilityKind mutabilityKind -> {
         var i = 0;
       }
       case null, default -> {
@@ -112,21 +101,21 @@ class TokenToAstRaisingTest {
     Assertions.assertNotNull(program);
     Assertions.assertEquals(1, expressions.length);
 
-    as(expressions[0], BinaryOperation.class, ibo -> {
+    as(expressions[0], Ast.BinaryOperation.class, ibo -> {
 
-      as(ibo.lhs(), BinaryOperation.class, lhs -> {
-        Assertions.assertEquals(BinaryOperationKind.LT, lhs.kind());
+      as(ibo.lhs(), Ast.BinaryOperation.class, lhs -> {
+        Assertions.assertEquals(Ast.BinaryOperationKind.LT, lhs.kind());
       });
 
-      as(ibo.rhs(), BinaryOperation.class, rhs -> {
-        Assertions.assertEquals(BinaryOperationKind.OR, rhs.kind());
+      as(ibo.rhs(), Ast.BinaryOperation.class, rhs -> {
+        Assertions.assertEquals(Ast.BinaryOperationKind.OR, rhs.kind());
 
-        as(rhs.lhs(), BinaryOperation.class, rhs_lhs -> {
-          Assertions.assertEquals(BinaryOperationKind.GT, rhs_lhs.kind());
+        as(rhs.lhs(), Ast.BinaryOperation.class, rhs_lhs -> {
+          Assertions.assertEquals(Ast.BinaryOperationKind.GT, rhs_lhs.kind());
         });
 
-        as(rhs.rhs(), BinaryOperation.class, rhs_rhs -> {
-          Assertions.assertEquals(BinaryOperationKind.EQUALS, rhs_rhs.kind());
+        as(rhs.rhs(), Ast.BinaryOperation.class, rhs_rhs -> {
+          Assertions.assertEquals(Ast.BinaryOperationKind.EQUALS, rhs_rhs.kind());
         });
       });
     });
@@ -142,21 +131,21 @@ class TokenToAstRaisingTest {
     Assertions.assertNotNull(program);
     Assertions.assertEquals(1, expressions.length);
 
-    as(expressions[0], BinaryOperation.class, ibo -> {
+    as(expressions[0], Ast.BinaryOperation.class, ibo -> {
 
-      as(ibo.lhs(), BinaryOperation.class, lhs -> {
-        Assertions.assertEquals(BinaryOperationKind.LT, lhs.kind());
+      as(ibo.lhs(), Ast.BinaryOperation.class, lhs -> {
+        Assertions.assertEquals(Ast.BinaryOperationKind.LT, lhs.kind());
       });
 
-      as(ibo.rhs(), BinaryOperation.class, rhs -> {
-        Assertions.assertEquals(BinaryOperationKind.OR, rhs.kind());
+      as(ibo.rhs(), Ast.BinaryOperation.class, rhs -> {
+        Assertions.assertEquals(Ast.BinaryOperationKind.OR, rhs.kind());
 
-        as(rhs.lhs(), BinaryOperation.class, rhs_lhs -> {
-          Assertions.assertEquals(BinaryOperationKind.GT, rhs_lhs.kind());
+        as(rhs.lhs(), Ast.BinaryOperation.class, rhs_lhs -> {
+          Assertions.assertEquals(Ast.BinaryOperationKind.GT, rhs_lhs.kind());
         });
 
-        as(rhs.rhs(), BinaryOperation.class, rhs_rhs -> {
-          Assertions.assertEquals(BinaryOperationKind.EQUALS, rhs_rhs.kind());
+        as(rhs.rhs(), Ast.BinaryOperation.class, rhs_rhs -> {
+          Assertions.assertEquals(Ast.BinaryOperationKind.EQUALS, rhs_rhs.kind());
         });
       });
     });
@@ -224,7 +213,7 @@ class TokenToAstRaisingTest {
 
     final var ast = toExpressions(Plang.codeToAst(code));
 
-    as(ast[0], Literal.class, literal -> {
+    as(ast[0], Ast.Literal.class, literal -> {
       Assertions.assertEquals("-1", literal.content());
     });
   }
@@ -238,8 +227,8 @@ class TokenToAstRaisingTest {
   void testUnaryNegate(String code) {
     final var ast = toExpressions(Plang.codeToAst(code));
 
-    as(ast[0], Negate.class, negate -> {
-      as(negate.expression(), Identifier.class, id -> {
+    as(ast[0], Ast.Negate.class, negate -> {
+      as(negate.expression(), Ast.Identifier.class, id -> {
         Assertions.assertEquals("something", id.name());
       });
     });
@@ -253,7 +242,7 @@ class TokenToAstRaisingTest {
   })
   void testPositiveNumber(String code) {
     final var ast = toExpressions(Plang.codeToAst(code));
-    as(ast[0], Literal.class, literal -> {
+    as(ast[0], Ast.Literal.class, literal -> {
 
       Assertions.assertEquals("1", literal.content());
       Assertions.assertEquals(Ty.INTEGER, literal.ty());
@@ -272,40 +261,40 @@ class TokenToAstRaisingTest {
 
     // TODO: Convert this into some common format that is common in lang dev -- need to find some known format
     //        So we can easily compare against a string, and make it understandable for others
-    as(ast[0], Call.class, call -> {
-      as(call.target(), Paren.class, paren -> {
-        as(paren.expression(), Callable.class, callable -> {
-          as(callable.lhs(), Paren.class, call_lhs_paren -> {
-            as(call_lhs_paren.expression(), Expressions.class, call_lhs_exprs -> {
-              as(call_lhs_exprs.children()[0], Labeling.class, labeling -> {
-                as(labeling.lhs(), Identifier.class, id -> {
+    as(ast[0],Ast.Call.class, call -> {
+      as(call.target(), Ast.Paren.class, paren -> {
+        as(paren.expression(), Ast.Callable.class, callable -> {
+          as(callable.lhs(), Ast.Paren.class, call_lhs_paren -> {
+            as(call_lhs_paren.expression(), Ast.Expressions.class, call_lhs_exprs -> {
+              as(call_lhs_exprs.children()[0], Ast.Labeling.class, labeling -> {
+                as(labeling.lhs(), Ast.Identifier.class, id -> {
                   Assertions.assertEquals("a", id.name());
                 });
-                as(labeling.rhs(), Identifier.class, id -> {
+                as(labeling.rhs(), Ast.Identifier.class, id -> {
                   Assertions.assertEquals("int", id.name());
                 });
               });
-              as(call_lhs_exprs.children()[1], Labeling.class, labeling -> {
-                as(labeling.lhs(), Identifier.class, id -> {
+              as(call_lhs_exprs.children()[1], Ast.Labeling.class, labeling -> {
+                as(labeling.lhs(), Ast.Identifier.class, id -> {
                   Assertions.assertEquals("b", id.name());
                 });
-                as(labeling.rhs(), Identifier.class, id -> {
+                as(labeling.rhs(), Ast.Identifier.class, id -> {
                   Assertions.assertEquals("int", id.name());
                 });
               });
             });
           });
 
-          as(callable.rhs(), BinaryOperation.class, bop -> {
-            Assertions.assertEquals(BinaryOperationKind.ADD, bop.kind());
+          as(callable.rhs(), Ast.BinaryOperation.class, bop -> {
+            Assertions.assertEquals(Ast.BinaryOperationKind.ADD, bop.kind());
           });
         });
       });
 
-      as(call.paren(), Paren.class, paren -> {
-        as(paren.expression(), Expressions.class, exprs -> {
-          as(exprs.children()[0], Literal.class, literal -> Assertions.assertEquals("5", literal.content()));
-          as(exprs.children()[1], Literal.class, literal -> Assertions.assertEquals("5", literal.content()));
+      as(call.paren(), Ast.Paren.class, paren -> {
+        as(paren.expression(), Ast.Expressions.class, exprs -> {
+          as(exprs.children()[0], Ast.Literal.class, literal -> Assertions.assertEquals("5", literal.content()));
+          as(exprs.children()[1], Ast.Literal.class, literal -> Assertions.assertEquals("5", literal.content()));
         });
       });
     });
@@ -313,18 +302,18 @@ class TokenToAstRaisingTest {
 
   }
 
-  private Expression[] toExpressions(Expression expr) {
+  private Ast.Expression[] toExpressions(Ast.Expression expr) {
 
-    if (expr instanceof Expressions exprs) {
+    if (expr instanceof Ast.Expressions exprs) {
       return exprs.children();
-    } else if (expr instanceof Program program) {
+    } else if (expr instanceof Ast.Program program) {
       return toExpressions(program.children());
     } else {
-      return new Expression[]{expr};
+      return new Ast.Expression[]{expr};
     }
   }
 
-  private <T> void as(Expression exp, Class<T> clazz, Consumer<T> then) {
+  private <T> void as(Ast.Expression exp, Class<T> clazz, Consumer<T> then) {
 
     Assertions.assertInstanceOf(clazz, exp);
 
@@ -333,25 +322,25 @@ class TokenToAstRaisingTest {
     }
   }
 
-  private <T> T assertType(Class<T> clazz, Expression exp) {
+  private <T> T assertType(Class<T> clazz, Ast.Expression exp) {
 
     Assertions.assertInstanceOf(clazz, exp);
     return (T) exp;
   }
 
-  private void isIdentifier(Expression exp, String expected) {
+  private void isIdentifier(Ast.Expression exp, String expected) {
 
-    Assertions.assertInstanceOf(Identifier.class, exp);
-    Assertions.assertEquals(expected, ((Identifier) exp).name());
+    Assertions.assertInstanceOf(Ast.Identifier.class, exp);
+    Assertions.assertEquals(expected, ((Ast.Identifier) exp).name());
   }
 
-  private void isLiteral(Expression exp, String expected) {
+  private void isLiteral(Ast.Expression exp, String expected) {
 
-    Assertions.assertInstanceOf(Literal.class, exp);
-    Assertions.assertEquals(expected, ((Literal) exp).content());
+    Assertions.assertInstanceOf(Ast.Literal.class, exp);
+    Assertions.assertEquals(expected, ((Ast.Literal) exp).content());
   }
 
-  private <T, R> void is(Expression exp, Class<T> clazz, Function<T, R> mapper, Object expected) {
+  private <T, R> void is(Ast.Expression exp, Class<T> clazz, Function<T, R> mapper, Object expected) {
 
     Assertions.assertInstanceOf(clazz, exp);
 
@@ -360,7 +349,7 @@ class TokenToAstRaisingTest {
   }
 
   @SneakyThrows
-  private Program parseProgram(String code) {
+  private Ast.Program parseProgram(String code) {
 
     try (final var tokens = new PlangLexer(PlangTestUtil.stringToStream(code))) {
       final var parser = new TokenToAstRaising(tokens);
@@ -372,7 +361,7 @@ class TokenToAstRaisingTest {
   private static class ToStringTreeAstVisitor implements AstVisitor<String> {
 
     @Override
-    public String visit(Expression expr) {
+    public String visit(Ast.Expression expr) {
 
       if (expr == null) {
         return this.noValue();
@@ -390,7 +379,7 @@ class TokenToAstRaisingTest {
     }
 
     @Override
-    public String visitLiteral(final Literal expr) {
+    public String visitLiteral(final Ast.Literal expr) {
       return STR."  \{expr.content()}\n";
     }
 

@@ -1,6 +1,5 @@
-package com.github.stmated.plang.ast.raising;
+package com.github.stmated.plang.ast;
 
-import com.github.stmated.plang.ast.Ast;
 import com.github.stmated.plang.exceptions.UnexpectedTokenException;
 import com.github.stmated.plang.lexer.Token;
 import com.github.stmated.plang.lexer.TokenType;
