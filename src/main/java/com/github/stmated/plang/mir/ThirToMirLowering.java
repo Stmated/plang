@@ -45,6 +45,7 @@ import com.github.stmated.plang.mir.model.MirInstrGetParam;
 import com.github.stmated.plang.mir.model.MirInstrGetStructElement;
 import com.github.stmated.plang.mir.model.MirInstrJump;
 import com.github.stmated.plang.mir.model.MirInstrPhi;
+import com.github.stmated.plang.mir.model.MirInstrSetStructElement;
 import com.github.stmated.plang.mir.model.MirInstrStore;
 import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.mir.model.MirNodeEntry;
@@ -160,13 +161,19 @@ public class ThirToMirLowering {
   private MirInstr lower_path(HirPath it) {
 
     // The first path element must be accessible as any other base-level item, such as an identifier or type.
-    var lastInstr = lower(it.elements()[0]);
+    final var elements = it.elements();
+    return lower_path_elements(elements, 0, elements.length);
+  }
 
-    for (var i = 1; i < it.elements().length; i++) {
+  private MirInstr lower_path_elements(HirExpression[] elements, int start, int end) {
 
-      final var hirPrevious = it.elements()[i - 1];
+    var lastInstr = lower(elements[start]);
+
+    for (var i = start + 1; i < end; i++) {
+
+      final var hirPrevious = elements[i - 1];
       final var previousTy = mirCtx.thirRaiseResult().getTypeOrThrow(hirPrevious);
-      final var hirElement = it.elements()[i];
+      final var hirElement = elements[i];
       lastInstr = switch (hirElement) {
         case HirIdentifier id -> switch (previousTy) {
 					case TyStruct struct -> {
@@ -189,7 +196,7 @@ public class ThirToMirLowering {
       mirCtx.nodeStack().peek().instructions().add(lastInstr);
     }
 
-    return Objects.requireNonNull(lastInstr, STR."Path '\{it}' could not be converted into an instruction");
+    return Objects.requireNonNull(lastInstr, STR."Path '\{Arrays.toString(elements)}' could not be converted into an instruction");
   }
 
   private MirInstr lower_new_by_block(HirNewByBlock it) {
@@ -564,10 +571,43 @@ public class ThirToMirLowering {
     };
   }
 
-  private MirInstr lower_assignment_to_path(HirAssignment hir, HirPath path) {
+  private MirInstr lower_assignment_to_path(HirAssignment it, HirPath path) {
+
+    // Convert the path into a get instruction, except for the last element which we write to.
+    final var get_instruction = lower_path_elements(path.elements(), 0, path.elements().length - 1);
 
 
-    throw new NotImplementedException();
+
+    var lastInstr = lower(path.elements()[0]);
+
+    for (var i = 1; i < path.elements().length; i++) {
+
+      final var hirPrevious = path.elements()[i - 1];
+      final var previousTy = mirCtx.thirRaiseResult().getTypeOrThrow(hirPrevious);
+      final var hirElement = path.elements()[i];
+      lastInstr = switch (hirElement) {
+        case HirIdentifier id -> switch (previousTy) {
+          case TyStruct struct -> {
+
+            for (var n = 0; n < struct.fields().length; n++) {
+
+              final var field = struct.fields()[n];
+              if (field.name().equals(id.name())) {
+                yield new MirInstrGetStructElement(lastInstr, n, field.ty());
+              }
+            }
+
+            throw new IllegalArgumentException(STR."Unknown field '\{id.name()}'");
+          }
+          default -> throw new UnexpectedExpressionException(previousTy);
+        };
+        default -> throw new UnexpectedExpressionException(hirElement);
+      };
+
+      mirCtx.nodeStack().peek().instructions().add(lastInstr);
+    }
+
+    return Objects.requireNonNull(lastInstr, STR."Path '\{it}' could not be converted into an instruction");
   }
 
   private MirInstr lower_assignment_root_level(HirAssignment hir, String name, boolean declare) {
