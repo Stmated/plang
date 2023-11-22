@@ -582,6 +582,8 @@ public class ThirToMirLowering {
     } else if (rhs instanceof Mir.InstrCreateFn is) {
       is.name(new MirIdentifierId(name, null, 0));
       instr = is;
+    } else if (rhs instanceof Mir.InstrCall is) {
+      instr = is;
     } else {
       if (scopeValue == null) {
         final var is = new Mir.InstrStore(null, rhs, new TyPointer<>(rhs.ty()));
@@ -605,6 +607,11 @@ public class ThirToMirLowering {
   private Mir.Instr lower_variable_declaration(Hir.VariableDeclaration hir) {
 
     log.debug("Variable declaration has no meaning in CFG, handle assignment expressions");
+
+    // TODO: Is this possible to do? I feel like it most likely is not?
+
+//    mirCtx.scopeStack().peek().add(hir.identifier().name(), );
+
     return null;
   }
 
@@ -859,10 +866,39 @@ public class ThirToMirLowering {
       default -> throw new UnexpectedExpressionException(hir.target());
     };
 
-    final var fnInstr = Objects.requireNonNull(
-      mirCtx.scopeStack().peek().get(fnName),
-      STR."No such function '\{fnName}' found"
-    );
+    final Mir.Instr fnInstr;
+    if (fnName.equals("freopen_stdout")) {
+
+      // (filename: *char, mode: *char): *int;
+      final var tyFn = new TyFn(
+        new TyParam[] {
+          new TyParam("filename", new TyPointer<>(Ty.CHAR)),
+          new TyParam("mode", new TyPointer<>(Ty.CHAR))
+        },
+        false,
+        new TyPointer<>(Ty.INTEGER)
+      );
+
+      final var createFn = new Mir.InstrCreateFn(
+        null,
+        new MirFnSignature(
+          new MirFnParameter[] {
+            new MirFnParameter("filename", new TyPointer<>(Ty.CHAR)),
+            new MirFnParameter("mode", new TyPointer<>(Ty.CHAR))
+          },
+          false,
+          new TyPointer<>(Ty.INTEGER)
+        ),
+        tyFn
+      );
+      createFn.name(new MirIdentifierId("freopen_stdout", null, 0));
+
+      fnInstr = createFn;
+
+    } else {
+
+      fnInstr = mirCtx.getInstructionByName(fnName);
+    }
 
     return switch (fnInstr) {
       // NOTE: Unsure how this will be handled -- but I guess it will be an indirect function pointer?

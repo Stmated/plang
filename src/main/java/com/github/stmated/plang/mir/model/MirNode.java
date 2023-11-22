@@ -23,6 +23,10 @@ public class MirNode {
   List<MirNode> predecessors;
   @Nonnull
   List<MirNode> successors;
+  /**
+   * TODO: Do not use Box, instead just make it settable
+   */
+  @Deprecated
   @Nonnull
   Box<Ty> ty;
 

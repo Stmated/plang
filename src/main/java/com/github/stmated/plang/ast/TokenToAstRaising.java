@@ -493,6 +493,7 @@ public class TokenToAstRaising {
       return switch (token.type()) {
         case ADD -> parsePotentialDeclaredPositiveLiteralNumber();
         case SUBTRACT -> parsePotentialDeclaredNegativeLiteralNumber();
+        case MULTIPLY -> parsePotentialPointer();
         case BANG -> new Ast.Not(parseExpression());
         case MATCH -> parseMatch();
         case WITH -> parseWith();
@@ -523,6 +524,14 @@ public class TokenToAstRaising {
 
       return prefixed;
     }
+  }
+
+  private Ast.Expression parsePotentialPointer() {
+
+    // NOTE: Ugly, but we might not want to support anything else
+    final var identifier = parseIdentifier();
+
+    return new Ast.Identifier(STR."*\{identifier.name()}");
   }
 
   private final Pattern PATTERN_INTEGER_SUFFIX = Pattern.compile("\\d+([iu])(\\d+)");
@@ -619,8 +628,9 @@ public class TokenToAstRaising {
     Ast.Expression type;
     final var potentialColon = next();
     if (potentialColon != null && potentialColon.type() == TokenType.COLON) {
-      next(); // TODO: Wrong? Or is this what we should do always? next() before?
-      type = this.parseIdentifierLike();
+//      next(); // TODO: Wrong? Or is this what we should do always? next() before?
+      //type = this.parseIdentifierLike();
+      type = this.parseExpression();
     } else {
       queuedTokens.add(potentialColon);
       type = null;

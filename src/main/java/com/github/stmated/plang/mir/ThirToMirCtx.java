@@ -10,6 +10,20 @@ import lombok.Value;
 @Value
 public class ThirToMirCtx {
 
+  public Mir.Instr getInstructionByName(String name) {
+
+    final var instr = this.scopeStack().peek().get(name);
+    if (instr != null) {
+      return instr;
+    }
+
+    if (this.parent != null) {
+      return this.parent.getInstructionByName(name);
+    }
+
+    throw new IllegalArgumentException(STR."No such instruction '\{name}' found");
+  }
+
   public record LoopHandle(MirNode next, MirNode exit) {
 
   }

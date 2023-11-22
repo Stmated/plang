@@ -9,5 +9,7 @@ public class PlangRunOptions {
 
   Object[] arguments;
   @Builder.Default
+  boolean includeCppLibs = false;
+  @Builder.Default
   int optLevel = 0;
 }

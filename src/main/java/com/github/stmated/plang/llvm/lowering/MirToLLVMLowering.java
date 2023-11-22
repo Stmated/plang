@@ -14,12 +14,15 @@ import com.github.stmated.plang.mir.model.MirFnParameter;
 import com.github.stmated.plang.mir.model.MirFnSignature;
 import com.github.stmated.plang.ty.RealKind;
 import com.github.stmated.plang.ty.Ty;
-import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
 import com.github.stmated.plang.ty.util.Tys;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Objects;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.javacpp.BooleanPointer;
 import org.bytedeco.javacpp.BytePointer;
@@ -35,10 +38,15 @@ import org.bytedeco.javacpp.ShortPointer;
 import org.bytedeco.libffi.ffi_cif;
 import org.bytedeco.libffi.ffi_type;
 import org.bytedeco.libffi.global.ffi;
+import org.bytedeco.llvm.LLVM.LLVMContextRef;
 import org.bytedeco.llvm.LLVM.LLVMErrorRef;
+import org.bytedeco.llvm.LLVM.LLVMMemoryBufferRef;
+import org.bytedeco.llvm.LLVM.LLVMModuleRef;
 import org.bytedeco.llvm.LLVM.LLVMOrcLLJITRef;
 import org.bytedeco.llvm.LLVM.LLVMTargetRef;
+import org.bytedeco.llvm.clang.CXString;
 import org.bytedeco.llvm.global.LLVM;
+import org.bytedeco.llvm.global.clang;
 
 @Slf4j
 public class MirToLLVMLowering {
@@ -59,10 +67,10 @@ public class MirToLLVMLowering {
 
       // Return type of the script is a function, we will make it main and call it later with our arguments
       if (createFn.name() == null) {
-        createFn.name(new MirIdentifierId("main", null, 0)); // TODO: Wrong
+        createFn.name(new MirIdentifierId("main", null, 0));
       }
 
-      return lower_fn(createFn, opt.arguments(), name, opt.optLevel());
+      return lower_fn(createFn, opt.arguments(), name, opt);
 
     } else {
 
@@ -71,7 +79,11 @@ public class MirToLLVMLowering {
         throw new IllegalArgumentException("Not allowed to send arguments to a script that does not return a function");
       }
 
-      final var mirFnTy = Objects.requireNonNull(mirResult.initNode().ty().value(), STR."You must run \{MirNodeTyPass.class.getSimpleName()}");
+      final var mirFnTy = Objects.requireNonNull(
+        mirResult.initNode().ty().value(),
+        () -> STR."You must run \{MirNodeTyPass.class.getSimpleName()}"
+      );
+
       final var simplifiedTy = Tys.simplify(mirFnTy);
       final var llvmTy = LLVMTys.normalize(simplifiedTy);
 
@@ -79,9 +91,9 @@ public class MirToLLVMLowering {
 
       final var mirFn = new InstrCreateFn(mirResult.initNode(), fnSignature, ThirToMirLowering.signatureToTy(fnSignature));
       final var mirFnName = Objects.requireNonNullElse(mirResult.initNode().name(), "main");
-      mirFn.name(new MirIdentifierId(mirFnName, null, 0)); // TODO: Wrong
+      mirFn.name(new MirIdentifierId(mirFnName, null, 0));
 
-      return lower_fn(mirFn, opt.arguments(), name, opt.optLevel());
+      return lower_fn(mirFn, opt.arguments(), name, opt);
     }
   }
 
@@ -90,7 +102,8 @@ public class MirToLLVMLowering {
    * <p>
    * Should be used later when we have a way of finding the main-method.
    */
-  public <T> Result<T> lower_fn(InstrCreateFn instrCreateFn, Object[] arguments, String name, int optLevel) {
+  @SneakyThrows
+  public <T> Result<T> lower_fn(InstrCreateFn instrCreateFn, Object[] arguments, String name, PlangRunOptions options) {
 
     final var disposals = new ArrayList<Runnable>();
 
@@ -113,6 +126,12 @@ public class MirToLLVMLowering {
 
     LLVMFunctionLowering.lower(functionLoweringRequest);
 
+    if (options.includeCppLibs()) {
+
+      log.debug(STR."CLANG: \{clang.clang_getClangVersion().getString()}");
+      linkClangWrapper(context, module);
+    }
+
     final var passBuilderOptions = LLVM.LLVMCreatePassBuilderOptions();
 
     final var cpuName = LLVM.LLVMGetHostCPUName();
@@ -128,7 +147,7 @@ public class MirToLLVMLowering {
 
     final var targetMachine = LLVM.LLVMCreateTargetMachine(
       targetRef, targetTriple, cpuName, cpuFeatures,
-      switch ((Integer) optLevel) {
+      switch ((Integer) options.optLevel()) {
         case Integer i when i <= 0 -> LLVM.LLVMCodeGenLevelNone;
         case 1 -> LLVM.LLVMCodeGenLevelLess;
         case 2 -> LLVM.LLVMCodeGenLevelDefault;
@@ -138,7 +157,7 @@ public class MirToLLVMLowering {
       LLVM.LLVMCodeModelDefault
     );
 
-    LLVM.LLVMRunPasses(module, STR."default<O\{optLevel}>", targetMachine, passBuilderOptions);
+    LLVM.LLVMRunPasses(module, STR."default<O\{options.optLevel()}>", targetMachine, passBuilderOptions);
 
     if (log.isTraceEnabled()) {
       log.trace(LLVM.LLVMPrintModuleToString(module).getString());
@@ -180,6 +199,77 @@ public class MirToLLVMLowering {
     }
   }
 
+  private static void linkClangWrapper(LLVMContextRef context, LLVMModuleRef module) {
+    final var sourceFile = new File("src/main/cpp/com/github/stmated/plang/wrapper.cc").getAbsolutePath();
+    final var bitCodeFile = new File("src/main/cpp/com/github/stmated/plang/wrapper.bc").getAbsolutePath();
+
+    String[] command = {"clang++", "-emit-llvm", "-c", sourceFile, "-o", bitCodeFile};
+
+    final var processBuilder = new ProcessBuilder(command);
+    try {
+
+      processBuilder.redirectErrorStream(true);
+
+      final var process = processBuilder.start();
+      try (final var reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+
+        final var exitCode = process.waitFor();
+        if (exitCode != 0) {
+
+          StringBuilder output = new StringBuilder();
+          String line;
+          while ((line = reader.readLine()) != null) {
+            output.append(line);
+            output.append("\n");
+          }
+
+          throw new IllegalArgumentException(STR."Compilation error: \{output.toString()}");
+        } else {
+          log.info("Compilation successful, bitcode written to " + bitCodeFile);
+        }
+      }
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Exception: " + e.getMessage());
+    }
+
+    final var bp = new BytePointer(bitCodeFile);
+
+    final var bufferRef = new LLVMMemoryBufferRef();
+    final var outMessage = new BytePointer();
+    if (LLVM.LLVMCreateMemoryBufferWithContentsOfFile(bp, bufferRef, outMessage) != 0) {
+      throw new IllegalArgumentException(outMessage.getString());
+    }
+
+    final var wrapperModule = new LLVMModuleRef();
+
+    if (LLVM.LLVMParseBitcodeInContext2(context, bufferRef, wrapperModule) != 0) {
+      throw new IllegalArgumentException("Got not parse byte code");
+    }
+
+    if (LLVM.LLVMLinkModules2(module, wrapperModule) != 0) {
+      throw new IllegalArgumentException("Got not link modules");
+    }
+
+    LLVM.LLVMDisposeMemoryBuffer(bufferRef);
+
+  }
+
+  @SneakyThrows
+  protected static void checkError(int errorCode) {
+    if (errorCode != clang.CXError_Success) {
+      switch (errorCode) {
+        case clang.CXError_InvalidArguments:
+          throw new Exception("InvalidArguments");
+        case clang.CXError_ASTReadError:
+          throw new Exception("ASTReadError");
+        case clang.CXError_Crashed:
+          throw new Exception("Crashed");
+        case clang.CXError_Failure:
+          throw new Exception("Failure");
+      }
+    }
+  }
+
   private <T> Result<T> callFn(LLVMOrcLLJITRef jit, InstrCreateFn instrCreateFn, Object[] arguments) {
 
     LLVMErrorRef err;
@@ -190,8 +280,11 @@ public class MirToLLVMLowering {
       throw new RuntimeException(message);
     }
 
-    final var argTypes = (instrCreateFn.signature().parameters().length == 0) ? null : new PointerPointer<>(instrCreateFn.signature().parameters().length);
-    final var argValues = (instrCreateFn.signature().parameters().length == 0) ? null : new PointerPointer<>(instrCreateFn.signature().parameters().length);
+    final var paramCount = instrCreateFn.signature().parameters().length;
+
+    final var argTypes = (paramCount== 0) ? null : new PointerPointer<>(paramCount);
+    final var argValues = (paramCount == 0) ? null : new PointerPointer<>(paramCount);
+
     final var javaReturnType = toJavaType(instrCreateFn.signature().returnType());
     final var ffiReturnType = tyToFfiType(javaReturnType);
     final var returnPointer = toFfiValuePointer(javaReturnType);
@@ -206,7 +299,7 @@ public class MirToLLVMLowering {
 
     final var cif = new ffi_cif();
 
-    if (ffi.ffi_prep_cif(cif, ffi.FFI_DEFAULT_ABI(), instrCreateFn.signature().parameters().length, ffiReturnType, argTypes) != ffi.FFI_OK) {
+    if (ffi.ffi_prep_cif(cif, ffi.FFI_DEFAULT_ABI(), paramCount, ffiReturnType, argTypes) != ffi.FFI_OK) {
       throw new RuntimeException("Failed to prepare the libffi cif");
     }
 
@@ -232,7 +325,7 @@ public class MirToLLVMLowering {
     } else if (pointer instanceof ShortPointer p) {
       return p.get();
     } else if (pointer instanceof CharPointer p) {
-      return p.get();
+      return p.getString();
     } else if (pointer instanceof BooleanPointer p) {
       return p.get();
     } else if (pointer instanceof BytePointer p) {
@@ -250,6 +343,8 @@ public class MirToLLVMLowering {
       return ffi.ffi_type_double();
     } else if (Float.class.isAssignableFrom(clazz)) {
       return ffi.ffi_type_float();
+    } else if (CharSequence.class.isAssignableFrom(clazz)) {
+      return ffi.ffi_type_pointer();
     } else {
       throw new NotImplementedException(STR."Not implemented ffi type of '\{clazz}'");
     }
@@ -278,6 +373,10 @@ public class MirToLLVMLowering {
       return new FloatPointer(1).put((Float) o);
     } else if (Double.class.isAssignableFrom(o.getClass())) {
       return new DoublePointer(1).put((Double) o);
+    } else if (CharSequence.class.isAssignableFrom(o.getClass())) {
+      final var pp = new PointerPointer<BytePointer>(1);
+      pp.putString(Objects.toString(o));
+      return pp;
     } else {
       throw new NotImplementedException(STR."Not implemented ffi type '\{o}'");
     }

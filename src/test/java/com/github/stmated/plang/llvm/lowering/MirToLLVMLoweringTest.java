@@ -13,6 +13,12 @@ import com.github.stmated.plang.hir.Hir.Literal;
 import com.github.stmated.plang.hir.Hir.Program;
 import com.github.stmated.plang.hir.Hir.Return;
 import com.github.stmated.plang.ty.Ty;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.UUID;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.RepeatedTest;
@@ -20,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@Slf4j
 class MirToLLVMLoweringTest {
 
   @Test
@@ -352,7 +359,7 @@ class MirToLLVMLoweringTest {
         val a: int;
         val b: int;
       };
-      
+            
       val v = new heap S { a = 4, b = 6 };
       v.a = 20;
       v.b = 10;
@@ -388,7 +395,166 @@ class MirToLLVMLoweringTest {
       };
       """;
 
-    final var options = PlangRunOptions.builder().arguments(new Object[] {arg}).build();
+    final var options = PlangRunOptions.builder().arguments(new Object[]{arg}).build();
     Assertions.assertEquals(expected, Plang.codeToResult(code, options).resultValue());
+  }
+
+  @Test
+  @SneakyThrows
+  void testFPrintF() {
+
+    final var randomFile = STR."\{UUID.randomUUID().toString()}.txt";
+    final var target = new File(STR."target/\{randomFile}").getAbsoluteFile();
+
+    final var code = """
+      val fopen = (filename: *char, mode: *char): *opaque;
+      val fclose = (fp: *opaque): int;
+      val fprintf = (fp: *opaque, c: *char, ...): int;
+          
+      val fp = fopen('%s', 'w+');
+      fprintf(fp, 'Hello, world!!');
+      fclose(fp);
+      return 0;
+      """.formatted(target);
+
+    final var options = PlangRunOptions.builder()
+      .includeCppLibs(false)
+      .build();
+
+    try {
+
+      Assertions.assertEquals(0, Plang.codeToResult(code, options).resultValue());
+      Assertions.assertTrue(target.exists());
+      Assertions.assertEquals("Hello, world!!", Files.readString(target.toPath(), StandardCharsets.UTF_8));
+
+    } finally {
+      if (target.exists()) {
+        target.delete();
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "Hello, world!",
+    "a",
+    "Some longer string"
+  })
+  @SneakyThrows
+  void testFPrintF_with_lambda(String message) {
+
+    final var randomFile = STR."\{UUID.randomUUID().toString()}.txt";
+    final var target = new File(STR."target/\{randomFile}").getAbsoluteFile();
+
+    // TODO: Commit.
+    // TODO: Rewrite into THIR -> LLVM.
+    // TODO: Fix so that we can declare functions outside returned function!
+
+    final var code = """
+      return (file: string, message: string) => {
+      
+        val fopen = (filename: string, mode: *char): *opaque;
+        val fclose = (fp: *opaque): int;
+        val fprintf = (fp: *opaque, c: string, ...): int;
+        
+        val fp = fopen(file, 'w+');
+        fprintf(fp, message);
+        fclose(fp);
+        
+        return 0;
+      }
+      """;
+
+    final var options = PlangRunOptions.builder()
+      .arguments(new Object[] {target.getAbsolutePath(), message})
+      .build();
+
+    try {
+
+      Assertions.assertEquals(0, Plang.codeToResult(code, options).resultValue());
+      Assertions.assertTrue(target.exists());
+      Assertions.assertEquals(message, Files.readString(target.toPath(), StandardCharsets.UTF_8));
+
+    } finally {
+      if (target.exists()) {
+        target.delete();
+      }
+    }
+  }
+
+  @Test
+  @SneakyThrows
+  void testScopes() {
+
+    final var randomFile = STR."\{UUID.randomUUID().toString()}.txt";
+    final var target = new File(STR."target/\{randomFile}").getAbsoluteFile();
+
+    final var code = """
+      val fopen = (filePath: string, mode: *char): *opaque;
+      val fclose = (fp: *opaque): int;
+      val fprintf = (fp: *opaque, c: string, ...): int;
+      
+      var globalVar = "Global";
+      
+      var fp = fopen('%s', 'w+');
+      
+      val testFunction = () => {
+        var functionVar = "Function scope";
+        fprintf(fp, globalVar); // Global
+        fprintf(fp, functionVar); // Function scope
+        
+        if (true) {
+          var ifVar = "If scope";
+          fprintf(fp, ifVar); //  If scope
+        }
+        
+        var loopVar = "";
+        for (var i = 0; i <= 1; i += 1) {
+          loopVar = "Loop scope iteration " + i.toString();
+          fprintf(fp, loopVar); // should output: Loop scope iteration 0 and Loop scope iteration 1
+        }
+        fprintf(fp, loopVar); // should output: Loop scope iteration 1 due to function scope rule of var
+        
+        val lambdaFunction = () => {
+          var lambdaVar = "Lambda scope";
+          fprintf(fp, globalVar); // Global
+          fprintf(fp, functionVar); // Function scope
+          fprintf(fp, loopVar); // Loop scope iteration 1
+          fprintf(fp, lambdaVar); // Lambda scope
+        }
+        lambdaFunction();
+        
+        globalVar = "Changed global";
+        functionVar = "Changed function scope";
+        var ifVar = "Changed if scope";
+        loopVar = "Changed loop scope";
+        lambdaVar = "Changed lambda scope";
+        
+        fprintf(fp, globalVar); // Changed global
+        fprintf(fp, functionVar); // Changed function scope
+        fprintf(fp, ifVar); // Changed if scope
+        fprintf(fp, loopVar); // Changed loop scope
+        lambdaFunction(); // Global, Function scope, Loop scope iteration 1, Lambda scope
+      }
+      
+      testFunction();
+      fprintf(fp, globalVar); // Changed global
+      fclose(fp);
+      """.formatted(target.getAbsolutePath());
+
+    try {
+
+      Assertions.assertEquals(0, Plang.codeToResult(code).resultValue());
+      Assertions.assertTrue(target.exists());
+
+      final var expected = "";
+      final var actual = Files.readString(target.toPath(), StandardCharsets.UTF_8);
+      Assertions.assertEquals(expected, actual);
+
+    } finally {
+      if (target.exists()) {
+        target.delete();
+      }
+    }
   }
 }

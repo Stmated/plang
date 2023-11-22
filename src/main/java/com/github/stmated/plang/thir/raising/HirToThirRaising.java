@@ -9,7 +9,9 @@ import com.github.stmated.plang.ty.TyField;
 import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyIdentifier;
 import com.github.stmated.plang.ty.TyParam;
+import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyStruct;
+import com.github.stmated.plang.ty.TyUninitialized;
 import com.github.stmated.plang.ty.TyValueArray;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.util.Tys;
@@ -417,6 +419,18 @@ public class HirToThirRaising {
       resolvedVariable = Tys.fromString(hir.name());
     }
 
+    if (resolvedVariable == null && hir.name().equals("freopen_stdout")) {
+
+      // (filename: *char, mode: *char): *int;
+      resolvedVariable = new TyFn(
+        new TyParam[] {
+          new TyParam("filename", new TyPointer<>(Ty.CHAR)),
+          new TyParam("mode", new TyPointer<>(Ty.CHAR))
+        },
+        false, new TyPointer<>(Ty.INTEGER)
+      );
+    }
+
     if (lenient && resolvedVariable == null) {
       return null;
     }
@@ -452,7 +466,8 @@ public class HirToThirRaising {
 
       if (identifierName != null) {
 
-        if (scopeStack.peek().map().containsKey(identifierName)) {
+        final var existing = scopeStack.peek().map().get(identifierName);
+        if (existing != null && !(existing instanceof TyUninitialized<?>)) {
           throw new NotImplementedException("What to do here?");
         } else {
           scopeStack.peek().map().put(identifierName, rhs);
@@ -491,6 +506,8 @@ public class HirToThirRaising {
       case Hir.TyExpr it -> it.ty();
       default -> throw new UnexpectedExpressionException(hir.type());
     };
+
+    scopeStack.peek().map().put(hir.identifier().name(), new TyUninitialized<>(ty));
 
     return hir.ty(ty).ty();
   }

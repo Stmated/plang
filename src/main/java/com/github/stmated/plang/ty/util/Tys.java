@@ -6,6 +6,7 @@ import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyDiffKind;
 import com.github.stmated.plang.ty.TyFlags;
 import com.github.stmated.plang.ty.TyIdentifier;
+import com.github.stmated.plang.ty.TyOpaque;
 import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyResult;
 import com.github.stmated.plang.ty.TyUnion;
@@ -15,6 +16,7 @@ import com.github.stmated.plang.ty.TyValueNumber;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
 import com.github.stmated.plang.ty.TyValueNumberScaled;
+import jakarta.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -50,6 +52,10 @@ public class Tys {
       return new TyResult<>(Ty.UNKNOWN, TyDiffKind.UNKNOWN);
     }
 
+    if (a instanceof TyOpaque && b instanceof TyOpaque) {
+      return new TyResult<>(a);
+    }
+
     return switch (a) {
       case TyValueNumberInteger ani -> switch (b) {
         case TyValueNumberInteger bni -> {
@@ -71,14 +77,6 @@ public class Tys {
 
           yield new TyResult<>(ani);
         }
-//          when ani.width() == bni.width() && ani.signed() == bni.signed() && ani.radix() == bni.radix() -> new TyResult<>(ani);
-//        case TyValueNumberInteger bni
-//          when ani.width() == bni.width() && ani.signed() == bni.signed() ->
-//        case TyValueNumberInteger bni
-//          when ani.signed() == bni.signed() -> new TyResult<>(
-//          new TyValueNumberInteger((byte) 10, Math.max(ani.width(), bni.width()), ani.signed(), mixFlags(ani.flags(), bni.flags())),
-//          TyDiffKind.DIFF_WIDTH
-//        );
         case TyValueNumberPrecisioned bnp -> new TyResult<>(bnp, TyDiffKind.DIFF_PRECISION_EXT);
         case TyValueNumberScaled bns -> new TyResult<>(bns, TyDiffKind.DIFF_PRECISION_EXT);
         default -> new TyResult<>(null, TyDiffKind.INCOMPATIBLE);
@@ -94,26 +92,6 @@ public class Tys {
 
     final var common = getCommonDenominator(a, b);
     return common.diffs();
-  }
-
-  public static Ty toNonConstIfRequired(Ty ty, MutabilityKind mutabilityKind) {
-
-    return switch (ty) {
-      case TyValueNumberInteger ni -> {
-        yield ni;
-      }
-
-      // TODO: This needs to be extensively expanded upon.
-      default -> ty;
-    };
-  }
-
-  public static TyValueKind getValueKind(Ty ty) {
-
-    return switch (ty) {
-      case TyValue v -> v.getValueKind();
-      default -> throw new IllegalArgumentException(STR."Unknown value kind '\{ty}'");
-    };
   }
 
   private Pair<Ty, Ty> reorder(Ty a, Ty b) {
@@ -172,15 +150,6 @@ public class Tys {
     return new TyUnion(uniqueArray);
   }
 
-  public boolean isSpecific(Ty t) {
-
-    if (t instanceof TyIdentifier || t == Ty.INFER) {
-      return false;
-    }
-
-    return true;
-  }
-
   public boolean isGenerallyCompatible(TyDiffKind[] diffs) {
     return diffs == null || diffs.length == 0;
   }
@@ -232,6 +201,25 @@ public class Tys {
    */
   public static Ty fromString(String name) {
 
+    var pointerDepth = 0;
+    while (name.startsWith("*")) {
+      pointerDepth++;
+      //name = name.substring(0, name.length() - 1);
+      name = name.substring(1);
+    }
+
+    var ty = fromStringInner(name);
+    while (ty != null && pointerDepth > 0) {
+
+      ty = new TyPointer<>(ty);
+      pointerDepth--;
+    }
+
+    return ty;
+  }
+
+  @Nullable
+  private static Ty fromStringInner(String name) {
     if (name.startsWith("int") || name.startsWith("sint")) {
 
       final var width = getWidthFromName(name, Ty.INTEGER.width().value());
@@ -256,6 +244,8 @@ public class Tys {
       case "double" -> Ty.DOUBLE;
       case "decimal" -> Ty.DECIMAL;
       case "bool" -> Ty.BOOLEAN;
+      case "char" -> Ty.CHAR;
+      case "opaque" -> new TyOpaque();
       default -> null;
     };
   }

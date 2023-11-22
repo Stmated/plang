@@ -5,6 +5,7 @@ import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.exceptions.UnreachableCodeLLVMException;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyFn;
+import com.github.stmated.plang.ty.TyOpaque;
 import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyPointerAddressSpace;
 import com.github.stmated.plang.ty.TyStruct;
@@ -70,8 +71,6 @@ class MirToLLVMUtils {
 
       case Ty.TyNamed n when n.intern() == Ty.VOID -> LLVM.LLVMVoidTypeInContext(context);
 
-//      case  np when np.width() == 128 -> LLVM.LLVMTypeInContext(context);
-
       case TyStruct s -> {
 
         // TODO: Need to keep track of the ty and type, so we get back the same type. Up to caller?
@@ -102,6 +101,13 @@ class MirToLLVMUtils {
           fn.parameters().length,
           fn.vararg() ? 1 : 0
         );
+      }
+      case TyOpaque opaque -> {
+
+        final var type = LLVM.LLVMStructCreateNamed(context, "opaque");
+        ctx.registerType(opaque, type);
+
+        yield type;
       }
       default -> throw new IllegalArgumentException(STR."Do not know how to convert '\{ty.toShortString()}' (\{ty.getClass().getSimpleName()}) into an LLVM type");
     };

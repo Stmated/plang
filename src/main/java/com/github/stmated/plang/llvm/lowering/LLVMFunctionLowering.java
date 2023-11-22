@@ -8,6 +8,7 @@ import com.github.stmated.plang.mir.Mir;
 import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.ty.BitWidth;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyOpaque;
 import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyStruct;
 import com.github.stmated.plang.ty.TyValueArray;
@@ -86,9 +87,9 @@ class LLVMFunctionLowering {
     final var mirFnSignature = instrCreateFn.signature();
     final var fnReturnType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, mirFnSignature.returnType());
     final var mirParameters = mirFnSignature.parameters();
-    final var actualParamCount = mirFnSignature.vararg() ? mirParameters.length - 1 : mirParameters.length;
-    final var fnParams = new LLVMTypeRef[actualParamCount];
-    for (var i = 0; i < actualParamCount; i++) {
+    //final var actualParamCount = mirFnSignature.vararg() ? mirParameters.length - 1 : mirParameters.length;
+    final var fnParams = new LLVMTypeRef[mirParameters.length];
+    for (var i = 0; i < mirParameters.length; i++) {
 
       final var mirParam = mirParameters[i];
       final var mirParamType = mirParam.ty();
@@ -399,27 +400,29 @@ class LLVMFunctionLowering {
 
   private LoweringResult lower_create_fn(Mir.InstrCreateFn mir) {
 
-    if (mir.signature().vararg()) {
+    if (mir.entry() != null && mir.signature().vararg()) {
       throw new InvalidImplementationException("Language does not support implementing your own vararg-receiving functions");
     }
 
     final var declaration = createFnDeclaration(mir);
-
     final var fnRef = declaration.fn();
 
-    final var fnBlock = LLVM.LLVMAppendBasicBlockInContext(mirToLlvmCtx.context, fnRef, "entry");
-    LLVM.LLVMPositionBuilderAtEnd(mirToLlvmCtx.builder, fnBlock);
+    if (mir.entry() != null) {
 
-    mirToLlvmCtx.enterFunction(new Pair<>(mir, fnRef), () -> {
+      final var fnBlock = LLVM.LLVMAppendBasicBlockInContext(mirToLlvmCtx.context, fnRef, "entry");
+      LLVM.LLVMPositionBuilderAtEnd(mirToLlvmCtx.builder, fnBlock);
 
-      for (final var instruction : mir.entry().instructions()) {
-        lower_instruction(instruction);
-      }
-    });
+      mirToLlvmCtx.enterFunction(new Pair<>(mir, fnRef), () -> {
 
-    // TODO: This might not always be true/right?
-    final var lastBlock = LLVM.LLVMGetLastBasicBlock(mirToLlvmCtx.getFunction().b());
-    LLVM.LLVMPositionBuilderAtEnd(mirToLlvmCtx.builder, lastBlock);
+        for (final var instruction : mir.entry().instructions()) {
+          lower_instruction(instruction);
+        }
+      });
+
+      // TODO: This might not always be true/right?
+      final var lastBlock = LLVM.LLVMGetLastBasicBlock(mirToLlvmCtx.getFunction().b());
+      LLVM.LLVMPositionBuilderAtEnd(mirToLlvmCtx.builder, lastBlock);
+    }
 
     return new LoweringResult(fnRef);
   }
@@ -535,6 +538,10 @@ class LLVMFunctionLowering {
 
     final var lowGiven = LLVMTys.getLowTy(pair.ty());
     final var lowExpected = LLVMTys.getLowTy(expected);
+
+    if (lowExpected instanceof TyOpaque) {
+      return pair;
+    }
 
     if (lowGiven instanceof TyValueArray va) {
       if (lowExpected instanceof TyPointer) {

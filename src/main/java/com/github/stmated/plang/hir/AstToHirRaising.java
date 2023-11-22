@@ -8,6 +8,7 @@ import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyValueNumber;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The AstToHirRaising class is responsible for converting an AST program into a HIR program.
@@ -111,6 +112,7 @@ public class AstToHirRaising {
       case Ast.Struct ast -> lower_struct(ast);
       case Ast.New ast -> lower_new(ast);
       case Ast.DotAccess ast -> lower_dot_access(ast);
+      case Ast.Comment _ -> null;
       // TODO: Important that a NoOp means "nothing" if last expression of block.
       //        Since everything is an expression, if "x" is last expression, then give back "x"
       //        But if it's "x;" then it means we should return "nothing".
@@ -169,15 +171,17 @@ public class AstToHirRaising {
   private Hir.Expression lower_struct(Ast.Struct ast) {
 
     final var declarations = new ArrayList<Hir.VariableDeclaration>();
-    final var block = lower(ast.block().expression());
 
-    for (final var field : expand(block)) {
+    if (ast.block() != null && ast.block().expression() != null) {
+      final var block = lower(ast.block().expression());
+      for (final var field : expand(block)) {
 
-      switch (field) {
-        case Hir.VariableDeclaration dec -> {
-          declarations.add(dec);
+        switch (field) {
+          case Hir.VariableDeclaration dec -> {
+            declarations.add(dec);
+          }
+          default -> throw new UnexpectedExpressionException(field);
         }
-        default -> throw new UnexpectedExpressionException(field);
       }
     }
 
@@ -286,6 +290,14 @@ public class AstToHirRaising {
 
   private Hir.Expression lower_labeling(Ast.Labeling ast) {
 
+    if (ast.lhs() instanceof Ast.Paren lparen && ast.rhs() instanceof Ast.Identifier rid) {
+
+      // If this is true, then it is a callable function signature.
+      // NOTE: This might not always be true, but we'll go for it for now.
+      // TODO: The rhs must be more permissive than just "identifier", and lhs should be more restrictive (needs to be tuple)
+      return find_and_lower_parameters(ast);
+    }
+
     final var lhs = lower(ast.lhs());
     final var rhs = lower(ast.rhs());
 
@@ -325,29 +337,35 @@ public class AstToHirRaising {
   private Hir.FunctionSignature find_and_lower_parameters_inner(Ast.Expression ast) {
 
     final var parameters = new ArrayList<Hir.Parameter>();
+    var isVarArg = new AtomicBoolean(false);
 
     switch (ast) {
       case Ast.Expressions it -> {
         for (final var astParam : it.children()) {
-          final var param = lower_parameter(astParam);
-          parameters.add(param);
+          final var param = lower_parameter(astParam, isVarArg);
+          if (param != null) {
+            parameters.add(param);
+            isVarArg.set(isVarArg.get() || param.vararg());
+          }
         }
       }
-      default -> parameters.add(lower_parameter(ast));
-
-        //throw new UnexpectedExpressionException(ast);
+      default -> parameters.add(lower_parameter(ast, isVarArg));
     }
 
-    final var isVarArg = parameters.stream().anyMatch(Hir.Parameter::vararg);
-    return new Hir.FunctionSignature(parameters.toArray(new Hir.Parameter[0]), isVarArg, null);
+    return new Hir.FunctionSignature(parameters.toArray(new Hir.Parameter[0]), isVarArg.get(), null);
   }
 
-  private Hir.Parameter lower_parameter(Ast.Expression expr) {
+  private Hir.Parameter lower_parameter(Ast.Expression expr, AtomicBoolean restVararg) {
 
     return switch (expr) {
       case Ast.Spread spread -> new Hir.Parameter(lower(spread.expression()), new Hir.TyExpr(Ty.INFER), true);
+      case Ast.Rest _ -> {
+        restVararg.set(true);
+        yield null;
+        //new Hir.Parameter(new Hir.Identifier("..."), null, true);
+      }
       case Ast.Labeling labeling -> {
-        final var labelingLhs = lower_parameter(labeling.lhs());
+        final var labelingLhs = lower_parameter(labeling.lhs(), restVararg);
         final var labelingRhs = lower(labeling.rhs());
         yield new Hir.Parameter(labelingLhs.identifier(), labelingRhs, labelingLhs.vararg());
       }
@@ -408,11 +426,12 @@ public class AstToHirRaising {
     final var target = lower(ast.target());
     final var hirParen = lower_paren(ast.paren());
 
-    // TODO: This could be a HirTuple, but it is badly handled right now, and awful support for mixing positional and named arguments
+    // TODO: This could be a HirTuple, but it is badly handled right now, and no support for mixing positional and named arguments
     final var hirArgumentExpressions = switch (hirParen) {
       case Hir.Expressions hir -> hir.children();
       case Hir.Tuple hir -> hir.children();
-      default -> throw new NotImplementedException();
+      default -> new Hir.Expression[]{hirParen};
+      //throw new UnexpectedExpressionException(hirParen);
     };
 
     final var hirArguments = new Hir.Argument[hirArgumentExpressions.length];

@@ -46,14 +46,11 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
   }
 
   private final NoSyncBufferedReader reader;
-//  private final ArrayBlockingQueue<Token> queue = new ArrayBlockingQueue<>(100, true);
 
   private Token nextToken;
 
-  //private boolean skip;
   private int index_start;
   private int index = -1;
-//  private int c;
 
   private final Deque<Integer> queue = new ArrayDeque<>();
 
