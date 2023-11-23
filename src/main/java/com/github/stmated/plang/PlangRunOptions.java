@@ -1,11 +1,14 @@
 package com.github.stmated.plang;
 
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
+import lombok.experimental.SuperBuilder;
 
 @Value
-@Builder
-public class PlangRunOptions {
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+public class PlangRunOptions extends PlangCompileOptions {
 
   Object[] arguments;
   @Builder.Default

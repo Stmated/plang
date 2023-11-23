@@ -3,8 +3,10 @@ package com.github.stmated.plang.mir;
 import com.github.stmated.plang.mir.model.MirFnSignature;
 import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.thir.raising.ThirRaiseResult;
+import com.github.stmated.plang.ty.util.MachineTarget;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import lombok.Getter;
 import lombok.Value;
 
 @Value
@@ -29,6 +31,8 @@ public class ThirToMirCtx {
   }
 
   ThirToMirCtx parent;
+  @Getter
+  MachineTarget machineTarget;
   Deque<LoopHandle> loopStack = new ArrayDeque<>();
   Deque<MirNode> nodeStack = new ArrayDeque<>();
   Deque<MirScope> scopeStack = new ArrayDeque<>();

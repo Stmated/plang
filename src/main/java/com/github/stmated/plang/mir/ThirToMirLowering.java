@@ -17,6 +17,7 @@ import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyStruct;
 import com.github.stmated.plang.ty.TyValueArray;
 import com.github.stmated.plang.ty.TyValueString;
+import com.github.stmated.plang.ty.util.MachineTarget;
 import com.github.stmated.plang.ty.util.Tys;
 import jakarta.annotation.Nonnull;
 import java.util.Arrays;
@@ -34,12 +35,12 @@ public class ThirToMirLowering {
 
   private final ThirToMirCtx mirCtx;
 
-  private ThirToMirLowering(ThirRaiseResult thirRaiseResult) {
-    this.mirCtx = new ThirToMirCtx(null, thirRaiseResult);
+  private ThirToMirLowering(ThirRaiseResult thirRaiseResult, MachineTarget machineTarget) {
+    this.mirCtx = new ThirToMirCtx(null, machineTarget, thirRaiseResult);
   }
 
-  ThirToMirLowering(ThirToMirCtx parent) {
-    this.mirCtx = new ThirToMirCtx(parent, parent.thirRaiseResult());
+  ThirToMirLowering(ThirToMirCtx parent, MachineTarget machineTarget) {
+    this.mirCtx = new ThirToMirCtx(parent, machineTarget, parent.thirRaiseResult());
   }
 
   /**
@@ -47,9 +48,9 @@ public class ThirToMirLowering {
    *        It is then up to different kinds of nodes to link them all together.
    *        Could be either a hard link to an actual MirNode, or a soft link to a locator node (like dependant on package)
    */
-  public static MirLoweringResult lower(ThirRaiseResult thirRaiseResult) {
+  public static MirLoweringResult lower(ThirRaiseResult thirRaiseResult, MachineTarget machineTarget) {
 
-    final var lowering = new ThirToMirLowering(thirRaiseResult);
+    final var lowering = new ThirToMirLowering(thirRaiseResult, machineTarget);
 
     final var entryNode = new MirNode(lowering.getNodePathName("main"));
     lowering.mirCtx.nodeStack().push(entryNode);
@@ -324,7 +325,7 @@ public class ThirToMirLowering {
 
     final var fnNode = new MirNode(null);
 
-    final var offshoot = new ThirToMirLowering(this.mirCtx);
+    final var offshoot = new ThirToMirLowering(this.mirCtx, mirCtx.machineTarget());
     offshoot.mirCtx.nodeStack().add(fnNode);
 
     final var fnScope = new MirScope(null, "fn_root");
@@ -385,7 +386,7 @@ public class ThirToMirLowering {
     return switch (hir) {
       case Hir.TyExpr it -> it.ty();
       case Hir.Literal literal -> switch (literal.ty()) {
-        case TyValueString _ -> Tys.fromString(literal.content());
+        case TyValueString _ -> Tys.fromString(literal.content(), mirCtx.machineTarget());
         default -> throw new IllegalArgumentException(STR."Not valid literal '\{literal}'");
       };
       default -> getTy(hir);

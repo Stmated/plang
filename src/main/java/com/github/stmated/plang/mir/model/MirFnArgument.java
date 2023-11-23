@@ -7,4 +7,8 @@ public record MirFnArgument(
   Instr instruction
 ) {
 
+  @Override
+  public String toString() {
+    return STR."\{name} of \{instruction}";
+  }
 }

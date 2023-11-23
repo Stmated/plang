@@ -57,7 +57,7 @@ class MirToLLVMCtx {
   public LoweringResult resolve(Instr miri) {
     return Objects.requireNonNull(
       this.valueLookup.get(miri),
-      () -> STR."Every instruction (\{miri}) that we lookup must be a handled predecessor of when we need to resolve it"
+      () -> STR."Every instruction (\{miri} (\{miri.getClass().getSimpleName()}) that we lookup must be a handled predecessor of when we need to resolve it"
     );
   }
 

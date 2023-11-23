@@ -36,45 +36,57 @@ public class Plang {
     }
   }
 
-  public static Hir.Program astToHir(Program ast) {
-    return new AstToHirRaising().lower_program(ast);
+  public static Hir.Program astToHir(Program ast, PlangCompileOptions options) {
+    return AstToHirRaising.lower_program(ast, options.machineTarget());
   }
 
-  public static ThirRaiseResult hirToThir(Hir.Program hir) {
-    return new HirToThirRaising().raise(hir);
+  public static ThirRaiseResult hirToThir(Hir.Program hir, PlangCompileOptions options) {
+    return new HirToThirRaising(options.machineTarget()).raise(hir);
   }
 
-  public static MirLoweringResult hirToMir(Hir.Program hir) {
+  public static MirLoweringResult hirToMir(Hir.Program hir, PlangCompileOptions options) {
 
-    final var thir = new HirToThirRaising().raise(hir);
-    return thirToMir(thir);
+    final var thir = new HirToThirRaising(options.machineTarget()).raise(hir);
+    return thirToMir(thir, options);
   }
 
-  public static MirLoweringResult thirToMir(ThirRaiseResult thir) {
-    return ThirToMirLowering.lower(thir);
+  public static MirLoweringResult thirToMir(ThirRaiseResult thir, PlangCompileOptions options) {
+    return ThirToMirLowering.lower(thir, options.machineTarget());
   }
 
   public static Hir.Program codeToHir(String code) {
+    return codeToHir(code, PlangCompileOptions.builder().build());
+  }
+
+  public static Hir.Program codeToHir(String code, PlangCompileOptions options) {
     final var ast = Plang.codeToAst(code);
-    return Plang.astToHir(ast);
+    return Plang.astToHir(ast, options);
   }
 
   public static ThirRaiseResult codeToThir(String code) {
+    return codeToThir(code, PlangCompileOptions.builder().build());
+  }
+
+  public static ThirRaiseResult codeToThir(String code, PlangCompileOptions options) {
 
     final var hir = Plang.codeToHir(code);
-    return Plang.hirToThir(hir);
+    return Plang.hirToThir(hir, options);
   }
 
   public static MirLoweringResult codeToMir(String code) {
+    return codeToMir(code, PlangCompileOptions.builder().build());
+  }
+
+  public static MirLoweringResult codeToMir(String code, PlangCompileOptions options) {
 
     final var ast = Plang.codeToAst(code);
-    final var hir = Plang.astToHir(ast);
-    return Plang.hirToMir(hir);
+    final var hir = Plang.astToHir(ast, options);
+    return Plang.hirToMir(hir, options);
   }
 
   public static <T> Result<T> hirToResult(Hir.Program hir, PlangRunOptions options) {
 
-    final var mir = Plang.hirToMir(hir);
+    final var mir = Plang.hirToMir(hir, options);
     return Plang.mirToResult(mir, options);
   }
 
@@ -91,8 +103,8 @@ public class Plang {
   public static <T> Result<T> codeToResult(String code, PlangRunOptions options) {
 
     final var ast = Plang.codeToAst(code);
-    final var hir = Plang.astToHir(ast);
-    final var mir = Plang.hirToMir(hir);
+    final var hir = Plang.astToHir(ast, options);
+    final var mir = Plang.hirToMir(hir, options);
     return Plang.mirToResult(mir, options);
   }
 

@@ -1,5 +1,6 @@
 package com.github.stmated.plang.llvm.lowering;
 
+import com.github.stmated.plang.Main;
 import com.github.stmated.plang.Plang.Result;
 import com.github.stmated.plang.PlangRunOptions;
 import com.github.stmated.plang.exceptions.NotImplementedException;
@@ -10,8 +11,10 @@ import com.github.stmated.plang.mir.MirIdentifierId;
 import com.github.stmated.plang.mir.MirLoweringResult;
 import com.github.stmated.plang.mir.MirNodeTyPass;
 import com.github.stmated.plang.mir.ThirToMirLowering;
+import com.github.stmated.plang.mir.model.MirFnArgument;
 import com.github.stmated.plang.mir.model.MirFnParameter;
 import com.github.stmated.plang.mir.model.MirFnSignature;
+import com.github.stmated.plang.mir.model.MirNode;
 import com.github.stmated.plang.ty.RealKind;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
@@ -44,7 +47,6 @@ import org.bytedeco.llvm.LLVM.LLVMMemoryBufferRef;
 import org.bytedeco.llvm.LLVM.LLVMModuleRef;
 import org.bytedeco.llvm.LLVM.LLVMOrcLLJITRef;
 import org.bytedeco.llvm.LLVM.LLVMTargetRef;
-import org.bytedeco.llvm.clang.CXString;
 import org.bytedeco.llvm.global.LLVM;
 import org.bytedeco.llvm.global.clang;
 
@@ -61,16 +63,19 @@ public class MirToLLVMLowering {
    */
   public <T> Result<T> lower_script(MirLoweringResult mirResult, String name, PlangRunOptions opt) {
 
-    final MirFnSignature fnSignature;
     final var initNode = mirResult.initNode();
-    if (initNode.instructions().getLast() instanceof Mir.InstrReturn ret && ret.instr() instanceof Mir.InstrCreateFn createFn) {
+    if (initNode.instructions().getLast() instanceof Mir.InstrReturn ret && ret.instr() instanceof Mir.InstrCreateFn scriptFn) {
 
       // Return type of the script is a function, we will make it main and call it later with our arguments
-      if (createFn.name() == null) {
-        createFn.name(new MirIdentifierId("main", null, 0));
-      }
+      if (initNode.instructions().size() == 1) {
 
-      return lower_fn(createFn, opt.arguments(), name, opt);
+        // There are no instructions before the return of the script node.
+        // We will just return our long function as it is, and something will call it.
+        return lower_fn(scriptFn, opt.arguments(), name, opt);
+
+      } else {
+        return wrapInstructionsInBootFn(name, scriptFn, initNode, initNode.instructions().size() - 1, opt);
+      }
 
     } else {
 
@@ -87,14 +92,46 @@ public class MirToLLVMLowering {
       final var simplifiedTy = Tys.simplify(mirFnTy);
       final var llvmTy = LLVMTys.normalize(simplifiedTy);
 
-      fnSignature = new MirFnSignature(new MirFnParameter[0], false, llvmTy);
-
-      final var mirFn = new InstrCreateFn(mirResult.initNode(), fnSignature, ThirToMirLowering.signatureToTy(fnSignature));
-      final var mirFnName = Objects.requireNonNullElse(mirResult.initNode().name(), "main");
+      final var fnSignature = new MirFnSignature(new MirFnParameter[0], false, llvmTy);
+      final var mirFn = new InstrCreateFn(initNode, fnSignature, ThirToMirLowering.signatureToTy(fnSignature));
+      final var mirFnName = Objects.requireNonNullElse(initNode.name(), "main");
       mirFn.name(new MirIdentifierId(mirFnName, null, 0));
 
       return lower_fn(mirFn, opt.arguments(), name, opt);
     }
+  }
+
+  private <T> Result<T> wrapInstructionsInBootFn(
+    String name,
+    InstrCreateFn scriptFn,
+    MirNode initNode,
+    int copyInstructionEndIndex,
+    PlangRunOptions opt
+  ) {
+
+    final var bootNode = new MirNode("boot");
+    bootNode.instructions().addAll(initNode.instructions().subList(0, copyInstructionEndIndex));
+
+    final MirFnArgument[] arguments = new MirFnArgument[scriptFn.signature().parameters().length];
+    for (var i = 0; i < arguments.length; i++) {
+      final var parameter = scriptFn.signature().parameters()[i];
+      final var paramInstr = new Mir.InstrGetParam(parameter);
+      bootNode.instructions().add(paramInstr);
+      arguments[i] = new MirFnArgument(parameter.name(), paramInstr);
+    }
+
+    bootNode.instructions().add(scriptFn);
+
+    final var callInstr = new Mir.InstrCall(scriptFn, scriptFn.signature(), arguments);
+    bootNode.instructions().add(callInstr);
+
+    final var returnInstr = new Mir.InstrReturn(callInstr);
+    bootNode.instructions().add(returnInstr);
+
+    final var bootFn = new InstrCreateFn(bootNode, scriptFn.signature(), scriptFn.signature().returnType());
+    bootFn.name(new MirIdentifierId("main", null, 0));
+
+    return lower_fn(bootFn, opt.arguments(), name, opt);
   }
 
   /**
@@ -127,8 +164,6 @@ public class MirToLLVMLowering {
     LLVMFunctionLowering.lower(functionLoweringRequest);
 
     if (options.includeCppLibs()) {
-
-      log.debug(STR."CLANG: \{clang.clang_getClangVersion().getString()}");
       linkClangWrapper(context, module);
     }
 
@@ -200,73 +235,72 @@ public class MirToLLVMLowering {
   }
 
   private static void linkClangWrapper(LLVMContextRef context, LLVMModuleRef module) {
-    final var sourceFile = new File("src/main/cpp/com/github/stmated/plang/wrapper.cc").getAbsolutePath();
-    final var bitCodeFile = new File("src/main/cpp/com/github/stmated/plang/wrapper.bc").getAbsolutePath();
 
-    String[] command = {"clang++", "-emit-llvm", "-c", sourceFile, "-o", bitCodeFile};
-
-    final var processBuilder = new ProcessBuilder(command);
-    try {
-
-      processBuilder.redirectErrorStream(true);
-
-      final var process = processBuilder.start();
-      try (final var reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-
-        final var exitCode = process.waitFor();
-        if (exitCode != 0) {
-
-          StringBuilder output = new StringBuilder();
-          String line;
-          while ((line = reader.readLine()) != null) {
-            output.append(line);
-            output.append("\n");
-          }
-
-          throw new IllegalArgumentException(STR."Compilation error: \{output.toString()}");
-        } else {
-          log.info("Compilation successful, bitcode written to " + bitCodeFile);
-        }
-      }
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Exception: " + e.getMessage());
+    try (final var version = clang.clang_getClangVersion()) {
+      log.debug(STR."CLANG: \{version.getString()}");
     }
 
-    final var bp = new BytePointer(bitCodeFile);
+    final var cppPath = "src/main/cpp";
+    final var packagePath = Main.class.getPackageName().replace('.', '/');
+    final var wrapperPath = STR."\{cppPath}/\{packagePath}";
+
+    final var sourceFile = new File(wrapperPath, "wrapper.cc").getAbsoluteFile();
+    final var bitCodeFile = new File(wrapperPath, "wrapper.bc").getAbsoluteFile();
+
+    if (!bitCodeFile.exists()) {
+
+      String[] command = {"clang++", "-emit-llvm", "-c", sourceFile.getAbsolutePath(), "-o", bitCodeFile.getAbsolutePath()};
+
+      final var processBuilder = new ProcessBuilder(command);
+      try {
+
+        processBuilder.redirectErrorStream(true);
+
+        final var process = processBuilder.start();
+        try (final var reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+
+          final var exitCode = process.waitFor();
+          if (exitCode != 0) {
+
+            StringBuilder output = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+              output.append(line);
+              output.append("\n");
+            }
+
+            throw new IllegalArgumentException(STR."Compilation error: \{output.toString()}");
+          } else {
+            log.info(STR."Compilation successful, bitcode written to \{bitCodeFile}");
+          }
+        }
+      } catch (Exception e) {
+        throw new IllegalArgumentException(STR."Exception: \{e.getMessage()}");
+      }
+    }
 
     final var bufferRef = new LLVMMemoryBufferRef();
-    final var outMessage = new BytePointer();
-    if (LLVM.LLVMCreateMemoryBufferWithContentsOfFile(bp, bufferRef, outMessage) != 0) {
-      throw new IllegalArgumentException(outMessage.getString());
-    }
-
-    final var wrapperModule = new LLVMModuleRef();
-
-    if (LLVM.LLVMParseBitcodeInContext2(context, bufferRef, wrapperModule) != 0) {
-      throw new IllegalArgumentException("Got not parse byte code");
-    }
-
-    if (LLVM.LLVMLinkModules2(module, wrapperModule) != 0) {
-      throw new IllegalArgumentException("Got not link modules");
-    }
-
-    LLVM.LLVMDisposeMemoryBuffer(bufferRef);
-
-  }
-
-  @SneakyThrows
-  protected static void checkError(int errorCode) {
-    if (errorCode != clang.CXError_Success) {
-      switch (errorCode) {
-        case clang.CXError_InvalidArguments:
-          throw new Exception("InvalidArguments");
-        case clang.CXError_ASTReadError:
-          throw new Exception("ASTReadError");
-        case clang.CXError_Crashed:
-          throw new Exception("Crashed");
-        case clang.CXError_Failure:
-          throw new Exception("Failure");
+    try {
+      try (var bp = new BytePointer(bitCodeFile.getAbsolutePath())) {
+        try (var outMessage = new BytePointer()) {
+          if (LLVM.LLVMCreateMemoryBufferWithContentsOfFile(bp, bufferRef, outMessage) != 0) {
+            throw new IllegalArgumentException(outMessage.getString());
+          }
+        }
       }
+
+      try (var wrapperModule = new LLVMModuleRef()) {
+        if (LLVM.LLVMParseBitcodeInContext2(context, bufferRef, wrapperModule) != 0) {
+          throw new IllegalArgumentException("Got not parse byte code");
+        }
+
+        if (LLVM.LLVMLinkModules2(module, wrapperModule) != 0) {
+          throw new IllegalArgumentException("Got not link modules");
+        }
+      }
+
+    } finally {
+      LLVM.LLVMDisposeMemoryBuffer(bufferRef);
     }
   }
 
@@ -282,7 +316,7 @@ public class MirToLLVMLowering {
 
     final var paramCount = instrCreateFn.signature().parameters().length;
 
-    final var argTypes = (paramCount== 0) ? null : new PointerPointer<>(paramCount);
+    final var argTypes = (paramCount == 0) ? null : new PointerPointer<>(paramCount);
     final var argValues = (paramCount == 0) ? null : new PointerPointer<>(paramCount);
 
     final var javaReturnType = toJavaType(instrCreateFn.signature().returnType());

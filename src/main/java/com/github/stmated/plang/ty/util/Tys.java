@@ -1,17 +1,13 @@
 package com.github.stmated.plang.ty.util;
 
-import com.github.stmated.plang.hir.Hir.MutabilityKind;
 import com.github.stmated.plang.ty.BitWidth;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyDiffKind;
 import com.github.stmated.plang.ty.TyFlags;
-import com.github.stmated.plang.ty.TyIdentifier;
 import com.github.stmated.plang.ty.TyOpaque;
 import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyResult;
 import com.github.stmated.plang.ty.TyUnion;
-import com.github.stmated.plang.ty.TyValue;
-import com.github.stmated.plang.ty.TyValueKind;
 import com.github.stmated.plang.ty.TyValueNumber;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
@@ -199,16 +195,15 @@ public class Tys {
   /**
    * TODO: Likely very slow, will need to be faster and smarter :)
    */
-  public static Ty fromString(String name) {
+  public static Ty fromString(String name, MachineTarget machineTarget) {
 
     var pointerDepth = 0;
     while (name.startsWith("*")) {
       pointerDepth++;
-      //name = name.substring(0, name.length() - 1);
       name = name.substring(1);
     }
 
-    var ty = fromStringInner(name);
+    var ty = fromStringInner(name, machineTarget);
     while (ty != null && pointerDepth > 0) {
 
       ty = new TyPointer<>(ty);
@@ -219,7 +214,7 @@ public class Tys {
   }
 
   @Nullable
-  private static Ty fromStringInner(String name) {
+  private static Ty fromStringInner(String name, MachineTarget machineTarget) {
     if (name.startsWith("int") || name.startsWith("sint")) {
 
       final var width = getWidthFromName(name, Ty.INTEGER.width().value());
@@ -245,6 +240,11 @@ public class Tys {
       case "decimal" -> Ty.DECIMAL;
       case "bool" -> Ty.BOOLEAN;
       case "char" -> Ty.CHAR;
+      case "usize" -> switch (machineTarget.pointerBitSize()) {
+        case 64 -> Ty.ULONG;
+        case 32 -> Ty.UINTEGER;
+        default -> throw new IllegalArgumentException(STR."Unhandled pointer bit size '\{machineTarget.pointerBitSize()}'");
+      };
       case "opaque" -> new TyOpaque();
       default -> null;
     };

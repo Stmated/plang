@@ -15,6 +15,7 @@ import com.github.stmated.plang.hir.Hir.Call;
 import com.github.stmated.plang.hir.Hir.Function;
 import com.github.stmated.plang.hir.Hir.Program;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.util.MachineTarget;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -49,7 +50,7 @@ class AstToHirRaisingTest {
       )
     );
 
-    final var hir = new AstToHirRaising().lower_conditional(ast);
+    final var hir = new AstToHirRaising(new MachineTarget(64)).lower_conditional(ast);
 
     Assertions.assertInstanceOf(Hir.BinaryOperation.class, hir.predicate());
 

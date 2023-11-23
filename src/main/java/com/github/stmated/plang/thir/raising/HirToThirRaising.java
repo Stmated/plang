@@ -14,6 +14,7 @@ import com.github.stmated.plang.ty.TyStruct;
 import com.github.stmated.plang.ty.TyUninitialized;
 import com.github.stmated.plang.ty.TyValueArray;
 import com.github.stmated.plang.ty.TyValueNumberInteger;
+import com.github.stmated.plang.ty.util.MachineTarget;
 import com.github.stmated.plang.ty.util.Tys;
 import com.github.stmated.plang.util.JavaUtil;
 import java.util.ArrayList;
@@ -29,16 +30,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class HirToThirRaising {
 
-//  private final Map<Hir.Expression, Ty> map = new HashMap<>();
   private final Stack<ThirScope> scopeStack = new Stack<>();
+  private final MachineTarget machineTarget;
   private final boolean lenient;
 
-  public HirToThirRaising() {
-    this(false);
+  public HirToThirRaising(MachineTarget machineTarget) {
+    this(false, machineTarget);
   }
 
-  public HirToThirRaising(boolean lenient) {
+  public HirToThirRaising(boolean lenient, MachineTarget machineTarget) {
     this.lenient = lenient;
+    this.machineTarget = machineTarget;
   }
 
   public ThirRaiseResult raise(Hir.Expression e) {
@@ -122,15 +124,26 @@ public class HirToThirRaising {
                 .findFirst().orElseThrow();
 
               pointer = field.ty();
+              identifier.ty(pointer);
             }
             default -> throw new UnexpectedExpressionException(current);
           }
         }
+        case Hir.Call call -> {
+
+          // TODO: Make this work, even if ugly! :)
+          pointer = switch (call.target()) {
+            case Hir.Identifier id -> switch (id.name()) {
+              case "toString" -> Ty.STRING;
+              default -> throw new UnexpectedExpressionException(id);
+            };
+            default -> throw new UnexpectedExpressionException(call.target());
+          };
+
+          call.ty(pointer);
+        }
         default -> throw new UnexpectedExpressionException(current);
       }
-
-      // Register each step of the path. We will likely need it.
-//      map.put(current, pointer);
     }
 
     it.ty(pointer);
@@ -394,7 +407,7 @@ public class HirToThirRaising {
       typeModeCounter++;
       return switch (hir) {
         case Hir.Identifier id -> {
-          final var knownTypeByName = Tys.fromString(id.name());
+          final var knownTypeByName = Tys.fromString(id.name(), machineTarget);
           if (knownTypeByName != null) {
             id.ty(knownTypeByName);
             yield knownTypeByName;
@@ -416,7 +429,7 @@ public class HirToThirRaising {
     var resolvedVariable = scopeStack.peek().get(hir.name());
 
     if (resolvedVariable == null && typeModeCounter > 0) {
-      resolvedVariable = Tys.fromString(hir.name());
+      resolvedVariable = Tys.fromString(hir.name(), machineTarget);
     }
 
     if (resolvedVariable == null && hir.name().equals("freopen_stdout")) {

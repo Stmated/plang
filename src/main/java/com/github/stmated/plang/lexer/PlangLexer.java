@@ -172,7 +172,9 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
     var c = this.read();
     if (c == '=') {
       return newToken(TokenType.ADDITION_ASSIGNMENT);
-    } else {
+    } else if (c == '+') {
+      throw new IllegalArgumentException("No support for postfix '++', use '+= 1' instead");
+    }  else {
       backtrack(c);
       return newToken(TokenType.ADD);
     }

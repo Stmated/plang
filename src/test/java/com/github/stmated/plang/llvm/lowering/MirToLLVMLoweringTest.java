@@ -66,14 +66,6 @@ class MirToLLVMLoweringTest {
   }
 
   @Test
-  @Disabled
-  void testPrint() {
-    final var result = Plang.codeToResult("freopen('/tmp/out', 'w', stdout); printf('%d', 1337); return 1;");
-    Assertions.assertEquals(1, result.resultValue());
-    Assertions.assertEquals("1337", result.output());
-  }
-
-  @Test
   void testConditionalWithBlocks() {
     Assertions.assertEquals(1, Plang.codeToResult("if (1 == 1) { return 1; } else { return 2; }").resultValue());
   }
@@ -446,16 +438,13 @@ class MirToLLVMLoweringTest {
     final var randomFile = STR."\{UUID.randomUUID().toString()}.txt";
     final var target = new File(STR."target/\{randomFile}").getAbsoluteFile();
 
-    // TODO: Commit.
-    // TODO: Rewrite into THIR -> LLVM.
-    // TODO: Fix so that we can declare functions outside returned function!
-
     final var code = """
-      return (file: string, message: string) => {
       
-        val fopen = (filename: string, mode: *char): *opaque;
-        val fclose = (fp: *opaque): int;
-        val fprintf = (fp: *opaque, c: string, ...): int;
+      val fopen = (filename: string, mode: *char): *opaque;
+      val fclose = (fp: *opaque): int;
+      val fprintf = (fp: *opaque, c: string, ...): int;
+      
+      return (file: string, message: string) => {
         
         val fp = fopen(file, 'w+');
         fprintf(fp, message);
@@ -467,6 +456,7 @@ class MirToLLVMLoweringTest {
 
     final var options = PlangRunOptions.builder()
       .arguments(new Object[] {target.getAbsolutePath(), message})
+      .includeCppLibs(true)
       .build();
 
     try {

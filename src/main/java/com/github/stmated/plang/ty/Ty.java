@@ -18,6 +18,7 @@ public interface Ty {
   TyValueNumberInteger INTEGER = Tys.intern(new TyValueNumberInteger((byte) 10, new BitWidth(32, false), true, EnumSet.noneOf(TyFlags.class)));
   TyValueNumberInteger UINTEGER = Tys.intern(new TyValueNumberInteger((byte) 10, new BitWidth(32, false), false, EnumSet.noneOf(TyFlags.class)));
   TyValueNumberInteger LONG = Tys.intern(new TyValueNumberInteger((byte) 10, new BitWidth(64, false), true, EnumSet.noneOf(TyFlags.class)));
+  TyValueNumberInteger ULONG = Tys.intern(new TyValueNumberInteger((byte) 10, new BitWidth(64, false), false, EnumSet.noneOf(TyFlags.class)));
 
   TyValueNumberInteger CHAR = Tys.intern(new TyValueNumberInteger((byte) 10, new BitWidth(8, false), false, EnumSet.noneOf(TyFlags.class)));
 

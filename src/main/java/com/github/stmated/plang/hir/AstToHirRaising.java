@@ -6,6 +6,7 @@ import com.github.stmated.plang.exceptions.UnexpectedExpressionException;
 import com.github.stmated.plang.thir.raising.HirToThirRaising;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyValueNumber;
+import com.github.stmated.plang.ty.util.MachineTarget;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,8 +21,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class AstToHirRaising {
 
-  public Hir.Program lower_program(Ast.Program astProgram) {
-    return new Hir.Program(implicit_return(lower(astProgram.children()), true));
+  private final MachineTarget machineTarget;
+
+  public AstToHirRaising(MachineTarget machineTarget) {
+    this.machineTarget = machineTarget;
+  }
+
+  public static Hir.Program lower_program(Ast.Program astProgram, MachineTarget machineTarget) {
+
+    final var raising = new AstToHirRaising(machineTarget);
+
+    return new Hir.Program(raising.implicit_return(raising.lower(astProgram.children()), true));
   }
 
   private Hir.Expression implicit_return(Hir.Expression expression, boolean program) {
@@ -232,6 +242,7 @@ public class AstToHirRaising {
     if (section == 0) {
 
       // There are only elements. We will derive the rest from that.
+      // TODO: Ty here should be "inferred" until THIR kicks in
       final var tyExpr = new Hir.TyExpr((elementArray.length > 0) ? getTy(elementArray[0]) : Ty.INFER);
       return new Hir.Array(elementArray, tyExpr, new Hir.Literal(Objects.toString(elementArray.length), Ty.INTEGER));
 
@@ -244,6 +255,7 @@ public class AstToHirRaising {
     } else if (section == 2) {
 
       final var tyExpr = sections[1];
+      // TODO: Ty here should be "inferred" until THIR kicks in (?) Or is info lost here?
       final var explArrayElementTy = getTyFromType(tyExpr);
 
       if (explArrayElementTy instanceof TyValueNumber vn) {
@@ -272,17 +284,17 @@ public class AstToHirRaising {
 
   private Ty getTy(Hir.Expression expr) {
 
-    final var thir = new HirToThirRaising(true);
-    final var found = thir.raise(expr).root().ty(); //.getType(expr);
+    final var thir = new HirToThirRaising(true, machineTarget);
+    final var found = thir.raise(expr).root().ty();
     return Objects.requireNonNullElse(found, Ty.INFER);
   }
 
   private Ty getTyFromType(Hir.Expression expr) {
 
-    final var thir = new HirToThirRaising(true);
+    final var thir = new HirToThirRaising(true, machineTarget);
     var found = thir.investigate_type_expression(expr);
     if (found == null) {
-      found = thir.raise(expr).root().ty(); //.getType(expr);
+      found = thir.raise(expr).root().ty();
     }
 
     return Objects.requireNonNullElse(found, Ty.INFER);
