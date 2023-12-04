@@ -85,7 +85,7 @@ public class MirToLLVMLowering {
       }
 
       final var mirFnTy = Objects.requireNonNull(
-        mirResult.initNode().ty().value(),
+        mirResult.initNode().ty(),
         () -> STR."You must run \{MirNodeTyPass.class.getSimpleName()}"
       );
 
@@ -198,7 +198,7 @@ public class MirToLLVMLowering {
       log.trace(LLVM.LLVMPrintModuleToString(module).getString());
     }
 
-    MirToLLVMUtils.verifyModule(module);
+    LLVMUtils.verifyModule(module);
 
     LLVMErrorRef err;
     final var jit = new LLVMOrcLLJITRef();

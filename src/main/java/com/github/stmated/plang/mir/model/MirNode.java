@@ -2,11 +2,11 @@ package com.github.stmated.plang.mir.model;
 
 import com.github.stmated.plang.mir.Mir.Instr;
 import com.github.stmated.plang.ty.Ty;
-import com.github.stmated.plang.util.Box;
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
+import lombok.Setter;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 
@@ -23,15 +23,13 @@ public class MirNode {
   List<MirNode> predecessors;
   @Nonnull
   List<MirNode> successors;
-  /**
-   * TODO: Do not use Box, instead just make it settable
-   */
-  @Deprecated
-  @Nonnull
-  Box<Ty> ty;
+
+  @NonFinal
+  @Setter
+  Ty ty;
 
   public MirNode(String name) {
-    this(name, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new Box<>());
+    this(name, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), null);
   }
 
   public boolean isTerminal() {

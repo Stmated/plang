@@ -10,6 +10,11 @@ public record TyValueBoolean() implements TyValue {
   }
 
   @Override
+  public String toString() {
+    return "bool";
+  }
+
+  @Override
   public int hashCode() {
     return Objects.hash(getValueKind());
   }

@@ -1,8 +1,6 @@
 package com.github.stmated.plang.llvm.lowering;
 
-import com.github.stmated.plang.exceptions.GenericLLVMException;
 import com.github.stmated.plang.exceptions.NotImplementedException;
-import com.github.stmated.plang.exceptions.UnreachableCodeLLVMException;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyOpaque;
@@ -15,28 +13,24 @@ import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.TyValueNumberPrecisioned;
 import com.github.stmated.plang.ty.TyValueNumberScaled;
 import com.github.stmated.plang.ty.TyValueString;
-import java.nio.charset.StandardCharsets;
-import java.util.Locale;
-import lombok.experimental.UtilityClass;
-import org.bytedeco.javacpp.BytePointer;
+import lombok.RequiredArgsConstructor;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.llvm.LLVM.LLVMContextRef;
-import org.bytedeco.llvm.LLVM.LLVMModuleRef;
 import org.bytedeco.llvm.LLVM.LLVMTypeRef;
-import org.bytedeco.llvm.LLVM.LLVMValueRef;
 import org.bytedeco.llvm.global.LLVM;
 
-@UtilityClass
-class MirToLLVMUtils {
+@RequiredArgsConstructor
+public class LLVMTypeResolver {
 
-  static LLVMTypeRef toLLVMType(MirToLLVMCtx ctx, Ty ty) {
+  private final LLVMContextRef context;
+  private final Cache<Ty, LLVMTypeRef> cache;
 
-    final var cached = ctx.resolveType(ty);
+  public LLVMTypeRef resolve(Ty ty) {
+
+    final var cached = cache.get(ty);
     if (cached != null) {
       return cached;
     }
-
-    LLVMContextRef context = ctx.context;
 
     return switch (ty) {
       case TyValueNumberInteger ni when ni.width().value() == 128 -> LLVM.LLVMInt128TypeInContext(context);
@@ -61,11 +55,11 @@ class MirToLLVMUtils {
       case TyValueNumberScaled ni when ni.width().value() == 8 -> LLVM.LLVMInt8TypeInContext(context);
       case TyValueNumberScaled ni when ni.width().value() == 1 -> LLVM.LLVMInt1TypeInContext(context);
 
-      case TyValueString s -> toLLVMType(ctx, new TyPointer<>(Ty.CHAR));
+      case TyValueString s -> resolve(new TyPointer<>(Ty.CHAR));
 
-      case TyPointer p -> LLVM.LLVMPointerType(toLLVMType(ctx, p.inner()), getAddressSpace(p.addressSpace()));
-      case TyValueArray a when a.size() != null && a.size() >= 0 -> LLVM.LLVMArrayType2(toLLVMType(ctx, a.elementType()), a.size());
-      case TyValueArray a -> LLVM.LLVMPointerType(toLLVMType(ctx, a.elementType()), 0);
+      case TyPointer p -> LLVM.LLVMPointerType(resolve( p.inner()), getAddressSpace(p.addressSpace()));
+      case TyValueArray a when a.size() != null && a.size() >= 0 -> LLVM.LLVMArrayType2(resolve( a.elementType()), a.size());
+      case TyValueArray a -> LLVM.LLVMPointerType(resolve( a.elementType()), 0);
 
       case TyValueBoolean b -> LLVM.LLVMInt1TypeInContext(context);
 
@@ -77,11 +71,11 @@ class MirToLLVMUtils {
 
         final var types = new PointerPointer<>(s.fields().length);
         for (var i = 0; i < s.fields().length; i++) {
-          types.put(i, toLLVMType(ctx, s.fields()[i].ty()));
+          types.put(i, resolve( s.fields()[i].ty()));
         }
 
         final var type = LLVM.LLVMStructTypeInContext(context, types, s.fields().length, 0);
-        ctx.registerType(s, type);
+        cache.put(s, type);
 
         yield type;
       }
@@ -92,11 +86,11 @@ class MirToLLVMUtils {
         final var fnParams = new LLVMTypeRef[fn.parameters().length];
         for (var i = 0; i < fn.parameters().length; i++) {
           final var param = fn.parameters()[i];
-          fnParams[i] = MirToLLVMUtils.toLLVMType(ctx, param.ty());
+          fnParams[i] = resolve( param.ty());
         }
 
         yield LLVM.LLVMFunctionType(
-          toLLVMType(ctx, fn.returnTy()),
+          resolve( fn.returnTy()),
           new PointerPointer<>(fnParams),
           fn.parameters().length,
           fn.vararg() ? 1 : 0
@@ -105,7 +99,7 @@ class MirToLLVMUtils {
       case TyOpaque opaque -> {
 
         final var type = LLVM.LLVMStructCreateNamed(context, "opaque");
-        ctx.registerType(opaque, type);
+        cache.put(opaque, type);
 
         yield type;
       }
@@ -124,82 +118,5 @@ class MirToLLVMUtils {
       case CUDA_GLOBAL -> 1;
       default -> throw new NotImplementedException("Have not implemented knowledge of any other address space");
     };
-  }
-
-  public record ArrayAndSize(LLVMValueRef ref, TyValueArray ty) {}
-
-  public static ArrayAndSize createCharArray(MirToLLVMCtx mirToLlvmCtx, LLVMModuleRef module, String str) {
-
-    final var bytes = (STR."\{str}\0").getBytes(StandardCharsets.UTF_8);
-    final var charArray = new LLVMValueRef[bytes.length];
-    final var elementTy = Ty.CHAR;
-    final var charType = MirToLLVMUtils.toLLVMType(mirToLlvmCtx, elementTy);
-    for (int i = 0; i < bytes.length; i++) {
-      charArray[i] = mirToLlvmCtx.getByte(bytes[i]);
-    }
-
-    final var strArray = LLVM.LLVMConstArray2(charType, new PointerPointer<>(charArray), bytes.length);
-
-    final var arrayTy = new TyValueArray(elementTy, bytes.length);
-    final var charArrayType = toLLVMType(mirToLlvmCtx, arrayTy);
-    final var globalVar = LLVM.LLVMAddGlobal(module, charArrayType, "gs");
-    LLVM.LLVMSetInitializer(globalVar, strArray);
-
-    return new ArrayAndSize(globalVar, arrayTy);
-  }
-
-  public static void verifyModule(LLVMModuleRef module) {
-
-    final var error = new BytePointer();
-    try {
-
-      if (LLVM.LLVMVerifyModule(module, LLVM.LLVMReturnStatusAction, error) != 0) {
-
-        final var details = LLVM.LLVMPrintModuleToString(module).getString();
-
-        final var errorMessage = error.getString();
-        LLVM.LLVMDisposeMessage(error);
-
-        throw map_error_message_to_exception(errorMessage, details);
-      }
-
-    } catch (Throwable t) {
-
-      if (t instanceof RuntimeException re) {
-        throw re;
-      }
-
-      throw new IllegalStateException(STR."Could not verify module, because: \{t}");
-    } finally {
-      error.deallocate();
-    }
-  }
-
-  public static GenericLLVMException map_error_message_to_exception(String errorMessages, String details) {
-
-    if (errorMessages != null && !errorMessages.isEmpty()) {
-
-      if (containsAll(errorMessages, new String[]{"terminator", "found", "middle"})) {
-        throw new UnreachableCodeLLVMException(errorMessages, details);
-      }
-
-    } else {
-      errorMessages = "Unknown error";
-    }
-
-    return new GenericLLVMException(errorMessages, details);
-  }
-
-  private boolean containsAll(String haystack, String[] needles) {
-
-    haystack = haystack.toLowerCase(Locale.ROOT);
-
-    for (final var needle : needles) {
-      if (!haystack.contains(needle)) {
-        return false;
-      }
-    }
-
-    return true;
   }
 }

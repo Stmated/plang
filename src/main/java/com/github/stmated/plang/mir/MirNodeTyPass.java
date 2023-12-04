@@ -26,8 +26,8 @@ public class MirNodeTyPass {
 
     visitedNodes.add(node);
 
-    if (node.ty().value() != null) {
-      return node.ty().value();
+    if (node.ty() != null) {
+      return node.ty();
     }
 
     final var lastInstruction = node.instructions().getLast();
@@ -52,8 +52,7 @@ public class MirNodeTyPass {
         default -> lastInstruction.ty();
       };
 
-      node.ty().value(ty);
-      return ty;
+      return node.ty(ty).ty();
 
     } else {
       return Ty.INVALID;

@@ -38,7 +38,7 @@ val fn4 = (t: $T1: Iterable($TT: Number)): TT => {
 
 
 // Alternative syntax, using "infer" instead of $ to mean placeholder generic declaration
-val fn2 = (t: infe T1): infer T2
+val fn2 = (t: infer T1): infer T2
     where T1: Iterable(infer TT)
     where TT: Number
     where T2: Number => {

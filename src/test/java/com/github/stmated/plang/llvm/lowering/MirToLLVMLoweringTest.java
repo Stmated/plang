@@ -20,7 +20,6 @@ import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -426,6 +425,28 @@ class MirToLLVMLoweringTest {
     }
   }
 
+  @Test
+  @SneakyThrows
+  void testFunctionCallAndContinue() {
+
+    final var code = """
+            
+      val a = 10;
+      val fn = (b: int, c: int) => a + b + c;
+            
+      val d = fn(1, 2); // 13
+      val e = fn(3, 4); // 17
+      val f = a + d + e; // 40
+            
+      return f;
+      """;
+
+    final var options = PlangRunOptions.builder()
+      .build();
+
+    Assertions.assertEquals(40, Plang.codeToResult(code, options).resultValue());
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {
     "Hello, world!",
@@ -439,11 +460,11 @@ class MirToLLVMLoweringTest {
     final var target = new File(STR."target/\{randomFile}").getAbsoluteFile();
 
     final var code = """
-      
+            
       val fopen = (filename: string, mode: *char): *opaque;
       val fclose = (fp: *opaque): int;
       val fprintf = (fp: *opaque, c: string, ...): int;
-      
+            
       return (file: string, message: string) => {
         
         val fp = fopen(file, 'w+');
@@ -455,7 +476,7 @@ class MirToLLVMLoweringTest {
       """;
 
     final var options = PlangRunOptions.builder()
-      .arguments(new Object[] {target.getAbsolutePath(), message})
+      .arguments(new Object[]{target.getAbsolutePath(), message})
       .includeCppLibs(true)
       .build();
 
@@ -483,11 +504,11 @@ class MirToLLVMLoweringTest {
       val fopen = (filePath: string, mode: *char): *opaque;
       val fclose = (fp: *opaque): int;
       val fprintf = (fp: *opaque, c: string, ...): int;
-      
+            
       var globalVar = "Global";
-      
-      var fp = fopen('%s', 'w+');
-      
+            
+      val fp = fopen('%s', 'w+');
+            
       val testFunction = () => {
         var functionVar = "Function scope";
         fprintf(fp, globalVar); // Global
@@ -500,16 +521,16 @@ class MirToLLVMLoweringTest {
         
         var loopVar = "";
         for (var i = 0; i <= 1; i += 1) {
-          loopVar = "Loop scope iteration " + i.toString();
-          fprintf(fp, loopVar); // should output: Loop scope iteration 0 and Loop scope iteration 1
+          loopVar = "Loop";
+          fprintf(fp, loopVar); // should output: Loop and Loop
         }
-        fprintf(fp, loopVar); // should output: Loop scope iteration 1 due to function scope rule of var
+        fprintf(fp, loopVar); // should output: Loop due to function scope rule of var
         
         val lambdaFunction = () => {
           var lambdaVar = "Lambda scope";
           fprintf(fp, globalVar); // Global
           fprintf(fp, functionVar); // Function scope
-          fprintf(fp, loopVar); // Loop scope iteration 1
+          fprintf(fp, loopVar); // Loop1
           fprintf(fp, lambdaVar); // Lambda scope
         }
         lambdaFunction();
@@ -518,15 +539,14 @@ class MirToLLVMLoweringTest {
         functionVar = "Changed function scope";
         var ifVar = "Changed if scope";
         loopVar = "Changed loop scope";
-        lambdaVar = "Changed lambda scope";
         
         fprintf(fp, globalVar); // Changed global
         fprintf(fp, functionVar); // Changed function scope
         fprintf(fp, ifVar); // Changed if scope
         fprintf(fp, loopVar); // Changed loop scope
-        lambdaFunction(); // Global, Function scope, Loop scope iteration 1, Lambda scope
+        lambdaFunction(); // Global, Function scope, Loop, Lambda scope
       }
-      
+            
       testFunction();
       fprintf(fp, globalVar); // Changed global
       fclose(fp);

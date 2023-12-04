@@ -21,7 +21,6 @@ import org.bytedeco.llvm.global.LLVM;
 class MirToLLVMCtx {
 
   private final Map<String, LLVMValueRef> globalStringCache = new HashMap<>();
-  private final Map<Byte, LLVMValueRef> cachedBytes = new HashMap<>();
 
   private final Map<Instr, LoweringResult> valueLookup = new HashMap<>();
   /**
@@ -44,14 +43,6 @@ class MirToLLVMCtx {
 
   public LLVMValueRef getGlobalStringPtr(String str) {
     return globalStringCache.computeIfAbsent(str, s -> LLVM.LLVMBuildGlobalStringPtr(builder, s, "str"));
-  }
-
-  public LLVMValueRef getByte(byte bite) {
-
-    // Q: Is this worth it? Try with and without.
-    final var ty = Ty.CHAR;
-    final var charType = MirToLLVMUtils.toLLVMType(this, ty);
-    return cachedBytes.computeIfAbsent(bite, b -> LLVM.LLVMConstInt(charType, b, ty.signed() ? 1 : 0));
   }
 
   public LoweringResult resolve(Instr miri) {

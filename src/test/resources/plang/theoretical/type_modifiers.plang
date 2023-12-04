@@ -1,0 +1,64 @@
+
+// Substructural type system -- being able to specify use/transformation of a type
+
+// r = Read
+// w = Write
+// a = Alias
+// c = Copy
+// d = Destroy
+// s = Select
+// r = Return
+// p = Pass
+// x = rest marker, all other modifiers that were not mentioned
+
+// Mutate -- somehow project w on members
+
+-- give to other function
+
+// Flow-sensitive typing needs to be a thing
+
+val SomeStruct = struct {
+  foo: int;
+  bar: string;
+  car: [;int;100];
+}
+
+con OnlyFooButAsStringType = @(refactor SomeStruct {
+  (foo: int) => (foo: string);
+  _ => ();
+});
+
+con OnlyFirstFieldButAsStringType = @(refactor SomeStruct {
+  (infer F: int) where @(F) == @(SomeStruct.fields[0]) => (@(F.name): string);
+  _ => ();
+});
+
+// Cannot write nor read from the fields of the struct
+con ProtectedType = @(refactor SomeStruct {
+  (infer F: infer T) => (@(F.name): T: r0);
+  _ => _;
+});
+
+
+// var = rwmac
+// val = rmac
+// con = ra
+
+// Can be used at most once
+con affine = r(r)x where (r > 0) -> r(r)x | r(r-1)x
+// Must be used once (and only once)
+con linear = r(r)x where (r > 0) -> r(r-1)x
+
+// Gives back the number a + 10 which can only be read twice
+con fn = (a: int: affine): int: r2 => a + 10;
+
+// This would be a compilation error, since 'a' is never used, or used more than once
+con fn2 = (a: int: linear): int: r2 => 10;
+con fn2 = (a: int: linear): int: r2 => a + a + 10;
+
+// Alters an affine to not allow what is returned to be selected
+con fn3 = (a: int: affine): Value: affine-s => { ... }
+
+// Gives back a type which can do anything except being destroyed
+con fn3 = (a: int): Value: x-d => { ... }
+

@@ -93,4 +93,12 @@ record MirScope(
 
     return null;
   }
+
+  public MirScope snapshot() {
+
+    final var snapshotParent = (parent == null) ? null : parent.snapshot();
+    final var snapshot = new MirScope(snapshotParent, this.name, new HashMap<>(this.map), this.idMap);
+
+    return snapshot;
+  }
 }

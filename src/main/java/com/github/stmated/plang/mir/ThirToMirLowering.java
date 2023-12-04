@@ -16,6 +16,7 @@ import com.github.stmated.plang.ty.TyParam;
 import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyStruct;
 import com.github.stmated.plang.ty.TyValueArray;
+import com.github.stmated.plang.ty.TyValueNumber;
 import com.github.stmated.plang.ty.TyValueString;
 import com.github.stmated.plang.ty.util.MachineTarget;
 import com.github.stmated.plang.ty.util.Tys;
@@ -328,7 +329,10 @@ public class ThirToMirLowering {
     final var offshoot = new ThirToMirLowering(this.mirCtx, mirCtx.machineTarget());
     offshoot.mirCtx.nodeStack().add(fnNode);
 
-    final var fnScope = new MirScope(null, "fn_root");
+    final var parent = mirCtx.scopeStack().peek();
+    final var snapshot = parent.snapshot();
+
+    final var fnScope = new MirScope(snapshot, "fn_root");
     offshoot.mirCtx.scopeStack().add(fnScope);
 
     // TODO: Need a good way to add parent scopes that are dynamic and make it easy to understand!
