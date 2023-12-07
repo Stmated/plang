@@ -531,7 +531,7 @@ public class TokenToAstRaising {
     // NOTE: Ugly, but we might not want to support anything else
     final var identifier = parseIdentifier();
 
-    return new Ast.Identifier(STR."*\{identifier.name()}");
+    return new Ast.Lexeme(STR."*\{identifier.name()}");
   }
 
   private final Pattern PATTERN_INTEGER_SUFFIX = Pattern.compile("\\d+([iu])(\\d+)");
@@ -782,14 +782,14 @@ public class TokenToAstRaising {
     return false;
   }
 
-  private Ast.Identifier parseIdentifier() {
+  private Ast.Lexeme parseIdentifier() {
 
     final var token = stayOrNext(TokenType.IDENTIFIER);
     if (token == null) {
       return null;
     }
 
-    return new Ast.Identifier(token.content());
+    return new Ast.Lexeme(token.content());
   }
 
   private Token stayOrNext(TokenType t) {
@@ -988,7 +988,7 @@ public class TokenToAstRaising {
         }
 
         return new Ast.VariableDeclaration(
-          varDec.identifier(),
+          varDec.lexeme(),
           varDec.mutabilityKind(),
           varDec.type(),
           true
@@ -1007,7 +1007,7 @@ public class TokenToAstRaising {
       }
     }
 
-    throw new IllegalArgumentException("ref must be followed by var/val/identifier");
+    throw new IllegalArgumentException("ref must be followed by var/val/lexeme");
   }
 
   private Ast.Export parseExport() {
@@ -1168,7 +1168,7 @@ public class TokenToAstRaising {
 
     final var token_id1 = this.next();
     if (token_id1 == null || token_id1.type() != TokenType.IDENTIFIER) {
-      throw new IllegalArgumentException("Impl must have a for-target or identifier not a %s".formatted(token_id1));
+      throw new IllegalArgumentException("Impl must have a for-target or lexeme not a %s".formatted(token_id1));
     }
 
     final var id1 = this.parseIdentifier();
@@ -1178,21 +1178,21 @@ public class TokenToAstRaising {
       throw new IllegalArgumentException("There must be further tokens for the impl");
     }
 
-    Ast.Identifier traitIdentifier;
+    Ast.Lexeme traitLexeme;
     Ast.Expression forExpression;
 
     if (token2.type() == TokenType.FOR) {
 
       final var target = this.parseLevel0(); // Maybe be more restrictive
 
-      traitIdentifier = id1;
+      traitLexeme = id1;
       forExpression = target;
     } else if (token2.type() == TokenType.OPEN_BRACE) {
-      traitIdentifier = null;
+      traitLexeme = null;
       forExpression = id1;
       queuedTokens.push(token2);
     } else {
-      throw new IllegalArgumentException("Impl must have a for-target or identifier, not %s".formatted(token_id1));
+      throw new IllegalArgumentException("Impl must have a for-target or lexeme, not %s".formatted(token_id1));
     }
 
     List<Ast.Expression> withArguments = new ArrayList<>();
@@ -1211,7 +1211,7 @@ public class TokenToAstRaising {
 
     final var block = this.parseBlock();
     return new Ast.Impl(
-      traitIdentifier, forExpression, block,
+      traitLexeme, forExpression, block,
       (withArguments.isEmpty()) ? null : withArguments.toArray(new Ast.Expression[0])
     );
   }

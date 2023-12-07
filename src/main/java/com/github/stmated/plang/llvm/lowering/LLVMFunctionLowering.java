@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -90,7 +91,6 @@ class LLVMFunctionLowering {
     final var mirFnSignature = instrCreateFn.signature();
     final var fnReturnType = typeResolver.resolve(mirFnSignature.returnType());
     final var mirParameters = mirFnSignature.parameters();
-    //final var actualParamCount = mirFnSignature.vararg() ? mirParameters.length - 1 : mirParameters.length;
     final var fnParams = new LLVMTypeRef[mirParameters.length];
     for (var i = 0; i < mirParameters.length; i++) {
 
@@ -145,6 +145,17 @@ class LLVMFunctionLowering {
 
   private void firstPassTraverseNodes(MirNode root, LLVMValueRef fnRef) {
 
+    // TODO: FIND ALL FUNCTIONS AND PRE-CREATE THEM! THEY WILL BE FILLED IN (OR NOT) BY LATER CODE!
+
+    for (final var instr : root.instructions()) {
+
+      if (instr instanceof Mir.InstrCreateFn createFn) {
+
+        final var result = createFnDeclaration(createFn);
+        mirToLlvmCtx.register(instr, new LoweringResult(result.fn(), result.fnType(), new AtomicBoolean(false)));
+      }
+    }
+
     forEachNode(root, node -> {
 
       final var blockName = (root == node) ? "entry" : node.name();
@@ -173,14 +184,9 @@ class LLVMFunctionLowering {
   private LoweringResult lower_instruction(Mir.Instr miri) {
 
     final var ref = mirToLlvmCtx.resolveIfAvailable(miri);
-    if (ref != null) {
+    if (ref != null && ref.complete().get()) {
       return ref;
     }
-
-    return lower_instruction_inner(miri);
-  }
-
-  private LoweringResult lower_instruction_inner(Mir.Instr miri) {
 
     final LoweringResult valueRes = switch (miri) {
       case Mir.InstrCreateLiteral it -> lower_literal(it);
@@ -200,13 +206,23 @@ class LLVMFunctionLowering {
       case Mir.InstrSetStructElement it -> lower_set_struct_element(it);
       case Mir.InstrCreateStruct it -> lower_create_struct(it);
       case Mir.InstrCreateInstance it -> lower_create_instance(it);
+      case Mir.InstrReference it -> lower_reference(it);
       default -> throw new UnexpectedExpressionException(miri);
     };
 
     // Most instructions will always result in a valueRef, even if it is a void value.
-    mirToLlvmCtx.register(miri, valueRes);
+    if (ref == null) {
+      mirToLlvmCtx.register(miri, valueRes);
+    }
 
     return valueRes;
+  }
+
+  /**
+   * TODO: This should be removed, along with the whole InstrReference?
+   */
+  private LoweringResult lower_reference(Mir.InstrReference it) {
+    return mirToLlvmCtx.resolve(it.target());
   }
 
   private LoweringResult lower_create_instance(Mir.InstrCreateInstance it) {
@@ -383,7 +399,6 @@ class LLVMFunctionLowering {
     return new LoweringResult(LLVM.LLVMBuildStore(mirToLlvmCtx.builder, valueRef.value(), ptr));
   }
 
-  // TODO: Need to take special care if the parameter is actually a vararg parameter!
   private LoweringResult lower_get_param(Mir.InstrGetParam mir) {
 
     final var iterator = mirToLlvmCtx.getFunctionIterator();
@@ -410,29 +425,35 @@ class LLVMFunctionLowering {
       throw new InvalidImplementationException("Language does not support implementing your own vararg-receiving functions");
     }
 
-    final var declaration = createFnDeclaration(mir);
-    final var fnRef = declaration.fn();
+    LoweringResult result = mirToLlvmCtx.resolveIfAvailable(mir);
+    if (result == null) {
+
+      log.warn("A function was found that was not pre-created (hoisted, lifted)");
+      final var declaration = createFnDeclaration(mir);
+      result = new LoweringResult(declaration.fn(), declaration.fnType());
+    } else {
+      result.complete().set(true);
+    }
 
     if (mir.entry() != null) {
 
-      firstPassTraverseNodes(mir.entry(), fnRef);
+      firstPassTraverseNodes(mir.entry(), result.value());
 
-      final var fnBlock = LLVM.LLVMAppendBasicBlockInContext(mirToLlvmCtx.context, fnRef, "entry");
+      final var fnBlock = mirToLlvmCtx.resolveBlock(mir.entry());
       LLVM.LLVMPositionBuilderAtEnd(mirToLlvmCtx.builder, fnBlock);
 
-      mirToLlvmCtx.enterFunction(new Pair<>(mir, fnRef), () -> {
+      mirToLlvmCtx.enterFunction(new Pair<>(mir, result.value()), () -> {
 
         for (final var instruction : mir.entry().instructions()) {
           lower_instruction(instruction);
         }
       });
 
-      // TODO: This might not always be true/right?
       final var lastBlock = LLVM.LLVMGetLastBasicBlock(mirToLlvmCtx.getFunction().b());
       LLVM.LLVMPositionBuilderAtEnd(mirToLlvmCtx.builder, lastBlock);
     }
 
-    return new LoweringResult(fnRef);
+    return result;
   }
 
   private LoweringResult lower_call(Mir.InstrCall mir) {

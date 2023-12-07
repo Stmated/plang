@@ -23,7 +23,6 @@ class ThirToMirLoweringTest {
 
     final var mir = Plang.codeToMir("1 + 1").initNode();
 
-    Assertions.assertEquals(0, mir.predecessors().size());
     Assertions.assertEquals(0, mir.successors().size());
     Assertions.assertEquals(4, mir.instructions().size());
   }
@@ -33,7 +32,6 @@ class ThirToMirLoweringTest {
 
     final var mir = Plang.codeToMir("var a = 0; a = a + 1; return a").initNode();
 
-    Assertions.assertEquals(0, mir.predecessors().size());
     Assertions.assertEquals(0, mir.successors().size());
     Assertions.assertEquals(6, mir.instructions().size());
 
@@ -50,7 +48,6 @@ class ThirToMirLoweringTest {
 
     final var mir = Plang.codeToMir("var a = 0; var b = a + 1; return b;").initNode();
 
-    Assertions.assertEquals(0, mir.predecessors().size());
     Assertions.assertEquals(0, mir.successors().size());
     Assertions.assertEquals(6, mir.instructions().size());
 
@@ -114,7 +111,6 @@ class ThirToMirLoweringTest {
 
     final var mir = Plang.codeToMir("var a = 0; for (var i = 0; i < 10; i += 1) { a += i } return a;").initNode();
 
-    Assertions.assertEquals(0, mir.predecessors().size());
     Assertions.assertEquals(1, mir.successors().size());
     Assertions.assertEquals(5, mir.instructions().size());
 

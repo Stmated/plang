@@ -7,7 +7,7 @@
 // c = Copy
 // d = Destroy
 // s = Select
-// r = Return
+// e = Return (Escape)
 // p = Pass
 // x = rest marker, all other modifiers that were not mentioned
 

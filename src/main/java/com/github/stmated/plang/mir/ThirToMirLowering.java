@@ -3,6 +3,7 @@ package com.github.stmated.plang.mir;
 import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.exceptions.UnexpectedExpressionException;
 import com.github.stmated.plang.hir.Hir;
+import com.github.stmated.plang.hir.HirVisitor;
 import com.github.stmated.plang.llvm.util.LLVMTys;
 import com.github.stmated.plang.mir.model.MirBinaryOperationKind;
 import com.github.stmated.plang.mir.model.MirFnArgument;
@@ -16,13 +17,13 @@ import com.github.stmated.plang.ty.TyParam;
 import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyStruct;
 import com.github.stmated.plang.ty.TyValueArray;
-import com.github.stmated.plang.ty.TyValueNumber;
 import com.github.stmated.plang.ty.TyValueString;
 import com.github.stmated.plang.ty.util.MachineTarget;
 import com.github.stmated.plang.ty.util.Tys;
 import jakarta.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +60,60 @@ public class ThirToMirLowering {
     final var rootScope = new MirScope(null, "root");
     lowering.mirCtx.scopeStack().push(rootScope);
 
+    // TODO: This should be done for all constants, and in a smarter way. We should re-order expressions based on usage.
+    //        But to get around recursive dependencies between functions we would still need to create the function definitions on a first pass.
+    thirRaiseResult.root().visit(new HirVisitor() {
+
+      private String fnName;
+
+      @Override
+      public void visitAssignment(Hir.Assignment expr) {
+
+        if (expr.rhs().ty() instanceof TyFn rhs_tyFn) {
+          if (expr.lhs() instanceof Hir.Dec lhs_dec) {
+            if (lhs_dec.mutabilityKind() == Hir.MutabilityKind.IMMUTABLE || lhs_dec.mutabilityKind() == Hir.MutabilityKind.CONSTANT) {
+
+              try {
+                fnName = lhs_dec.lexeme().name();
+                HirVisitor.super.visitAssignment(expr);
+              } finally {
+                fnName = null;
+              }
+            }
+          } else if (expr.lhs() instanceof Hir.Identifier lhs_id) {
+
+            // We do not care, since if this is possible then it is not immutable nor constant.
+          }
+        }
+      }
+
+      @Override
+      public void visitDec(Hir.Dec expr) {
+        HirVisitor.super.visitDec(expr);
+      }
+
+      @Override
+      public void visitFunctionSignature(Hir.FunctionSignature expr) {
+
+        final var mirFnSignature = lowering.lower_function_signature_silent(expr);
+        final var fnTy = new TyPointer<>(signatureToTy(mirFnSignature));
+        final var createFnSignature = new Mir.InstrCreateFn(null, mirFnSignature, fnTy);
+        createFnSignature.name(fnName == null ? null : new MirIdentifierId(fnName, null, 0));
+
+        lowering.mirCtx.nodeStack().peek().instructions().add(createFnSignature);
+        lowering.hirToMirMap.put(expr, createFnSignature);
+
+        if (fnName != null) {
+          lowering.mirCtx.scopeStack().peek().add(fnName, createFnSignature);
+        }
+      }
+
+      @Override
+      public void visitFunctionBody(Hir.Expression expr) {
+        // Do not enter.
+      }
+    });
+
     lowering.lower(lowering.mirCtx.thirRaiseResult().root());
 
     final var processedNode = lowering.runPostProcessPasses(entryNode);
@@ -78,9 +133,16 @@ public class ThirToMirLowering {
     return Objects.requireNonNull(expr.ty(), () -> STR."Could not find ty of expr '\{expr}' (\{expr.getClass().getSimpleName()}), fix in THIR stage");
   }
 
+  private final Map<Hir.Expression, Mir.Instr> hirToMirMap = new HashMap<>();
+
   Mir.Instr lower(Hir.Expression expr) {
 
-    return switch (expr) {
+    final var existing = hirToMirMap.get(expr);
+    if (existing != null) {
+      return existing;
+    }
+
+    final Mir.Instr mir = switch (expr) {
       case Hir.Literal hir -> lower_literal(hir);
       case Hir.Return hir -> lower_return(hir);
       case Hir.BinaryOperation hir -> lower_binary_operation(hir);
@@ -88,7 +150,7 @@ public class ThirToMirLowering {
       case Hir.Call hir -> lower_call(hir);
       case Hir.Conditional hir -> lower_conditional(hir);
       case Hir.Block hir -> lower_block(hir);
-      case Hir.VariableDeclaration hir -> lower_variable_declaration(hir);
+      case Hir.Dec hir -> lower_variable_declaration(hir);
       case Hir.Assignment hir -> lower_assignment(hir);
       case Hir.Identifier hir -> lower_identifier(hir);
       case Hir.Loop hir -> lower_loop(hir);
@@ -104,9 +166,29 @@ public class ThirToMirLowering {
       case Hir.NewByBlock it -> lower_new_by_block(it);
       case Hir.NewByCtor it -> lower_new_by_ctor(it);
       case Hir.Path it -> lower_path(it);
+      case Hir.Reference it -> lower_reference(it);
 
       default -> throw new NotImplementedException(STR."Do not know how to handle '\{expr}' (\{expr.getClass().getSimpleName()})");
     };
+
+    hirToMirMap.put(expr, mir);
+    return mir;
+  }
+
+//  private Mir.Instr lower_parameter(Hir.Parameter it) {
+//
+//    // TODO: This does not seem right at all.
+//    return getParamGetInstr(it.lexeme().name());
+//  }
+
+  private Mir.Instr lower_reference(Hir.Reference it) {
+
+    final var mir = hirToMirMap.get(it.target());
+    if (mir == null) {
+      throw new IllegalArgumentException("Cannot reference something before it has been lowered");
+    }
+
+    return new Mir.InstrReference(mir);
   }
 
   private Mir.Instr lower_path(Hir.Path it) {
@@ -135,18 +217,18 @@ public class ThirToMirLowering {
   private static Mir.Instr getFieldAccessInstr(Mir.Instr sourceInstr, Ty sourceTy, Hir.Expression memberExpr) {
 
     return switch (memberExpr) {
-      case Hir.Identifier id -> switch (sourceTy) {
+      case Hir.Lexeme lex -> switch (sourceTy) {
         case TyStruct struct -> {
 
           for (var n = 0; n < struct.fields().length; n++) {
 
             final var field = struct.fields()[n];
-            if (field.name().equals(id.name())) {
+            if (field.name().equals(lex.name())) {
               yield new Mir.InstrGetStructElement(sourceInstr, n, field.ty());
             }
           }
 
-          throw new IllegalArgumentException(STR."Unknown field '\{id.name()}'");
+          throw new IllegalArgumentException(STR."Unknown field '\{lex}'");
         }
         default -> throw new UnexpectedExpressionException(sourceTy);
       };
@@ -169,7 +251,8 @@ public class ThirToMirLowering {
           final var field = struct.fields()[i];
           final var assignment = Arrays.stream(hir.fields())
             .filter(f -> switch (f.lhs()) {
-              case Hir.Identifier id -> field.name().equals(id.name());
+              case Hir.Identifier id -> field.name().equals(id.lexeme().name());
+              case Hir.Lexeme lex -> field.name().equals(lex.name());
               default -> throw new UnexpectedExpressionException(f.lhs());
             })
             .findFirst().orElseThrow(() -> new IllegalArgumentException(STR."Could not find assignment for '\{field.name()}'"));
@@ -280,15 +363,11 @@ public class ThirToMirLowering {
     for (var i = 0; i < hirParameters.length; i++) {
 
       final var hirParameter = hirParameters[i];
-      final var identifier = hirParameter.identifier();
-      final var identifierName = switch (identifier) {
-        case Hir.Identifier it -> it.name();
-        default -> throw new NotImplementedException(STR."Do not know how to handle '\{identifier}' as parameter identifier");
-      };
+      final var identifierName = hirParameter.lexeme().name();
 
       final var parameterType = Objects.requireNonNullElseGet(
         getTy(hirParameters[i]),
-        () -> expr_to_ty(hirParameter.type())
+        () -> expr_to_ty(hirParameter.valueType())
       );
       mirParameters[i] = new MirFnParameter(identifierName, parameterType);
     }
@@ -303,14 +382,7 @@ public class ThirToMirLowering {
   }
 
   Mir.InstrCreateFn lower_function_signature(Hir.FunctionSignature hirSignature) {
-
-    final var mirFnSignature = lower_function_signature_silent(hirSignature);
-    final var fnTy = new TyPointer<>(signatureToTy(mirFnSignature));
-    final var externalFn = new Mir.InstrCreateFn(null, mirFnSignature, fnTy);
-
-    mirCtx.nodeStack().peek().instructions().add(externalFn);
-
-    return externalFn;
+    return Objects.requireNonNull((Mir.InstrCreateFn) hirToMirMap.get(hirSignature), ""); // externalFn;
   }
 
   private Mir.Instr lower_function(Hir.Function hir) {
@@ -319,7 +391,10 @@ public class ThirToMirLowering {
     //        I guess that should only be made for "const" things -- and that will be how to differentiate between what you can refer to before declaration?
     //        Sounds like a good idea...
 
-    var mirFnSignature = lower_function_signature_silent(hir.signature());
+//    var mirFnSignature = lower_function_signature_silent();
+
+    final var createFn = Objects.requireNonNull((Mir.InstrCreateFn) hirToMirMap.get(hir.signature()));
+    final var mirFnSignature = createFn.signature();
 
     // fn name is extremely likely to be null.
     // It is up to some later pass to add a more descriptive name if possible.
@@ -327,6 +402,7 @@ public class ThirToMirLowering {
     final var fnNode = new MirNode(null);
 
     final var offshoot = new ThirToMirLowering(this.mirCtx, mirCtx.machineTarget());
+    offshoot.hirToMirMap.putAll(hirToMirMap);
     offshoot.mirCtx.nodeStack().add(fnNode);
 
     final var parent = mirCtx.scopeStack().peek();
@@ -339,6 +415,7 @@ public class ThirToMirLowering {
 
     try {
 
+      // TODO: Remove fnStack, since all functions are flattened by now -- there can only be the one level
       offshoot.mirCtx.fnStack().add(mirFnSignature);
       final var bodyInstruction = offshoot.lower(hir.body());
     } finally {
@@ -347,32 +424,33 @@ public class ThirToMirLowering {
 
     var processedNode = offshoot.runPostProcessPasses(fnNode);
 
-    if (mirFnSignature.returnType() == Ty.INFER) {
+//    if (mirFnSignature.returnType() == Ty.INFER) {
 
-      final var actualTy = switch (getTy(hir)) {
-        case TyFn it -> it.returnTy();
-        default -> throw new IllegalArgumentException("Cannot infer the result ty");
-      };
+//      final var actualTy = switch (getTy(hir)) {
+//        case TyFn it -> it.returnTy();
+//        default -> throw new IllegalArgumentException("Cannot infer the result ty");
+//      };
 
-      mirFnSignature = new MirFnSignature(
-        mirFnSignature.parameters(),
-        mirFnSignature.vararg(),
-        actualTy
-      );
+//      mirFnSignature = new MirFnSignature(
+//        mirFnSignature.parameters(),
+//        mirFnSignature.vararg(),
+//        actualTy
+//      );
 
-      final var original = processedNode;
-      processedNode = new MirNode(processedNode.name()); //, mirFnSignature);
-      processedNode.instructions().addAll(original.instructions());
-      processedNode.predecessors().addAll(original.predecessors());
-      processedNode.successors().addAll(original.successors());
-    }
+//      final var original = processedNode;
+//      processedNode = new MirNode(processedNode.name());
+//      processedNode.instructions().addAll(original.instructions());
+//      processedNode.successors().addAll(original.successors());
+//    }
 
-    final var fnTy = signatureToTy(mirFnSignature);
-    final var fullFn = new Mir.InstrCreateFn(processedNode, mirFnSignature, new TyPointer<>(fnTy));
+//    final var fnTy = signatureToTy(mirFnSignature);
+//    final var fullFn = new Mir.InstrCreateFn(processedNode, mirFnSignature, new TyPointer<>(hir.ty()));
 
-    mirCtx.nodeStack().peek().instructions().add(fullFn);
+    createFn.entry(processedNode);
 
-    return fullFn;
+//    mirCtx.nodeStack().peek().instructions().add(fullFn);
+
+    return createFn;
   }
 
   public static TyFn signatureToTy(MirFnSignature mirFnSignature) {
@@ -462,7 +540,6 @@ public class ThirToMirLowering {
 
     final var jump = new Mir.InstrJump(loop.next());
     node.successors().add(loop.next());
-    loop.next().predecessors().add(node);
     node.instructions().add(jump);
 
     return null;
@@ -475,7 +552,6 @@ public class ThirToMirLowering {
 
     final var jump = new Mir.InstrJump(loop.exit());
     node.successors().add(loop.exit());
-    loop.exit().predecessors().add(node);
     node.instructions().add(jump);
 
     return null;
@@ -483,7 +559,7 @@ public class ThirToMirLowering {
 
   private Mir.Instr lower_identifier(Hir.Identifier hir) {
 
-    final var identifierName = hir.name();
+    final var identifierName = hir.lexeme().name();
 
     final var assignment = mirCtx.scopeStack().peek().get(identifierName);
     if (assignment != null) {
@@ -496,7 +572,7 @@ public class ThirToMirLowering {
       return paramInstr;
     }
 
-    throw new IllegalArgumentException(STR."There is no variable '\{hir.name()}' found in scope");
+    throw new IllegalArgumentException(STR."There is no variable '\{hir.lexeme()}' found in scope");
   }
 
   private Mir.InstrGetParam getParamGetInstr(String identifierName) {
@@ -519,8 +595,8 @@ public class ThirToMirLowering {
   private Mir.Instr lower_assignment(Hir.Assignment hir) {
 
     return switch (hir.lhs()) {
-      case Hir.VariableDeclaration lhs -> lower_assignment_root_level(hir, lhs.identifier().name(), true);
-      case Hir.Identifier lhs -> lower_assignment_root_level(hir, lhs.name(), false);
+      case Hir.Dec lhs -> lower_assignment_root_level(hir, lhs.lexeme().name(), true);
+      case Hir.Identifier lhs -> lower_assignment_root_level(hir, lhs.lexeme().name(), false);
       case Hir.Path lhs -> lower_assignment_to_path(hir, lhs);
       default -> throw new UnexpectedExpressionException(hir.lhs());
     };
@@ -542,23 +618,8 @@ public class ThirToMirLowering {
       final var lastElement = path.elements()[path.elements().length - 1];
       return switch (innerTy) {
         case TyStruct struct -> switch (lastElement) {
-          case Hir.Identifier id -> {
-
-            for (var i = 0; i < struct.fields().length; i++) {
-
-              final var field = struct.fields()[i];
-              if (field.name().equals(id.name())) {
-
-                final var rhs = lower(it.rhs());
-                final var instr = new Mir.InstrSetStructElement(get_instruction, i, rhs, field.ty());
-                mirCtx.nodeStack().peek().instructions().add(instr);
-
-                yield instr;
-              }
-            }
-
-            throw new IllegalArgumentException(STR."Could not find field '\{id.name()}' on '\{struct}'");
-          }
+          case Hir.Identifier id -> lower_struct_field_assignment(it, struct, id.lexeme(), get_instruction);
+          case Hir.Lexeme lex -> lower_struct_field_assignment(it, struct, lex, get_instruction);
           default -> throw new NotImplementedException();
         };
         default -> throw new UnexpectedExpressionException(innerTy);
@@ -566,6 +627,30 @@ public class ThirToMirLowering {
     }
 
     throw new NotImplementedException();
+  }
+
+  @Nonnull
+  private Mir.InstrSetStructElement lower_struct_field_assignment(
+    Hir.Assignment it,
+    TyStruct struct,
+    Hir.Lexeme lex,
+    Mir.Instr get_instruction
+  ) {
+
+    for (var i = 0; i < struct.fields().length; i++) {
+
+      final var field = struct.fields()[i];
+      if (field.name().equals(lex.name())) {
+
+        final var rhs = lower(it.rhs());
+        final var instr = new Mir.InstrSetStructElement(get_instruction, i, rhs, field.ty());
+        mirCtx.nodeStack().peek().instructions().add(instr);
+
+        return instr;
+      }
+    }
+
+    throw new IllegalArgumentException(STR."Could not find field '\{lex}' on '\{struct}'");
   }
 
   private Mir.Instr lower_assignment_root_level(Hir.Assignment hir, String name, boolean declare) {
@@ -609,7 +694,7 @@ public class ThirToMirLowering {
     return instr;
   }
 
-  private Mir.Instr lower_variable_declaration(Hir.VariableDeclaration hir) {
+  private Mir.Instr lower_variable_declaration(Hir.Dec hir) {
 
     log.debug("Variable declaration has no meaning in CFG, handle assignment expressions");
 
@@ -618,12 +703,6 @@ public class ThirToMirLowering {
 //    mirCtx.scopeStack().peek().add(hir.identifier().name(), );
 
     return null;
-  }
-
-  private void addConnection(MirNode source, MirNode destination) {
-
-    source.successors().add(destination);
-    destination.predecessors().add(source);
   }
 
   @Data
@@ -690,13 +769,13 @@ public class ThirToMirLowering {
       if (!pass_node.isTerminal()) {
 
         pass_node.instructions().add(new Mir.InstrJump(node_merge));
-        addConnection(pass_node, node_merge);
+        pass_node.successors().add(node_merge);
       }
 
       if (!fail_node.isTerminal()) {
 
         fail_node.instructions().add(new Mir.InstrJump(node_merge));
-        addConnection(fail_node, node_merge);
+        fail_node.successors().add(node_merge);
       }
 
       final var instruction = new Mir.InstrConditionalJump(predicate_operand, pass_node, fail_node);
@@ -844,7 +923,9 @@ public class ThirToMirLowering {
       if (argument_operand == null) {
         throw new IllegalArgumentException(STR."Argument '\{arguments[i]}' must produce an operand");
       } else {
-        mirFnArguments[i] = new MirFnArgument(arguments[i].label(), argument_operand);
+        final var lexeme = arguments[i].label();
+        final var lexemeName = (lexeme == null) ? null : lexeme.name();
+        mirFnArguments[i] = new MirFnArgument(lexemeName, argument_operand);
       }
     }
 
@@ -866,49 +947,28 @@ public class ThirToMirLowering {
 
     // TODO: This is very rudimentary -- it needs to be able to resolve the a potential path into a struct, or array access, or whatever the heck
     final var fnName = switch (hir.target()) {
-      case Hir.Identifier identifier -> identifier.name();
+      case Hir.Identifier identifier -> identifier.lexeme().name();
+      case Hir.Lexeme lexeme -> lexeme.name();
       case Hir.Literal literal -> literal.content();
       default -> throw new UnexpectedExpressionException(hir.target());
     };
 
-    final Mir.Instr fnInstr;
-    if (fnName.equals("freopen_stdout")) {
+    // TODO: Skriv om så att man lägger till funktionen om den inte redan finns registrerad!
+    //   Blir upp till annan kod att sedan fylla i body om den kommer, annars upp till linker att ge definitionen av funktionen!
 
-      // (filename: *char, mode: *char): *int;
-      final var tyFn = new TyFn(
-        new TyParam[] {
-          new TyParam("filename", new TyPointer<>(Ty.CHAR)),
-          new TyParam("mode", new TyPointer<>(Ty.CHAR))
-        },
-        false,
-        new TyPointer<>(Ty.INTEGER)
-      );
+    final var fnInstr = mirCtx.getInstructionByName(fnName);
 
-      final var createFn = new Mir.InstrCreateFn(
-        null,
-        new MirFnSignature(
-          new MirFnParameter[] {
-            new MirFnParameter("filename", new TyPointer<>(Ty.CHAR)),
-            new MirFnParameter("mode", new TyPointer<>(Ty.CHAR))
-          },
-          false,
-          new TyPointer<>(Ty.INTEGER)
-        ),
-        tyFn
-      );
-      createFn.name(new MirIdentifierId("freopen_stdout", null, 0));
+    return lowerCallForTarget(fnInstr, mirFnArguments);
+  }
 
-      fnInstr = createFn;
-
-    } else {
-
-      fnInstr = mirCtx.getInstructionByName(fnName);
-    }
+  @Nonnull
+  private Mir.Instr lowerCallForTarget(Mir.Instr fnInstr, MirFnArgument[] mirFnArguments) {
 
     return switch (fnInstr) {
       // NOTE: Unsure how this will be handled -- but I guess it will be an indirect function pointer?
       //        So it will be up to LLVM to decide what to do about it.
       case Mir.InstrStore store -> switch (store.value()) {
+        case Mir.InstrReference ref -> lowerCallForTarget(ref.target(), mirFnArguments);
         case Mir.InstrCreateFn createFn -> {
 
           final var instruction = new Mir.InstrCall(fnInstr, createFn.signature(), mirFnArguments);

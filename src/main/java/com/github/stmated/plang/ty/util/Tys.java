@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
@@ -66,7 +67,7 @@ public class Tys {
             final var newWidth = new BitWidth(newWidthValue, ani.width().explicit() || bni.width().explicit());
             final var newFlags = mixFlags(ani.flags(), bni.flags());
             yield new TyResult<>(
-              new TyValueNumberInteger((byte) 10, newWidth, ani.signed(), newFlags),
+              Tys.intern(new TyValueNumberInteger((byte) 10, newWidth, ani.signed(), newFlags)),
               TyDiffKind.DIFF_WIDTH_EXT
             );
           }
@@ -157,6 +158,19 @@ public class Tys {
 
   public static boolean isUsable(Ty ty) {
     return ty != null && ty != Ty.INVALID;
+  }
+
+  public static boolean isInferred(Ty ty) {
+    return ty == null || ty == Ty.INFER;
+  }
+
+  public static Ty getIfInferred(Ty original, Supplier<Ty> supplier) {
+
+    if (original == null || original == Ty.INFER) {
+      return supplier.get();
+    } else {
+      return original;
+    }
   }
 
   public static Ty simplify(Ty ty) {

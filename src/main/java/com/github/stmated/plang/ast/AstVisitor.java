@@ -81,13 +81,13 @@ public interface AstVisitor<T> {
     return visit(expr.children());
   }
 
-  default T visitIdentifier(Ast.Identifier expr) {
+  default T visitIdentifier(Ast.Lexeme expr) {
     return this.noValue();
   }
 
   default T visitImpl(Ast.Impl expr) {
 
-    final var traitRes = visit(expr.traitIdentifier());
+    final var traitRes = visit(expr.traitLexeme());
     final var forRes = visit(expr.forExpression());
     final var declarationRes = aggregate(traitRes, forRes);
     final var withRes = visit(expr.with());
@@ -113,7 +113,7 @@ public interface AstVisitor<T> {
   }
 
   default T visitImportPathIdentifier(Ast.ImportPathIdentifier expr) {
-    return visit(expr.identifier());
+    return visit(expr.lexeme());
   }
 
   default T visitImportPathWildcard(Ast.ImportPathWildcard expr) {
@@ -189,11 +189,11 @@ public interface AstVisitor<T> {
   }
 
   default T visitType(Ast.Type expr) {
-    return visit(expr.identifier());
+    return visit(expr.lexeme());
   }
 
   default T visitVariableDeclaration(Ast.VariableDeclaration expr) {
-    return aggregate(visit(expr.identifier()), visit(expr.type()));
+    return aggregate(visit(expr.lexeme()), visit(expr.type()));
   }
 
   default T visitVariableSink(Ast.VariableSink expr) {
@@ -213,7 +213,7 @@ public interface AstVisitor<T> {
   }
 
   default T visitTypePlaceholder(Ast.TypePlaceholder expr) {
-    return visit(expr.identifier());
+    return visit(expr.lexeme());
   }
 
   default T visitStaticAccess(Ast.StaticAccess expr) {

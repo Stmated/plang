@@ -1,26 +1,27 @@
 package com.github.stmated.plang.thir.raising;
 
 import com.github.stmated.plang.exceptions.InvalidTypeConversionException;
-import com.github.stmated.plang.exceptions.NotImplementedException;
 import com.github.stmated.plang.exceptions.UnexpectedExpressionException;
 import com.github.stmated.plang.hir.Hir;
+import com.github.stmated.plang.hir.HirJavaUtil;
+import com.github.stmated.plang.hir.passes.HirDependencyReorderingTransformerPass;
+import com.github.stmated.plang.hir.passes.HirFnTyVisitorPass;
+import com.github.stmated.plang.hir.passes.HirIdentifierResolverVisitorPass;
+import com.github.stmated.plang.hir.passes.HirTyCommonVisitorPass;
+import com.github.stmated.plang.hir.passes.HirTyIdentifierToTyTransformerPass;
+import com.github.stmated.plang.hir.passes.HirLambdaLiftingTransformerPass;
+import com.github.stmated.plang.hir.passes.HirTyFnCallVisitorPass;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyField;
 import com.github.stmated.plang.ty.TyFn;
-import com.github.stmated.plang.ty.TyIdentifier;
 import com.github.stmated.plang.ty.TyParam;
-import com.github.stmated.plang.ty.TyPointer;
 import com.github.stmated.plang.ty.TyStruct;
-import com.github.stmated.plang.ty.TyUninitialized;
 import com.github.stmated.plang.ty.TyValueArray;
-import com.github.stmated.plang.ty.TyValueNumberInteger;
 import com.github.stmated.plang.ty.util.MachineTarget;
 import com.github.stmated.plang.ty.util.Tys;
-import com.github.stmated.plang.util.JavaUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.Stack;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -30,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class HirToThirRaising {
 
-  private final Stack<ThirScope> scopeStack = new Stack<>();
+//  private final Stack<ThirScope> scopeStack = new Stack<>();
   private final MachineTarget machineTarget;
   private final boolean lenient;
 
@@ -45,35 +46,33 @@ public class HirToThirRaising {
 
   public ThirRaiseResult raise(Hir.Expression e) {
 
+    e = HirTyIdentifierToTyTransformerPass.pass(e, machineTarget);
+    HirFnTyVisitorPass.pass(e);
+    HirIdentifierResolverVisitorPass.pass(e, Hir.Identifier::target);
+    HirTyCommonVisitorPass.pass(e);
+    HirTyFnCallVisitorPass.pass(e);
+    e = HirLambdaLiftingTransformerPass.pass(e);
+    e = HirDependencyReorderingTransformerPass.pass(e);
+
     // Call investigate on the expression.
     // Then the map inside this raising should contain all relevant types.
-    try {
-      scopeStack.push(new ThirScope(null, "root"));
-      investigate(e);
-    } finally {
-      scopeStack.pop();
-    }
+    investigate(e);
 
     return new ThirRaiseResult(e);
   }
 
   private Ty investigate(Hir.Expression e) {
 
-    final var existing = e.ty(); // map.get(e);
-    if (existing != null && existing != Ty.INFER) {
+    final var existing = e.ty();
+    if (!Tys.isInferred(existing)) {
       return existing;
     }
-
-    return investigate_inner(e);
-  }
-
-  private Ty investigate_inner(Hir.Expression e) {
 
     return switch (e) {
       case Hir.BinaryOperation it -> investigate_binary_operation(it);
       case Hir.Literal it -> investigate_literal(it);
       case Hir.Return it -> investigate_return(it);
-      case Hir.VariableDeclaration it -> investigate_variable_declaration(it);
+      case Hir.Dec it -> investigate_variable_declaration(it);
       case Hir.Assignment it -> investigate_assignment(it);
       case Hir.Identifier it -> investigate_identifier(it);
       case Hir.Conditional it -> investigate_conditional(it);
@@ -94,9 +93,14 @@ public class HirToThirRaising {
       case Hir.NewByCtor it -> investigate_new_by_ctor(it);
       case Hir.Path it -> investigate_path(it);
       case Hir.Block it -> investigate_block(it);
+      case Hir.Reference it -> investigate_reference(it);
       case Hir.Parameter it -> throw new IllegalArgumentException(STR."A Parameter itself (\{it}) does not have a type (yet?). Resolve it higher in call chain");
       default -> throw new UnexpectedExpressionException(e);
     };
+  }
+
+  private Ty investigate_reference(Hir.Reference it) {
+    return investigate(it.target());
   }
 
   private Ty investigate_block(Hir.Block it) {
@@ -120,7 +124,7 @@ public class HirToThirRaising {
             case TyStruct struct -> {
 
               final var field = Arrays.stream(struct.fields())
-                .filter(f -> f.name().equals(identifier.name()))
+                .filter(f -> f.name().equals(identifier.lexeme()))
                 .findFirst().orElseThrow();
 
               pointer = field.ty();
@@ -133,7 +137,7 @@ public class HirToThirRaising {
 
           // TODO: Make this work, even if ugly! :)
           pointer = switch (call.target()) {
-            case Hir.Identifier id -> switch (id.name()) {
+            case Hir.Identifier id -> switch (id.lexeme().name()) {
               case "toString" -> Ty.STRING;
               default -> throw new UnexpectedExpressionException(id);
             };
@@ -171,8 +175,8 @@ public class HirToThirRaising {
 
     for (final var decl : it.declarations()) {
 
-      final var name = decl.identifier().name();
-      final var ty = investigate_type_expression(decl.type());
+      final var name = decl.lexeme().name();
+      final var ty = investigate_type_expression(decl.valueType());
 
       fields.add(new TyField(name, ty));
     }
@@ -202,28 +206,6 @@ public class HirToThirRaising {
     return it.ty(ty).ty();
   }
 
-  private Object resolveLiteralValue(Hir.Expression expr) {
-
-    return switch (expr) {
-      case Hir.Literal literal -> switch (literal.ty()) {
-        case TyValueNumberInteger vni -> Integer.parseInt(literal.content(), vni.radix());
-        default -> null;
-      };
-      case Hir.BinaryOperation bop -> {
-        final var lhs = resolveLiteralValue(bop.lhs());
-        final var rhs = resolveLiteralValue(bop.rhs());
-
-        yield switch (bop.kind()) {
-          case ADD -> JavaUtil.add(lhs, rhs);
-          case SUBTRACT -> JavaUtil.subtract(lhs, rhs);
-          case MULTIPLY -> JavaUtil.multiply(lhs, rhs);
-          default -> null;
-        };
-      }
-      default -> null;
-    };
-  }
-
   private Ty investigate_array(Hir.Array it) {
 
     // TODO: Problem is that array as a type and array as initializer need to behave differently!
@@ -244,7 +226,7 @@ public class HirToThirRaising {
       }
     }
 
-    Object literalValue = (it.length() == null) ? null : resolveLiteralValue(it.length());
+    Object literalValue = (it.length() == null) ? null : HirJavaUtil.resolveLiteralValue(it.length());
     Integer arrayLength = (literalValue == null) ? null : ((Number) literalValue).intValue();
 
     // The element ty can still be INFER -- it will be used for late type decisions.
@@ -257,12 +239,8 @@ public class HirToThirRaising {
     for (var i = 0; i < hir.parameters().length; i++) {
 
       final var parameter = hir.parameters()[i];
-      final var parameterName = switch (parameter.identifier()) {
-        case Hir.Identifier id -> id.name();
-        default -> throw new NotImplementedException(STR."Do not know how to get name from '\{parameter.identifier()}'");
-      };
-
-      final var paramTy = investigate_type_expression(parameter.type());
+      final var parameterName = parameter.lexeme().name();
+      final var paramTy = investigate_type_expression(parameter.valueType());
       parameter.ty(paramTy);
 
       parameterTys[i] = new TyParam(parameterName, paramTy);
@@ -274,39 +252,42 @@ public class HirToThirRaising {
   }
 
   private Ty investigate_function(Hir.Function hir) {
+    return Objects.requireNonNull(hir.ty());
 
-    final var signatureTy = investigate_function_signature(hir.signature());
-    if (hir.body() != null && (signatureTy.returnTy() == null || signatureTy.returnTy() == Ty.INFER)) {
-
-      // If the signature does not contain a ty but we have a body, then we investigate it for a ty.
-
-      Ty bodyReturnTy;
-      try {
-
-        final var scope = new ThirScope(scopeStack.peek(), "fn");
-        scopeStack.push(scope);
-
-        for (final var parameter : signatureTy.parameters()) {
-          scope.map().put(parameter.name(), parameter.ty());
-        }
-
-        bodyReturnTy = investigate(hir.body());
-      } finally {
-        scopeStack.pop();
-      }
-
-      return hir.ty(new TyFn(
-        signatureTy.parameters(),
-        signatureTy.vararg(),
-        Objects.requireNonNull(bodyReturnTy, "No return kind could be inferred")
-      )).ty();
-    }
-
-    return hir.ty(signatureTy).ty();
+//    final var signatureTy = investigate_function_signature(hir.signature());
+//    if (hir.body() != null && (signatureTy.returnTy() == null || signatureTy.returnTy() == Ty.INFER)) {
+//
+//      // If the signature does not contain a ty but we have a body, then we investigate it for a ty.
+//
+//      Ty bodyReturnTy;
+//      try {
+//
+//        final var scope = new ThirScope(scopeStack.peek(), "fn");
+//        scopeStack.push(scope);
+//
+//        for (final var parameter : signatureTy.parameters()) {
+//          scope.map().put(parameter.name(), parameter.ty());
+//        }
+//
+//        bodyReturnTy = investigate(hir.body());
+//      } finally {
+//        scopeStack.pop();
+//      }
+//
+//      return hir.ty(new TyFn(
+//        signatureTy.parameters(),
+//        signatureTy.vararg(),
+//        Objects.requireNonNull(bodyReturnTy, "No return kind could be inferred")
+//      )).ty();
+//    }
+//
+//    return hir.ty(signatureTy).ty();
   }
 
   private Ty investigate_argument(Hir.Argument hir) {
-    return hir.ty(investigate(hir.value())).ty();
+
+    investigate(hir.value());
+    return hir.ty(); //.ty(investigate(hir.value())).ty();
   }
 
   private Ty investigate_call(Hir.Call hir) {
@@ -327,14 +308,14 @@ public class HirToThirRaising {
     }
 
     // NOTE: Hopefully we never here? Since I guess all call targets ought to be functions?
-    final var ty = switch (target) {
+    final Ty ty = switch (target) {
       // NOTE: This seems od. Will it ever be the function signature?
       case Hir.FunctionSignature fns -> investigate(fns.returnType());
       // Now lookup by identifier is completely fine.
       case Hir.Identifier id -> {
 
-        final var v = scopeStack.peek().get(id.name());
-        yield Objects.requireNonNull(v, STR."No function called '\{id.name()}' found in scope");
+        final var v = id.target().ty(); // scopeStack.peek().get(id.lexeme().name());
+        yield Objects.requireNonNull(v, STR."No function called '\{id.lexeme()}' found in scope");
       }
       default -> throw new UnexpectedExpressionException(target);
     };
@@ -369,24 +350,24 @@ public class HirToThirRaising {
     var branch_types = new Ty[2];
     if (hir.pass() != null) {
 
-      try {
-        scopeStack.push(new ThirScope(scopeStack.peek(), "conditional_pass"));
+//      try {
+//        scopeStack.push(new ThirScope(scopeStack.peek(), "conditional_pass"));
         branch_types[0] = investigate(hir.pass());
-
-      } finally {
-        scopeStack.pop();
-      }
+//
+//      } finally {
+//        scopeStack.pop();
+//      }
     }
 
     if (hir.fail() != null) {
 
-      try {
-        scopeStack.push(new ThirScope(scopeStack.peek(), "conditional_fail"));
+//      try {
+//        scopeStack.push(new ThirScope(scopeStack.peek(), "conditional_fail"));
         branch_types[1] = investigate(hir.fail());
 
-      } finally {
-        scopeStack.pop();
-      }
+//      } finally {
+//        scopeStack.pop();
+//      }
     }
 
     if (branch_types[1] == null) {
@@ -404,10 +385,19 @@ public class HirToThirRaising {
   public Ty investigate_type_expression(Hir.Expression hir) {
 
     try {
-      typeModeCounter++;
+//      typeModeCounter++;
       return switch (hir) {
+        case Hir.Lexeme lex -> {
+          final var knownTypeByName = Tys.fromString(lex.name(), machineTarget);
+          if (knownTypeByName != null) {
+            lex.ty(knownTypeByName);
+            yield knownTypeByName;
+          } else {
+            yield investigate(hir);
+          }
+        }
         case Hir.Identifier id -> {
-          final var knownTypeByName = Tys.fromString(id.name(), machineTarget);
+          final var knownTypeByName = Tys.fromString(id.lexeme().name(), machineTarget);
           if (knownTypeByName != null) {
             id.ty(knownTypeByName);
             yield knownTypeByName;
@@ -418,111 +408,114 @@ public class HirToThirRaising {
         default -> investigate(hir);
       };
     } finally {
-      typeModeCounter--;
+//      typeModeCounter--;
     }
   }
 
-  private int typeModeCounter = 0;
+//  private int typeModeCounter = 0;
 
   private Ty investigate_identifier(Hir.Identifier hir) {
+    return Objects.requireNonNull(hir.ty());
 
-    var resolvedVariable = scopeStack.peek().get(hir.name());
-
-    if (resolvedVariable == null && typeModeCounter > 0) {
-      resolvedVariable = Tys.fromString(hir.name(), machineTarget);
-    }
-
-    if (resolvedVariable == null && hir.name().equals("freopen_stdout")) {
-
-      // (filename: *char, mode: *char): *int;
-      resolvedVariable = new TyFn(
-        new TyParam[] {
-          new TyParam("filename", new TyPointer<>(Ty.CHAR)),
-          new TyParam("mode", new TyPointer<>(Ty.CHAR))
-        },
-        false, new TyPointer<>(Ty.INTEGER)
-      );
-    }
-
-    if (lenient && resolvedVariable == null) {
-      return null;
-    }
-
-    hir.ty(resolvedVariable);
-    return Objects.requireNonNull(resolvedVariable, STR."Cannot get '\{hir.name()}' since its type is unknown");
+//    var resolvedVariable = scopeStack.peek().get(hir.lexeme().name());
+//    if (resolvedVariable == null) {
+//      resolvedVariable = hir.ty();
+//      if (resolvedVariable == null) {
+//
+//        // This is likely wrong, since the "target" could be "TyFn" and not the actual result ty
+//        resolvedVariable = hir.target().ty();
+//      }
+//    }
+//
+//    if (resolvedVariable == null && typeModeCounter > 0) {
+//      resolvedVariable = Tys.fromString(hir.lexeme().name(), machineTarget);
+//    }
+//
+//    if (lenient && resolvedVariable == null) {
+//      return null;
+//    }
+//
+//    hir.ty(resolvedVariable);
+//    return Objects.requireNonNull(resolvedVariable, STR."Cannot get '\{hir.lexeme()}' since its type is unknown");
   }
 
   private Ty investigate_assignment(Hir.Assignment hir) {
 
-    final var lhs = investigate(hir.lhs());
-    final var rhs = investigate(hir.rhs());
+    return hir.ty();
+
+//    final var lhs = investigate(hir.lhs());
+//    final var rhs = investigate(hir.rhs());
 
     // TODO: If the types are "infer" or "TyIdentifier" then we should try to resolve them.
     //        Also, we need to check that the lhs and rhs types are actually compatible.
 
-    final var identifierName = switch (hir.lhs()) {
-      case Hir.VariableDeclaration it -> it.identifier().name();
-      case Hir.Identifier it -> it.name();
-      default -> null;
-    };
+//    final var identifierName = switch (hir.lhs()) {
+//      case Hir.Dec it -> it.lexeme().name();
+//      case Hir.Identifier it -> it.lexeme().name();
+//      case Hir.Lexeme it -> it.name();
+//      default -> null;
+//    };
 
-    final var mutability = switch (hir.lhs()) {
-      case Hir.VariableDeclaration it -> it.mutabilityKind();
-      case Hir.Identifier it -> Hir.MutabilityKind.MUTABLE;
-      case Hir.Path it -> Hir.MutabilityKind.MUTABLE;
-      default -> throw new NotImplementedException(STR."Do not know how to find mutability of '\{hir.lhs()}'");
-    };
+//    final var mutability = switch (hir.lhs()) {
+//      case Hir.Dec it -> it.mutabilityKind();
+//      case Hir.Identifier it -> Hir.MutabilityKind.MUTABLE;
+//      case Hir.Path it -> Hir.MutabilityKind.MUTABLE;
+//      default -> throw new NotImplementedException(STR."Do not know how to find mutability of '\{hir.lhs()}'");
+//    };
 
     // TODO: Make use of Tys.toNonConstIfRequired, to convert "a (const) + 10" to not const
 
-    if (lhs == Ty.INFER) {
-
-      if (identifierName != null) {
-
-        final var existing = scopeStack.peek().map().get(identifierName);
-        if (existing != null && !(existing instanceof TyUninitialized<?>)) {
-          throw new NotImplementedException("What to do here?");
-        } else {
-          scopeStack.peek().map().put(identifierName, rhs);
-        }
-      }
-
-    } else {
-
-      final var common = Tys.getCommonDenominator(lhs, rhs);
-      if (!Tys.isGenerallyCompatible(common.diffs())) {
-        throw new IllegalArgumentException(STR."\{lhs} and \{rhs} are not compatible with each other");
-      }
-
-      if (scopeStack.peek().map().containsKey(identifierName)) {
-
-        // NOTE: In the future it might be useful to have a kind of "lower bound" + "stated kind" + "higher bound"
-        //        So we can know what it was said to be, and what it *actually* contains at a certain point
-
-      } else {
-        scopeStack.peek().map().put(identifierName, common.ty());
-      }
-    }
+//    if (lhs == Ty.INFER) {
+//
+//      if (identifierName != null) {
+//
+//        final var existing = scopeStack.peek().map().get(identifierName);
+//        if (existing != null && !(existing instanceof TyUninitialized<?>)) {
+//          throw new NotImplementedException("What to do here?");
+//        } else {
+//          scopeStack.peek().map().put(identifierName, rhs);
+//        }
+//      }
+//
+//    } else {
+//
+//      final var common = Tys.getCommonDenominator(lhs, rhs);
+//      if (!Tys.isGenerallyCompatible(common.diffs())) {
+//        throw new IllegalArgumentException(STR."\{lhs} and \{rhs} are not compatible with each other");
+//      }
+//
+//      if (scopeStack.peek().map().containsKey(identifierName)) {
+//
+//        // NOTE: In the future it might be useful to have a kind of "lower bound" + "stated kind" + "higher bound"
+//        //        So we can know what it was said to be, and what it *actually* contains at a certain point
+//
+//      } else {
+//        scopeStack.peek().map().put(identifierName, common.ty());
+//      }
+//    }
 
     // Assignment itself returns void kind
-    return hir.ty(Ty.VOID).ty();
+//    return hir.ty(Ty.VOID).ty();
   }
 
-  private Ty investigate_variable_declaration(Hir.VariableDeclaration hir) {
+  private Ty investigate_variable_declaration(Hir.Dec hir) {
+    return hir.valueType().ty();
 
+    /*
     if (hir.type() == null) {
       return hir.ty(Ty.INFER).ty();
     }
 
     final var ty = switch (hir.type()) {
-      case Hir.Identifier it -> new TyIdentifier(it.name());
+      case Hir.Identifier it -> new TyIdentifier(it.lexeme().name());
       case Hir.TyExpr it -> it.ty();
       default -> throw new UnexpectedExpressionException(hir.type());
     };
 
-    scopeStack.peek().map().put(hir.identifier().name(), new TyUninitialized<>(ty));
+//    scopeStack.peek().map().put(hir.lexeme().name(), new TyUninitialized<>(ty));
 
     return hir.ty(ty).ty();
+    */
   }
 
   private Ty investigate_return(Hir.Return hir) {
@@ -553,19 +546,20 @@ public class HirToThirRaising {
   }
 
   private Ty investigate_binary_operation(Hir.BinaryOperation hir) {
+    return Objects.requireNonNull(hir.ty());
 
-    if (hir.kind().isPredicate()) {
-      return hir.ty(Ty.BOOLEAN).ty();
-    }
-
-    final var lhst = investigate(hir.lhs());
-    final var rhst = investigate(hir.rhs());
-
-    final var result = Tys.getCommonDenominator(lhst, rhst);
-    if (result.ty() == null) {
-      throw new IllegalArgumentException(STR."There was no common denominator between '\{lhst}' and '\{rhst}'");
-    }
-
-    return hir.ty(result.ty()).ty();
+//    if (hir.kind().isPredicate()) {
+//      return hir.ty(Ty.BOOLEAN).ty();
+//    }
+//
+//    final var lhst = investigate(hir.lhs());
+//    final var rhst = investigate(hir.rhs());
+//
+//    final var result = Tys.getCommonDenominator(lhst, rhst);
+//    if (result.ty() == null) {
+//      throw new IllegalArgumentException(STR."There was no common denominator between \{hir.lhs()} (\{lhst}) and \{hir.rhs()} (\{rhst})");
+//    }
+//
+//    return hir.ty(result.ty()).ty();
   }
 }

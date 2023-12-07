@@ -228,7 +228,7 @@ class TokenToAstRaisingTest {
     final var ast = toExpressions(Plang.codeToAst(code));
 
     as(ast[0], Ast.Negate.class, negate -> {
-      as(negate.expression(), Ast.Identifier.class, id -> {
+      as(negate.expression(), Ast.Lexeme.class, id -> {
         Assertions.assertEquals("something", id.name());
       });
     });
@@ -267,18 +267,18 @@ class TokenToAstRaisingTest {
           as(callable.lhs(), Ast.Paren.class, call_lhs_paren -> {
             as(call_lhs_paren.expression(), Ast.Expressions.class, call_lhs_exprs -> {
               as(call_lhs_exprs.children()[0], Ast.Labeling.class, labeling -> {
-                as(labeling.lhs(), Ast.Identifier.class, id -> {
+                as(labeling.lhs(), Ast.Lexeme.class, id -> {
                   Assertions.assertEquals("a", id.name());
                 });
-                as(labeling.rhs(), Ast.Identifier.class, id -> {
+                as(labeling.rhs(), Ast.Lexeme.class, id -> {
                   Assertions.assertEquals("int", id.name());
                 });
               });
               as(call_lhs_exprs.children()[1], Ast.Labeling.class, labeling -> {
-                as(labeling.lhs(), Ast.Identifier.class, id -> {
+                as(labeling.lhs(), Ast.Lexeme.class, id -> {
                   Assertions.assertEquals("b", id.name());
                 });
-                as(labeling.rhs(), Ast.Identifier.class, id -> {
+                as(labeling.rhs(), Ast.Lexeme.class, id -> {
                   Assertions.assertEquals("int", id.name());
                 });
               });
@@ -330,8 +330,8 @@ class TokenToAstRaisingTest {
 
   private void isIdentifier(Ast.Expression exp, String expected) {
 
-    Assertions.assertInstanceOf(Ast.Identifier.class, exp);
-    Assertions.assertEquals(expected, ((Ast.Identifier) exp).name());
+    Assertions.assertInstanceOf(Ast.Lexeme.class, exp);
+    Assertions.assertEquals(expected, ((Ast.Lexeme) exp).name());
   }
 
   private void isLiteral(Ast.Expression exp, String expected) {

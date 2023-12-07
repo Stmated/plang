@@ -272,7 +272,7 @@ public class Ast {
 
   @Data
   @AllArgsConstructor
-  public static class Identifier implements Expression {
+  public static class Lexeme implements Expression {
 
     String name;
 
@@ -319,7 +319,7 @@ public class Ast {
   @AllArgsConstructor
   public static class ImportPathAlias implements Expression, ImportCapable {
 
-    Identifier alias;
+    Lexeme alias;
     ImportCapable target;
 
     @Override
@@ -344,7 +344,7 @@ public class Ast {
   @AllArgsConstructor
   public static class ImportPathIdentifier implements Expression, ImportCapable {
 
-    Identifier identifier;
+    Lexeme lexeme;
 
     @Override
     public <R, V extends AstVisitor<R>> R visit(V visitor) {
@@ -512,7 +512,7 @@ public class Ast {
   public static class New implements Expression {
 
     Expression target;
-    Identifier allocator;
+    Lexeme allocator;
     Expression arguments;
 
     @Override
@@ -694,7 +694,7 @@ public class Ast {
   @AllArgsConstructor
   public static class Type implements Expression {
 
-    Identifier identifier;
+    Lexeme lexeme;
 
     @Override
     public <R, V extends AstVisitor<R>> R visit(V visitor) {
@@ -706,11 +706,11 @@ public class Ast {
   @AllArgsConstructor
   public static class TypePlaceholder implements Expression {
 
-    Identifier identifier;
+    Lexeme lexeme;
 
     @Override
     public String toString() {
-      return STR."$\{identifier}";
+      return STR."$\{lexeme}";
     }
 
     @Override
@@ -723,14 +723,14 @@ public class Ast {
   @AllArgsConstructor
   public static class VariableDeclaration implements Expression {
 
-    Identifier identifier;
+    Lexeme lexeme;
     MutabilityKind mutabilityKind;
     Expression type;
     boolean ref;
 
     @Override
     public String toString() {
-      return STR."\{mutabilityKind} \{ref ? "ref " : ""}\{identifier}\{(type != null) ? (STR.": \{type}") : ""}";
+      return STR."\{mutabilityKind} \{ref ? "ref " : ""}\{lexeme}\{(type != null) ? (STR.": \{type}") : ""}";
     }
 
     @Override
@@ -791,7 +791,7 @@ public class Ast {
   @AllArgsConstructor
   public static class Impl implements Expression {
 
-    Identifier traitIdentifier;
+    Lexeme traitLexeme;
     Expression forExpression;
     Block block;
     Expression[] with;

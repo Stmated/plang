@@ -116,10 +116,10 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
             final var t = Character.getType(c);
             if (isLetter(t)) {
 
-              // This is where we either end up with a keyword, or an identifier
+              // This is where we either end up with a keyword, or an lexeme
               if (c == '_') {
 
-                // This is for sure an identifier, advance the whole word.
+                // This is for sure an lexeme, advance the whole word.
                 yield this.advanceIdentifier();
               } else {
                 backtrack(c);
@@ -242,7 +242,7 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
       final var t = Character.getType(c);
       if (isNotLetter(t) && isNotNumber(t)) {
 
-        // The identifier can only be letters and number.
+        // The lexeme can only be letters and number.
         // If anything else, then it is the end of the keyword.
         break;
       }
@@ -250,14 +250,14 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
       node = node.children.get(c);
       if (node == null) {
 
-        // Word not found. So it is an identifier. Advance forward as such.
+        // Word not found. So it is an lexeme. Advance forward as such.
         backtrack(c);
         return this.advanceIdentifier();
       } else if (node.tokenType != null) {
         longestKeyword = node.tokenType;
       } else if (longestKeyword != null) {
 
-        // We've moved past a potential keyword hit. Back to being an identifier.
+        // We've moved past a potential keyword hit. Back to being an lexeme.
         longestKeyword = null;
       }
     }

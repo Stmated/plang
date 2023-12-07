@@ -25,10 +25,15 @@ public record BitWidth(int value, boolean explicit) {
       return true;
     }
 
-    if (!(obj instanceof BitWidth)) {
+    if (!(obj instanceof BitWidth other)) {
       return false;
     }
 
-    return ((BitWidth) obj).value == this.value;
+    return other.value == this.value && other.explicit == this.explicit;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(value, explicit);
   }
 }

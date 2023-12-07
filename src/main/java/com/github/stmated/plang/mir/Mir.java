@@ -12,6 +12,7 @@ import jakarta.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.Objects;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -67,6 +68,9 @@ public class Mir {
     }
   }
 
+  /**
+   * TODO: This should be a terminal instruction which has a "success" and a "fail" path (for GC and other unwind)
+   */
   @Value
   @EqualsAndHashCode(callSuper = true)
   public static class InstrCall extends AbstractInstr {
@@ -132,8 +136,9 @@ public class Mir {
     }
   }
 
-  @Value
+  @Data
   @EqualsAndHashCode(callSuper = true)
+  @AllArgsConstructor
   public static class InstrCreateFn extends AbstractInstr {
 
     MirNode entry;
@@ -338,6 +343,18 @@ public class Mir {
     @Override
     public Ty ty() {
       return store.ty();
+    }
+  }
+
+  @Value
+  @EqualsAndHashCode(callSuper = true)
+  public static class InstrReference extends AbstractInstr {
+
+    Instr target;
+
+    @Override
+    public Ty ty() {
+      return target.ty();
     }
   }
 

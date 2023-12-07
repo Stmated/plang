@@ -1,7 +1,9 @@
 package com.github.stmated.plang.ty;
 
 import java.util.Arrays;
+import lombok.Builder;
 
+@Builder(toBuilder = true)
 public record TyFn(
   TyParam[] parameters,
   boolean vararg,
@@ -14,6 +16,6 @@ public record TyFn(
     final var parameterStrings = Arrays.stream(parameters()).map(TyParam::toString).toList();
     final var parametersString = String.join(", ", parameterStrings);
     final var returnString = returnTy().toShortString();
-    return STR."\{returnString}(\{parametersString}\{vararg ? ", ..." : ""})";
+    return STR."(\{parametersString}\{vararg ? ", ..." : ""}): \{returnString}";
   }
 }

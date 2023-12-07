@@ -11,32 +11,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 record MirScope(
   MirScope parent,
   String name,
+  /**
+   * TODO: Replace the key from String to a Hir.Dec -- which is a cleaner key and sort of anonymous
+   */
   Map<String, List<Instr>> map,
   Map<String, AtomicInteger> idMap
 ) {
 
   MirScope(MirScope parent, String name) {
     this(parent, name, new HashMap<>(), new HashMap<>());
-  }
-
-  MirScope(MirScope parent, String name, Map<String, List<Instr>> map, Map<String, AtomicInteger> idMap) {
-    this.parent = parent;
-    this.name = name;
-    this.map = map;
-    this.idMap = idMap;
-  }
-
-  /**
-   * TODO: This stuff with uniqueId is probably wrong and needs some cleanup/rethinking/simplification
-   */
-  public MirIdentifierId getLatestUniqueId(String name) {
-
-    final var earliestCounter = getEarliestCounter(name);
-    if (earliestCounter != null) {
-      return new MirIdentifierId(name, null, earliestCounter.get());
-    }
-
-    return null;
   }
 
   public MirIdentifierId newUniqueId(String name) {

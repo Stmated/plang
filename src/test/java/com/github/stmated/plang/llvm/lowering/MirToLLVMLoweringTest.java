@@ -36,8 +36,10 @@ class MirToLLVMLoweringTest {
         new BinaryOperation(
           new Literal("1", Ty.INTEGER),
           BinaryOperationKind.ADD,
-          new Literal("2", Ty.INTEGER)
-        )
+          new Literal("2", Ty.INTEGER),
+          null
+        ),
+        null
       )
     }));
 
@@ -427,16 +429,39 @@ class MirToLLVMLoweringTest {
 
   @Test
   @SneakyThrows
-  void testFunctionCallAndContinue() {
+  void testClosure() {
 
     final var code = """
-            
       val a = 10;
       val fn = (b: int, c: int) => a + b + c;
             
       val d = fn(1, 2); // 13
       val e = fn(3, 4); // 17
       val f = a + d + e; // 40
+            
+      return f;
+      """;
+
+    final var options = PlangRunOptions.builder()
+      .build();
+
+    Assertions.assertEquals(40, Plang.codeToResult(code, options).resultValue());
+  }
+
+  @Test
+  @SneakyThrows
+  void testClosure2() {
+
+    final var code = """
+      val a = 1;
+      val fn = (b: int) => {
+        val fn2 = (c: int) => a + b + c;
+        val d = fn2(2);
+        return a + b + d;
+      }
+            
+      val e = fn(3);
+      val f = a + e;
             
       return f;
       """;
@@ -460,7 +485,6 @@ class MirToLLVMLoweringTest {
     final var target = new File(STR."target/\{randomFile}").getAbsoluteFile();
 
     final var code = """
-            
       val fopen = (filename: string, mode: *char): *opaque;
       val fclose = (fp: *opaque): int;
       val fprintf = (fp: *opaque, c: string, ...): int;
@@ -499,6 +523,10 @@ class MirToLLVMLoweringTest {
 
     final var randomFile = STR."\{UUID.randomUUID().toString()}.txt";
     final var target = new File(STR."target/\{randomFile}").getAbsoluteFile();
+
+    // TODO: Errors remaining
+    //        * "Changed function scope" is never created because it only creates the "Function scope"
+    //        * Something is seriously wrong with a lot of stuff -- go back to simpler test cases that tests specific things.
 
     final var code = """
       val fopen = (filePath: string, mode: *char): *opaque;
@@ -550,6 +578,7 @@ class MirToLLVMLoweringTest {
       testFunction();
       fprintf(fp, globalVar); // Changed global
       fclose(fp);
+      return 0;
       """.formatted(target.getAbsolutePath());
 
     try {

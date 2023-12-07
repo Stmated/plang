@@ -50,7 +50,7 @@ public class ThirToLLVMLowering {
       case Hir.Call hir -> lower_call(hir);
       case Hir.Conditional hir -> lower_conditional(hir);
       case Hir.Block hir -> lower_block(hir);
-      case Hir.VariableDeclaration hir -> lower_variable_declaration(hir);
+      case Hir.Dec hir -> lower_variable_declaration(hir);
       case Hir.Assignment hir -> lower_assignment(hir);
       case Hir.Identifier hir -> lower_identifier(hir);
       case Hir.Loop hir -> lower_loop(hir);
@@ -127,7 +127,7 @@ public class ThirToLLVMLowering {
     return null;
   }
 
-  private LoweringResult lower_variable_declaration(Hir.VariableDeclaration hir) {
+  private LoweringResult lower_variable_declaration(Hir.Dec hir) {
     return null;
   }
 

@@ -19,9 +19,12 @@ public class MirNode {
 
   @Nonnull
   List<Instr> instructions;
+
+  /**
+   * @deprecated Remove and instead work with the last instruction being a terminal instruction
+   */
   @Nonnull
-  List<MirNode> predecessors;
-  @Nonnull
+  @Deprecated
   List<MirNode> successors;
 
   @NonFinal
@@ -29,7 +32,7 @@ public class MirNode {
   Ty ty;
 
   public MirNode(String name) {
-    this(name, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), null);
+    this(name, new ArrayList<>(), new ArrayList<>(), null);
   }
 
   public boolean isTerminal() {
@@ -43,12 +46,10 @@ public class MirNode {
 
   public void addSuccessor(MirNode successor) {
     successors().add(successor);
-    successor.predecessors().add(this);
   }
 
   @Override
   public String toString() {
-    final var from = String.join(", ", predecessors().stream().map(MirNode::name).toList());
     final var to = String.join(", ", successors().stream().map(MirNode::name).toList());
 
     final var terminalStr = isTerminal()
@@ -59,7 +60,7 @@ public class MirNode {
       ? STR." does \{instructions.getFirst()}"
       : "";
 
-    return STR."\{terminalStr}\{name()} (from [\{from}] to [\{to}])\{singleInstruction}";
+    return STR."\{terminalStr}\{name()} (to [\{to}])\{singleInstruction}";
   }
 
   public String toShortString() {

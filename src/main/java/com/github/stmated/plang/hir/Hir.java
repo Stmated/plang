@@ -1,6 +1,7 @@
 package com.github.stmated.plang.hir;
 
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyValue;
 import jakarta.annotation.Nonnull;
 import java.util.Arrays;
@@ -13,44 +14,110 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class Hir {
 
+  public interface Expression {
+    Ty ty();
+
+    void visit(HirVisitor visitor);
+    Hir.Expression transform(HirTransformer transformer);
+  }
+
+  public interface ExpressionsOwner<Self extends Expression> {
+    Expression[] children();
+    Self children(Expression[] exprs);
+  }
+
+  /**
+   * @deprecated Delete! It makes no sense in the HIR! Either it is one expression, or it is a block with multiple expressions and a result! Delete
+   */
+  @Deprecated(since = "2023-12-07")
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
-  public static class Expressions implements Expression {
+  public static class Expressions implements Expression, ExpressionsOwner<Expressions> {
 
-    final Expression[] children;
+    Expression[] children;
     Ty ty;
+
+    public Expressions(Expression[] children) {
+      this(children, null);
+    }
 
     @Override
     public String toString() {
       final var childStrings = String.join("; ", Arrays.stream(children()).map(Objects::toString).toList());
-      return STR."[\{childStrings}]";
+      return STR."\{childStrings}";
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitExpressions(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformExpressions(this);
     }
   }
 
-  public interface Expression {
-    Ty ty();
+  @Data
+  @AllArgsConstructor
+  public static class Reference implements Expression {
+
+    @Nonnull
+    Hir.Expression target;
+    Ty ty;
+
+    @Override
+    public String toString() {
+      return STR."ref(\{target})";
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitReference(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformReference(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class Argument implements Expression {
 
-    final String label;
+    final Lexeme label;
     @Nonnull
-    final Hir.Expression value;
-    Ty ty;
+    Hir.Expression value;
+
+    @Override
+    public Ty ty() {
+      return value.ty();
+    }
+
+    @Override
+    public String toString() {
+      return (label == null ? "" : (STR."\{label}:")) + value;
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitArgument(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformArgument(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class Array implements Expression {
 
-    final Expression[] elements;
-    final Expression elementType;
-    final Expression length;
+    Expression[] elements;
+    Expression elementType;
+    Expression length;
     Ty ty;
 
     @Override
@@ -61,51 +128,91 @@ public class Hir {
 
       return STR."[\{childrenString};\{elementType()};\{length()}]";
     }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitArray(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformArray(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class ArrayAccess implements Expression {
 
-    final Expression target;
-    final Expression accessor;
+    Expression target;
+    Expression accessor;
     Ty ty;
 
     @Override
     public String toString() {
       return STR."\{target}[\{accessor}]";
     }
-  }
-
-  @Data
-  @AllArgsConstructor
-  @RequiredArgsConstructor
-  public static class Assignment implements Expression {
-
-    final Expression lhs;
-    final Expression rhs;
-    Ty ty;
 
     @Override
-    public String toString() {
-      return STR."\{lhs} = \{rhs}";
+    public void visit(HirVisitor visitor) {
+      visitor.visitArrayAccess(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformArrayAccess(this);
     }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
+  public static class Assignment implements Expression {
+
+    Expression lhs;
+    Expression rhs;
+
+    public Ty ty() {
+      return Ty.VOID;
+    }
+
+    @Override
+    public String toString() {
+      return STR."\{lhs} = \{rhs}";
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitAssignment(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformAssignment(this);
+    }
+  }
+
+  @Data
+  @AllArgsConstructor
   public static class BinaryOperation implements Expression {
 
-    final Expression lhs;
-    final BinaryOperationKind kind;
-    final Expression rhs;
+    Expression lhs;
+    BinaryOperationKind kind;
+    Expression rhs;
     Ty ty;
 
     @Override
     public String toString() {
       return STR."\{this.lhs()} \{kind} \{this.rhs()}";
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitBinaryOperation(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformBinaryOperation(this);
     }
   }
 
@@ -145,10 +252,9 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class Block implements Expression {
 
-    final Expression children;
+    Expression children;
     Ty ty;
 
     @Override
@@ -160,73 +266,127 @@ public class Hir {
 
       return children().ty();
     }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitBlock(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformBlock(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class Call implements Expression {
 
-    final Expression target;
-    final Argument[] arguments;
-    final boolean partial;
+    Expression target;
+    Argument[] arguments;
+    boolean partial;
     Ty ty;
+
+    @Override
+    public String toString() {
+      return STR."\{target}\{partial ? "~" : ""}(\{Arrays.toString(arguments)})";
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitCall(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformCall(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class Conditional implements Expression {
 
-    final Expression predicate;
-    final Expression pass;
-    final Expression fail;
+    Expression predicate;
+    Expression pass;
+     Expression fail;
     Ty ty;
 
     @Override
     public String toString() {
       return STR."if (\{this.predicate()}) then {\{this.pass()}} else {\{this.fail()}}";
     }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitConditional(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformConditional(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class Function implements Expression {
 
-    final FunctionSignature signature;
-    final Expression body;
-    Ty ty;
+    FunctionSignature signature;
+    Expression body;
+
+    @Override
+    public Ty ty() {
+      return signature.ty();
+    }
 
     @Override
     public String toString() {
       return STR."\{signature} => \{body}";
     }
-  }
-
-  @Data
-  @AllArgsConstructor
-  @RequiredArgsConstructor
-  public static class FunctionSignature implements Expression {
-
-    @Nonnull
-    final Parameter[] parameters;
-    final boolean vararg;
-    final Expression returnType;
-    Ty ty;
 
     @Override
-    public String toString() {
+    public void visit(HirVisitor visitor) {
+      visitor.visitFunction(this);
+    }
 
-      final var parameterStrings = Arrays.stream(parameters()).map(Parameter::toString).toList();
-      return STR."(\{String.join(", ", parameterStrings)}\{vararg() ? "..." : ""}): \{returnType}";
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformFunction(this);
     }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
-  public static class Identifier implements Expression {
+  public static class FunctionSignature implements Expression {
+
+    @Nonnull
+    Parameter[] parameters;
+    boolean vararg;
+    Expression returnType;
+    TyFn ty;
+
+    @Override
+    public String toString() {
+
+      final var parameterStrings = Arrays.stream(parameters()).map(Parameter::toString).toList();
+      return STR."(\{String.join(", ", parameterStrings)}\{vararg() ? ", ..." : ""}): \{returnType}";
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitFunctionSignature(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformFunctionSignature(this);
+    }
+  }
+
+  @Data
+  @AllArgsConstructor
+  public static class Lexeme implements Expression {
 
     @Nonnull
     final String name;
@@ -236,18 +396,81 @@ public class Hir {
     public String toString() {
       return name;
     }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitLexeme(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformLexeme(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
+  public static class Identifier implements Expression {
+
+    @Nonnull
+    final Lexeme lexeme;
+    Expression target;
+    Ty ty;
+
+    @Override
+    public String toString() {
+      return STR."\{lexeme} -> \{this.target}";
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitIdentifier(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformIdentifier(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      Identifier that = (Identifier) o;
+      return Objects.equals(lexeme, that.lexeme)
+        && Objects.equals(target, that.target)
+        && Objects.equals(ty, that.ty);
+    }
+
+    @Override
+    public int hashCode() {
+      return System.identityHashCode(this);
+    }
+  }
+
+  @Data
+  @AllArgsConstructor
   public static class Labeling implements Expression {
 
     @Nonnull
-    final Hir.Expression lhs;
+    Hir.Expression lhs;
     @Nonnull
-    final Hir.Expression rhs;
+    Hir.Expression rhs;
     Ty ty;
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitLabeling(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformLabeling(this);
+    }
   }
 
   @Data
@@ -261,15 +484,39 @@ public class Hir {
     public String toString() {
       return STR."\{content}: \{ty.toShortString()}";
     }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitLiteral(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformLiteral(this);
+    }
+
+    @Override
+    public int hashCode() {
+      return System.identityHashCode(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class Loop implements Expression {
 
-    final Expression body;
+    Expression body;
     Ty ty;
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitLoop(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformLoop(this);
+    }
   }
 
   /**
@@ -278,15 +525,24 @@ public class Hir {
    */
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class LoopBreak implements Expression {
 
-    final Expression value;
+    Expression value;
     Ty ty;
 
     @Override
     public String toString() {
       return STR."break\{this.value() == null ? "" : STR." \{this.value()}"}";
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitLoopBreak(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformLoopBreak(this);
     }
   }
 
@@ -307,6 +563,16 @@ public class Hir {
     public String toString() {
       return "continue";
     }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitLoopContinue(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformLoopContinue(this);
+    }
   }
 
   public enum MutabilityKind {
@@ -318,75 +584,120 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class NewByBlock implements Expression {
 
-    final Expression target;
-    final Identifier allocator;
-    final Assignment[] fields;
+    Expression target;
+    Identifier allocator;
+    Assignment[] fields;
     Ty ty;
 
     @Override
     public String toString() {
       return STR."new \{target}{\{Arrays.toString(fields)}}";
     }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitNewByBlock(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformNewByBlock(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class NewByCtor implements Expression {
 
-    final Expression target;
-    final Identifier allocator;
-    final Expression arguments;
+    Expression target;
+    Identifier allocator;
+    Expression arguments;
     Ty ty;
 
     @Override
     public String toString() {
       return STR."new \{target}(\{arguments})";
     }
-  }
-
-  @Data
-  @AllArgsConstructor
-  @RequiredArgsConstructor
-  public static class Not implements Expression {
-
-    final Expression expression;
-    Ty ty;
-  }
-
-  @Data
-  @AllArgsConstructor
-  @RequiredArgsConstructor
-  public static class Parameter implements Expression {
-
-    @Nonnull
-    final Hir.Expression identifier;
-    @Nonnull
-    final Hir.Expression type;
-    final boolean vararg;
-    Ty ty;
 
     @Override
-    public String toString() {
-      return STR."\{identifier}:\{type}";
+    public void visit(HirVisitor visitor) {
+      visitor.visitNewByCtor(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformNewByCtor(this);
     }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
+  public static class Not implements Expression {
+
+    Expression expression;
+    Ty ty;
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitNot(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformNot(this);
+    }
+  }
+
+  @Data
+  @AllArgsConstructor
+  public static class Parameter implements Expression {
+
+    @Nonnull
+    Hir.Lexeme lexeme;
+    @Nonnull
+    Hir.Expression valueType;
+    boolean vararg;
+    Ty ty;
+
+    @Override
+    public String toString() {
+      return STR."\{lexeme}:\{valueType}";
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitParameter(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformParameter(this);
+    }
+  }
+
+  @Data
+  @AllArgsConstructor
   public static class Path implements Expression {
 
     @Nonnull
-    final Expression[] elements;
+    Expression[] elements;
     Ty ty;
 
     @Override
     public String toString() {
       return Arrays.toString(elements);
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitPath(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformPath(this);
     }
   }
 
@@ -394,105 +705,209 @@ public class Hir {
   @AllArgsConstructor
   @RequiredArgsConstructor
   public static class Program implements Expression {
-    final Expression expressions;
+    Expression expressions;
     Ty ty;
+
+    public Program(Expression expressions) {
+      this(expressions, null);
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitProgram(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformProgram(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class Range implements Expression {
-    final Expression lower;
-    final Expression higher;
+    Expression lower;
+    Expression higher;
     Ty ty;
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitRange(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformRange(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class Return implements Expression {
 
-    final Expression expression;
+    Expression expression;
     Ty ty;
 
     @Override
     public String toString() {
       return STR."return \{expression}";
     }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitReturn(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformReturn(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class Struct implements Expression {
 
-    final VariableDeclaration[] declarations;
+    Dec[] declarations;
     Ty ty;
 
     @Override
     public String toString() {
       return STR."struct {\{Arrays.toString(declarations)}}";
     }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitStruct(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformStruct(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class Trait implements Expression {
-    final Expression[] children;
+    Expression[] children;
     Ty ty;
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitTrait(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformTrait(this);
+    }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class Tuple implements Expression {
 
-    final TupleKeyValue[] children;
+    TupleKeyValue[] children;
     Ty ty;
 
     @Override
     public String toString() {
       return STR."(\{String.join(", ", Arrays.stream(children).map(TupleKeyValue::toString).toList())})";
     }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitTuple(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformTuple(this);
+    }
   }
 
+  /**
+   * TODO: Delete in favor of just a simple "Labeling"?
+   */
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
   public static class TupleKeyValue implements Expression {
 
-    final Identifier key;
+    Identifier key;
     @Nonnull
-    final Hir.Expression value;
+    Hir.Expression value;
     Ty ty;
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitTupleKeyValue(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformTupleKeyValue(this);
+    }
   }
 
   @Data
-  @AllArgsConstructor
   public static class TyExpr implements Expression {
 
     Ty ty;
 
+    public TyExpr(Ty ty) {
+      this.ty = Objects.requireNonNull(ty);
+    }
+
     @Override
     public String toString() {
-      return ty.toShortString();
+      return (ty == null) ? null : ty.toShortString();
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitTyExpr(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformTyExpr(this);
     }
   }
 
   @Data
   @AllArgsConstructor
-  @RequiredArgsConstructor
-  public static class VariableDeclaration implements Expression {
+  public static class Dec implements Expression {
 
-    final Identifier identifier;
-    final MutabilityKind mutabilityKind;
-    final Expression type;
-    Ty ty;
+    Lexeme lexeme;
+    MutabilityKind mutabilityKind;
+    Expression valueType;
+
+    public Ty ty() {
+      return Ty.VOID;
+    }
 
     @Override
     public String toString() {
-      return STR."\{mutabilityKind} \{identifier}:\{type}";
+
+      final var mutName = switch (mutabilityKind) {
+        case IMMUTABLE -> "val";
+        case MUTABLE -> "var";
+        case CONSTANT -> "const";
+        default -> "?";
+      };
+
+      return STR."\{mutName} \{lexeme}:\{valueType}";
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitDec(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformDec(this);
     }
   }
 }
