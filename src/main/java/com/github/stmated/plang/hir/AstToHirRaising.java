@@ -161,7 +161,7 @@ public class AstToHirRaising {
     final var allocatorLexeme = lower_lexeme(ast.allocator());
     final var argumentExpr = lower(ast.arguments());
 
-    final var allocatorIdentifier = new Hir.Identifier(allocatorLexeme, null, null);
+    final var allocatorIdentifier = new Hir.Identifier(allocatorLexeme, null);
 
     return switch (argumentExpr) {
       // This is a creation using `new Obj { Val = '1' }` syntax. Which all structs inherently can do.

@@ -166,29 +166,12 @@ public class ThirToMirLowering {
       case Hir.NewByBlock it -> lower_new_by_block(it);
       case Hir.NewByCtor it -> lower_new_by_ctor(it);
       case Hir.Path it -> lower_path(it);
-      case Hir.Reference it -> lower_reference(it);
 
       default -> throw new NotImplementedException(STR."Do not know how to handle '\{expr}' (\{expr.getClass().getSimpleName()})");
     };
 
     hirToMirMap.put(expr, mir);
     return mir;
-  }
-
-//  private Mir.Instr lower_parameter(Hir.Parameter it) {
-//
-//    // TODO: This does not seem right at all.
-//    return getParamGetInstr(it.lexeme().name());
-//  }
-
-  private Mir.Instr lower_reference(Hir.Reference it) {
-
-    final var mir = hirToMirMap.get(it.target());
-    if (mir == null) {
-      throw new IllegalArgumentException("Cannot reference something before it has been lowered");
-    }
-
-    return new Mir.InstrReference(mir);
   }
 
   private Mir.Instr lower_path(Hir.Path it) {
@@ -697,11 +680,6 @@ public class ThirToMirLowering {
   private Mir.Instr lower_variable_declaration(Hir.Dec hir) {
 
     log.debug("Variable declaration has no meaning in CFG, handle assignment expressions");
-
-    // TODO: Is this possible to do? I feel like it most likely is not?
-
-//    mirCtx.scopeStack().peek().add(hir.identifier().name(), );
-
     return null;
   }
 

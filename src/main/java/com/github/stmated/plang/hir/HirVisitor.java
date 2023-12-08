@@ -218,10 +218,6 @@ public interface HirVisitor {
     }
   }
 
-  default void visitReference(Hir.Reference expr) {
-    expr.target().visit(this);
-  }
-
   default void visitLexeme(Hir.Lexeme lexeme) {
 
   }

@@ -120,7 +120,7 @@ public class MirToLLVMLowering {
       arguments[i] = new MirFnArgument(parameter.name(), paramInstr);
     }
 
-    bootNode.instructions().add(scriptFn);
+//    bootNode.instructions().add(scriptFn);
 
     final var callInstr = new Mir.InstrCall(scriptFn, scriptFn.signature(), arguments);
     bootNode.instructions().add(callInstr);

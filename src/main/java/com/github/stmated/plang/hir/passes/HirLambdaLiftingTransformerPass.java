@@ -3,18 +3,30 @@ package com.github.stmated.plang.hir.passes;
 import com.github.stmated.plang.hir.Hir;
 import com.github.stmated.plang.hir.HirTransformer;
 import com.github.stmated.plang.ty.TyFn;
+import com.github.stmated.plang.ty.TyParam;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class HirLambdaLiftingTransformerPass {
 
-  private record FromTo(Hir.Function from, Hir.Function to) {
+  @Data
+  private class FromTo {
+    Hir.Function fromFunction;
+    Hir.Assignment fromAssignment;
+    Hir.Dec fromDec;
+    Hir.Identifier fromIdentifier;
 
+    Hir.Function toFunction;
+    Hir.Assignment toAssignment;
+    Hir.Dec toDec;
+    Hir.Identifier toIdentifier;
   }
 
   public static Hir.Expression pass(Hir.Expression expr) {
@@ -29,66 +41,42 @@ public class HirLambdaLiftingTransformerPass {
   @RequiredArgsConstructor
   private static class CallTransformer implements HirTransformer {
 
-    private final Map<Hir.Expression, Hir.Function> lifted = new LinkedHashMap<>();
-
-    public CallTransformer(List<FromTo> listed) {
-      for (final var fromTo : listed) {
-        lifted.put(fromTo.from(), fromTo.to());
-      }
-    }
-
-    // TODO: Might need to replace all identifiers that point to the original fn to the lifted fn
-
-    @Override
-    public Hir.Expression transformIdentifier(Hir.Identifier expr) {
-
-      final var replacement = lifted.get(expr.target());
-      if (replacement != null) {
-        var i = 0;
-      }
-
-      return HirTransformer.super.transformIdentifier(expr);
-    }
-
-    @Override
-    public Hir.Expression transformAssignment(Hir.Assignment expr) {
-
-      final var replacement = lifted.get(expr.rhs());
-      if (replacement != null) {
-        return new Hir.Assignment(expr.lhs(), new Hir.Reference(replacement, replacement.ty()));
-
-//        return replacement;
-      }
-
-      return HirTransformer.super.transformAssignment(expr);
-    }
+    private final List<FromTo> lifted;
 
     @Override
     public Hir.Expression transformCall(Hir.Call expr) {
 
-      final Hir.Function replacedWith;
+      Hir.Expression target;
       if (expr.target() instanceof Hir.Identifier id) {
-        replacedWith = lifted.get(id.target());
+        target = id.target();
       } else {
-        replacedWith = lifted.get(expr.target());
+        target = expr.target();
+      }
+
+      FromTo replacedWith = null;
+      for (var entry : lifted) {
+        if (target == entry.fromIdentifier() || target == entry.fromFunction() || target == entry.fromAssignment() || target == entry.fromDec()) {
+          replacedWith = entry;
+          break;
+        }
       }
 
       if (replacedWith != null) {
 
-        final var newArguments = new Hir.Argument[replacedWith.signature().parameters().length];
+        final var newArguments = new Hir.Argument[replacedWith.toFunction().signature().parameters().length];
         System.arraycopy(expr.arguments(), 0, newArguments, 0, expr.arguments().length);
 
-        final var parameters = replacedWith.signature().parameters();
+        final var parameters = replacedWith.toFunction().signature().parameters();
         for (var i = expr.arguments().length; i < parameters.length; i++) {
 
           final var parameter = parameters[i];
           newArguments[i] = new Hir.Argument(
             parameter.lexeme(),
-            new Hir.Identifier(parameter.lexeme(), parameter, parameter.ty())
+            new Hir.Identifier(parameter.lexeme(), parameter)
           );
         }
 
-        return new Hir.Call(replacedWith, newArguments, expr.partial(), expr.ty());
+        return new Hir.Call(replacedWith.toIdentifier(), newArguments, expr.partial(), expr.ty());
 
       } else {
         return HirTransformer.super.transformCall(expr);
@@ -109,7 +97,9 @@ public class HirLambdaLiftingTransformerPass {
         final var existingExpressions = expand(program.expressions());
         final var newExpressions = new Hir.Expression[lifted.size() + existingExpressions.length];
         for (var i = 0; i < lifted.size(); i++) {
-          newExpressions[i] = lifted.get(i).to();
+
+          final var replacement = lifted.get(i);
+          newExpressions[i] = replacement.toAssignment();
         }
 
         System.arraycopy(existingExpressions, 0, newExpressions, lifted.size(), existingExpressions.length);
@@ -126,6 +116,37 @@ public class HirLambdaLiftingTransformerPass {
       } else {
         return new Hir.Expression[]{expr};
       }
+    }
+
+    @Override
+    public Hir.Expression transformAssignment(Hir.Assignment expr) {
+
+      // TODO: Figure out way to do this automatically, without needing to replace stuff everywhere
+      //        Feels like there is something behind identifiers pointing to declarations that might be a good idea
+
+      final var originalRhs = expr.rhs();
+      final var transformed = HirTransformer.super.transformAssignment(expr);
+
+      if (transformed instanceof Hir.Assignment transformed_ass) {
+        final var transformedRhs = transformed_ass.rhs();
+
+        if (transformed_ass.lhs() instanceof Hir.Dec ass_lhs_dec && transformedRhs != originalRhs) {
+
+          for (final var entry : lifted) {
+            if (entry.toIdentifier() == transformedRhs) {
+              entry.fromAssignment(expr);
+              entry.fromDec(ass_lhs_dec);
+              break;
+            }
+          }
+
+//          if (ass_lhs_dec.valueType().ty() != transformedRhs.ty()) {
+//            transformed_ass.lhs(new Hir.Dec(ass_lhs_dec.lexeme(), ass_lhs_dec.mutabilityKind(), new Hir.TyExpr(transformedRhs.ty())));
+//          }
+        }
+      }
+
+      return transformed;
     }
 
     @Override
@@ -178,9 +199,13 @@ public class HirLambdaLiftingTransformerPass {
         // We will add these as parameters to the function.
 
         final var parameters = transformed.signature().parameters();
+        final var parameterTys = transformed.signature().ty().parameters();
+
         final var newParameters = new Hir.Parameter[parameters.length + needsClosure.size()];
+        final var newParametersTy = new TyParam[newParameters.length];
 
         System.arraycopy(parameters, 0, newParameters, 0, parameters.length);
+        System.arraycopy(parameterTys, 0, newParametersTy, 0, parameterTys.length);
 
         for (var i = 0; i < needsClosure.size(); i++) {
 
@@ -191,14 +216,45 @@ public class HirLambdaLiftingTransformerPass {
           final var newParam = new Hir.Parameter(id.lexeme(), typeExpr, false, ty);
 
           newParameters[parameters.length + i] = newParam;
+          newParametersTy[parameters.length + i] = new TyParam(id.lexeme().name(), ty);
         }
 
         transformed.signature().parameters(newParameters);
+        transformed.signature().ty(new TyFn(
+          newParametersTy,
+          transformed.signature().vararg(),
+          transformed.signature().returnType().ty()
+        ));
 
-        lifted.add(new FromTo(expr, transformed));
+        final var randomName = UUID.randomUUID().toString();
 
-        // Replace with a reference to the hoisted function.
-        return expr;
+        final var newIdentifier = new Hir.Identifier(
+          new Hir.Lexeme(randomName, null),
+          transformed
+        );
+
+        final var newDec = new Hir.Dec(
+          new Hir.Lexeme(randomName, null),
+          Hir.MutabilityKind.CONSTANT,
+          new Hir.TyExpr(transformed.ty())
+        );
+
+        final var newAssignment = new Hir.Assignment(
+          newDec,
+          transformed
+        );
+
+        final var fromTo = new FromTo();
+        fromTo.fromFunction(expr);
+        fromTo.toFunction(transformed);
+        fromTo.toAssignment(newAssignment);
+        fromTo.toIdentifier(newIdentifier);
+        fromTo.toDec(newDec);
+
+        lifted.add(fromTo);
+
+        // Replace with an identifier pointing to the hoisted function.
+        return newIdentifier;
       } else {
         return expr;
       }

@@ -541,7 +541,7 @@ class LLVMFunctionLowering {
 
       LLVM.LLVMBuildStore(mirToLlvmCtx.builder, valueRes.value(), allocationRes.value());
 
-      return allocationRes; // new LoweringResult(allocationRes.value());
+      return allocationRes;
     } else if (valueRes.type() != null) {
       return valueRes;
     } else {

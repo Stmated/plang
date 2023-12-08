@@ -13,6 +13,7 @@ import com.github.stmated.plang.hir.Hir.Literal;
 import com.github.stmated.plang.hir.Hir.Program;
 import com.github.stmated.plang.hir.Hir.Return;
 import com.github.stmated.plang.ty.Ty;
+import com.github.stmated.plang.ty.TyValueNumberInteger;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -271,7 +272,7 @@ class MirToLLVMLoweringTest {
   })
   void when_create_array_of_uint8_but_give_int_values_expect_exception(String code) {
     final var ex = Assertions.assertThrows(InvalidTypeConversionException.class, () -> Plang.codeToResult(code).resultValue());
-    Assertions.assertEquals(Ty.INTEGER, ex.given());
+    Assertions.assertInstanceOf(TyValueNumberInteger.class, ex.given());
     Assertions.assertEquals(Ty.CHAR, ex.expected());
   }
 
@@ -456,11 +457,11 @@ class MirToLLVMLoweringTest {
       val a = 1;
       val fn = (b: int) => {
         val fn2 = (c: int) => a + b + c;
-        val d = fn2(2);
+        val d = fn2(10);
         return a + b + d;
       }
             
-      val e = fn(3);
+      val e = fn(100);
       val f = a + e;
             
       return f;
@@ -469,7 +470,7 @@ class MirToLLVMLoweringTest {
     final var options = PlangRunOptions.builder()
       .build();
 
-    Assertions.assertEquals(40, Plang.codeToResult(code, options).resultValue());
+    Assertions.assertEquals(213, Plang.codeToResult(code, options).resultValue());
   }
 
   @ParameterizedTest
@@ -543,7 +544,7 @@ class MirToLLVMLoweringTest {
         fprintf(fp, functionVar); // Function scope
         
         if (true) {
-          var ifVar = "If scope";
+          val ifVar = "If scope";
           fprintf(fp, ifVar); //  If scope
         }
         

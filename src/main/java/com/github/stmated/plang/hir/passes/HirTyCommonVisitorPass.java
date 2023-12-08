@@ -164,29 +164,10 @@ public class HirTyCommonVisitorPass {
     }
 
     @Override
-    public void visitReference(Hir.Reference expr) {
-      HirVisitor.super.visitReference(expr);
-      expr.ty(expr.target().ty());
-    }
-
-    @Override
     public void visitBlock(Hir.Block expr) {
       HirVisitor.super.visitBlock(expr);
       if (Tys.isInferred(expr.ty())) {
         expr.ty(expr.children().ty());
-      }
-    }
-
-    @Override
-    public void visitIdentifier(Hir.Identifier expr) {
-      HirVisitor.super.visitIdentifier(expr);
-
-      if (expr.target() instanceof Hir.Dec dec) {
-        expr.ty(dec.valueType().ty());
-      } else if (expr.target() instanceof Hir.Parameter param) {
-        expr.ty(param.valueType().ty());
-      } else {
-        expr.ty(expr.target().ty());
       }
     }
 

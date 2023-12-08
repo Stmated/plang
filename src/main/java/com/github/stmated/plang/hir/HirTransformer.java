@@ -91,9 +91,9 @@ public interface HirTransformer {
   }
 
   default Hir.Expression transformAssignment(Hir.Assignment expr) {
-    expr.lhs(transformAssignmentLhs(expr.lhs()));
-    expr.rhs(transformAssignmentRhs(expr.rhs()));
-    return expr;
+    final var lhs = transformAssignmentLhs(expr.lhs());
+    final var rhs = transformAssignmentRhs(expr.rhs());
+    return new Hir.Assignment(lhs, rhs);
   }
 
   default Hir.Expression transformAssignmentLhs(Hir.Expression expr) {
@@ -301,11 +301,6 @@ public interface HirTransformer {
   default Hir.Expression transformCall(Hir.Call expr) {
     expr.target(expr.target().transform(this));
     expr.arguments(batch(expr.arguments(), Hir.Argument.class));
-    return expr;
-  }
-
-  default Hir.Expression transformReference(Hir.Reference expr) {
-    expr.target(expr.target().transform(this));
     return expr;
   }
 

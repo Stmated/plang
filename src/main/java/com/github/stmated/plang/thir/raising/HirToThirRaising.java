@@ -93,14 +93,9 @@ public class HirToThirRaising {
       case Hir.NewByCtor it -> investigate_new_by_ctor(it);
       case Hir.Path it -> investigate_path(it);
       case Hir.Block it -> investigate_block(it);
-      case Hir.Reference it -> investigate_reference(it);
       case Hir.Parameter it -> throw new IllegalArgumentException(STR."A Parameter itself (\{it}) does not have a type (yet?). Resolve it higher in call chain");
       default -> throw new UnexpectedExpressionException(e);
     };
-  }
-
-  private Ty investigate_reference(Hir.Reference it) {
-    return investigate(it.target());
   }
 
   private Ty investigate_block(Hir.Block it) {
@@ -124,11 +119,14 @@ public class HirToThirRaising {
             case TyStruct struct -> {
 
               final var field = Arrays.stream(struct.fields())
-                .filter(f -> f.name().equals(identifier.lexeme()))
+                .filter(f -> f.name().equals(identifier.lexeme().name()))
                 .findFirst().orElseThrow();
 
               pointer = field.ty();
-              identifier.ty(pointer);
+
+              // TODO: Need to set this again?
+//              identifier.target()
+//              identifier.ty(pointer);
             }
             default -> throw new UnexpectedExpressionException(current);
           }
@@ -399,7 +397,8 @@ public class HirToThirRaising {
         case Hir.Identifier id -> {
           final var knownTypeByName = Tys.fromString(id.lexeme().name(), machineTarget);
           if (knownTypeByName != null) {
-            id.ty(knownTypeByName);
+            // TODO: This is handled by something else now?
+//            id.ty(knownTypeByName);
             yield knownTypeByName;
           } else {
             yield investigate(hir);

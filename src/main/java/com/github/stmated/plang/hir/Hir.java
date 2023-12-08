@@ -3,6 +3,9 @@ package com.github.stmated.plang.hir;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyValue;
+import com.github.stmated.plang.ty.TyValueKind;
+import com.github.stmated.plang.ty.TyValueNumber;
+import com.github.stmated.plang.ty.TyValueString;
 import jakarta.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.Objects;
@@ -16,6 +19,14 @@ public class Hir {
 
   public interface Expression {
     Ty ty();
+
+    /**
+     * Difference between this and ty is that this is the value that a construct represents.
+     * For example, a Dec is "void" itself but there is always a value ty behind it. This gets that ty.
+     */
+    default Ty valueTy() {
+      return this.ty();
+    }
 
     void visit(HirVisitor visitor);
     Hir.Expression transform(HirTransformer transformer);
@@ -55,30 +66,6 @@ public class Hir {
     @Override
     public Expression transform(HirTransformer transformer) {
       return transformer.transformExpressions(this);
-    }
-  }
-
-  @Data
-  @AllArgsConstructor
-  public static class Reference implements Expression {
-
-    @Nonnull
-    Hir.Expression target;
-    Ty ty;
-
-    @Override
-    public String toString() {
-      return STR."ref(\{target})";
-    }
-
-    @Override
-    public void visit(HirVisitor visitor) {
-      visitor.visitReference(this);
-    }
-
-    @Override
-    public Expression transform(HirTransformer transformer) {
-      return transformer.transformReference(this);
     }
   }
 
@@ -176,8 +163,17 @@ public class Hir {
     }
 
     @Override
+    public Ty valueTy() {
+      return rhs.valueTy();
+    }
+
+    @Override
     public String toString() {
-      return STR."\{lhs} = \{rhs}";
+      if (lhs instanceof Hir.Dec dec) {
+        return STR."\{dec.toShortString()} = \{rhs}";
+      } else {
+        return STR."\{lhs} = \{rhs}";
+      }
     }
 
     @Override
@@ -289,7 +285,8 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."\{target}\{partial ? "~" : ""}(\{Arrays.toString(arguments)})";
+      final var argumentStrings = String.join(", ", Arrays.stream(arguments).map(Argument::toString).toList());
+      return STR."\{target}\{partial ? "~" : ""}(\{argumentStrings})";
     }
 
     @Override
@@ -342,7 +339,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."\{signature} => \{body}";
+      return STR."\{signature} => {...}";
     }
 
     @Override
@@ -353,6 +350,23 @@ public class Hir {
     @Override
     public Expression transform(HirTransformer transformer) {
       return transformer.transformFunction(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      Function function = (Function) o;
+      return Objects.equals(signature, function.signature) && Objects.equals(body, function.body);
+    }
+
+    @Override
+    public int hashCode() {
+      return System.identityHashCode(this);
     }
   }
 
@@ -415,11 +429,15 @@ public class Hir {
     @Nonnull
     final Lexeme lexeme;
     Expression target;
-    Ty ty;
+
+    @Override
+    public Ty ty() {
+      return (this.target != null) ? this.target.valueTy() : null;
+    }
 
     @Override
     public String toString() {
-      return STR."\{lexeme} -> \{this.target}";
+      return STR."\{lexeme}"; // -> \{this.target}";
     }
 
     @Override
@@ -442,8 +460,7 @@ public class Hir {
       }
       Identifier that = (Identifier) o;
       return Objects.equals(lexeme, that.lexeme)
-        && Objects.equals(target, that.target)
-        && Objects.equals(ty, that.ty);
+        && Objects.equals(target, that.target);
     }
 
     @Override
@@ -482,7 +499,23 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."\{content}: \{ty.toShortString()}";
+
+      if (ty instanceof TyValueNumber num) {
+        return switch (num.getValueKind()) {
+          case INTEGER -> switch (num.width().value()) {
+            case 32 -> content;
+            default -> content + (num.signed() ? "s" : "u") + num.radix();
+          };
+          case FLOAT -> STR."\{content}f";
+          case DOUBLE -> STR."\{content}m";
+          case DECIMAL -> STR."\{content}d";
+          default -> content;
+        };
+      } else if (ty instanceof TyValueString) {
+        return STR."\"\{content}\"";
+      } else {
+        return STR."\{content}: \{ty.toShortString()}";
+      }
     }
 
     @Override
@@ -660,6 +693,11 @@ public class Hir {
     Hir.Expression valueType;
     boolean vararg;
     Ty ty;
+
+    @Override
+    public Ty valueTy() {
+      return (this.valueType != null) ? valueType.ty() : null;
+    }
 
     @Override
     public String toString() {
@@ -873,6 +911,23 @@ public class Hir {
     public Expression transform(HirTransformer transformer) {
       return transformer.transformTyExpr(this);
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      TyExpr tyExpr = (TyExpr) o;
+      return Objects.equals(ty, tyExpr.ty);
+    }
+
+    @Override
+    public int hashCode() {
+      return System.identityHashCode(this);
+    }
   }
 
   @Data
@@ -888,16 +943,23 @@ public class Hir {
     }
 
     @Override
-    public String toString() {
+    public Ty valueTy() {
+      return (this.valueType != null) ? this.valueType.ty() : null;
+    }
 
+    @Override
+    public String toString() {
+      return STR."\{toShortString()}: \{valueType}";
+    }
+
+    public String toShortString() {
       final var mutName = switch (mutabilityKind) {
         case IMMUTABLE -> "val";
         case MUTABLE -> "var";
         case CONSTANT -> "const";
-        default -> "?";
       };
 
-      return STR."\{mutName} \{lexeme}:\{valueType}";
+      return STR."\{mutName} \{lexeme}";
     }
 
     @Override

@@ -22,7 +22,7 @@ public class HirLexemeToIdentifierTransformerPass {
     public Hir.Expression transformLexeme(Hir.Lexeme expr) {
 
       if (depth == 0) {
-        return new Hir.Identifier(expr, null, expr.ty());
+        return new Hir.Identifier(expr, null);
       } else {
         return HirTransformer.super.transformLexeme(expr);
       }
