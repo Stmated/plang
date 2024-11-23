@@ -16,7 +16,7 @@ public abstract class LLVMException extends RuntimeException {
   @Override
   public String toString() {
     if (this.getDetails() != null) {
-      return STR."\{this.getMessage()} - \{this.getDetails()}";
+      return this.getMessage() + " - " + this.getDetails();
     } else {
       return this.getMessage();
     }

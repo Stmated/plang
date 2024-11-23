@@ -15,7 +15,7 @@ public record TyValueNumberInteger(byte radix, BitWidth width, boolean signed, E
 
   @Override
   public String toString() {
-    return STR."\{signed ? "" : "u"}int\{width}\{radix == 10 ? "" : STR."base\{radix}"}";
+    return (signed ? "" : "u") + "int" + width + (radix == 10 ? "" : "base" + radix);
   }
 
   @Override

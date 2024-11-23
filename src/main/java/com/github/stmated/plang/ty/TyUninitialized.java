@@ -6,6 +6,6 @@ public record TyUninitialized<T extends Ty>(
 
   @Override
   public String toString() {
-    return STR."Uninitialized \{this.inner().toShortString()}";
+    return "Uninitialized " + this.inner().toShortString();
   }
 }

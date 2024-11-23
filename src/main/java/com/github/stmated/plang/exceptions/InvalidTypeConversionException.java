@@ -11,7 +11,7 @@ public class InvalidTypeConversionException extends RuntimeException {
   private transient final Ty expected;
 
   public InvalidTypeConversionException(String message, Throwable cause, Ty given, Ty expected) {
-    super(STR."\{message}. '\{given}' should be '\{expected}'", cause);
+    super(message + ". '" + given + "' should be '" + expected + "'", cause);
     this.given = given;
     this.expected = expected;
   }

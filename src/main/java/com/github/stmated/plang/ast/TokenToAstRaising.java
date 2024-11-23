@@ -531,7 +531,7 @@ public class TokenToAstRaising {
     // NOTE: Ugly, but we might not want to support anything else
     final var identifier = parseIdentifier();
 
-    return new Ast.Lexeme(STR."*\{identifier.name()}");
+    return new Ast.Lexeme("*" + identifier.name());
   }
 
   private final Pattern PATTERN_INTEGER_SUFFIX = Pattern.compile("\\d+([iu])(\\d+)");
@@ -609,7 +609,7 @@ public class TokenToAstRaising {
     if (potentialNumber != null) {
 
       if (potentialNumber instanceof Ast.Literal literal && literal.ty().isNumber()) {
-        return new Ast.Literal(STR."-\{literal.content()}", literal.ty());
+        return new Ast.Literal("-" + literal.content(), literal.ty());
       } else {
         return new Ast.Negate(potentialNumber);
       }

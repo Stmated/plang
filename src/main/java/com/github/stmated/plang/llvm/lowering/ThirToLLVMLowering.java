@@ -67,7 +67,7 @@ public class ThirToLLVMLowering {
       case Hir.NewByCtor it -> lower_new_by_ctor(it);
       case Hir.Path it -> lower_path(it);
 
-      default -> throw new NotImplementedException(STR."Do not know how to handle '\{expr}' (\{expr.getClass().getSimpleName()})");
+      default -> throw new NotImplementedException("Do not know how to handle '" + expr + "' (" + expr.getClass().getSimpleName() + ")");
     };
   }
 
@@ -183,7 +183,7 @@ public class ThirToLLVMLowering {
 
   public ArrayAndSize createCharArray(String str) {
 
-    final var bytes = (STR."\{str}\0").getBytes(StandardCharsets.UTF_8);
+    final var bytes = (str + "\u0000").getBytes(StandardCharsets.UTF_8);
     final var charArray = new LLVMValueRef[bytes.length];
     final var elementTy = Ty.CHAR;
     final var charType = typeResolver.resolve(elementTy);

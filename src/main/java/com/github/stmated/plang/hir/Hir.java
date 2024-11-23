@@ -3,7 +3,6 @@ package com.github.stmated.plang.hir;
 import com.github.stmated.plang.ty.Ty;
 import com.github.stmated.plang.ty.TyFn;
 import com.github.stmated.plang.ty.TyValue;
-import com.github.stmated.plang.ty.TyValueKind;
 import com.github.stmated.plang.ty.TyValueNumber;
 import com.github.stmated.plang.ty.TyValueString;
 import jakarta.annotation.Nonnull;
@@ -34,7 +33,7 @@ public class Hir {
 
   public interface ExpressionsOwner<Self extends Expression> {
     Expression[] children();
-    Self children(Expression[] exprs);
+    Self children(Expression[] expressions);
   }
 
   /**
@@ -54,8 +53,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      final var childStrings = String.join("; ", Arrays.stream(children()).map(Objects::toString).toList());
-      return STR."\{childStrings}";
+      return String.join("; ", Arrays.stream(children()).map(Objects::toString).toList());
     }
 
     @Override
@@ -84,7 +82,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return (label == null ? "" : (STR."\{label}:")) + value;
+      return "%s%s".formatted(label == null ? "" : ("%s:".formatted(label)), value);
     }
 
     @Override
@@ -113,7 +111,7 @@ public class Hir {
       final var childrenStrings = Arrays.stream(elements()).map(Object::toString).toList();
       final var childrenString = String.join(", ", childrenStrings);
 
-      return STR."[\{childrenString};\{elementType()};\{length()}]";
+      return "[%s;%s;%s]".formatted(childrenString, elementType(), length());
     }
 
     @Override
@@ -137,7 +135,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."\{target}[\{accessor}]";
+      return "%s[%s]".formatted(target, accessor);
     }
 
     @Override
@@ -170,9 +168,9 @@ public class Hir {
     @Override
     public String toString() {
       if (lhs instanceof Hir.Dec dec) {
-        return STR."\{dec.toShortString()} = \{rhs}";
+        return "%s = %s".formatted(dec.toShortString(), rhs);
       } else {
-        return STR."\{lhs} = \{rhs}";
+        return "%s = %s".formatted(lhs, rhs);
       }
     }
 
@@ -198,7 +196,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."\{this.lhs()} \{kind} \{this.rhs()}";
+      return "%s %s %s".formatted(this.lhs(), kind, this.rhs());
     }
 
     @Override
@@ -286,7 +284,7 @@ public class Hir {
     @Override
     public String toString() {
       final var argumentStrings = String.join(", ", Arrays.stream(arguments).map(Argument::toString).toList());
-      return STR."\{target}\{partial ? "~" : ""}(\{argumentStrings})";
+      return "%s%s(%s)".formatted(target, partial ? "~" : "", argumentStrings);
     }
 
     @Override
@@ -311,7 +309,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."if (\{this.predicate()}) then {\{this.pass()}} else {\{this.fail()}}";
+      return "if (%s) then {%s} else {%s}".formatted(this.predicate(), this.pass(), this.fail());
     }
 
     @Override
@@ -339,7 +337,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."\{signature} => {...}";
+      return "%s => {...}".formatted(signature);
     }
 
     @Override
@@ -384,7 +382,7 @@ public class Hir {
     public String toString() {
 
       final var parameterStrings = Arrays.stream(parameters()).map(Parameter::toString).toList();
-      return STR."(\{String.join(", ", parameterStrings)}\{vararg() ? ", ..." : ""}): \{returnType}";
+      return "(%s%s): %s".formatted(String.join(", ", parameterStrings), vararg() ? ", ..." : "", returnType);
     }
 
     @Override
@@ -437,7 +435,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."\{lexeme}"; // -> \{this.target}";
+      return Objects.toString(lexeme); // -> \{this.target}";
     }
 
     @Override
@@ -506,15 +504,15 @@ public class Hir {
             case 32 -> content;
             default -> content + (num.signed() ? "s" : "u") + num.radix();
           };
-          case FLOAT -> STR."\{content}f";
-          case DOUBLE -> STR."\{content}m";
-          case DECIMAL -> STR."\{content}d";
+          case FLOAT -> "%sf".formatted(content);
+          case DOUBLE -> "%sm".formatted(content);
+          case DECIMAL -> "%sd".formatted(content);
           default -> content;
         };
       } else if (ty instanceof TyValueString) {
-        return STR."\"\{content}\"";
+        return "\"%s\"".formatted(content);
       } else {
-        return STR."\{content}: \{ty.toShortString()}";
+        return "%s: %s".formatted(content, ty.toShortString());
       }
     }
 
@@ -565,7 +563,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."break\{this.value() == null ? "" : STR." \{this.value()}"}";
+      return "break%s".formatted(this.value() == null ? "" : " %s".formatted(this.value()));
     }
 
     @Override
@@ -626,7 +624,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."new \{target}{\{Arrays.toString(fields)}}";
+      return "new %s{%s}".formatted(target, Arrays.toString(fields));
     }
 
     @Override
@@ -651,7 +649,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."new \{target}(\{arguments})";
+      return "new %s(%s)".formatted(target, arguments);
     }
 
     @Override
@@ -701,7 +699,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."\{lexeme}:\{valueType}";
+      return "%s:%s".formatted(lexeme, valueType);
     }
 
     @Override
@@ -788,7 +786,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."return \{expression}";
+      return "return %s".formatted(expression);
     }
 
     @Override
@@ -811,7 +809,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."struct {\{Arrays.toString(declarations)}}";
+      return "struct {%s}".formatted(Arrays.toString(declarations));
     }
 
     @Override
@@ -851,7 +849,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."(\{String.join(", ", Arrays.stream(children).map(TupleKeyValue::toString).toList())})";
+      return "(%s)".formatted(String.join(", ", Arrays.stream(children).map(TupleKeyValue::toString).toList()));
     }
 
     @Override
@@ -949,7 +947,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return STR."\{toShortString()}: \{valueType}";
+      return "%s: %s".formatted(toShortString(), valueType);
     }
 
     public String toShortString() {
@@ -959,7 +957,7 @@ public class Hir {
         case CONSTANT -> "const";
       };
 
-      return STR."\{mutName} \{lexeme}";
+      return "%s %s".formatted(mutName, lexeme);
     }
 
     @Override

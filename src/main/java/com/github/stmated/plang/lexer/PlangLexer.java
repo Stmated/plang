@@ -565,7 +565,7 @@ public class PlangLexer implements AutoCloseable, Iterator<Token> {
               }
 
             } else {
-              throw new IllegalArgumentException(STR."Unknown number suffix '\{c}'");
+              throw new IllegalArgumentException("Unknown number suffix '" + c + "'");
             }
           } else {
 

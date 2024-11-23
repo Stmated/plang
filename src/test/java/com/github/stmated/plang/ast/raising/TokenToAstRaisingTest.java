@@ -380,7 +380,7 @@ class TokenToAstRaisingTest {
 
     @Override
     public String visitLiteral(final Ast.Literal expr) {
-      return STR."  \{expr.content()}\n";
+      return "  " + expr.content() + "\n";
     }
 
     @Override

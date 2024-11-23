@@ -23,7 +23,7 @@ public class ThirToMirCtx {
       return this.parent.getInstructionByName(name);
     }
 
-    throw new IllegalArgumentException(STR."No such instruction '\{name}' found");
+    throw new IllegalArgumentException("No such instruction '" + name + "' found");
   }
 
   public record LoopHandle(MirNode next, MirNode exit) {

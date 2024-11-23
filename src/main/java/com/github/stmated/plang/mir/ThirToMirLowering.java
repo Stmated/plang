@@ -130,7 +130,7 @@ public class ThirToMirLowering {
   }
 
   private Ty getTy(Hir.Expression expr) {
-    return Objects.requireNonNull(expr.ty(), () -> STR."Could not find ty of expr '\{expr}' (\{expr.getClass().getSimpleName()}), fix in THIR stage");
+    return Objects.requireNonNull(expr.ty(), () -> "Could not find ty of expr '%s' (%s), fix in THIR stage".formatted(expr, expr.getClass().getSimpleName()));
   }
 
   private final Map<Hir.Expression, Mir.Instr> hirToMirMap = new HashMap<>();
@@ -167,7 +167,7 @@ public class ThirToMirLowering {
       case Hir.NewByCtor it -> lower_new_by_ctor(it);
       case Hir.Path it -> lower_path(it);
 
-      default -> throw new NotImplementedException(STR."Do not know how to handle '\{expr}' (\{expr.getClass().getSimpleName()})");
+      default -> throw new NotImplementedException("Do not know how to handle '" + expr + "' (" + expr.getClass().getSimpleName() + ")");
     };
 
     hirToMirMap.put(expr, mir);
@@ -193,7 +193,7 @@ public class ThirToMirLowering {
       mirCtx.nodeStack().peek().instructions().add(lastInstr);
     }
 
-    return Objects.requireNonNull(lastInstr, STR."Path '\{Arrays.toString(elements)}' could not be converted into an instruction");
+    return Objects.requireNonNull(lastInstr, "Path '" + Arrays.toString(elements) + "' could not be converted into an instruction");
   }
 
   @Nonnull
@@ -211,7 +211,7 @@ public class ThirToMirLowering {
             }
           }
 
-          throw new IllegalArgumentException(STR."Unknown field '\{lex}'");
+          throw new IllegalArgumentException("Unknown field '" + lex + "'");
         }
         default -> throw new UnexpectedExpressionException(sourceTy);
       };
@@ -238,7 +238,7 @@ public class ThirToMirLowering {
               case Hir.Lexeme lex -> field.name().equals(lex.name());
               default -> throw new UnexpectedExpressionException(f.lhs());
             })
-            .findFirst().orElseThrow(() -> new IllegalArgumentException(STR."Could not find assignment for '\{field.name()}'"));
+            .findFirst().orElseThrow(() -> new IllegalArgumentException("Could not find assignment for '" + field.name() + "'"));
 
           final var rhsInstr = lower(assignment.rhs());
           arguments[i] = rhsInstr;
@@ -303,7 +303,7 @@ public class ThirToMirLowering {
     }
 
     if (lengthInstr == null) {
-      throw new IllegalArgumentException(STR."There is no known size of '\{hir}'");
+      throw new IllegalArgumentException("There is no known size of '" + hir + "'");
     }
 
     final var arrayInstr = new Mir.InstrCreateArray(entries, lengthInstr, arrayTy, elementTy);
@@ -452,7 +452,7 @@ public class ThirToMirLowering {
       case Hir.TyExpr it -> it.ty();
       case Hir.Literal literal -> switch (literal.ty()) {
         case TyValueString _ -> Tys.fromString(literal.content(), mirCtx.machineTarget());
-        default -> throw new IllegalArgumentException(STR."Not valid literal '\{literal}'");
+        default -> throw new IllegalArgumentException("Not valid literal '" + literal + "'");
       };
       default -> getTy(hir);
     };
@@ -555,7 +555,7 @@ public class ThirToMirLowering {
       return paramInstr;
     }
 
-    throw new IllegalArgumentException(STR."There is no variable '\{hir.lexeme()}' found in scope");
+    throw new IllegalArgumentException("There is no variable '%s' found in scope".formatted(hir.lexeme()));
   }
 
   private Mir.InstrGetParam getParamGetInstr(String identifierName) {
@@ -633,7 +633,7 @@ public class ThirToMirLowering {
       }
     }
 
-    throw new IllegalArgumentException(STR."Could not find field '\{lex}' on '\{struct}'");
+    throw new IllegalArgumentException("Could not find field '" + lex + "' on '" + struct + "'");
   }
 
   private Mir.Instr lower_assignment_root_level(Hir.Assignment hir, String name, boolean declare) {
@@ -801,7 +801,7 @@ public class ThirToMirLowering {
         final var phiTy = Tys.merge(a.ty(), b.ty());
 
         if (!Tys.isUsable(phiTy)) {
-          throw new IllegalArgumentException(STR."Merged Phi node for '\{a}' and '\{b}' not usable");
+          throw new IllegalArgumentException("Merged Phi node for '" + a + "' and '" + b + "' not usable");
         }
 
         final var phi = new Mir.InstrPhi(
@@ -899,7 +899,7 @@ public class ThirToMirLowering {
     for (int i = 0; i < arguments.length; i++) {
       final var argument_operand = lower(arguments[i]);
       if (argument_operand == null) {
-        throw new IllegalArgumentException(STR."Argument '\{arguments[i]}' must produce an operand");
+        throw new IllegalArgumentException("Argument '" + arguments[i] + "' must produce an operand");
       } else {
         final var lexeme = arguments[i].label();
         final var lexemeName = (lexeme == null) ? null : lexeme.name();
@@ -918,7 +918,10 @@ public class ThirToMirLowering {
           yield instruction;
         }
         default -> throw new IllegalArgumentException(
-          STR."The target is a \{Hir.Function.class.getSimpleName()} but did not lower to \{Mir.InstrCreateFn.class.getSimpleName()}"
+          "The target is a %s but did not lower to %s".formatted(
+            Hir.Function.class.getSimpleName(),
+            Mir.InstrCreateFn.class.getSimpleName()
+          )
         );
       };
     }

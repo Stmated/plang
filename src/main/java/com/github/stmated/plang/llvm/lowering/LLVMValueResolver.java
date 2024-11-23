@@ -30,7 +30,7 @@ public class LLVMValueResolver {
 
   public ArrayAndSize createCharArray(String str) {
 
-    final var bytes = (STR."\{str}\0").getBytes(StandardCharsets.UTF_8);
+    final var bytes = (str + "\u0000").getBytes(StandardCharsets.UTF_8);
     final var charArray = new LLVMValueRef[bytes.length];
     final var elementTy = Ty.CHAR;
     final var charType = typeResolver.resolve(elementTy);

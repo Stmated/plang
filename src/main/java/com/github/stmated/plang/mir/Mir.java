@@ -96,7 +96,7 @@ public class Mir {
 
     @Override
     public String toString() {
-      return STR."\{lhs.toShortString()} \{kind} \{rhs.toShortString()}";
+      return lhs.toShortString() + " " + kind + " " + rhs.toShortString();
     }
 
     public Instr lhs() {
@@ -127,7 +127,7 @@ public class Mir {
 
     @Override
     public String toString() {
-      return STR."if \{predicate} then \{pass.name()} else \{fail.name()}";
+      return "if " + predicate + " then " + pass.name() + " else " + fail.name();
     }
 
     @Override
@@ -149,7 +149,7 @@ public class Mir {
 
     @Override
     public String toString() {
-      return STR."\{name() == null ? "anon" : name()}\{signature} @ \{entry}";
+      return (name() == null ? "anon" : name()) + "" + signature + " @ " + entry;
     }
 
     @Override
@@ -167,7 +167,7 @@ public class Mir {
 
     @Override
     public String toString() {
-      return STR."\{content}:\{ty.toShortString()}";
+      return content + ":" + ty.toShortString();
     }
   }
 
@@ -196,7 +196,7 @@ public class Mir {
 
     @Override
     public String toString() {
-      return STR."param:\{parameter.name()}";
+      return "param:" + parameter.name();
     }
   }
 
@@ -213,7 +213,7 @@ public class Mir {
 
     @Override
     public String toString() {
-      return STR."Jump To '\{node.name()}'";
+      return "Jump To '" + node.name() + "'";
     }
 
     @Override
@@ -239,10 +239,10 @@ public class Mir {
 
       final var strings = new String[operands.length];
       for (var i = 0; i < strings.length; i++) {
-        strings[i] = STR."\{operands[i].toShortString()} from \{from[i].toShortString()}";
+        strings[i] = "%s from %s".formatted(operands[i].toShortString(), from[i].toShortString());
       }
 
-      return STR."Φ \{String.join(" OR ", strings)}";
+      return "Φ %s".formatted(String.join(" OR ", strings));
     }
 
     @Override
@@ -280,7 +280,7 @@ public class Mir {
 
     @Override
     public String toString() {
-      return STR."new \{allocator} \{ty}(\{Arrays.toString(arguments)})";
+      return "new %s %s(%s)".formatted(allocator, ty, Arrays.toString(arguments));
     }
   }
 
@@ -299,7 +299,7 @@ public class Mir {
       final var elementStrings = Arrays.stream(elements()).map(Object::toString).toList();
       final var elementsString = String.join(", ", elementStrings);
 
-      return STR."[\{elementsString};\{ty().toShortString()};\{length()}]";
+      return "[%s;%s;%s]".formatted(elementsString, ty().toShortString(), length());
     }
   }
 
@@ -313,7 +313,7 @@ public class Mir {
 
     @Override
     public String toString() {
-      return STR."\{target()}[\{accessor}]";
+      return target() + "[" + accessor + "]";
     }
   }
 
@@ -327,7 +327,7 @@ public class Mir {
 
     @Override
     public String toString() {
-      return STR."\{target()}[\{index}]";
+      return target() + "[" + index + "]";
     }
   }
 
@@ -368,7 +368,7 @@ public class Mir {
 
     @Override
     public String toString() {
-      return STR."Store (\{value.toShortString()})";
+      return "Store (" + value.toShortString() + ")";
     }
   }
 
@@ -383,7 +383,7 @@ public class Mir {
 
     @Override
     public String toString() {
-      return STR."\{target()}[\{index}] = \{value}";
+      return target() + "[" + index + "] = " + value;
     }
   }
 
@@ -404,7 +404,7 @@ public class Mir {
 
     @Override
     public String toString() {
-      return STR."return \{instr.toShortString()}";
+      return "return " + instr.toShortString();
     }
 
     @Override

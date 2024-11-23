@@ -130,7 +130,7 @@ public class AstToHirRaising {
       //        Since everything is an expression, if "x" is last expression, then give back "x"
       //        But if it's "x;" then it means we should return "nothing".
       case Ast.NoOp _ -> null;
-      default -> throw new IllegalArgumentException(STR."Unknown AST Expression (\{expr.getClass().getSimpleName()}) '\{expr}'");
+      default -> throw new IllegalArgumentException("Unknown AST Expression (" + expr.getClass().getSimpleName() + ") '" + expr + "'");
     };
   }
 
@@ -540,7 +540,7 @@ public class AstToHirRaising {
           switch (first) {
             case Hir.Assignment hir -> loopFields = new Hir.Expression[]{hir};
             case Hir.Dec hir -> loopFields = new Hir.Expression[]{hir};
-            default -> throw new NotImplementedException(STR."Unknown first for-loop part '\{first}'");
+            default -> throw new NotImplementedException("Unknown first for-loop part '" + first + "'");
           }
 
           final var second = head.children()[1];
@@ -549,25 +549,25 @@ public class AstToHirRaising {
               if (hir.kind().isPredicate()) {
                 loopPredicate = hir;
               } else {
-                throw new IllegalArgumentException(STR."The second for-loop part must be a predicate binary op, not '\{hir}'");
+                throw new IllegalArgumentException("The second for-loop part must be a predicate binary op, not '" + hir + "'");
               }
             }
             case Hir.Call hir -> loopPredicate = hir;
             case Hir.Identifier hir -> loopPredicate = hir;
-            default -> throw new IllegalArgumentException(STR."The second for-loop part cannot be a '\{second}'");
+            default -> throw new IllegalArgumentException("The second for-loop part cannot be a '" + second + "'");
           }
 
           final var third = head.children()[2];
           switch (third) {
             case Hir.Assignment hir -> loopAction = hir;
-            default -> throw new IllegalArgumentException(STR."The second for-loop part cannot be a '\{third}'");
+            default -> throw new IllegalArgumentException("The second for-loop part cannot be a '" + third + "'");
           }
 
         } else {
-          throw new IllegalArgumentException(STR."A for-loop is a three-part expression list, not '\{loweredHead}'");
+          throw new IllegalArgumentException("A for-loop is a three-part expression list, not '" + loweredHead + "'");
         }
       }
-      default -> throw new NotImplementedException(STR."Unknown head expression '\{loweredHead}'");
+      default -> throw new NotImplementedException("Unknown head expression '" + loweredHead + "'");
     }
 
     final var loopExpressions = new Hir.Expression[loopFields.length + 1];

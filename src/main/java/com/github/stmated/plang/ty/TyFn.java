@@ -16,6 +16,6 @@ public record TyFn(
     final var parameterStrings = Arrays.stream(parameters()).map(TyParam::toString).toList();
     final var parametersString = String.join(", ", parameterStrings);
     final var returnString = returnTy().toShortString();
-    return STR."(\{parametersString}\{vararg ? ", ..." : ""}): \{returnString}";
+    return "(" + parametersString + (vararg ? ", ..." : "") + "): " + returnString;
   }
 }

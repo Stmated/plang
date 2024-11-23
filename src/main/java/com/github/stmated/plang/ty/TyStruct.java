@@ -8,6 +8,6 @@ public record TyStruct(
 
   @Override
   public String toString() {
-    return STR."struct {\{Arrays.toString(fields)}}";
+    return "struct {" + Arrays.toString(fields) + "}";
   }
 }

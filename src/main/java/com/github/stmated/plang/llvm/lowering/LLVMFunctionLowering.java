@@ -246,7 +246,7 @@ class LLVMFunctionLowering {
 //          final var argumentTypeRef = LLVMUtils.toLLVMType(mirToLlvmCtx, argumentTy);
           final var valueRef = lower_instruction(argument);
 
-          final var gep = LLVM.LLVMBuildStructGEP2(mirToLlvmCtx.builder, typeRef, ptr, i, STR."sgep\{i}");
+          final var gep = LLVM.LLVMBuildStructGEP2(mirToLlvmCtx.builder, typeRef, ptr, i, "sgep" + i);
           LLVM.LLVMBuildStore(mirToLlvmCtx.builder, valueRef.value(), gep);
         }
 
@@ -301,7 +301,7 @@ class LLVMFunctionLowering {
       final var indices = new PointerPointer<>(1);
       indices.put(0, LLVM.LLVMConstInt(i32Type, i, 0));
 
-      final var elementPtr = LLVM.LLVMBuildInBoundsGEP2(mirToLlvmCtx.builder, elementType, arrayRef, indices, 1, STR."arr_ptr_\{i}");
+      final var elementPtr = LLVM.LLVMBuildInBoundsGEP2(mirToLlvmCtx.builder, elementType, arrayRef, indices, 1, "arr_ptr_" + i);
       LLVM.LLVMBuildStore(mirToLlvmCtx.builder, elementRef.value(), elementPtr);
     }
 
@@ -318,7 +318,7 @@ class LLVMFunctionLowering {
           final var indices = new PointerPointer<>(1);
           indices.put(0, LLVM.LLVMConstInt(i32Type, i, 0));
 
-          final var elementPtr = LLVM.LLVMBuildInBoundsGEP2(mirToLlvmCtx.builder, elementType, arrayRef, indices, 1, STR."arr_ptr_\{i}");
+          final var elementPtr = LLVM.LLVMBuildInBoundsGEP2(mirToLlvmCtx.builder, elementType, arrayRef, indices, 1, "arr_ptr_" + i);
           LLVM.LLVMBuildStore(mirToLlvmCtx.builder, elementRef, elementPtr);
         }
 
@@ -361,7 +361,7 @@ class LLVMFunctionLowering {
     final var structType = Objects.requireNonNullElseGet(
       structRef.type(),
       () -> {
-        log.warn(STR."Did not receive the type from '\{it.target()}', will re-create using its ty");
+        log.warn("Did not receive the type from '" + it.target() + "', will re-create using its ty");
         final var structTy = LLVMTys.normalize(it.target().ty());
         return typeResolver.resolve(structTy);
       }
@@ -386,7 +386,7 @@ class LLVMFunctionLowering {
     final var structType = Objects.requireNonNullElseGet(
       structRef.type(),
       () -> {
-        log.warn(STR."Did not receive the type from '\{it.target()}', will re-create using its ty");
+        log.warn("Did not receive the type from '%s', will re-create using its ty".formatted(it.target()));
         final var structTy = LLVMTys.normalize(it.target().ty());
         return typeResolver.resolve(structTy);
       }
@@ -416,7 +416,7 @@ class LLVMFunctionLowering {
       }
     }
 
-    throw new IllegalArgumentException(STR."Could not find param '\{mir.parameter().name()}'");
+    throw new IllegalArgumentException("Could not find param '%s'".formatted(mir.parameter().name()));
   }
 
   private LoweringResult lower_create_fn(Mir.InstrCreateFn mir) {
@@ -777,11 +777,11 @@ class LLVMFunctionLowering {
     if (instr != null) {
 
       if (instr.name() != null) {
-        return cleanInstrName((prefix == null ? "" : STR."\{prefix}_") + instr.name().label());
+        return cleanInstrName((prefix == null ? "" : prefix + "_") + instr.name().label());
       }
 
       if (instr.ty() != null) {
-        return cleanInstrName((prefix == null ? "" : STR."\{prefix}_") + instr.ty().toShortString());
+        return cleanInstrName((prefix == null ? "" : prefix + "_") + instr.ty().toShortString());
       }
     }
 
@@ -795,7 +795,7 @@ class LLVMFunctionLowering {
     }
 
     if (Character.isDigit(name.charAt(0))) {
-      name = STR."_\{name}";
+      name = "_" + name;
     }
 
     return name.replace("*", "_ptr");
@@ -896,7 +896,7 @@ class LLVMFunctionLowering {
           }
           default -> throw new NotImplementedException("Unknown kind");
         };
-        default -> throw new NotImplementedException(STR."Unknown ty '\{rhst}'");
+        default -> throw new NotImplementedException("Unknown ty '" + rhst + "'");
       };
       case TyValueNumberPrecisioned lnp -> switch (rhst) {
         case TyValueNumberPrecisioned rnp -> switch (mir.kind()) {
@@ -984,9 +984,9 @@ class LLVMFunctionLowering {
 
           yield new RefTyPair(built, newTy);
         }
-        default -> throw new NotImplementedException(STR."Implement widening for '\{b}'");
+        default -> throw new NotImplementedException("Implement widening for '%s'".formatted(b));
       };
-      default -> throw new NotImplementedException(STR."Implement widening for '\{a}'");
+      default -> throw new NotImplementedException("Implement widening for '%s'".formatted(a));
     };
   }
 }

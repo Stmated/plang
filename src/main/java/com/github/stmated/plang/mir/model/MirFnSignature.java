@@ -16,6 +16,6 @@ public record MirFnSignature(
   public String toString() {
 
     final var parameterStrings = Arrays.stream(parameters()).map(Record::toString).toList();
-    return STR."(\{String.join(", ", parameterStrings)}\{vararg() ? ", ..." : ""}): \{returnType}";
+    return "(" + String.join(", ", parameterStrings) + (vararg() ? ", ..." : "") + "): " + returnType;
   }
 }

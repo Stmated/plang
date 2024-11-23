@@ -48,7 +48,7 @@ class MirToLLVMCtx {
   public LoweringResult resolve(Instr miri) {
     return Objects.requireNonNull(
       this.valueLookup.get(miri),
-      () -> STR."Every instruction (\{miri} (\{miri.getClass().getSimpleName()}) that we lookup must be a handled predecessor of when we need to resolve it"
+      () -> "Every instruction (" + miri + " (" + miri.getClass().getSimpleName() + ") that we lookup must be a handled predecessor of when we need to resolve it"
     );
   }
 
@@ -58,12 +58,12 @@ class MirToLLVMCtx {
 
   public void register(Instr miri, LoweringResult ref) {
     if (this.valueLookup.containsKey(miri)) {
-      throw new IllegalArgumentException(STR."Not allowed to register a value ref for '\{miri}' twice!");
+      throw new IllegalArgumentException("Not allowed to register a value ref for '" + miri + "' twice!");
     }
 
     this.valueLookup.put(
       Objects.requireNonNull(miri, "Must give an instruction to register the llvm value ref to"),
-      Objects.requireNonNull(ref, () -> STR."LLVMValueRef of '\{miri}' you registeredd must not be null")
+      Objects.requireNonNull(ref, () -> "LLVMValueRef of '" + miri + "' you registeredd must not be null")
     );
   }
 
@@ -72,7 +72,7 @@ class MirToLLVMCtx {
   }
 
   public LLVMBasicBlockRef resolveBlock(MirNode node) {
-    return Objects.requireNonNull(blockLookup.get(node), STR."Node '\{node}' was not found in first pass of CFG");
+    return Objects.requireNonNull(blockLookup.get(node), "Node '" + node + "' was not found in first pass of CFG");
   }
 
   public void enterFunction(Pair<InstrCreateFn, LLVMValueRef> fnRef, Runnable runnable) {
@@ -83,7 +83,7 @@ class MirToLLVMCtx {
     } finally {
       final var popped = fnStack.pop();
       if (fnRef != popped) {
-        throw new IllegalStateException(STR."Popped the wrong fn, expected '\{fnRef}' got '\{popped}'");
+        throw new IllegalStateException("Popped the wrong fn, expected '" + fnRef + "' got '" + popped + "'");
       }
     }
   }

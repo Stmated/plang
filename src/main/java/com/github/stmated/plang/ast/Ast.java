@@ -23,7 +23,7 @@ public class Ast {
 
     @Override
     public String toString() {
-      return STR."\{lhs} = \{rhs}";
+      return lhs + " = " + rhs;
     }
 
     @Override
@@ -54,7 +54,7 @@ public class Ast {
 
     @Override
     public String toString() {
-      return STR."\{lhs} \{kind} \{rhs}";
+      return lhs + " " + kind + " " + rhs;
     }
 
     @Override
@@ -90,7 +90,7 @@ public class Ast {
     public String toString() {
 
       final var childrenString = Arrays.stream(children).map(Object::toString).collect(Collectors.joining(", "));
-      return STR."[\{childrenString}]";
+      return "[" + childrenString + "]";
     }
 
     @Override
@@ -112,7 +112,7 @@ public class Ast {
 
     @Override
     public String toString() {
-      return STR."\{target}[\{accessor}]";
+      return target + "[" + accessor + "]";
     }
 
     @Override
@@ -213,7 +213,7 @@ public class Ast {
 
     @Override
     public String toString() {
-      return STR."\{lhs}.\{rhs}";
+      return lhs + "." + rhs;
     }
 
     @Override
@@ -401,7 +401,7 @@ public class Ast {
 
     @Override
     public String toString() {
-      return STR."\{lhs}:\{rhs}";
+      return lhs + ":" + rhs;
     }
 
     @Override
@@ -422,7 +422,7 @@ public class Ast {
 
     @Override
     public String toString() {
-      return STR."\{content}:\{ty}";
+      return content + ":" + ty;
     }
 
     @Override
@@ -517,7 +517,7 @@ public class Ast {
 
     @Override
     public String toString() {
-      return STR."new \{allocator} \{target}(\{arguments})";
+      return "new " + allocator + " " + target + "(" + arguments + ")";
     }
 
     @Override
@@ -632,7 +632,7 @@ public class Ast {
 
     @Override
     public String toString() {
-      return STR."...\{expression}";
+      return "..." + expression;
     }
   }
 
@@ -645,7 +645,7 @@ public class Ast {
 
     @Override
     public String toString() {
-      return STR."\{lhs}::\{rhs}";
+      return lhs + "::" + rhs;
     }
 
     @Override
@@ -710,7 +710,7 @@ public class Ast {
 
     @Override
     public String toString() {
-      return STR."$\{lexeme}";
+      return "$" + lexeme;
     }
 
     @Override
@@ -730,7 +730,7 @@ public class Ast {
 
     @Override
     public String toString() {
-      return STR."\{mutabilityKind} \{ref ? "ref " : ""}\{lexeme}\{(type != null) ? (STR.": \{type}") : ""}";
+      return mutabilityKind + " " + (ref ? "ref " : "") + lexeme + ((type != null) ? (": " + type) : "");
     }
 
     @Override

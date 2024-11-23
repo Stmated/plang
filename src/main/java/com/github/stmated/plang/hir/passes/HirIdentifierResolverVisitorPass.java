@@ -23,7 +23,7 @@ public class HirIdentifierResolverVisitorPass {
     expr.visit(visitor);
 
     if (!visitor.notFound.isEmpty()) {
-      throw new IllegalArgumentException(STR."Could not find '\{visitor.notFound}'");
+      throw new IllegalArgumentException("Could not find '" + visitor.notFound + "'");
     }
   }
 

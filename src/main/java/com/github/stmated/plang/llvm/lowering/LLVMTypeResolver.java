@@ -103,7 +103,7 @@ public class LLVMTypeResolver {
 
         yield type;
       }
-      default -> throw new IllegalArgumentException(STR."Do not know how to convert '\{ty.toShortString()}' (\{ty.getClass().getSimpleName()}) into an LLVM type");
+      default -> throw new IllegalArgumentException("Do not know how to convert '%s' (%s) into an LLVM type".formatted(ty.toShortString(), ty.getClass().getSimpleName()));
     };
   }
 

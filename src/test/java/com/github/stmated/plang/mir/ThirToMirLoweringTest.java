@@ -133,7 +133,7 @@ class ThirToMirLoweringTest {
 
     @Override
     public String toString() {
-      return STR."\{from} -> \{to}";
+      return from + " -> " + to;
     }
   }
 
@@ -156,7 +156,7 @@ class ThirToMirLoweringTest {
         final var localEdge = new Edge(node.name(), successor.name());
 
         if (!expected.contains(localEdge)) {
-          Assertions.fail(STR."Encountered unexpected edge: \{localEdge}");
+          Assertions.fail("Encountered unexpected edge: " + localEdge);
         }
 
         remaining.remove(localEdge);
@@ -172,7 +172,7 @@ class ThirToMirLoweringTest {
     }
 
     if (!remaining.isEmpty()) {
-      Assertions.fail(STR."Edges not found:\n\{remaining}\nBut found: \{found}");
+      Assertions.fail("Edges not found:\n" + remaining + "\nBut found: " + found);
     }
   }
 }

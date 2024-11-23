@@ -18,6 +18,6 @@ public record TyValueArray(
 
   @Override
   public String toString() {
-    return STR."[\{elementType().toShortString()};\{size()}]";
+    return "[" + elementType().toShortString() + ";" + size() + "]";
   }
 }

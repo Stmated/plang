@@ -93,7 +93,7 @@ public class HirToThirRaising {
       case Hir.NewByCtor it -> investigate_new_by_ctor(it);
       case Hir.Path it -> investigate_path(it);
       case Hir.Block it -> investigate_block(it);
-      case Hir.Parameter it -> throw new IllegalArgumentException(STR."A Parameter itself (\{it}) does not have a type (yet?). Resolve it higher in call chain");
+      case Hir.Parameter it -> throw new IllegalArgumentException("A Parameter itself (" + it + ") does not have a type (yet?). Resolve it higher in call chain");
       default -> throw new UnexpectedExpressionException(e);
     };
   }
@@ -313,7 +313,7 @@ public class HirToThirRaising {
       case Hir.Identifier id -> {
 
         final var v = id.target().ty(); // scopeStack.peek().get(id.lexeme().name());
-        yield Objects.requireNonNull(v, STR."No function called '\{id.lexeme()}' found in scope");
+        yield Objects.requireNonNull(v, "No function called '" + id.lexeme() + "' found in scope");
       }
       default -> throw new UnexpectedExpressionException(target);
     };
@@ -342,7 +342,7 @@ public class HirToThirRaising {
 
     final var conditional_type = investigate(hir.predicate());
     if (conditional_type != Ty.BOOLEAN) {
-      throw new IllegalArgumentException(STR."The conditional predicate must produce a boolean value, not: \{conditional_type}");
+      throw new IllegalArgumentException("The conditional predicate must produce a boolean value, not: " + conditional_type);
     }
 
     var branch_types = new Ty[2];
@@ -541,7 +541,7 @@ public class HirToThirRaising {
       return expressions.ty(lastType).ty();
     }
 
-    throw new IllegalArgumentException(STR."Could not find type of '\{expressions}'");
+    throw new IllegalArgumentException("Could not find type of '" + expressions + "'");
   }
 
   private Ty investigate_binary_operation(Hir.BinaryOperation hir) {

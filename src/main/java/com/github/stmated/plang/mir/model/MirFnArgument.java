@@ -9,6 +9,6 @@ public record MirFnArgument(
 
   @Override
   public String toString() {
-    return STR."\{name} of \{instruction}";
+    return name + " of " + instruction;
   }
 }

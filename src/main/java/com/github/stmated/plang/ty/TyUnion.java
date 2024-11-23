@@ -23,6 +23,6 @@ public record TyUnion(Ty[] types) implements Ty {
       typeStrings[i] = types[i].toShortString();
     }
 
-    return STR."(\{String.join(" | ", typeStrings)})";
+    return "(" + String.join(" | ", typeStrings) + ")";
   }
 }

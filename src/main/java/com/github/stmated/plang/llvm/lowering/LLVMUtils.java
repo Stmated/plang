@@ -32,7 +32,7 @@ class LLVMUtils {
         throw re;
       }
 
-      throw new IllegalStateException(STR."Could not verify module, because: \{t}");
+      throw new IllegalStateException("Could not verify module, because: " + t);
     } finally {
       error.deallocate();
     }

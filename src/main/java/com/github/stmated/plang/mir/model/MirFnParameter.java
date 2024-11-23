@@ -9,6 +9,6 @@ public record MirFnParameter(
 
   @Override
   public String toString() {
-    return STR."\{name}:\{ty.toShortString()}";
+    return name + ":" + ty.toShortString();
   }
 }

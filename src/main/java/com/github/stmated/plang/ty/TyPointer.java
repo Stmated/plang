@@ -16,6 +16,6 @@ public record TyPointer<T extends Ty>(
 
   @Override
   public String toString() {
-    return STR."\{this.inner().toShortString()}*";
+    return this.inner().toShortString() + "*";
   }
 }

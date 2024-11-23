@@ -22,7 +22,7 @@ public class MirIdentifierId {
       return name;
     }
 
-    return STR."\{name()}_\{id()}";
+    return name() + "_" + id();
   }
 
   public String label() {

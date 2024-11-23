@@ -86,7 +86,7 @@ public class MirToLLVMLowering {
 
       final var mirFnTy = Objects.requireNonNull(
         mirResult.initNode().ty(),
-        () -> STR."You must run \{MirNodeTyPass.class.getSimpleName()}"
+        () -> "You must run " + MirNodeTyPass.class.getSimpleName()
       );
 
       final var simplifiedTy = Tys.simplify(mirFnTy);
@@ -192,7 +192,7 @@ public class MirToLLVMLowering {
       LLVM.LLVMCodeModelDefault
     );
 
-    LLVM.LLVMRunPasses(module, STR."default<O\{options.optLevel()}>", targetMachine, passBuilderOptions);
+    LLVM.LLVMRunPasses(module, "default<O" + options.optLevel() + ">", targetMachine, passBuilderOptions);
 
     if (log.isTraceEnabled()) {
       log.trace(LLVM.LLVMPrintModuleToString(module).getString());
@@ -209,7 +209,7 @@ public class MirToLLVMLowering {
 
       Loader.loadGlobal(Loader.load(LLVM.class));
       if ((err = LLVM.LLVMOrcCreateLLJIT(jit, jitBuilder)) != null) {
-        final var message = STR."Failed to create LLJIT: \{LLVM.LLVMGetErrorMessage(err).getString()}";
+        final var message = "Failed to create LLJIT: " + LLVM.LLVMGetErrorMessage(err).getString();
         LLVM.LLVMConsumeError(err);
         throw new RuntimeException(message);
       }
@@ -217,7 +217,7 @@ public class MirToLLVMLowering {
       final var threadSafeModule = LLVM.LLVMOrcCreateNewThreadSafeModule(module, threadContext);
       final var mainDylib = LLVM.LLVMOrcLLJITGetMainJITDylib(jit);
       if ((err = LLVM.LLVMOrcLLJITAddLLVMIRModule(jit, mainDylib, threadSafeModule)) != null) {
-        final var message = STR."Failed to add LLVM IR module: \{LLVM.LLVMGetErrorMessage(err).getString()}";
+        final var message = "Failed to add LLVM IR module: " + LLVM.LLVMGetErrorMessage(err).getString();
         LLVM.LLVMConsumeError(err);
         throw new RuntimeException(message);
       }
@@ -237,12 +237,12 @@ public class MirToLLVMLowering {
   private static void linkClangWrapper(LLVMContextRef context, LLVMModuleRef module) {
 
     try (final var version = clang.clang_getClangVersion()) {
-      log.debug(STR."CLANG: \{version.getString()}");
+      log.debug("CLANG: " + version.getString());
     }
 
     final var cppPath = "src/main/cpp";
     final var packagePath = Main.class.getPackageName().replace('.', '/');
-    final var wrapperPath = STR."\{cppPath}/\{packagePath}";
+    final var wrapperPath = cppPath + "/" + packagePath;
 
     final var sourceFile = new File(wrapperPath, "wrapper.cc").getAbsoluteFile();
     final var bitCodeFile = new File(wrapperPath, "wrapper.bc").getAbsoluteFile();
@@ -269,13 +269,13 @@ public class MirToLLVMLowering {
               output.append("\n");
             }
 
-            throw new IllegalArgumentException(STR."Compilation error: \{output.toString()}");
+            throw new IllegalArgumentException("Compilation error: " + output.toString());
           } else {
-            log.info(STR."Compilation successful, bitcode written to \{bitCodeFile}");
+            log.info("Compilation successful, bitcode written to " + bitCodeFile);
           }
         }
       } catch (Exception e) {
-        throw new IllegalArgumentException(STR."Exception: \{e.getMessage()}");
+        throw new IllegalArgumentException("Exception: " + e.getMessage());
       }
     }
 
@@ -310,7 +310,7 @@ public class MirToLLVMLowering {
     final var res = new LongPointer(1);
     final var fnName = instrCreateFn.name().getUniqueName();
     if ((err = LLVM.LLVMOrcLLJITLookup(jit, res, fnName)) != null) {
-      final var message = STR."Failed to look up function symbol: \{LLVM.LLVMGetErrorMessage(err).getString()}";
+      final var message = "Failed to look up function symbol: " + LLVM.LLVMGetErrorMessage(err).getString();
       throw new RuntimeException(message);
     }
 
@@ -365,7 +365,7 @@ public class MirToLLVMLowering {
     } else if (pointer instanceof BytePointer p) {
       return p.get();
     } else {
-      throw new NotImplementedException(STR."Have no implemented gettign value of '\{pointer}'");
+      throw new NotImplementedException("Have no implemented gettign value of '" + pointer + "'");
     }
   }
 
@@ -380,7 +380,7 @@ public class MirToLLVMLowering {
     } else if (CharSequence.class.isAssignableFrom(clazz)) {
       return ffi.ffi_type_pointer();
     } else {
-      throw new NotImplementedException(STR."Not implemented ffi type of '\{clazz}'");
+      throw new NotImplementedException("Not implemented ffi type of '" + clazz + "'");
     }
   }
 
@@ -395,7 +395,7 @@ public class MirToLLVMLowering {
         return Double.class;
       }
     } else {
-      throw new NotImplementedException(STR."Not implemented ty conversion for '\{ty}'");
+      throw new NotImplementedException("Not implemented ty conversion for '" + ty + "'");
     }
   }
 
@@ -412,7 +412,7 @@ public class MirToLLVMLowering {
       pp.putString(Objects.toString(o));
       return pp;
     } else {
-      throw new NotImplementedException(STR."Not implemented ffi type '\{o}'");
+      throw new NotImplementedException("Not implemented ffi type '" + o + "'");
     }
   }
 
@@ -425,7 +425,7 @@ public class MirToLLVMLowering {
     } else if (Double.class.isAssignableFrom(clazz)) {
       return new DoublePointer(1);
     } else {
-      throw new NotImplementedException(STR."Not implemented ffi type '\{clazz}'");
+      throw new NotImplementedException("Not implemented ffi type '" + clazz + "'");
     }
   }
 }

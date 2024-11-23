@@ -5,11 +5,11 @@ public class UnexpectedExpressionException extends RuntimeException {
   private final Object expression;
 
   public UnexpectedExpressionException(Object expression) {
-    this(STR."Unknown expression: \{expression} of type \{expression.getClass().getSimpleName()}", expression, null);
+    this("Unknown expression: " + expression + " of type " + expression.getClass().getSimpleName(), expression, null);
   }
 
   public UnexpectedExpressionException(Object expression, Throwable cause) {
-    this(STR."Unknown expression: \{expression} of type \{expression.getClass().getSimpleName()}", expression, cause);
+    this("Unknown expression: " + expression + " of type " + expression.getClass().getSimpleName(), expression, cause);
   }
 
   public UnexpectedExpressionException(String message, Object expression, Throwable cause) {

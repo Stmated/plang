@@ -187,7 +187,7 @@ public class HirTyCommonVisitorPass {
         } else if (signature.ty() instanceof TyFn tyFn) {
           signature.ty(tyFn.toBuilder().returnTy(returnTy).build());
         } else {
-          throw new IllegalArgumentException(STR."Ty of function signature should be '\{TyFn.class.getSimpleName()}'");
+          throw new IllegalArgumentException("Ty of function signature should be '" + TyFn.class.getSimpleName() + "'");
         }
       }
     }
@@ -215,7 +215,7 @@ public class HirTyCommonVisitorPass {
           ty = fn.returnTy();
         } else {
 
-          log.error(STR."A call is to a target that is not a function: \{expr}");
+          log.error("A call is to a target that is not a function: " + expr);
           ty = expr.target().ty();
         }
 

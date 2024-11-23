@@ -57,10 +57,10 @@ public class MirNode {
       : "";
 
     final var singleInstruction = instructions.size() == 1
-      ? STR." does \{instructions.getFirst()}"
+      ? " does " + instructions.getFirst()
       : "";
 
-    return STR."\{terminalStr}\{name()} (to [\{to}])\{singleInstruction}";
+    return terminalStr + name() + " (to [" + to + "])" + singleInstruction;
   }
 
   public String toShortString() {

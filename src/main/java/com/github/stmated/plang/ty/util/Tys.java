@@ -257,7 +257,7 @@ public class Tys {
       case "usize" -> switch (machineTarget.pointerBitSize()) {
         case 64 -> Ty.ULONG;
         case 32 -> Ty.UINTEGER;
-        default -> throw new IllegalArgumentException(STR."Unhandled pointer bit size '\{machineTarget.pointerBitSize()}'");
+        default -> throw new IllegalArgumentException("Unhandled pointer bit size '" + machineTarget.pointerBitSize() + "'");
       };
       case "opaque" -> new TyOpaque();
       default -> null;

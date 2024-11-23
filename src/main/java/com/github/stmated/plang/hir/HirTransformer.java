@@ -39,7 +39,7 @@ public interface HirTransformer {
     if (clazz.isAssignableFrom(expr.getClass())) {
       return (R) expr;
     } else {
-      throw new IllegalArgumentException(STR."Expected '\{expr}' to be a '\{clazz}'");
+      throw new IllegalArgumentException("Expected '" + expr + "' to be a '" + clazz + "'");
     }
   }
 
