@@ -1,0 +1,8 @@
+
+// Could there in theory be some way of creating a "view" of an interface, where you can make a struct behave like another struct without allocation anything
+// It would then create a proxy of sorts, where it would redirect field accesses to something else
+// It seems like something that would not work -- but perhaps one could create an interface for a struct where the interface is implemented with indirection?
+// I have no idea how this would work, since if the object is ever sent somewhere, that code needs to be aware that it could be a proxy
+// Ponder about this...
+
+

@@ -1,7 +1,7 @@
 
-# Plang
+# Inf
 
-Example code snippets in `/src/test/resources/plang`
+Example code snippets in `/src/test/resources/inf`
 
 Experimental language for learning purposes
 

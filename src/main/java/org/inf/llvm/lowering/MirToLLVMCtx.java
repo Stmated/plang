@@ -1,0 +1,106 @@
+package org.inf.llvm.lowering;
+
+import org.inf.mir.Mir.InstrCreateFn;
+import org.inf.mir.Mir.Instr;
+import org.inf.mir.model.MirNode;
+import org.inf.ty.Ty;
+import org.inf.ty.util.Pair;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Stack;
+import org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
+import org.bytedeco.llvm.LLVM.LLVMBuilderRef;
+import org.bytedeco.llvm.LLVM.LLVMContextRef;
+import org.bytedeco.llvm.LLVM.LLVMOrcThreadSafeContextRef;
+import org.bytedeco.llvm.LLVM.LLVMTypeRef;
+import org.bytedeco.llvm.LLVM.LLVMValueRef;
+import org.bytedeco.llvm.global.LLVM;
+
+class MirToLLVMCtx {
+
+  private final Map<String, LLVMValueRef> globalStringCache = new HashMap<>();
+
+  private final Map<Instr, LoweringResult> valueLookup = new HashMap<>();
+  /**
+   * TODO: Could perhaps one day be removed in favor of keeping the type reference being sent along the chain?
+   */
+  private final Map<Ty, LLVMTypeRef> typeLookup = new HashMap<>();
+  private final Map<MirNode, LLVMBasicBlockRef> blockLookup = new HashMap<>();
+
+  private final Stack<Pair<InstrCreateFn, LLVMValueRef>> fnStack = new Stack<>();
+
+  final LLVMOrcThreadSafeContextRef threadContext;
+  final LLVMContextRef context;
+  final LLVMBuilderRef builder;
+
+  public MirToLLVMCtx(LLVMOrcThreadSafeContextRef threadContext, LLVMContextRef context, LLVMBuilderRef builder) {
+    this.threadContext = threadContext;
+    this.context = context;
+    this.builder = builder;
+  }
+
+  public LLVMValueRef getGlobalStringPtr(String str) {
+    return globalStringCache.computeIfAbsent(str, s -> LLVM.LLVMBuildGlobalStringPtr(builder, s, "str"));
+  }
+
+  public LoweringResult resolve(Instr miri) {
+    return Objects.requireNonNull(
+      this.valueLookup.get(miri),
+      () -> "Every instruction (" + miri + " (" + miri.getClass().getSimpleName() + ") that we lookup must be a handled predecessor of when we need to resolve it"
+    );
+  }
+
+  public LoweringResult resolveIfAvailable(Instr miri) {
+    return this.valueLookup.get(miri);
+  }
+
+  public void register(Instr miri, LoweringResult ref) {
+    if (this.valueLookup.containsKey(miri)) {
+      throw new IllegalArgumentException("Not allowed to register a value ref for '" + miri + "' twice!");
+    }
+
+    this.valueLookup.put(
+      Objects.requireNonNull(miri, "Must give an instruction to register the llvm value ref to"),
+      Objects.requireNonNull(ref, () -> "LLVMValueRef of '" + miri + "' you registeredd must not be null")
+    );
+  }
+
+  public void registerBlock(MirNode node, LLVMBasicBlockRef blockRef) {
+    blockLookup.put(node, blockRef);
+  }
+
+  public LLVMBasicBlockRef resolveBlock(MirNode node) {
+    return Objects.requireNonNull(blockLookup.get(node), "Node '" + node + "' was not found in first pass of CFG");
+  }
+
+  public void enterFunction(Pair<InstrCreateFn, LLVMValueRef> fnRef, Runnable runnable) {
+
+    try {
+      fnStack.push(fnRef);
+      runnable.run();
+    } finally {
+      final var popped = fnStack.pop();
+      if (fnRef != popped) {
+        throw new IllegalStateException("Popped the wrong fn, expected '" + fnRef + "' got '" + popped + "'");
+      }
+    }
+  }
+
+  public Pair<InstrCreateFn, LLVMValueRef> getFunction() {
+    return fnStack.peek();
+  }
+
+  public Iterator<Pair<InstrCreateFn, LLVMValueRef>> getFunctionIterator() {
+    return fnStack.reversed().iterator();
+  }
+
+  public void registerType(Ty ty, LLVMTypeRef typeRef) {
+    typeLookup.put(ty, typeRef);
+  }
+
+  public LLVMTypeRef resolveType(Ty ty) {
+    return typeLookup.get(ty);
+  }
+}

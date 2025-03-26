@@ -1,0 +1,13 @@
+package org.inf.ty;
+
+public enum TyDiffKind {
+
+  INCOMPATIBLE,
+  DIFF_RADIX,
+  DIFF_SIGNED,
+  DIFF_WIDTH_EXT,
+  DIFF_WIDTH_TRUNC,
+  DIFF_PRECISION_EXT,
+  DIFF_PRECISION_TRUNC,
+  UNKNOWN
+}

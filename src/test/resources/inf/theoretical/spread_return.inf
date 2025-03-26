@@ -1,0 +1,39 @@
+
+// ----- static spreading of return value into its caller's scope
+
+fn = (value: int): ...{a: number} => {
+  return {a: value + 10 };
+};
+
+fn(100);
+
+println(a); // `a` is exposed from the call to `fn`, where the exposed variable name is static
+
+// ----- dynamic
+
+giveRuntimeNumber = (base: int) => base + 10;
+giveComptimeNumber = @(base: int) => base + 10;
+
+fn = (expr: Inf.AssignmentExpression): ...{@expr.identifier.value: number} => {
+  return {
+    @expr.identifier.value: @expr.value,
+  };
+};
+
+fn(a = 20); // Will fail, since this would be "give argument `a` with value `20` but there is no named argument `a`
+fn(@(b = 20)); // Will expose `b` with value `20`
+fn(@(c = giveRuntimeNumber(100))); // Will expose `c` with a function call expression with 0 params
+fn(@(d = giveComptimeNumber)); // Will expose `d` with a function reference to `giveComptimeNumber`
+fn(@(e = giveComptimeNumber(100))); // Will expose `e` with value `110` since the function is a comptime function and will resolve during compilation
+
+println(b);
+println(e);
+
+// ----- with generics
+
+// This would limit the function to only accept assignment expressions where the RHS is a literal
+fn = (expr: Inf.AssignmentExpression(Inf.LiteralExpression)): ...{@expr.identifier.value: number} => {
+  return {
+    @expr.identifier.value: @expr.value,
+  };
+};

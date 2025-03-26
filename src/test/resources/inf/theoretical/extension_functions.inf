@@ -1,0 +1,38 @@
+
+// There should be support for extension functions, but it should be opt-in by the struct owner, and it should be possible to declare restrictions.
+
+val Person = struct {
+  name: string;
+  age: short;
+};
+
+// This would export "extensions" for Person to the "default" export, ie. included if anything inside this file is imported elsewhere.
+// It would allow extensions as long as the namespace path is the same as the current file's.
+export extension for Person where namespace == @Source.namespace;
+
+// TODO: Perhaps it is not `@Source` but `@this.namespace` where `this` is the "invisible" struct that is the file
+//        Since every file should in the background be a struct, so that when things are imported, what is imported is references to inside the struct
+
+// This would allow extension functions to be added from anywhere
+export extension for Person;
+
+// This would allow extensions to be added only from this package
+export extension for Person where package == @Source.package;
+
+// This would export a named extension, one that would need to be explicitly imported (either by *, or by naming inside import)
+// It would not automatically be available just because something else inside this file was imported.
+export val Extensions = extension for Person;
+
+// Then when something wants to register a function to a named extension, then that explicit named extension must be referenced.
+const increaseAge = (person: Person) => person.age++;
+extend Extensions with increaseAge;
+
+// And if there is a default extension, then it could be registered this way instead:
+extend Person with increaseAge;
+
+// It should in theory also be possible to extend it as named inline by:
+extend Person with increaseAge = p => p.age++; // Where `p` would be implicitly known to be Person, since we know what struct it is registered for
+
+// NOTE: It feels like there is great overlap between extension functions and traits -- perhaps these constraints should be added to traits instead!
+//        Then traits are more powerful, and there are less features/paradigms
+
