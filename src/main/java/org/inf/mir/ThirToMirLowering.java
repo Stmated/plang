@@ -896,18 +896,26 @@ public class ThirToMirLowering {
 
   private Mir.Instr lower_call(Hir.Call hir) {
 
-    // TODO: This is very rudimentary -- it needs to be able to resolve the a potential path into a struct, or array access, or whatever the heck
-    final var fnName = switch (hir.target()) {
-      case Hir.Identifier identifier -> identifier.lexeme().name();
-      case Hir.Lexeme lexeme -> lexeme.name();
-      case Hir.Literal literal -> literal.content();
-      default -> throw new UnexpectedExpressionException(hir.target());
-    };
+    // TODO: This is very rudimentary -- it needs to be able to resolve the potential path into a struct, or array access, or whatever the heck
+    Mir.Instr fnInstr;
+    if (hir.target() instanceof Hir.Function fn) {
 
-    // TODO: Skriv om så att man lägger till funktionen om den inte redan finns registrerad!
-    //   Blir upp till annan kod att sedan fylla i body om den kommer, annars upp till linker att ge definitionen av funktionen!
+      fnInstr = lower_function(fn);
 
-    final var fnInstr = mirCtx.getInstructionByName(fnName);
+    } else {
+
+      final var fnName = switch (hir.target()) {
+        case Hir.Identifier identifier -> identifier.lexeme().name();
+        case Hir.Lexeme lexeme -> lexeme.name();
+        case Hir.Literal literal -> literal.content();
+        default -> throw new UnexpectedExpressionException(hir.target());
+      };
+
+      // TODO: Add the function if it is not already registered
+      //    It will be up to other code to realize the body if it ever arrives, otherwise it will be up to linked to give function definition.
+
+      fnInstr = mirCtx.getInstructionByName(fnName);
+    }
 
     final var mirFnArguments = new MirFnArgument[hir.arguments().length];
     Hir.Argument[] arguments = hir.arguments();

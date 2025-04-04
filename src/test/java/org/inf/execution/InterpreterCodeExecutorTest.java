@@ -41,6 +41,8 @@ class InterpreterCodeExecutorTest {
   void testFunctionCall() {
     final var executor = new InterpreterCodeExecutor();
 
-    Assertions.assertEquals(3, executor.execute(Inf.codeToMir("val add = (a: int, b: int) => a + b; add(1, 2)").initNode()));
+    final var mir = Inf.codeToMir("val add = (a: int, b: int) => a + b; add(1, 2)");
+    final var res = executor.execute(mir.initNode());
+    Assertions.assertEquals(3, res);
   }
 }

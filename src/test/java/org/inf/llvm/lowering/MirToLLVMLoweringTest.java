@@ -283,6 +283,14 @@ class MirToLLVMLoweringTest {
     Assertions.assertNotEquals(0, Inf.codeToResult(code).resultValue());
   }
 
+  @Test
+  void testParseAndRunInlineFn() {
+
+    final var ast = Inf.codeToAst("((a: int, b: int) => a + b)(5, 5)");
+
+    Assertions.assertNotNull(ast);
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {
     // TODO: All these should be "const", or at least have the same tests again but with const and other order of instructions
