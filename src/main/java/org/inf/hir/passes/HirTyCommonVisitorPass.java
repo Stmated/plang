@@ -1,23 +1,19 @@
 package org.inf.hir.passes;
 
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.exceptions.UnexpectedExpressionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirJavaUtil;
 import org.inf.hir.HirVisitor;
-import org.inf.ty.Ty;
-import org.inf.ty.TyField;
-import org.inf.ty.TyFn;
-import org.inf.ty.TyStruct;
-import org.inf.ty.TyValueArray;
-import org.inf.ty.TyValueNumber;
+import org.inf.ty.*;
 import org.inf.ty.util.Tys;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.UtilityClass;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @UtilityClass
@@ -77,7 +73,7 @@ public class HirTyCommonVisitorPass {
               // val array = [1, 2, 3; uint]
               // Should automatically translate non-explicit integers in array to stated type.
               //elementArray[i] = new Hir.Literal(lit.content(), vn);
-              ((Hir.Literal) element).ty(vn);
+              lit.ty(vn);
             }
           }
         }
@@ -158,7 +154,7 @@ public class HirTyCommonVisitorPass {
 
         final var children = expr.children();
         if (children.length > 0) {
-          expr.ty(children[children.length -1].ty());
+          expr.ty(children[children.length - 1].ty());
         }
       }
     }
@@ -215,7 +211,7 @@ public class HirTyCommonVisitorPass {
           ty = fn.returnTy();
         } else {
 
-          log.error("A call is to a target that is not a function: " + expr);
+          log.error("A call is to a target that is not a function: {}", expr);
           ty = expr.target().ty();
         }
 

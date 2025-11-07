@@ -1,15 +1,10 @@
 package org.inf.hir.passes;
 
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
 import org.inf.hir.HirVisitor;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class HirDependencyReorderingTransformerPass {

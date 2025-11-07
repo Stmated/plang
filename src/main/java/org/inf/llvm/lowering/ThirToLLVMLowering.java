@@ -1,22 +1,17 @@
 package org.inf.llvm.lowering;
 
-import org.inf.exceptions.NotImplementedException;
-import org.inf.exceptions.UnexpectedExpressionException;
-import org.inf.hir.Hir;
-import org.inf.ty.Ty;
-import org.inf.ty.TyValueArray;
-import org.inf.ty.TyValueBoolean;
-import org.inf.ty.TyValueNumber;
-import org.inf.ty.TyValueNumberInteger;
-import org.inf.ty.TyValueNumberPrecisioned;
-import org.inf.ty.TyValueString;
-import java.nio.charset.StandardCharsets;
-import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import org.bytedeco.llvm.LLVM.LLVMValueRef;
 import org.bytedeco.llvm.global.LLVM;
+import org.inf.exceptions.NotImplementedException;
+import org.inf.exceptions.UnexpectedExpressionException;
+import org.inf.hir.Hir;
+import org.inf.ty.*;
+
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 
 /**
  * TODO: Maybe someday. Though it seems like never, since we might as well go with AST -> HIR -> MIR right away since it might be needed some later day
@@ -209,7 +204,7 @@ public class ThirToLLVMLowering {
 
     final var content = literal.content();
     final var v = parseLiteralInteger(content, ty.radix());
-    final var typeRef = typeResolver.resolve( ty);
+    final var typeRef = typeResolver.resolve(ty);
     final var constant = LLVM.LLVMConstInt(typeRef, v, ty.signed() ? 1 : 0);
 
     return new LoweringResult(giveConstantOrAlloca(constant, typeRef, literal, ty));
@@ -236,7 +231,7 @@ public class ThirToLLVMLowering {
 
   private LoweringResult lower_literal_boolean(String strValue, TyValueBoolean b) {
     final var value = Boolean.parseBoolean(strValue);
-    return new LoweringResult(LLVM.LLVMConstInt(typeResolver.resolve( b), value ? 1 : 0, 0));
+    return new LoweringResult(LLVM.LLVMConstInt(typeResolver.resolve(b), value ? 1 : 0, 0));
   }
 
   private LLVMValueRef giveConstantOrAlloca(LLVMValueRef constant, LLVMTypeRef typeRef, Hir.Expression expr, TyValueNumber ty) {

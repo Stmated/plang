@@ -1,16 +1,21 @@
 package org.inf.llvm.lowering;
 
-import org.inf.Main;
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import org.bytedeco.javacpp.*;
+import org.bytedeco.libffi.ffi_cif;
+import org.bytedeco.libffi.ffi_type;
+import org.bytedeco.libffi.global.ffi;
+import org.bytedeco.llvm.LLVM.*;
+import org.bytedeco.llvm.global.LLVM;
+import org.bytedeco.llvm.global.clang;
 import org.inf.Inf.Result;
 import org.inf.InfRunOptions;
+import org.inf.Main;
 import org.inf.exceptions.NotImplementedException;
 import org.inf.llvm.util.LLVMTys;
-import org.inf.mir.Mir;
+import org.inf.mir.*;
 import org.inf.mir.Mir.InstrCreateFn;
-import org.inf.mir.MirIdentifierId;
-import org.inf.mir.MirLoweringResult;
-import org.inf.mir.MirNodeTyPass;
-import org.inf.mir.ThirToMirLowering;
 import org.inf.mir.model.MirFnArgument;
 import org.inf.mir.model.MirFnParameter;
 import org.inf.mir.model.MirFnSignature;
@@ -20,35 +25,12 @@ import org.inf.ty.Ty;
 import org.inf.ty.TyValueNumberInteger;
 import org.inf.ty.TyValueNumberPrecisioned;
 import org.inf.ty.util.Tys;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Objects;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-import org.bytedeco.javacpp.BooleanPointer;
-import org.bytedeco.javacpp.BytePointer;
-import org.bytedeco.javacpp.CharPointer;
-import org.bytedeco.javacpp.DoublePointer;
-import org.bytedeco.javacpp.FloatPointer;
-import org.bytedeco.javacpp.IntPointer;
-import org.bytedeco.javacpp.Loader;
-import org.bytedeco.javacpp.LongPointer;
-import org.bytedeco.javacpp.Pointer;
-import org.bytedeco.javacpp.PointerPointer;
-import org.bytedeco.javacpp.ShortPointer;
-import org.bytedeco.libffi.ffi_cif;
-import org.bytedeco.libffi.ffi_type;
-import org.bytedeco.libffi.global.ffi;
-import org.bytedeco.llvm.LLVM.LLVMContextRef;
-import org.bytedeco.llvm.LLVM.LLVMErrorRef;
-import org.bytedeco.llvm.LLVM.LLVMMemoryBufferRef;
-import org.bytedeco.llvm.LLVM.LLVMModuleRef;
-import org.bytedeco.llvm.LLVM.LLVMOrcLLJITRef;
-import org.bytedeco.llvm.LLVM.LLVMTargetRef;
-import org.bytedeco.llvm.global.LLVM;
-import org.bytedeco.llvm.global.clang;
 
 @Slf4j
 public class MirToLLVMLowering {
@@ -237,7 +219,7 @@ public class MirToLLVMLowering {
   private static void linkClangWrapper(LLVMContextRef context, LLVMModuleRef module) {
 
     try (final var version = clang.clang_getClangVersion()) {
-      log.debug("CLANG: " + version.getString());
+      log.debug("CLANG: {}", version.getString());
     }
 
     final var cppPath = "src/main/cpp";
@@ -269,9 +251,9 @@ public class MirToLLVMLowering {
               output.append("\n");
             }
 
-            throw new IllegalArgumentException("Compilation error: " + output.toString());
+            throw new IllegalArgumentException("Compilation error: " + output);
           } else {
-            log.info("Compilation successful, bitcode written to " + bitCodeFile);
+            log.info("Compilation successful, bitcode written to {}", bitCodeFile);
           }
         }
       } catch (Exception e) {
@@ -348,25 +330,17 @@ public class MirToLLVMLowering {
   }
 
   private Object getValue(Pointer pointer, Ty ty) {
-    if (pointer instanceof IntPointer p) {
-      return p.get();
-    } else if (pointer instanceof FloatPointer p) {
-      return p.get();
-    } else if (pointer instanceof DoublePointer p) {
-      return p.get();
-    } else if (pointer instanceof LongPointer p) {
-      return p.get();
-    } else if (pointer instanceof ShortPointer p) {
-      return p.get();
-    } else if (pointer instanceof CharPointer p) {
-      return p.getString();
-    } else if (pointer instanceof BooleanPointer p) {
-      return p.get();
-    } else if (pointer instanceof BytePointer p) {
-      return p.get();
-    } else {
-      throw new NotImplementedException("Have no implemented gettign value of '" + pointer + "'");
-    }
+    return switch (pointer) {
+      case IntPointer p -> p.get();
+      case FloatPointer p -> p.get();
+      case DoublePointer p -> p.get();
+      case LongPointer p -> p.get();
+      case ShortPointer p -> p.get();
+      case CharPointer p -> p.getString();
+      case BooleanPointer p -> p.get();
+      case BytePointer p -> p.get();
+      case null, default -> throw new NotImplementedException("Have no implemented gettign value of '" + pointer + "'");
+    };
   }
 
   private ffi_type tyToFfiType(Class<?> clazz) {

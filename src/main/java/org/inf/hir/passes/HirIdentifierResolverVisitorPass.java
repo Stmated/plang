@@ -1,18 +1,13 @@
 package org.inf.hir.passes;
 
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class HirIdentifierResolverVisitorPass {
@@ -30,7 +25,8 @@ public class HirIdentifierResolverVisitorPass {
   @RequiredArgsConstructor
   public static class Visitor implements HirVisitor {
 
-    private record Scope(Map<String, Hir.Expression> map) { }
+    private record Scope(Map<String, Hir.Expression> map) {
+    }
 
     private final Function<Hir.Identifier, Hir.Expression> identifierTargetResolver;
     private final Deque<Scope> scopes = new ArrayDeque<>();

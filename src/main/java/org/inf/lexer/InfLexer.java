@@ -4,17 +4,12 @@ import org.inf.exceptions.InvalidDecimalsException;
 import org.inf.parser.NoSyncBufferedReader;
 import org.inf.util.TextLocation;
 import org.inf.util.TextRange;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Objects;
+import java.util.*;
 
 public class InfLexer implements AutoCloseable, Iterator<Token> {
 
@@ -174,7 +169,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
       return newToken(TokenType.ADDITION_ASSIGNMENT);
     } else if (c == '+') {
       throw new IllegalArgumentException("No support for postfix '++', use '+= 1' instead");
-    }  else {
+    } else {
       backtrack(c);
       return newToken(TokenType.ADD);
     }
@@ -295,12 +290,12 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
 
   private static boolean isNotLetter(final int t) {
     return (t < Character.UPPERCASE_LETTER || t > Character.OTHER_LETTER)
-        && t != Character.CONNECTOR_PUNCTUATION;
+      && t != Character.CONNECTOR_PUNCTUATION;
   }
 
   private static boolean isLetter(final int t) {
     return (t >= Character.UPPERCASE_LETTER && t <= Character.OTHER_LETTER)
-        || t == Character.CONNECTOR_PUNCTUATION;
+      || t == Character.CONNECTOR_PUNCTUATION;
   }
 
   private static boolean isNotNumber(final int t) {
@@ -325,10 +320,10 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
       final var sub = stripped.substring(2); // Remove start slashes
 
       return new Token(
-          TokenType.COMMENT_SINGLE_LINE,
-          contentToken.start(),
-          contentToken.end(),
-          sub
+        TokenType.COMMENT_SINGLE_LINE,
+        contentToken.start(),
+        contentToken.end(),
+        sub
       );
     } else if (c == '*') {
 
@@ -341,10 +336,10 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
       //        Also need to consider how to handle empty first and last lines
 
       return new Token(
-          TokenType.COMMENT_MULTI_LINE,
-          contentToken.start(),
-          contentToken.end(),
-          sub
+        TokenType.COMMENT_MULTI_LINE,
+        contentToken.start(),
+        contentToken.end(),
+        sub
       );
     } else if (c == '=') {
       return newToken(TokenType.DIVIDE_ASSIGNMENT);

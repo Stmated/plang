@@ -1,14 +1,15 @@
 package org.inf.mir.model;
 
-import org.inf.mir.Mir.Instr;
-import org.inf.ty.Ty;
 import jakarta.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Setter;
 import lombok.Value;
 import lombok.experimental.NonFinal;
+import org.inf.mir.Mir.Instr;
+import org.inf.ty.Ty;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Value
 @NonFinal

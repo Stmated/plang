@@ -1,6 +1,7 @@
 package org.inf.mir;
 
 import org.inf.mir.model.MirNode;
+
 import java.util.ArrayList;
 import java.util.List;
 

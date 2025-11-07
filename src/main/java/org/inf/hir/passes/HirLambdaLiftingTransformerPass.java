@@ -1,17 +1,16 @@
 package org.inf.hir.passes;
 
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyParam;
+
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class HirLambdaLiftingTransformerPass {

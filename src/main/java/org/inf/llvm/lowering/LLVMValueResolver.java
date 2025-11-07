@@ -1,12 +1,13 @@
 package org.inf.llvm.lowering;
 
-import org.inf.ty.Ty;
-import org.inf.ty.TyValueArray;
-import java.nio.charset.StandardCharsets;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.llvm.LLVM.LLVMModuleRef;
 import org.bytedeco.llvm.LLVM.LLVMValueRef;
 import org.bytedeco.llvm.global.LLVM;
+import org.inf.ty.Ty;
+import org.inf.ty.TyValueArray;
+
+import java.nio.charset.StandardCharsets;
 
 public class LLVMValueResolver {
 

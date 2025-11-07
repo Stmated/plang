@@ -1,9 +1,10 @@
 package org.inf.hir.passes;
 
+import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
+
 import java.util.ArrayList;
-import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class HirLexemeToIdentifierTransformerPass {

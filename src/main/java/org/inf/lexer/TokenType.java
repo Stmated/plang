@@ -199,7 +199,7 @@ public enum TokenType {
 
   public boolean isLiteralNumber() {
     return this == LITERAL_INTEGER
-           || this == LITERAL_DECIMAL || this == LITERAL_DOUBLE || this == LITERAL_FLOAT
-           || this == LITERAL_INTEGER_BINARY || this == LITERAL_INTEGER_HEX || this == LITERAL_INTEGER_OCTAL || this == LITERAL_INTEGER_LONG;
+      || this == LITERAL_DECIMAL || this == LITERAL_DOUBLE || this == LITERAL_FLOAT
+      || this == LITERAL_INTEGER_BINARY || this == LITERAL_INTEGER_HEX || this == LITERAL_INTEGER_OCTAL || this == LITERAL_INTEGER_LONG;
   }
 }

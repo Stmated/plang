@@ -1,28 +1,18 @@
 package org.inf.thir.raising;
 
+import lombok.extern.slf4j.Slf4j;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.exceptions.UnexpectedExpressionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirJavaUtil;
-import org.inf.hir.passes.HirDependencyReorderingTransformerPass;
-import org.inf.hir.passes.HirFnTyVisitorPass;
-import org.inf.hir.passes.HirIdentifierResolverVisitorPass;
-import org.inf.hir.passes.HirTyCommonVisitorPass;
-import org.inf.hir.passes.HirTyIdentifierToTyTransformerPass;
-import org.inf.hir.passes.HirLambdaLiftingTransformerPass;
-import org.inf.hir.passes.HirTyFnCallVisitorPass;
-import org.inf.ty.Ty;
-import org.inf.ty.TyField;
-import org.inf.ty.TyFn;
-import org.inf.ty.TyParam;
-import org.inf.ty.TyStruct;
-import org.inf.ty.TyValueArray;
+import org.inf.hir.passes.*;
+import org.inf.ty.*;
 import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * TODO: This should be rewritten to use some kind of query system like Rust, eventually.
@@ -31,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class HirToThirRaising {
 
-//  private final Stack<ThirScope> scopeStack = new Stack<>();
+  //  private final Stack<ThirScope> scopeStack = new Stack<>();
   private final MachineTarget machineTarget;
   private final boolean lenient;
 
@@ -93,7 +83,8 @@ public class HirToThirRaising {
       case Hir.NewByCtor it -> investigate_new_by_ctor(it);
       case Hir.Path it -> investigate_path(it);
       case Hir.Block it -> investigate_block(it);
-      case Hir.Parameter it -> throw new IllegalArgumentException("A Parameter itself (" + it + ") does not have a type (yet?). Resolve it higher in call chain");
+      case Hir.Parameter it ->
+        throw new IllegalArgumentException("A Parameter itself (" + it + ") does not have a type (yet?). Resolve it higher in call chain");
       default -> throw new UnexpectedExpressionException(e);
     };
   }
@@ -350,7 +341,7 @@ public class HirToThirRaising {
 
 //      try {
 //        scopeStack.push(new ThirScope(scopeStack.peek(), "conditional_pass"));
-        branch_types[0] = investigate(hir.pass());
+      branch_types[0] = investigate(hir.pass());
 //
 //      } finally {
 //        scopeStack.pop();
@@ -361,7 +352,7 @@ public class HirToThirRaising {
 
 //      try {
 //        scopeStack.push(new ThirScope(scopeStack.peek(), "conditional_fail"));
-        branch_types[1] = investigate(hir.fail());
+      branch_types[1] = investigate(hir.fail());
 
 //      } finally {
 //        scopeStack.pop();

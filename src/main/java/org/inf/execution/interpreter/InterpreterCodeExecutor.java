@@ -1,23 +1,18 @@
-package org.inf.execution;
+package org.inf.execution.interpreter;
 
 import org.inf.exceptions.NotImplementedException;
 import org.inf.exceptions.UnexpectedExpressionException;
+import org.inf.execution.CodeExecutor;
 import org.inf.mir.Mir;
 import org.inf.mir.model.MirNode;
 import org.inf.ty.*;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class InterpreterCodeExecutor implements CodeExecutor {
-
-  private class Scope {
-
-    public final Map<Long, Object> valueMap = new HashMap<>();
-    public final Map<Long, Mir.InstrCreateFn> functions = new HashMap<>();
-    public Object result;
-  }
 
   @Override
   public Object execute(MirNode node) {

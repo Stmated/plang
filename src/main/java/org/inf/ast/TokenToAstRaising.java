@@ -8,12 +8,8 @@ import org.inf.ty.Ty;
 import org.inf.ty.TyFlags;
 import org.inf.ty.TyValueNumberInteger;
 import org.inf.ty.util.Tys;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.EnumSet;
-import java.util.Iterator;
-import java.util.List;
+
+import java.util.*;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -258,10 +254,10 @@ public class TokenToAstRaising {
 
       final var t = token.type();
       if (t == TokenType.EQUALS
-          || t == TokenType.LTE || t == TokenType.GTE || t == TokenType.LT || t == TokenType.GT
-          || t == TokenType.IS
-          || t == TokenType.ADDITION_ASSIGNMENT || t == TokenType.SUBTRACTION_ASSIGNMENT || t == TokenType.MULTIPLY_ASSIGNMENT
-          || t == TokenType.DIVIDE_ASSIGNMENT) {
+        || t == TokenType.LTE || t == TokenType.GTE || t == TokenType.LT || t == TokenType.GT
+        || t == TokenType.IS
+        || t == TokenType.ADDITION_ASSIGNMENT || t == TokenType.SUBTRACTION_ASSIGNMENT || t == TokenType.MULTIPLY_ASSIGNMENT
+        || t == TokenType.DIVIDE_ASSIGNMENT) {
         final var rhs = parseLevel6();
         if (rhs != null) {
           return new Ast.BinaryOperation(lhs, Ast.BinaryOperationKind.fromTokenType(t), rhs);
@@ -340,12 +336,12 @@ public class TokenToAstRaising {
 
       final var t = token.type();
       if (t == TokenType.POW
-          || t == TokenType.MODULUS
-          || t == TokenType.REMAINDER
-          || t == TokenType.BIT_SHIFT_LEFT
-          || t == TokenType.BIT_SHIFT_RIGHT
-          || t == TokenType.BIT_AND
-          || t == TokenType.BIT_OR) {
+        || t == TokenType.MODULUS
+        || t == TokenType.REMAINDER
+        || t == TokenType.BIT_SHIFT_LEFT
+        || t == TokenType.BIT_SHIFT_RIGHT
+        || t == TokenType.BIT_AND
+        || t == TokenType.BIT_OR) {
         final var rhs = parseLevel8(); // Recursive
         if (rhs != null) {
           return new Ast.BinaryOperation(lhs, Ast.BinaryOperationKind.fromTokenType(t), rhs);

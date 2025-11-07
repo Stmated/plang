@@ -1,9 +1,9 @@
 package org.inf.ty;
 
+import lombok.Builder;
+
 import java.util.EnumSet;
 import java.util.Objects;
-import lombok.Builder;
-import lombok.experimental.SuperBuilder;
 
 @Builder(toBuilder = true)
 public record TyValueNumberInteger(byte radix, BitWidth width, boolean signed, EnumSet<TyFlags> flags) implements TyValueNumber {

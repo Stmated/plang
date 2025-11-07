@@ -1,14 +1,7 @@
 package org.inf.hir.raising;
 
 import org.inf.Inf;
-import org.inf.ast.Ast.BinaryOperation;
-import org.inf.ast.Ast.BinaryOperationKind;
-import org.inf.ast.Ast.Block;
-import org.inf.ast.Ast.Conditional;
-import org.inf.ast.Ast.Expression;
-import org.inf.ast.Ast.Expressions;
-import org.inf.ast.Ast.Literal;
-import org.inf.ast.Ast.Return;
+import org.inf.ast.Ast.*;
 import org.inf.hir.AstToHirRaising;
 import org.inf.hir.Hir;
 import org.inf.hir.Hir.Call;

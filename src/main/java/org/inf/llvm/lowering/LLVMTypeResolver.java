@@ -1,23 +1,12 @@
 package org.inf.llvm.lowering;
 
-import org.inf.exceptions.NotImplementedException;
-import org.inf.ty.Ty;
-import org.inf.ty.TyFn;
-import org.inf.ty.TyOpaque;
-import org.inf.ty.TyPointer;
-import org.inf.ty.TyPointerAddressSpace;
-import org.inf.ty.TyStruct;
-import org.inf.ty.TyValueArray;
-import org.inf.ty.TyValueBoolean;
-import org.inf.ty.TyValueNumberInteger;
-import org.inf.ty.TyValueNumberPrecisioned;
-import org.inf.ty.TyValueNumberScaled;
-import org.inf.ty.TyValueString;
 import lombok.RequiredArgsConstructor;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.llvm.LLVM.LLVMContextRef;
 import org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import org.bytedeco.llvm.global.LLVM;
+import org.inf.exceptions.NotImplementedException;
+import org.inf.ty.*;
 
 @RequiredArgsConstructor
 public class LLVMTypeResolver {
@@ -55,13 +44,13 @@ public class LLVMTypeResolver {
       case TyValueNumberScaled ni when ni.width().value() == 8 -> LLVM.LLVMInt8TypeInContext(context);
       case TyValueNumberScaled ni when ni.width().value() == 1 -> LLVM.LLVMInt1TypeInContext(context);
 
-      case TyValueString s -> resolve(new TyPointer<>(Ty.CHAR));
+      case TyValueString _ -> resolve(new TyPointer<>(Ty.CHAR));
 
-      case TyPointer p -> LLVM.LLVMPointerType(resolve( p.inner()), getAddressSpace(p.addressSpace()));
-      case TyValueArray a when a.size() != null && a.size() >= 0 -> LLVM.LLVMArrayType2(resolve( a.elementType()), a.size());
-      case TyValueArray a -> LLVM.LLVMPointerType(resolve( a.elementType()), 0);
+      case TyPointer p -> LLVM.LLVMPointerType(resolve(p.inner()), getAddressSpace(p.addressSpace()));
+      case TyValueArray a when a.size() != null && a.size() >= 0 -> LLVM.LLVMArrayType2(resolve(a.elementType()), a.size());
+      case TyValueArray a -> LLVM.LLVMPointerType(resolve(a.elementType()), 0);
 
-      case TyValueBoolean b -> LLVM.LLVMInt1TypeInContext(context);
+      case TyValueBoolean _ -> LLVM.LLVMInt1TypeInContext(context);
 
       case Ty.TyNamed n when n.intern() == Ty.VOID -> LLVM.LLVMVoidTypeInContext(context);
 
@@ -71,7 +60,7 @@ public class LLVMTypeResolver {
 
         final var types = new PointerPointer<>(s.fields().length);
         for (var i = 0; i < s.fields().length; i++) {
-          types.put(i, resolve( s.fields()[i].ty()));
+          types.put(i, resolve(s.fields()[i].ty()));
         }
 
         final var type = LLVM.LLVMStructTypeInContext(context, types, s.fields().length, 0);
@@ -86,11 +75,11 @@ public class LLVMTypeResolver {
         final var fnParams = new LLVMTypeRef[fn.parameters().length];
         for (var i = 0; i < fn.parameters().length; i++) {
           final var param = fn.parameters()[i];
-          fnParams[i] = resolve( param.ty());
+          fnParams[i] = resolve(param.ty());
         }
 
         yield LLVM.LLVMFunctionType(
-          resolve( fn.returnTy()),
+          resolve(fn.returnTy()),
           new PointerPointer<>(fnParams),
           fn.parameters().length,
           fn.vararg() ? 1 : 0
@@ -103,7 +92,8 @@ public class LLVMTypeResolver {
 
         yield type;
       }
-      default -> throw new IllegalArgumentException("Do not know how to convert '%s' (%s) into an LLVM type".formatted(ty.toShortString(), ty.getClass().getSimpleName()));
+      default ->
+        throw new IllegalArgumentException("Do not know how to convert '%s' (%s) into an LLVM type".formatted(ty.toShortString(), ty.getClass().getSimpleName()));
     };
   }
 

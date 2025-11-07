@@ -1,5 +1,7 @@
 package org.inf.ast.raising;
 
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.inf.Inf;
 import org.inf.ast.Ast;
 import org.inf.ast.AstVisitor;
@@ -8,20 +10,19 @@ import org.inf.lexer.InfLexer;
 import org.inf.lexer.InfLexerSteps;
 import org.inf.parser.InfTestUtil;
 import org.inf.ty.Ty;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.stream.Stream;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 @Slf4j
 class TokenToAstRaisingTest {
@@ -103,20 +104,12 @@ class TokenToAstRaisingTest {
 
     as(expressions[0], Ast.BinaryOperation.class, ibo -> {
 
-      as(ibo.lhs(), Ast.BinaryOperation.class, lhs -> {
-        Assertions.assertEquals(Ast.BinaryOperationKind.LT, lhs.kind());
-      });
+      as(ibo.lhs(), Ast.BinaryOperation.class, lhs -> Assertions.assertEquals(Ast.BinaryOperationKind.LT, lhs.kind()));
 
       as(ibo.rhs(), Ast.BinaryOperation.class, rhs -> {
         Assertions.assertEquals(Ast.BinaryOperationKind.OR, rhs.kind());
-
-        as(rhs.lhs(), Ast.BinaryOperation.class, rhs_lhs -> {
-          Assertions.assertEquals(Ast.BinaryOperationKind.GT, rhs_lhs.kind());
-        });
-
-        as(rhs.rhs(), Ast.BinaryOperation.class, rhs_rhs -> {
-          Assertions.assertEquals(Ast.BinaryOperationKind.EQUALS, rhs_rhs.kind());
-        });
+        as(rhs.lhs(), Ast.BinaryOperation.class, rhs_lhs -> Assertions.assertEquals(Ast.BinaryOperationKind.GT, rhs_lhs.kind()));
+        as(rhs.rhs(), Ast.BinaryOperation.class, rhs_rhs -> Assertions.assertEquals(Ast.BinaryOperationKind.EQUALS, rhs_rhs.kind()));
       });
     });
   }
@@ -133,20 +126,13 @@ class TokenToAstRaisingTest {
 
     as(expressions[0], Ast.BinaryOperation.class, ibo -> {
 
-      as(ibo.lhs(), Ast.BinaryOperation.class, lhs -> {
-        Assertions.assertEquals(Ast.BinaryOperationKind.LT, lhs.kind());
-      });
+      as(ibo.lhs(), Ast.BinaryOperation.class, lhs -> Assertions.assertEquals(Ast.BinaryOperationKind.LT, lhs.kind()));
 
       as(ibo.rhs(), Ast.BinaryOperation.class, rhs -> {
         Assertions.assertEquals(Ast.BinaryOperationKind.OR, rhs.kind());
 
-        as(rhs.lhs(), Ast.BinaryOperation.class, rhs_lhs -> {
-          Assertions.assertEquals(Ast.BinaryOperationKind.GT, rhs_lhs.kind());
-        });
-
-        as(rhs.rhs(), Ast.BinaryOperation.class, rhs_rhs -> {
-          Assertions.assertEquals(Ast.BinaryOperationKind.EQUALS, rhs_rhs.kind());
-        });
+        as(rhs.lhs(), Ast.BinaryOperation.class, rhs_lhs -> Assertions.assertEquals(Ast.BinaryOperationKind.GT, rhs_lhs.kind()));
+        as(rhs.rhs(), Ast.BinaryOperation.class, rhs_rhs -> Assertions.assertEquals(Ast.BinaryOperationKind.EQUALS, rhs_rhs.kind()));
       });
     });
   }
@@ -213,9 +199,7 @@ class TokenToAstRaisingTest {
 
     final var ast = toExpressions(Inf.codeToAst(code));
 
-    as(ast[0], Ast.Literal.class, literal -> {
-      Assertions.assertEquals("-1", literal.content());
-    });
+    as(ast[0], Ast.Literal.class, literal -> Assertions.assertEquals("-1", literal.content()));
   }
 
   @ParameterizedTest
@@ -228,9 +212,7 @@ class TokenToAstRaisingTest {
     final var ast = toExpressions(Inf.codeToAst(code));
 
     as(ast[0], Ast.Negate.class, negate -> {
-      as(negate.expression(), Ast.Lexeme.class, id -> {
-        Assertions.assertEquals("something", id.name());
-      });
+      as(negate.expression(), Ast.Lexeme.class, id -> Assertions.assertEquals("something", id.name()));
     });
   }
 
@@ -261,7 +243,7 @@ class TokenToAstRaisingTest {
 
     // TODO: Convert this into some common format that is common in lang dev -- need to find some known format
     //        So we can easily compare against a string, and make it understandable for others
-    as(ast[0],Ast.Call.class, call -> {
+    as(ast[0], Ast.Call.class, call -> {
       as(call.target(), Ast.Paren.class, paren -> {
         as(paren.expression(), Ast.Callable.class, callable -> {
           as(callable.lhs(), Ast.Paren.class, call_lhs_paren -> {

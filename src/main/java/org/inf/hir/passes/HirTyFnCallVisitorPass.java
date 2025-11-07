@@ -1,9 +1,9 @@
 package org.inf.hir.passes;
 
-import org.inf.hir.Hir;
-import org.inf.hir.HirVisitor;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
+import org.inf.hir.Hir;
+import org.inf.hir.HirVisitor;
 
 @Slf4j
 @UtilityClass

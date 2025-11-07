@@ -1,20 +1,15 @@
 package org.inf.mir;
 
 import org.inf.Inf;
-import org.inf.mir.Mir.InstrBinaryOperation;
-import org.inf.mir.Mir.InstrConditionalJump;
-import org.inf.mir.Mir.InstrCreateLiteral;
-import org.inf.mir.Mir.InstrJump;
-import org.inf.mir.Mir.InstrStore;
+import org.inf.mir.Mir.*;
 import org.inf.mir.model.MirNode;
-import org.inf.mir.Mir.InstrPhi;
-import org.inf.mir.Mir.InstrReturn;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Stack;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
 
 class ThirToMirLoweringTest {
 

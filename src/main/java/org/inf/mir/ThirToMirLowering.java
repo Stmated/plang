@@ -1,34 +1,23 @@
 package org.inf.mir;
 
+import jakarta.annotation.Nonnull;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.inf.exceptions.NotImplementedException;
 import org.inf.exceptions.UnexpectedExpressionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.llvm.util.LLVMTys;
-import org.inf.mir.model.MirBinaryOperationKind;
-import org.inf.mir.model.MirFnArgument;
-import org.inf.mir.model.MirFnParameter;
-import org.inf.mir.model.MirFnSignature;
-import org.inf.mir.model.MirNode;
+import org.inf.mir.model.*;
 import org.inf.thir.raising.ThirRaiseResult;
-import org.inf.ty.Ty;
-import org.inf.ty.TyFn;
-import org.inf.ty.TyParam;
-import org.inf.ty.TyPointer;
-import org.inf.ty.TyStruct;
-import org.inf.ty.TyValueArray;
-import org.inf.ty.TyValueString;
+import org.inf.ty.*;
 import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
-import jakarta.annotation.Nonnull;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * NOTE: There will be quite some references from the MIR to the HIR, for sake of faster development compiler-side. It is however a goal to try and specialize
@@ -650,27 +639,27 @@ public class ThirToMirLowering {
     // TODO: This code below is wrong and too specific. Can probably be generalized somehow.
     //        Maybe it is enough if the ty of the rhs is a pointer (or pointer-like as array or string) then just store that.
     Mir.Instr instr;
-    if (rhs instanceof Mir.InstrCreateArray ica) {
-      instr = ica;
-    } else if (rhs instanceof Mir.InstrStore is) {
-      instr = is;
-    } else if (rhs instanceof Mir.InstrCreateFn is) {
-      is.name(new MirIdentifierId(name, null, 0));
-      instr = is;
-    } else if (rhs instanceof Mir.InstrCall is) {
-      instr = is;
-    } else {
-      if (scopeValue == null) {
-        final var is = new Mir.InstrStore(null, rhs, new TyPointer<>(rhs.ty()));
+    switch (rhs) {
+      case Mir.InstrCreateArray ica -> instr = ica;
+      case Mir.InstrStore is -> instr = is;
+      case Mir.InstrCreateFn is -> {
         is.name(new MirIdentifierId(name, null, 0));
         instr = is;
-      } else if (scopeValue instanceof Mir.InstrStore originalStore) {
-        instr = new Mir.InstrStore(originalStore, rhs, new TyPointer<>(rhs.ty()));
-      } else {
-        throw new IllegalArgumentException("Should this be allowed to happen?");
       }
+      case Mir.InstrCall is -> instr = is;
+      case null, default -> {
+        if (scopeValue == null) {
+          final var is = new Mir.InstrStore(null, rhs, new TyPointer<>(rhs.ty()));
+          is.name(new MirIdentifierId(name, null, 0));
+          instr = is;
+        } else if (scopeValue instanceof Mir.InstrStore originalStore) {
+          instr = new Mir.InstrStore(originalStore, rhs, new TyPointer<>(rhs.ty()));
+        } else {
+          throw new IllegalArgumentException("Should this be allowed to happen?");
+        }
 
-      mirCtx.nodeStack().peek().instructions().add(instr);
+        mirCtx.nodeStack().peek().instructions().add(instr);
+      }
     }
 
     // TODO: Should this actually be needed at all? Should it not be deduced some other way?
@@ -686,7 +675,7 @@ public class ThirToMirLowering {
   }
 
   @Data
-  private class PhiEntry {
+  private static class PhiEntry {
 
     Mir.Instr a;
     MirNode aNode;

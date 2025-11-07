@@ -1,11 +1,11 @@
 package org.inf.hir.passes;
 
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
 import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
-import lombok.RequiredArgsConstructor;
-import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class HirTyIdentifierToTyTransformerPass {

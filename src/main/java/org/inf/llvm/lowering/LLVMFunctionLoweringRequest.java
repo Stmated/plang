@@ -1,8 +1,9 @@
 package org.inf.llvm.lowering;
 
-import org.inf.mir.Mir.InstrCreateFn;
-import java.util.function.Consumer;
 import lombok.Value;
+import org.inf.mir.Mir.InstrCreateFn;
+
+import java.util.function.Consumer;
 
 @Value
 public class LLVMFunctionLoweringRequest {

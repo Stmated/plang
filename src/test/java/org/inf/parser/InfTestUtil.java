@@ -1,6 +1,8 @@
 package org.inf.parser;
 
 import org.inf.util.PathUtils;
+import org.junit.jupiter.params.provider.Arguments;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,7 +12,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
-import org.junit.jupiter.params.provider.Arguments;
 
 public class InfTestUtil {
 

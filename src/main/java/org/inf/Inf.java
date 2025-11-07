@@ -1,5 +1,6 @@
 package org.inf;
 
+import lombok.extern.slf4j.Slf4j;
 import org.inf.ast.Ast.Program;
 import org.inf.ast.TokenToAstRaising;
 import org.inf.hir.AstToHirRaising;
@@ -11,10 +12,10 @@ import org.inf.mir.MirLoweringResult;
 import org.inf.mir.ThirToMirLowering;
 import org.inf.thir.raising.HirToThirRaising;
 import org.inf.thir.raising.ThirRaiseResult;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class Inf {

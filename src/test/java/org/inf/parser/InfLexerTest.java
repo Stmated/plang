@@ -1,51 +1,24 @@
 package org.inf.parser;
 
-import static org.inf.lexer.TokenType.ARROW_DOUBLE;
-import static org.inf.lexer.TokenType.ASSIGN;
-import static org.inf.lexer.TokenType.BIT_SHIFT_LEFT;
-import static org.inf.lexer.TokenType.CLOSE_BRACE;
-import static org.inf.lexer.TokenType.CLOSE_PAREN;
-import static org.inf.lexer.TokenType.COLON;
-import static org.inf.lexer.TokenType.COMMA;
-import static org.inf.lexer.TokenType.DIVIDE;
-import static org.inf.lexer.TokenType.DOUBLE_DOT;
-import static org.inf.lexer.TokenType.ELSE;
-import static org.inf.lexer.TokenType.EQUALS;
-import static org.inf.lexer.TokenType.GTE;
-import static org.inf.lexer.TokenType.IDENTIFIER;
-import static org.inf.lexer.TokenType.IF;
-import static org.inf.lexer.TokenType.LITERAL_DECIMAL;
-import static org.inf.lexer.TokenType.LITERAL_DOUBLE;
-import static org.inf.lexer.TokenType.LITERAL_INTEGER;
-import static org.inf.lexer.TokenType.MULTIPLY;
-import static org.inf.lexer.TokenType.OPEN_BRACE;
-import static org.inf.lexer.TokenType.OPEN_PAREN;
-import static org.inf.lexer.TokenType.ADD;
-import static org.inf.lexer.TokenType.REMAINDER;
-import static org.inf.lexer.TokenType.RETURN;
-import static org.inf.lexer.TokenType.SEMI_COLON;
-import static org.inf.lexer.TokenType.SUBTRACT;
-import static org.inf.lexer.TokenType.THEN;
-import static org.inf.lexer.TokenType.VAL;
-
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.inf.exceptions.InvalidDecimalsException;
 import org.inf.exceptions.UncaughtLexerException;
 import org.inf.lexer.InfLexer;
 import org.inf.lexer.InfLexerSteps;
 import org.inf.lexer.Token;
 import org.inf.lexer.TokenType;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import static org.inf.lexer.TokenType.*;
 
 @Slf4j
 class InfLexerTest {
@@ -206,9 +179,9 @@ class InfLexerTest {
     this.check("iff", IDENTIFIER);
 
     this.check(
-        "if (1 >= 1) then return 10 << 1",
-        IF, OPEN_PAREN, LITERAL_INTEGER, GTE, LITERAL_INTEGER, CLOSE_PAREN,
-        THEN, RETURN, LITERAL_INTEGER, BIT_SHIFT_LEFT, LITERAL_INTEGER
+      "if (1 >= 1) then return 10 << 1",
+      IF, OPEN_PAREN, LITERAL_INTEGER, GTE, LITERAL_INTEGER, CLOSE_PAREN,
+      THEN, RETURN, LITERAL_INTEGER, BIT_SHIFT_LEFT, LITERAL_INTEGER
     );
   }
 
@@ -224,16 +197,16 @@ class InfLexerTest {
   void testCode() {
 
     final String code = "val fn = (a: uint32, b: uint32): uint32 => {" +
-        "    if (a % 2 == 0) then return a * b;" +
-        "    else return a / b;" +
-        "}";
+      "    if (a % 2 == 0) then return a * b;" +
+      "    else return a / b;" +
+      "}";
 
     this.check(
-        code,
-        VAL, IDENTIFIER, ASSIGN, OPEN_PAREN, IDENTIFIER, COLON, IDENTIFIER, COMMA, IDENTIFIER, COLON, IDENTIFIER, CLOSE_PAREN, COLON, IDENTIFIER, ARROW_DOUBLE, OPEN_BRACE,
-        IF, OPEN_PAREN, IDENTIFIER, REMAINDER, LITERAL_INTEGER, EQUALS, LITERAL_INTEGER, CLOSE_PAREN, THEN, RETURN, IDENTIFIER, MULTIPLY, IDENTIFIER, SEMI_COLON,
-        ELSE, RETURN, IDENTIFIER, DIVIDE, IDENTIFIER, SEMI_COLON,
-        CLOSE_BRACE
+      code,
+      VAL, IDENTIFIER, ASSIGN, OPEN_PAREN, IDENTIFIER, COLON, IDENTIFIER, COMMA, IDENTIFIER, COLON, IDENTIFIER, CLOSE_PAREN, COLON, IDENTIFIER, ARROW_DOUBLE, OPEN_BRACE,
+      IF, OPEN_PAREN, IDENTIFIER, REMAINDER, LITERAL_INTEGER, EQUALS, LITERAL_INTEGER, CLOSE_PAREN, THEN, RETURN, IDENTIFIER, MULTIPLY, IDENTIFIER, SEMI_COLON,
+      ELSE, RETURN, IDENTIFIER, DIVIDE, IDENTIFIER, SEMI_COLON,
+      CLOSE_BRACE
     );
   }
 
@@ -244,9 +217,9 @@ class InfLexerTest {
     final var tokenList = this.execute("1 + 1");
     Assertions.assertEquals(3, tokenList.size());
 
-    Assertions.assertEquals(0, tokenList.get(0).start());
-    Assertions.assertEquals(1, tokenList.get(0).end());
-    Assertions.assertEquals("1", tokenList.get(0).content());
+    Assertions.assertEquals(0, tokenList.getFirst().start());
+    Assertions.assertEquals(1, tokenList.getFirst().end());
+    Assertions.assertEquals("1", tokenList.getFirst().content());
 
     Assertions.assertEquals(2, tokenList.get(1).start());
     Assertions.assertEquals(3, tokenList.get(1).end());
@@ -259,7 +232,7 @@ class InfLexerTest {
 
   @Test
   void testTokenizerErrors() {
-    Assertions.assertThrows(InvalidDecimalsException.class, () ->  this.execute("123.123.123"));
+    Assertions.assertThrows(InvalidDecimalsException.class, () -> this.execute("123.123.123"));
   }
 
   @SneakyThrows

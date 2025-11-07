@@ -44,7 +44,7 @@ public interface HirVisitor {
 
   default void visitBinaryOperation(Hir.BinaryOperation expr) {
     expr.lhs().visit(this);
-      expr.rhs().visit(this);
+    expr.rhs().visit(this);
   }
 
   default void visitBlock(Hir.Block expr) {
@@ -83,7 +83,7 @@ public interface HirVisitor {
 
   default void visitLabeling(Hir.Labeling expr) {
     expr.lhs().visit(this);
-      expr.rhs().visit(this);
+    expr.rhs().visit(this);
   }
 
   default void visitLiteral(Hir.Literal expr) {

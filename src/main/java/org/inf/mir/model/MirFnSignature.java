@@ -1,7 +1,8 @@
 package org.inf.mir.model;
 
-import org.inf.ty.Ty;
 import jakarta.annotation.Nonnull;
+import org.inf.ty.Ty;
+
 import java.util.Arrays;
 
 public record MirFnSignature(

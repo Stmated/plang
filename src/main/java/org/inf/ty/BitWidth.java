@@ -1,7 +1,8 @@
 package org.inf.ty;
 
-import java.util.Objects;
 import lombok.Builder;
+
+import java.util.Objects;
 
 @Builder(toBuilder = true)
 public record BitWidth(int value, boolean explicit) {
@@ -25,11 +26,11 @@ public record BitWidth(int value, boolean explicit) {
       return true;
     }
 
-    if (!(obj instanceof BitWidth other)) {
+    if (!(obj instanceof BitWidth(int v, boolean e))) {
       return false;
     }
 
-    return other.value == this.value && other.explicit == this.explicit;
+    return v == this.value && e == this.explicit;
   }
 
   @Override

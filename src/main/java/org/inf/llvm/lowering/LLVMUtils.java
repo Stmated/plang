@@ -1,12 +1,13 @@
 package org.inf.llvm.lowering;
 
-import org.inf.exceptions.GenericLLVMException;
-import org.inf.exceptions.UnreachableCodeLLVMException;
-import java.util.Locale;
 import lombok.experimental.UtilityClass;
 import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.llvm.LLVM.LLVMModuleRef;
 import org.bytedeco.llvm.global.LLVM;
+import org.inf.exceptions.GenericLLVMException;
+import org.inf.exceptions.UnreachableCodeLLVMException;
+
+import java.util.Locale;
 
 @UtilityClass
 class LLVMUtils {

@@ -1,30 +1,27 @@
 package org.inf.llvm.lowering;
 
+import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.inf.Inf;
 import org.inf.InfRunOptions;
 import org.inf.exceptions.InvalidImplementationException;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.exceptions.UnreachableCodeLLVMException;
-import org.inf.hir.Hir.BinaryOperation;
-import org.inf.hir.Hir.BinaryOperationKind;
-import org.inf.hir.Hir.Expression;
-import org.inf.hir.Hir.Expressions;
-import org.inf.hir.Hir.Literal;
-import org.inf.hir.Hir.Program;
-import org.inf.hir.Hir.Return;
+import org.inf.hir.Hir.*;
 import org.inf.ty.Ty;
 import org.inf.ty.TyValueNumberInteger;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.UUID;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
-@Order(100_000_000)
 @Slf4j
 class MirToLLVMLoweringTest {
 
@@ -342,7 +339,7 @@ class MirToLLVMLoweringTest {
         val a: int;
         val b: int;
       };
-            
+      
       val v = new heap S { a = 4, b = 6 };
       return v.a + v.b;
       """;
@@ -360,7 +357,7 @@ class MirToLLVMLoweringTest {
         val a: int;
         val b: int;
       };
-            
+      
       val v = new heap S { a = 4, b = 6 };
       v.a = 20;
       v.b = 10;
@@ -390,7 +387,7 @@ class MirToLLVMLoweringTest {
           val a: int;
           val b: int;
         };
-              
+      
         val v = new heap S { a = 4, b = 6 };
         return (v.a + v.b) * multiplier;
       };
@@ -412,7 +409,7 @@ class MirToLLVMLoweringTest {
       val fopen = (filename: *char, mode: *char): *opaque;
       val fclose = (fp: *opaque): int;
       val fprintf = (fp: *opaque, c: *char, ...): int;
-          
+      
       val fp = fopen('%s', 'w+');
       fprintf(fp, 'Hello, world!!');
       fclose(fp);
@@ -443,11 +440,11 @@ class MirToLLVMLoweringTest {
     final var code = """
       val a = 10;
       val fn = (b: int, c: int) => a + b + c;
-            
+      
       val d = fn(1, 2); // 13
       val e = fn(3, 4); // 17
       val f = a + d + e; // 40
-            
+      
       return f;
       """;
 
@@ -468,10 +465,10 @@ class MirToLLVMLoweringTest {
         val d = fn2(10);
         return a + b + d;
       }
-            
+      
       val e = fn(100);
       val f = a + e;
-            
+      
       return f;
       """;
 
@@ -498,13 +495,13 @@ class MirToLLVMLoweringTest {
       val fopen = (filename: string, mode: *char): *opaque;
       val fclose = (fp: *opaque): int;
       val fprintf = (fp: *opaque, c: string, ...): int;
-            
+      
       return (file: string, message: string) => {
-        
+      
         val fp = fopen(file, 'w+');
         fprintf(fp, message);
         fclose(fp);
-        
+      
         return 0;
       }
       """;
@@ -552,19 +549,19 @@ class MirToLLVMLoweringTest {
         var functionVar = "Function scope";
         fprintf(fp, globalVar); // Global
         fprintf(fp, functionVar); // Function scope
-        
+      
         if (true) {
           val ifVar = "If scope";
           fprintf(fp, ifVar); //  If scope
         }
-        
+      
         var loopVar = "";
         for (var i = 0; i <= 1; i += 1) {
           loopVar = "Loop";
           fprintf(fp, loopVar); // should output: Loop and Loop
         }
         fprintf(fp, loopVar); // should output: Loop due to function scope rule of var
-        
+      
         val lambdaFunction = () => {
           var lambdaVar = "Lambda scope";
           fprintf(fp, globalVar); // Global
@@ -573,12 +570,12 @@ class MirToLLVMLoweringTest {
           fprintf(fp, lambdaVar); // Lambda scope
         }
         lambdaFunction();
-        
+      
         globalVar = "Changed global";
         functionVar = "Changed function scope";
         var ifVar = "Changed if scope";
         loopVar = "Changed loop scope";
-        
+      
         fprintf(fp, globalVar); // Changed global
         fprintf(fp, functionVar); // Changed function scope
         fprintf(fp, ifVar); // Changed if scope

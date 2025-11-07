@@ -1,40 +1,26 @@
 package org.inf.llvm.lowering;
 
-import org.inf.exceptions.InvalidImplementationException;
-import org.inf.exceptions.NotImplementedException;
-import org.inf.exceptions.UnexpectedExpressionException;
-import org.inf.llvm.util.LLVMTys;
-import org.inf.mir.Mir;
-import org.inf.mir.model.MirNode;
-import org.inf.ty.BitWidth;
-import org.inf.ty.Ty;
-import org.inf.ty.TyOpaque;
-import org.inf.ty.TyPointer;
-import org.inf.ty.TyStruct;
-import org.inf.ty.TyValueArray;
-import org.inf.ty.TyValueBoolean;
-import org.inf.ty.TyValueNumber;
-import org.inf.ty.TyValueNumberInteger;
-import org.inf.ty.TyValueNumberPrecisioned;
-import org.inf.ty.TyValueString;
-import org.inf.ty.util.Pair;
-import org.inf.ty.util.Tys;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.llvm.LLVM.LLVMModuleRef;
 import org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import org.bytedeco.llvm.LLVM.LLVMValueRef;
 import org.bytedeco.llvm.global.LLVM;
+import org.inf.exceptions.InvalidImplementationException;
+import org.inf.exceptions.NotImplementedException;
+import org.inf.exceptions.UnexpectedExpressionException;
+import org.inf.llvm.util.LLVMTys;
+import org.inf.mir.Mir;
+import org.inf.mir.model.MirNode;
+import org.inf.ty.*;
+import org.inf.ty.util.Pair;
+import org.inf.ty.util.Tys;
+
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 
 /**
  * One LLVM module in our case is one MIR function. It will build the CFG of this only.
@@ -295,7 +281,8 @@ class LLVMFunctionLowering {
 
     for (var i = 0; i < mir.elements().length; i++) {
 
-      final var elementRef = lower_instruction(mir.elements()[i]); ;
+      final var elementRef = lower_instruction(mir.elements()[i]);
+
       elementRefs[i] = elementRef.value();
 
       final var indices = new PointerPointer<>(1);
@@ -361,7 +348,7 @@ class LLVMFunctionLowering {
     final var structType = Objects.requireNonNullElseGet(
       structRef.type(),
       () -> {
-        log.warn("Did not receive the type from '" + it.target() + "', will re-create using its ty");
+        log.warn("Did not receive the type from '{}', will re-create using its ty", it.target());
         final var structTy = LLVMTys.normalize(it.target().ty());
         return typeResolver.resolve(structTy);
       }
@@ -386,7 +373,7 @@ class LLVMFunctionLowering {
     final var structType = Objects.requireNonNullElseGet(
       structRef.type(),
       () -> {
-        log.warn("Did not receive the type from '%s', will re-create using its ty".formatted(it.target()));
+        log.warn("Did not receive the type from '{}', will re-create using its ty", it.target());
         final var structTy = LLVMTys.normalize(it.target().ty());
         return typeResolver.resolve(structTy);
       }

@@ -6,18 +6,17 @@ import org.inf.exceptions.UnexpectedExpressionException;
 import org.inf.hir.passes.HirLexemeToIdentifierTransformerPass;
 import org.inf.ty.Ty;
 import org.inf.ty.util.MachineTarget;
+
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * The AstToHirRaising class is responsible for converting an AST program into a HIR program.
- * <p/>
- * Note that the AST representation does not necessarily have to match the logical tree-structure of the code.
- * <p>
- * The AST is rather a very high-level representation of the flow of the code, and not its meaning. For example an array access is an expression of some sort
- * followed by a bracket syntax. It is up to this AST -> HIR raising to notice the contextual significance of those brackets and turn it into an array access.
- */
+/// The AstToHirRaising class is responsible for converting an AST program into a HIR program.
+///
+/// Note that the AST representation does not necessarily have to match the logical tree-structure of the code.
+///
+/// The AST is rather a very high-level representation of the flow of the code, and not its meaning. For example an array access is an expression of some sort
+/// followed by a bracket syntax. It is up to this AST -> HIR raising to notice the contextual significance of those brackets and turn it into an array access.
 public class AstToHirRaising {
 
   private final MachineTarget machineTarget;
@@ -82,8 +81,9 @@ public class AstToHirRaising {
 
     final var lowered = new Hir.Expression[expressions.length];
     var targetIndex = 0;
-    for (var i = 0; i < expressions.length; i++) {
-      final var hir = lower(expressions[i]); ;
+    for (final var expression : expressions) {
+      final var hir = lower(expression);
+
       if (hir != null) {
         lowered[targetIndex] = hir;
         targetIndex++;
@@ -191,9 +191,7 @@ public class AstToHirRaising {
       for (final var field : expand(block)) {
 
         switch (field) {
-          case Hir.Dec dec -> {
-            declarations.add(dec);
-          }
+          case Hir.Dec dec -> declarations.add(dec);
           default -> throw new UnexpectedExpressionException(field);
         }
       }
@@ -616,16 +614,16 @@ public class AstToHirRaising {
     var children_lowered = new Hir.Expression[children.length];
 
     var targetIndex = 0;
-    for (var i = 0; i < children.length; i++) {
+    for (final var expression : children) {
 
-      final var child = switch (children[i]) {
+      final var child = switch (expression) {
         case Ast.Labeling labeling -> {
           labeledExpressionCount++;
           yield lower_labeling_to_tuple_key_value(labeling);
         }
         default -> {
           unlabeledExpressionCount++;
-          yield lower(children[i]);
+          yield lower(expression);
         }
       };
 

@@ -1,22 +1,14 @@
 package org.inf.llvm.lowering;
 
-import org.inf.mir.Mir.InstrCreateFn;
+import org.bytedeco.llvm.LLVM.*;
+import org.bytedeco.llvm.global.LLVM;
 import org.inf.mir.Mir.Instr;
+import org.inf.mir.Mir.InstrCreateFn;
 import org.inf.mir.model.MirNode;
 import org.inf.ty.Ty;
 import org.inf.ty.util.Pair;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Stack;
-import org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
-import org.bytedeco.llvm.LLVM.LLVMBuilderRef;
-import org.bytedeco.llvm.LLVM.LLVMContextRef;
-import org.bytedeco.llvm.LLVM.LLVMOrcThreadSafeContextRef;
-import org.bytedeco.llvm.LLVM.LLVMTypeRef;
-import org.bytedeco.llvm.LLVM.LLVMValueRef;
-import org.bytedeco.llvm.global.LLVM;
+
+import java.util.*;
 
 class MirToLLVMCtx {
 

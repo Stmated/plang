@@ -1,9 +1,9 @@
 package org.inf;
 
-import org.inf.ty.util.MachineTarget;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 import lombok.experimental.SuperBuilder;
+import org.inf.ty.util.MachineTarget;
 
 @Value
 @NonFinal

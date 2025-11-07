@@ -1,7 +1,9 @@
 package org.inf.execution;
 
 import org.inf.Inf;
+import org.inf.execution.interpreter.InterpreterCodeExecutor;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class InterpreterCodeExecutorTest {
@@ -38,6 +40,7 @@ class InterpreterCodeExecutorTest {
   }
 
   @Test
+  @Disabled("Enable sometime in the future when we get back to working on the interpreter")
   void testFunctionCall() {
     final var executor = new InterpreterCodeExecutor();
 

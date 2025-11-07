@@ -1,28 +1,12 @@
 package org.inf.ty.util;
 
-import org.inf.ty.BitWidth;
-import org.inf.ty.Ty;
-import org.inf.ty.TyDiffKind;
-import org.inf.ty.TyFlags;
-import org.inf.ty.TyOpaque;
-import org.inf.ty.TyPointer;
-import org.inf.ty.TyResult;
-import org.inf.ty.TyUnion;
-import org.inf.ty.TyValueNumber;
-import org.inf.ty.TyValueNumberInteger;
-import org.inf.ty.TyValueNumberPrecisioned;
-import org.inf.ty.TyValueNumberScaled;
 import jakarta.annotation.Nullable;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
+import lombok.experimental.UtilityClass;
+import org.inf.ty.*;
+
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class Tys {
@@ -88,7 +72,7 @@ public class Tys {
           final var newFlags = mixFlags(anp.flags(), bnp.flags());
 
           final var diffWidth = newWidthValue != anp.width().value() || newWidthValue != bnp.width().value();
-          final var diffPrecision =  newPrecisionValue != anp.precision() || newPrecisionValue != bnp.precision();
+          final var diffPrecision = newPrecisionValue != anp.precision() || newPrecisionValue != bnp.precision();
 
           if (diffWidth && diffPrecision) {
             final var newWidth = new BitWidth(newWidthValue, newExplicit);

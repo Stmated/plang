@@ -1,12 +1,13 @@
 package org.inf.parser;
 
-import java.io.IOException;
-import java.io.Reader;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.commons.pool2.impl.GenericObjectPool;
+
+import java.io.IOException;
+import java.io.Reader;
 
 public class NoSyncBufferedReader implements AutoCloseable {
 

@@ -1,7 +1,7 @@
 package org.inf.exceptions;
 
-import org.inf.util.TextRange;
 import lombok.Getter;
+import org.inf.util.TextRange;
 
 public class LexerException extends RuntimeException {
 

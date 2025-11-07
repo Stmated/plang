@@ -1,8 +1,9 @@
 package org.inf.ty;
 
+import lombok.Builder;
+
 import java.util.EnumSet;
 import java.util.Objects;
-import lombok.Builder;
 
 @Builder(toBuilder = true)
 public record TyValueNumberPrecisioned(
@@ -37,7 +38,7 @@ public record TyValueNumberPrecisioned(
     }
     TyValueNumberPrecisioned that = (TyValueNumberPrecisioned) o;
     return Objects.equals(width, that.width) && precision == that.precision && signed == that.signed && kind == that.kind
-           && Objects.equals(flags, that.flags);
+      && Objects.equals(flags, that.flags);
   }
 
   @Override

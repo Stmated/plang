@@ -1,13 +1,14 @@
 package org.inf.mir;
 
+import lombok.Getter;
+import lombok.Value;
 import org.inf.mir.model.MirFnSignature;
 import org.inf.mir.model.MirNode;
 import org.inf.thir.raising.ThirRaiseResult;
 import org.inf.ty.util.MachineTarget;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
-import lombok.Getter;
-import lombok.Value;
 
 @Value
 public class ThirToMirCtx {

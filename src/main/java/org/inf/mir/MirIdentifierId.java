@@ -1,7 +1,8 @@
 package org.inf.mir;
 
-import java.util.Objects;
 import lombok.Value;
+
+import java.util.Objects;
 
 @Value
 public class MirIdentifierId {

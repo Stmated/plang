@@ -1,11 +1,8 @@
 package org.inf.mir;
 
 import org.inf.mir.Mir.Instr;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 record MirScope(
@@ -80,8 +77,6 @@ record MirScope(
   public MirScope snapshot() {
 
     final var snapshotParent = (parent == null) ? null : parent.snapshot();
-    final var snapshot = new MirScope(snapshotParent, this.name, new HashMap<>(this.map), this.idMap);
-
-    return snapshot;
+    return new MirScope(snapshotParent, this.name, new HashMap<>(this.map), this.idMap);
   }
 }

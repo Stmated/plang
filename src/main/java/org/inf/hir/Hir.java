@@ -1,17 +1,14 @@
 package org.inf.hir;
 
-import org.inf.ty.Ty;
-import org.inf.ty.TyFn;
-import org.inf.ty.TyValue;
-import org.inf.ty.TyValueNumber;
-import org.inf.ty.TyValueString;
 import jakarta.annotation.Nonnull;
-import java.util.Arrays;
-import java.util.Objects;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
+import org.inf.ty.*;
+
+import java.util.Arrays;
+import java.util.Objects;
 
 @UtilityClass
 public class Hir {
@@ -19,26 +16,24 @@ public class Hir {
   public interface Expression {
     Ty ty();
 
-    /**
-     * Difference between this and ty is that this is the value that a construct represents.
-     * For example, a Dec is "void" itself but there is always a value ty behind it. This gets that ty.
-     */
+    /// Difference between this and ty is that this is the value that a construct represents.
+    /// For example, a Dec is "void" itself but there is always a value ty behind it. This gets that ty.
     default Ty valueTy() {
       return this.ty();
     }
 
     void visit(HirVisitor visitor);
+
     Hir.Expression transform(HirTransformer transformer);
   }
 
   public interface ExpressionsOwner<Self extends Expression> {
     Expression[] children();
+
     Self children(Expression[] expressions);
   }
 
-  /**
-   * @deprecated Delete! It makes no sense in the HIR! Either it is one expression, or it is a block with multiple expressions and a result! Delete
-   */
+  /// @deprecated Delete! It makes no sense in the HIR! Either it is one expression, or it is a block with multiple expressions and a result! Delete
   @Deprecated(since = "2023-12-07")
   @Data
   @AllArgsConstructor
@@ -304,7 +299,7 @@ public class Hir {
 
     Expression predicate;
     Expression pass;
-     Expression fail;
+    Expression fail;
     Ty ty;
 
     @Override
@@ -552,7 +547,7 @@ public class Hir {
 
   /**
    * Q: Is this a concept appropriate for the HIR, or should it be a label jump?
-   *        Are there benefits to being able to represent a "break" further down the chain?
+   * Are there benefits to being able to represent a "break" further down the chain?
    */
   @Data
   @AllArgsConstructor
@@ -579,7 +574,7 @@ public class Hir {
 
   /**
    * Q: Is this a concept appropriate for the HIR, or should it be a label jump?
-   *        Are there benefits to being able to represent a "continue" further down the chain?
+   * Are there benefits to being able to represent a "continue" further down the chain?
    */
   @Data
   @AllArgsConstructor

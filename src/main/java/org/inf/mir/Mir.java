@@ -1,24 +1,15 @@
 package org.inf.mir;
 
-import org.inf.mir.model.MirBinaryOperationKind;
-import org.inf.mir.model.MirFnArgument;
-import org.inf.mir.model.MirFnParameter;
-import org.inf.mir.model.MirFnSignature;
-import org.inf.mir.model.MirNode;
+import jakarta.annotation.Nonnull;
+import lombok.*;
+import lombok.experimental.UtilityClass;
+import org.inf.mir.model.*;
 import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
 import org.inf.ty.TyValueArray;
-import jakarta.annotation.Nonnull;
+
 import java.util.Arrays;
 import java.util.Objects;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.Value;
-import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class Mir {

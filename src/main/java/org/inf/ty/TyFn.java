@@ -1,7 +1,8 @@
 package org.inf.ty;
 
-import java.util.Arrays;
 import lombok.Builder;
+
+import java.util.Arrays;
 
 @Builder(toBuilder = true)
 public record TyFn(

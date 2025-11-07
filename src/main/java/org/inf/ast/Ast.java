@@ -1,15 +1,16 @@
 package org.inf.ast;
 
+import jakarta.annotation.Nullable;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.experimental.UtilityClass;
 import org.inf.lexer.TokenType;
 import org.inf.ty.TyValue;
-import jakarta.annotation.Nullable;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class Ast {
@@ -32,17 +33,17 @@ public class Ast {
     }
   }
 
-	@Data
-	@AllArgsConstructor
-	public static class Become implements Expression {
+  @Data
+  @AllArgsConstructor
+  public static class Become implements Expression {
 
-		Call call;
+    Call call;
 
-		@Override
-		public <R, V extends AstVisitor<R>> R visit(V visitor) {
-			return visitor.visitBecome(this);
-		}
-	}
+    @Override
+    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+      return visitor.visitBecome(this);
+    }
+  }
 
   @Data
   @AllArgsConstructor
@@ -235,7 +236,7 @@ public class Ast {
     }
   }
 
-  public static interface Expression {
+  public interface Expression {
 
     <R, V extends AstVisitor<R>> R visit(V visitor);
   }
@@ -263,7 +264,7 @@ public class Ast {
       }
 
       if (collection.size() == 1) {
-        return collection.get(0);
+        return collection.getFirst();
       } else {
         return new Expressions(collection.toArray(new Expression[0]));
       }
@@ -299,7 +300,7 @@ public class Ast {
     }
   }
 
-  public static interface ImportCapable extends Expression {
+  public interface ImportCapable extends Expression {
   }
 
   @Data

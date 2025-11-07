@@ -1,7 +1,7 @@
 package org.inf.thir.raising;
 
-import org.inf.hir.Hir;
 import lombok.Value;
+import org.inf.hir.Hir;
 
 @Value
 public class ThirRaiseResult {

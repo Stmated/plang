@@ -1,7 +1,8 @@
 package org.inf.llvm.lowering;
 
-import java.util.concurrent.atomic.AtomicReference;
 import org.bytedeco.llvm.LLVM.LLVMValueRef;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 record LLVMScopeValue(LLVMValueRef ref, AtomicReference<LLVMValueRef> loaded) {
 

@@ -1,13 +1,14 @@
 package org.inf.hir.passes;
 
+import jakarta.annotation.Nonnull;
+import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyParam;
-import jakarta.annotation.Nonnull;
+
 import java.util.Objects;
-import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class HirFnTyVisitorPass {

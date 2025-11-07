@@ -1,7 +1,7 @@
 package org.inf.exceptions;
 
-import org.inf.ty.Ty;
 import lombok.Getter;
+import org.inf.ty.Ty;
 
 public class InvalidTypeConversionException extends RuntimeException {
 

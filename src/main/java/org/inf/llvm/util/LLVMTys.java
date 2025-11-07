@@ -1,18 +1,13 @@
 package org.inf.llvm.util;
 
-import org.inf.mir.Mir.Instr;
-import org.inf.ty.Ty;
-import org.inf.ty.TyPointer;
-import org.inf.ty.TyStruct;
-import org.inf.ty.TyValueArray;
-import org.inf.ty.TyValueNumberInteger;
-import org.inf.ty.TyValueString;
-import org.inf.ty.util.Tys;
 import lombok.experimental.UtilityClass;
+import org.inf.mir.Mir.Instr;
+import org.inf.ty.*;
+import org.inf.ty.util.Tys;
 
 /**
  * Utility class that will handle the centralized logic of types between our managed code and LLVM.
- *
+ * <p>
  * Any discrepancies will be handled here, for example that a string is a pointer to a u8.
  */
 @UtilityClass
@@ -46,11 +41,6 @@ public class LLVMTys {
   }
 
   public static boolean isPointer(Ty ty) {
-
-    if (ty instanceof TyPointer<?> || ty instanceof TyStruct || ty instanceof TyValueArray) {
-      return true;
-    }
-
-    return false;
+    return ty instanceof TyPointer<?> || ty instanceof TyStruct || ty instanceof TyValueArray;
   }
 }
