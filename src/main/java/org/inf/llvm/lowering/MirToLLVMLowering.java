@@ -128,7 +128,10 @@ public class MirToLLVMLowering {
 
     final var threadContext = LLVM.LLVMOrcCreateNewThreadSafeContext();
 
-    final var context = LLVM.LLVMOrcThreadSafeContextGetContext(threadContext);
+    // LLVMOrcThreadSafeContextGetLLVMContext
+
+
+    final var context = LLVM.LLVMContextCreate(); // LLVM.LLVMOrcThreadSafeContextGetContext(threadContext);
     disposals.add(() -> LLVM.LLVMContextDispose(context));
 
     final var builder = LLVM.LLVMCreateBuilderInContext(context);

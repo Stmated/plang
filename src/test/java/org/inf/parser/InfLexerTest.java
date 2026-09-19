@@ -52,7 +52,7 @@ class InfLexerTest {
     "1.1M"
   })
   @SneakyThrows
-  void testDecimalContent(String code) {
+  void testDecimalContent(final String code) {
 
     final var tokens = this.execute(code);
 
@@ -68,7 +68,7 @@ class InfLexerTest {
     "1.1"
   })
   @SneakyThrows
-  void testDoubleContent(String code) {
+  void testDoubleContent(final String code) {
 
     final var tokens = this.execute(code);
 
@@ -85,7 +85,7 @@ class InfLexerTest {
     "1.1D"
   })
   @SneakyThrows
-  void testDoubleContentWithSuffix(String code) {
+  void testDoubleContentWithSuffix(final String code) {
 
     final var tokens = this.execute(code);
 
@@ -139,7 +139,7 @@ class InfLexerTest {
     "  1+1",
     "  1+1  "
   })
-  void testOnePlusOne(String code) {
+  void testOnePlusOne(final String code) {
     this.check(code, LITERAL_INTEGER, ADD, LITERAL_INTEGER);
   }
 
@@ -149,7 +149,7 @@ class InfLexerTest {
     " -1",
     " - 1 "
   })
-  void testUnaryNegate(String code) {
+  void testUnaryNegate(final String code) {
     this.check(code, SUBTRACT, LITERAL_INTEGER);
   }
 
@@ -159,7 +159,7 @@ class InfLexerTest {
     " +1",
     " + 1 "
   })
-  void testUnaryAdd(String code) {
+  void testUnaryAdd(final String code) {
     this.check(code, ADD, LITERAL_INTEGER);
   }
 
@@ -231,12 +231,45 @@ class InfLexerTest {
   }
 
   @Test
+  void testFunctionCallWithoutParenthesis() {
+
+    final String code = "person eats fruit";
+
+    this.check(
+      code,
+      IDENTIFIER, IDENTIFIER, IDENTIFIER
+    );
+  }
+
+  @Test
+  void testFunctionCallWithParenthesis() {
+
+    final String code = "person eats(fruit)";
+
+    this.check(
+      code,
+      IDENTIFIER, IDENTIFIER, OPEN_PAREN, IDENTIFIER, CLOSE_PAREN
+    );
+  }
+
+  @Test
+  void testFunctionCallWithParenInOtherOrder() {
+
+    final String code = "eats(person, fruit)";
+
+    this.check(
+      code,
+      IDENTIFIER, OPEN_PAREN, IDENTIFIER, COMMA, IDENTIFIER, CLOSE_PAREN
+    );
+  }
+
+  @Test
   void testTokenizerErrors() {
     Assertions.assertThrows(InvalidDecimalsException.class, () -> this.execute("123.123.123"));
   }
 
   @SneakyThrows
-  private void check(String from, TokenType... expected) {
+  private void check(final String from, final TokenType... expected) {
 
     final var tokenList = this.execute(from);
     final var actual = tokenList.stream().map(Token::type).toList().toArray(new TokenType[0]);
@@ -251,7 +284,7 @@ class InfLexerTest {
   }
 
   @SneakyThrows
-  private void checkToString(String from, String expected) {
+  private void checkToString(final String from, final String expected) {
 
     final var tokenList = this.execute(from);
     final var actual = String.join("", tokenList.stream().map(Token::content).toList());
@@ -260,7 +293,7 @@ class InfLexerTest {
   }
 
   @SneakyThrows
-  private List<Token> execute(String from) {
+  private List<Token> execute(final String from) {
 
     final var pass2 = new InfLexerSteps();
     try (final var tokens = new InfLexer(InfTestUtil.stringToStream(from))) {
@@ -269,13 +302,13 @@ class InfLexerTest {
     }
   }
 
-  private <T> List<T> iteratorToList(Iterator<T> iterator) {
+  private <T> List<T> iteratorToList(final Iterator<T> iterator) {
 
     final var list = new ArrayList<T>();
     while (iterator.hasNext()) {
       try {
         list.add(iterator.next());
-      } catch (Throwable ex) {
+      } catch (final Throwable ex) {
 
         final var tokens = list.stream().map(Object::toString).toList();
         final var tokenStrings = String.join(", ", tokens);

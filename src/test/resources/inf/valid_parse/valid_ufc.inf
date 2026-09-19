@@ -1,0 +1,31 @@
+
+// File which describes all the way that it should be possible to call things.
+// It is important that we can differ between a `fn call` and a `fn reference`
+
+val Person = struct {
+  val firstName: string;
+  val lastName: string;
+  val getFullName: () => `${this.firstName} ${this.lastName}`;
+};
+
+val Office = struct {
+  val address: string;
+  val workers = new Array(Person);
+  val enter: (p: Person) => this.workers.add(p);
+  val leave: (p: Person) => this.workers.remove(p);
+};
+
+const office = new stack Office { address = 'Ankeborg' };
+const person1 = new stack Person { firstName = 'Kalle', lastName = 'Anka' };
+const person2 = new stack Person { firstName = 'Joakim', lastName = 'Von Anka' };
+
+office.enter(person1);
+person1.enter(office);
+office enter person2;
+enter(office, person1); // Perhaps should require explicit "global" export somehow
+
+const fnRef = office enter;
+const fnExplicitRef = office::enter;
+
+person1.getFullName();
+Person::getFullName(person1);

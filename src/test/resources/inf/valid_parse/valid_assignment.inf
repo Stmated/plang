@@ -1,0 +1,1 @@
+value.inner[15].something().other = value.foo == 1;

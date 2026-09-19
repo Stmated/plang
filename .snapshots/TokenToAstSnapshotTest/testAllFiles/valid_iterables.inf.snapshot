@@ -1,0 +1,200 @@
+dynamic-directory: true
+snapshot-name: valid_iterables.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array1")
+        Immutable
+        
+        false)
+      (Bracket
+        (Literal "1")
+        (Literal "2")
+        (Literal "3")))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array2")
+        Immutable
+        
+        false)
+      (Bracket
+        (Literal "1")
+        (Literal "2")
+        (Literal "3")))
+    (NoOp)
+    (Comment " Quick creation without property keys should go to field \"value\"")
+    (Comment " If there are several entries without property keys, it is expected that \"value\" is an array")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array3")
+        Immutable
+        
+        false)
+      (New
+        (Lexeme "Array")
+        (Lexeme "stack")
+        (Block
+          (Expressions
+            (Literal "1")
+            (Literal "2")
+            (Literal "3")))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array4")
+        Immutable
+        
+        false)
+      (New
+        (Lexeme "Array")
+        (Lexeme "stack")
+        (Block
+          (Expressions
+            (Assignment
+              (Lexeme "initial")
+              (Literal "6"))
+            (Literal "1")
+            (Literal "2")
+            (Literal "3")))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array5")
+        Immutable
+        
+        false)
+      (New
+        (PostfixExpression
+          (Lexeme "Array")
+          (Paren
+            (Lexeme "float")))
+        (Lexeme "stack")
+        (Block
+          (Expressions
+            (Assignment
+              (Lexeme "initial")
+              (Literal "6"))
+            (Literal "1")
+            (Literal "2")
+            (Literal "3")))))
+    (NoOp)
+    (Comment " Vec = pointer, capacity, length")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "vec1")
+        Immutable
+        
+        false)
+      (New
+        (Lexeme "Vector")
+        (Lexeme "stack")
+        (Block
+          (Expressions
+            (Literal "1")
+            (Literal "2")
+            (Literal "3")))))
+    (NoOp)
+    (Comment " Variable-sized array where memory is consecutive")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "list1")
+        Immutable
+        
+        false)
+      (New
+        (Lexeme "List")
+        (Lexeme "stack")
+        (Block
+          (Expressions
+            (Literal "1")
+            (Literal "2")
+            (NoOp)
+            (Literal "3")))))
+    (NoOp)
+    (Comment " Variable-sized Linked array where memory is not consecutive")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array1_0")
+        Immutable
+        
+        false)
+      (PostfixExpression
+        (Lexeme "array1")
+        (Bracket
+          (Literal "0"))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array1_slice")
+        Immutable
+        
+        false)
+      (PostfixExpression
+        (Lexeme "array1")
+        (Bracket
+          (Range
+            (Literal "0")
+            (Literal "1")))))
+    (NoOp)
+    (Comment " Slice is a view into original -- mutable or immutable?")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array1_filtered1")
+        Immutable
+        
+        false)
+      (PostfixExpression
+        (Lexeme "array1")
+        (Bracket
+          (Callable
+            (Lexeme "v")
+            (BinaryOperation GT
+              (Lexeme "v")
+              (Literal "2"))))))
+    (NoOp)
+    (Comment " \"it\" is the default implicit name for single-argument lambdas")
+    (Comment " (which is not supported yet, removed it because of a lack of good ways to parse it)")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array1_filtered2")
+        Immutable
+        
+        false)
+      (PostfixExpression
+        (Lexeme "array1")
+        (Bracket
+          (Callable
+            (Lexeme "it")
+            (BinaryOperation GT
+              (Lexeme "it")
+              (Literal "2"))))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array1_sorted")
+        Immutable
+        
+        false)
+      (DotAccess
+        (Lexeme "array1")
+        (PostfixExpression
+          (Lexeme "sort")
+          (Paren
+            (Callable
+              (Paren
+                (Expressions
+                  (Lexeme "it")
+                  (Lexeme "other")))
+              (DotAccess
+                (Lexeme "it")
+                (PostfixExpression
+                  (Lexeme "compareTo")
+                  (Paren
+                    (Lexeme "other")))))))))
+    (NoOp)))

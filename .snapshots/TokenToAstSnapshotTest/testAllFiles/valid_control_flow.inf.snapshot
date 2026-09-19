@@ -1,0 +1,94 @@
+dynamic-directory: true
+snapshot-name: valid_control_flow.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "a")
+        Immutable
+        
+        false)
+      (Conditional
+        (Paren
+          (BinaryOperation EQUALS
+            (Literal "1")
+            (Literal "2")))
+        (Then
+          (Literal "1"))
+        (Literal "2")))
+    (NoOp)
+    (Conditional
+      (Paren
+        (BinaryOperation EQUALS
+          (Literal "1")
+          (Literal "2")))
+      (Block
+        (Expressions
+          (Return
+            (Literal "true"))
+          (NoOp)))
+      )
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "b")
+        Immutable
+        
+        false)
+      (Conditional
+        (BinaryOperation GT
+          (Lexeme "a")
+          (Lexeme "b"))
+        (Then
+          (Literal "1"))
+        (Literal "2")))
+    (NoOp)
+    (Conditional
+      (Paren
+        (BinaryOperation EQUALS
+          (Literal "1")
+          (Literal "2")))
+      (Block
+        (Expressions
+          (Return
+            (Literal "true"))
+          (NoOp)))
+      (Block
+        (Expressions
+          (Conditional
+            (Paren
+              (BinaryOperation GT
+                (Literal "1")
+                (Literal "10")))
+            (Return
+              (Literal "true"))
+            )
+          (NoOp)
+          (Return
+            (Literal "false"))
+          (NoOp))))
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "c")
+        Immutable
+        
+        false)
+      (Conditional
+        (Paren
+          (BinaryOperation EQUALS
+            (Literal "1")
+            (Literal "2")))
+        (Block
+          (Expressions
+            (Return
+              (Literal "true"))
+            (NoOp)))
+        (Block
+          (Expressions
+            (Return
+              (Literal "false"))
+            (NoOp)))))
+    (NoOp)))

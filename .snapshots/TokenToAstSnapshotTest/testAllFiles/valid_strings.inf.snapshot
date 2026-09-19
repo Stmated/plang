@@ -1,0 +1,48 @@
+dynamic-directory: true
+snapshot-name: valid_strings.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "s1")
+        Mutable
+        
+        false)
+      (Literal "some 'string' here"))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "s2")
+        Mutable
+        
+        false)
+      (Literal "some \"string\" here"))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "s3")
+        Mutable
+        
+        false)
+      (Literal "some 'string' \"here\""))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "v")
+        Mutable
+        
+        false)
+      (Literal "10"))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "s4")
+        Mutable
+        
+        false)
+      (Literal "some value: ${v}!"))
+    (NoOp)))

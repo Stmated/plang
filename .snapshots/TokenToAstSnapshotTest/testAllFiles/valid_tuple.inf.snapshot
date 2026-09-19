@@ -1,0 +1,106 @@
+dynamic-directory: true
+snapshot-name: valid_tuple.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "t")
+        Immutable
+        
+        false)
+      (Paren
+        (Expressions
+          (Literal "10")
+          (Literal "10")
+          (Literal "10"))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn")
+        Immutable
+        
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            (Labeling
+              (Lexeme "a")
+              (Lexeme "uint8")))
+          (Paren
+            (Expressions
+              (Lexeme "uint8")
+              (Lexeme "uint8"))))
+        (Block
+          (Expressions
+            (Return
+              (Paren
+                (Expressions
+                  (Literal "1")
+                  (Literal "2"))))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn2")
+        Immutable
+        
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            )
+          (Paren
+            (Expressions
+              (Literal "1")
+              (Literal "2"))))
+        (Block
+          (Expressions
+            (Return
+              (Paren
+                (Expressions
+                  (Literal "1")
+                  (Literal "2"))))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn3")
+        Immutable
+        
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            (Labeling
+              (Lexeme "t")
+              (Paren
+                (Expressions
+                  (Lexeme "uint8")
+                  (Lexeme "uint8")))))
+          (Lexeme "uint16"))
+        (Block
+          (Expressions
+            (Return
+              (BinaryOperation ADD
+                (PostfixExpression
+                  (Lexeme "t")
+                  (Bracket
+                    (Literal "0")))
+                (PostfixExpression
+                  (Lexeme "t")
+                  (Bracket
+                    (Literal "1")))))
+            (NoOp)))))
+    (NoOp)
+    (PostfixExpression
+      (Lexeme "fn3")
+      (Paren
+        (Paren
+          (Expressions
+            (Literal "1")
+            (Literal "2")))))
+    (NoOp)))

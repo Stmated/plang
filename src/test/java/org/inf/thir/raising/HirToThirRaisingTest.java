@@ -27,7 +27,7 @@ class HirToThirRaisingTest {
     "1 + 0B1",
     "1 + 0X1"
   })
-  void testAdditionOnePlusOneDifferentForms(String code) {
+  void testAdditionOnePlusOneDifferentForms(final String code) {
 
     final var thir = Inf.codeToThir(code);
 
@@ -40,7 +40,7 @@ class HirToThirRaisingTest {
     "1 + 1l",
     "1 + 11L"
   })
-  void testAdditionLong(String code) {
+  void testAdditionLong(final String code) {
 
     final var thir = Inf.codeToThir(code);
 
@@ -56,7 +56,7 @@ class HirToThirRaisingTest {
     "1 + 3147483647", // Way too big for int
     "1 + 2147483647" // Too big for int by just 1
   })
-  void testAdditionLongByDeductionIsNotAllowed(String code) {
+  void testAdditionLongByDeductionIsNotAllowed(final String code) {
 
     final var thir = Inf.codeToThir(code);
 
@@ -70,7 +70,7 @@ class HirToThirRaisingTest {
     "1 + 1.1d",
     "1 + 1.1D"
   })
-  void testAdditionIntegerAndDouble(String code) {
+  void testAdditionIntegerAndDouble(final String code) {
 
     final var thir = Inf.codeToThir(code);
 
@@ -83,7 +83,7 @@ class HirToThirRaisingTest {
     "1 + 1.1m",
     "1 + 1.1M"
   })
-  void testAdditionIntegerAndDecimal(String code) {
+  void testAdditionIntegerAndDecimal(final String code) {
 
     final var thir = Inf.codeToThir(code);
 
@@ -96,7 +96,7 @@ class HirToThirRaisingTest {
     "1 + 1.1f",
     "1 + 1.1F"
   })
-  void testAdditionIntegerAndFloat(String code) {
+  void testAdditionIntegerAndFloat(final String code) {
 
     final var thir = Inf.codeToThir(code);
 

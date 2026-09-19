@@ -33,16 +33,20 @@ public class Hir {
     Self children(Expression[] expressions);
   }
 
-  /// @deprecated Delete! It makes no sense in the HIR! Either it is one expression, or it is a block with multiple expressions and a result! Delete
-  @Deprecated(since = "2023-12-07")
+  /// TODO: Look into if this can be deleted somehow
+  ///   So that each specific location where multiple expressions might be needed, there is a more specialized expression.
+  ///   This might be needed to go all the way with "everything is one expression with one return type"
   @Data
   @AllArgsConstructor
   public static class Expressions implements Expression, ExpressionsOwner<Expressions> {
 
     Expression[] children;
+
+    /// TODO: This should likely be fully derived from the child expressions, more specifically the last one.
+    ///       There should not be any real need to cache a `ty` here, unless it turns out to be very expensive.
     Ty ty;
 
-    public Expressions(Expression[] children) {
+    public Expressions(final Expression[] children) {
       this(children, null);
     }
 
@@ -52,12 +56,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitExpressions(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformExpressions(this);
     }
   }
@@ -81,12 +85,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitArgument(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformArgument(this);
     }
   }
@@ -110,12 +114,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitArray(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformArray(this);
     }
   }
@@ -134,12 +138,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitArrayAccess(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformArrayAccess(this);
     }
   }
@@ -162,7 +166,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      if (lhs instanceof Hir.Dec dec) {
+      if (lhs instanceof final Hir.Dec dec) {
         return "%s = %s".formatted(dec.toShortString(), rhs);
       } else {
         return "%s = %s".formatted(lhs, rhs);
@@ -170,12 +174,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitAssignment(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformAssignment(this);
     }
   }
@@ -195,12 +199,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitBinaryOperation(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformBinaryOperation(this);
     }
   }
@@ -257,12 +261,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitBlock(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformBlock(this);
     }
   }
@@ -283,12 +287,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitCall(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformCall(this);
     }
   }
@@ -308,12 +312,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitConditional(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformConditional(this);
     }
   }
@@ -336,24 +340,24 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitFunction(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformFunction(this);
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
       if (this == o) {
         return true;
       }
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      Function function = (Function) o;
+      final Function function = (Function) o;
       return Objects.equals(signature, function.signature) && Objects.equals(body, function.body);
     }
 
@@ -381,12 +385,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitFunctionSignature(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformFunctionSignature(this);
     }
   }
@@ -405,12 +409,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitLexeme(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformLexeme(this);
     }
   }
@@ -434,24 +438,24 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitIdentifier(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformIdentifier(this);
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
       if (this == o) {
         return true;
       }
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      Identifier that = (Identifier) o;
+      final Identifier that = (Identifier) o;
       return Objects.equals(lexeme, that.lexeme)
         && Objects.equals(target, that.target);
     }
@@ -473,12 +477,12 @@ public class Hir {
     Ty ty;
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitLabeling(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformLabeling(this);
     }
   }
@@ -493,7 +497,7 @@ public class Hir {
     @Override
     public String toString() {
 
-      if (ty instanceof TyValueNumber num) {
+      if (ty instanceof final TyValueNumber num) {
         return switch (num.getValueKind()) {
           case INTEGER -> switch (num.width().value()) {
             case 32 -> content;
@@ -512,12 +516,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitLiteral(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformLiteral(this);
     }
 
@@ -535,12 +539,12 @@ public class Hir {
     Ty ty;
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitLoop(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformLoop(this);
     }
   }
@@ -562,12 +566,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitLoopBreak(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformLoopBreak(this);
     }
   }
@@ -591,12 +595,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitLoopContinue(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformLoopContinue(this);
     }
   }
@@ -623,12 +627,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitNewByBlock(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformNewByBlock(this);
     }
   }
@@ -648,12 +652,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitNewByCtor(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformNewByCtor(this);
     }
   }
@@ -666,12 +670,12 @@ public class Hir {
     Ty ty;
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitNot(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformNot(this);
     }
   }
@@ -698,12 +702,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitParameter(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformParameter(this);
     }
   }
@@ -722,12 +726,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitPath(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformPath(this);
     }
   }
@@ -739,17 +743,17 @@ public class Hir {
     Expression expressions;
     Ty ty;
 
-    public Program(Expression expressions) {
+    public Program(final Expression expressions) {
       this(expressions, null);
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitProgram(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformProgram(this);
     }
   }
@@ -762,12 +766,12 @@ public class Hir {
     Ty ty;
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitRange(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformRange(this);
     }
   }
@@ -785,12 +789,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitReturn(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformReturn(this);
     }
   }
@@ -808,12 +812,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitStruct(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformStruct(this);
     }
   }
@@ -825,12 +829,12 @@ public class Hir {
     Ty ty;
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitTrait(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformTrait(this);
     }
   }
@@ -848,12 +852,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitTuple(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformTuple(this);
     }
   }
@@ -871,12 +875,12 @@ public class Hir {
     Ty ty;
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitTupleKeyValue(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformTupleKeyValue(this);
     }
   }
@@ -886,7 +890,7 @@ public class Hir {
 
     Ty ty;
 
-    public TyExpr(Ty ty) {
+    public TyExpr(final Ty ty) {
       this.ty = Objects.requireNonNull(ty);
     }
 
@@ -896,24 +900,24 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitTyExpr(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformTyExpr(this);
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
       if (this == o) {
         return true;
       }
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      TyExpr tyExpr = (TyExpr) o;
+      final var tyExpr = (TyExpr) o;
       return Objects.equals(ty, tyExpr.ty);
     }
 
@@ -956,12 +960,12 @@ public class Hir {
     }
 
     @Override
-    public void visit(HirVisitor visitor) {
+    public void visit(final HirVisitor visitor) {
       visitor.visitDec(this);
     }
 
     @Override
-    public Expression transform(HirTransformer transformer) {
+    public Expression transform(final HirTransformer transformer) {
       return transformer.transformDec(this);
     }
   }

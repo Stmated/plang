@@ -1,0 +1,108 @@
+dynamic-directory: true
+snapshot-name: valid_maps.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "StructABC")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "A")
+              Immutable
+              (Lexeme "uint8")
+              false)
+            (NoOp)
+            (VariableDeclaration
+              (Lexeme "B")
+              Immutable
+              (Lexeme "uint8")
+              false)
+            (NoOp)
+            (VariableDeclaration
+              (Lexeme "C")
+              Immutable
+              (Lexeme "uint8")
+              false)
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "StructADE")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "A")
+              Immutable
+              (Lexeme "uint8")
+              false)
+            (NoOp)
+            (VariableDeclaration
+              (Lexeme "D")
+              Immutable
+              (Lexeme "uint8")
+              false)
+            (NoOp)
+            (VariableDeclaration
+              (Lexeme "E")
+              Immutable
+              (Lexeme "uint8")
+              false)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "v")
+        Immutable
+        
+        false)
+      (BinaryOperation ADD
+        (DotAccess
+          (Lexeme "agg")
+          (Lexeme "A"))
+        (BinaryOperation ADD
+          (DotAccess
+            (Lexeme "agg")
+            (Lexeme "B"))
+          (DotAccess
+            (Lexeme "agg")
+            (Lexeme "D")))))
+    (NoOp)
+    (Comment " = 4 + 2 + 5 = 11")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "map")
+        Immutable
+        
+        false)
+      (Bracket
+        (Assignment
+          (Literal "A")
+          (Literal "1"))
+        (Assignment
+          (Literal "B")
+          (Literal "2"))
+        (Assignment
+          (Literal "C")
+          (Literal "3"))))
+    (NoOp)
+    (DotAccess
+      (Lexeme "map")
+      (PostfixExpression
+        (Lexeme "put")
+        (Paren
+          (Expressions
+            (Literal "D")
+            (Literal "4")))))
+    (NoOp)))

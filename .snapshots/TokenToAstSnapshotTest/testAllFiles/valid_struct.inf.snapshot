@@ -1,0 +1,74 @@
+dynamic-directory: true
+snapshot-name: valid_struct.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Foo")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "a")
+              Immutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)
+            (VariableDeclaration
+              (Lexeme "b")
+              Immutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Bar")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "c")
+              Immutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)
+            (VariableDeclaration
+              (Lexeme "d")
+              Immutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Baz")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "d")
+              Mutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)
+            (VariableDeclaration
+              (Lexeme "e")
+              Immutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)))))
+    (NoOp)))

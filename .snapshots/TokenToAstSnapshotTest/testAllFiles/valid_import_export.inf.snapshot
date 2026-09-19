@@ -1,0 +1,186 @@
+dynamic-directory: true
+snapshot-name: valid_import_export.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Import
+      (ImportPath
+        (ImportPathIdentifier
+          (Lexeme "a"))
+        (ImportPath
+          (ImportPathIdentifier
+            (Lexeme "b"))
+          (ImportPathIdentifier
+            (Lexeme "Struct")))))
+    (NoOp)
+    (Import
+      (ImportPath
+        (ImportPathIdentifier
+          (Lexeme "a"))
+        (ImportPath
+          (ImportPathIdentifier
+            (Lexeme "b"))
+          (ImportPathGroup
+            (ImportPathAlias
+              (Lexeme "x")
+              (ImportPathIdentifier
+                (Lexeme "Something")))
+            (ImportPathAlias
+              (Lexeme "y")
+              (ImportPathIdentifier
+                (Lexeme "SomethingElse")))))))
+    (NoOp)
+    (Import
+      (ImportPathAlias
+        (Lexeme "z1")
+        (ImportPath
+          (ImportPathIdentifier
+            (Lexeme "a"))
+          (ImportPathIdentifier
+            (Lexeme "b")))))
+    (NoOp)
+    (Comment " Usable as z1.Something")
+    (Import
+      (ImportPathAlias
+        (Lexeme "z2")
+        (ImportPath
+          (ImportPathIdentifier
+            (Lexeme "a"))
+          (ImportPath
+            (ImportPathIdentifier
+              (Lexeme "b"))
+            (ImportPathWildcard)))))
+    (NoOp)
+    (Comment " Same target as above, but z2")
+    (Import
+      (ImportPath
+        (ImportPathIdentifier
+          (Lexeme "a"))
+        (ImportPath
+          (ImportPathIdentifier
+            (Lexeme "b"))
+          (ImportPathWildcard))))
+    (NoOp)
+    (Comment " Usable as Something")
+    (Import
+      (ImportPath
+        (ImportPathIdentifier
+          (Lexeme "a"))
+        (ImportPath
+          (ImportPathIdentifier
+            (Lexeme "b"))
+          (ImportPathIdentifier
+            (Lexeme "Something")))))
+    (NoOp)
+    (Comment " Usable as Something")
+    (Import
+      (ImportPath
+        (ImportPathIdentifier
+          (Lexeme "a"))
+        (ImportPathIdentifier
+          (Lexeme "b"))))
+    (NoOp)
+    (Comment " Usable as b.Something")
+    (Import
+      (ImportPath
+        (ImportPathIdentifier
+          (Lexeme "a"))
+        (ImportPath
+          (ImportPathIdentifier
+            (Lexeme "b"))
+          (ImportPathGroup
+            (ImportPathIdentifier
+              (Lexeme "self"))
+            (ImportPathIdentifier
+              (Lexeme "StructA"))
+            (ImportPathIdentifier
+              (Lexeme "function"))))))
+    (NoOp)
+    (Comment " a.b.{self} is same as above: b.Something")
+    (Export
+      (Lexeme "z2")
+      false)
+    (NoOp)
+    (Comment " exported as 'z2'")
+    (Export
+      (Lexeme "y")
+      true)
+    (NoOp)
+    (Comment " exported as 'default'")
+    (Export
+      (Assignment
+        (VariableDeclaration
+          (Lexeme "a")
+          Immutable
+          
+          false)
+        (Literal "10"))
+      false)
+    (NoOp)
+    (Comment " exported as 'a'")
+    (Export
+      (Assignment
+        (VariableDeclaration
+          (Lexeme "a")
+          Immutable
+          
+          false)
+        (Literal "20"))
+      true)
+    (NoOp)
+    (Comment " exported as 'default'")
+    (Export
+      (Import
+        (ImportPath
+          (ImportPathIdentifier
+            (Lexeme "a"))
+          (ImportPath
+            (ImportPathIdentifier
+              (Lexeme "b"))
+            (ImportPathIdentifier
+              (Lexeme "c")))))
+      false)
+    (NoOp)
+    (Comment " exported as 'default'")
+    (Export
+      (Import
+        (ImportPathAlias
+          (Lexeme "d")
+          (ImportPath
+            (ImportPathIdentifier
+              (Lexeme "a"))
+            (ImportPath
+              (ImportPathIdentifier
+                (Lexeme "b"))
+              (ImportPathIdentifier
+                (Lexeme "c"))))))
+      false)
+    (NoOp)
+    (Comment " exported as 'd'")
+    (Export
+      (Import
+        (ImportPathAlias
+          (Lexeme "d")
+          (ImportPath
+            (ImportPathIdentifier
+              (Lexeme "a"))
+            (ImportPath
+              (ImportPathIdentifier
+                (Lexeme "b"))
+              (ImportPathIdentifier
+                (Lexeme "c"))))))
+      true)
+    (NoOp)
+    (Comment " exported as 'default'")
+    (Export
+      (PostfixExpression
+        (Lexeme "group")
+        (Bracket
+          (Lexeme "Struct")
+          (Lexeme "StructImpl1")
+          (Lexeme "StructImpl2")))
+      false)
+    (NoOp)))

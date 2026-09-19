@@ -1,0 +1,352 @@
+dynamic-directory: true
+snapshot-name: valid_iterate.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array1")
+        Immutable
+        
+        false)
+      (Bracket
+        (Literal "1")
+        (Literal "2")
+        (Literal "3")))
+    (NoOp)
+    (LoopDoWhile
+      (Block
+        )
+      (LoopWhile
+        (Paren
+          (BinaryOperation EQUALS
+            (Literal "1")
+            (Literal "1")))
+        (NoOp)))
+    (LoopDoWhile
+      (PostfixExpression
+        (Lexeme "eat")
+        (Paren
+          ))
+      (LoopWhile
+        (PostfixExpression
+          (Lexeme "hungry")
+          (Paren
+            ))
+        (NoOp)))
+    (LoopDoWhile
+      (Then
+        (PostfixExpression
+          (Lexeme "eat")
+          (Paren
+            )))
+      (LoopWhile
+        (PostfixExpression
+          (Lexeme "hungry")
+          (Paren
+            ))
+        (NoOp)))
+    (LoopDoWhile
+      (Then
+        (PostfixExpression
+          (Lexeme "eat")
+          (Paren
+            )))
+      (LoopWhile
+        (Paren
+          (PostfixExpression
+            (Lexeme "hungry")
+            (Paren
+              )))
+        (NoOp)))
+    (LoopDoWhile
+      (Then
+        (PostfixExpression
+          (Lexeme "eat")
+          (Paren
+            )))
+      (LoopWhile
+        (Block
+          (PostfixExpression
+            (Lexeme "hungry")
+            (Paren
+              )))
+        (NoOp)))
+    (LoopWhile
+      (Paren
+        (PostfixExpression
+          (Lexeme "hungry")
+          (Paren
+            )))
+      (Block
+        (Expressions
+          (PostfixExpression
+            (Lexeme "eat")
+            (Paren
+              ))
+          (NoOp))))
+    (LoopWhile
+      (PostfixExpression
+        (Lexeme "hungry")
+        (Paren
+          ))
+      (PostfixExpression
+        (Lexeme "eat")
+        (Paren
+          )))
+    (NoOp)
+    (LoopWhile
+      (PostfixExpression
+        (Lexeme "hungry")
+        (Paren
+          ))
+      (Then
+        (PostfixExpression
+          (Lexeme "eat")
+          (Paren
+            ))))
+    (NoOp)
+    (LoopWhile
+      (PostfixExpression
+        (Lexeme "hungry")
+        (Paren
+          ))
+      (PostfixExpression
+        (Lexeme "eatAnd")
+        (Paren
+          )))
+    (NoOp)
+    (LoopWhile
+      (PostfixExpression
+        (Lexeme "hungry")
+        (Paren
+          ))
+      (Then
+        (PostfixExpression
+          (Lexeme "eat")
+          (Paren
+            ))))
+    (LoopFor
+      (Paren
+        (Expressions
+          (Assignment
+            (VariableDeclaration
+              (Lexeme "i")
+              Mutable
+              
+              false)
+            (Literal "0"))
+          (NoOp)
+          (BinaryOperation LT
+            (Lexeme "i")
+            (Literal "10"))
+          (NoOp)
+          (DotAccess
+            (Lexeme "i")
+            (PostfixExpression
+              (Lexeme "increment")
+              (Paren
+                )))))
+      (Block
+        ))
+    (LoopFor
+      (Paren
+        (Expressions
+          (Assignment
+            (VariableDeclaration
+              (Lexeme "i")
+              Mutable
+              
+              false)
+            (Literal "0"))
+          (Assignment
+            (Lexeme "n")
+            (Lexeme "i"))
+          (NoOp)
+          (BinaryOperation LT
+            (Lexeme "i")
+            (Literal "10"))
+          (NoOp)
+          (DotAccess
+            (Lexeme "i")
+            (PostfixExpression
+              (Lexeme "increment")
+              (Paren
+                )))))
+      (Block
+        ))
+    (LoopFor
+      (In
+        (Lexeme "a")
+        (Lexeme "array1"))
+      (PostfixExpression
+        (Lexeme "print")
+        (Paren
+          (Lexeme "a"))))
+    (NoOp)
+    (LoopFor
+      (In
+        (Lexeme "a")
+        (PostfixExpression
+          (Lexeme "array1")
+          (Bracket
+            (Range
+              (Literal "0")
+              (Literal "1")))))
+      (PostfixExpression
+        (Lexeme "print")
+        (Paren
+          (Lexeme "a"))))
+    (NoOp)
+    (LoopFor
+      (Lexeme "array")
+      (PostfixExpression
+        (Lexeme "print")
+        (Paren
+          (Lexeme "it"))))
+    (NoOp)
+    (LoopFor
+      (DotAccess
+        (Lexeme "array")
+        (PostfixExpression
+          (Lexeme "to_keys")
+          (Paren
+            )))
+      (PostfixExpression
+        (Lexeme "print")
+        (Paren
+          (Lexeme "it"))))
+    (NoOp)
+    (LoopFor
+      (In
+        (VariableDeclaration
+          (Lexeme "a")
+          Mutable
+          
+          false)
+        (Lexeme "array1"))
+      (Block
+        (Expressions
+          (PostfixExpression
+            (Lexeme "print")
+            (Paren
+              (Lexeme "a")))
+          (NoOp))))
+    (LoopFor
+      (In
+        (VariableDeclaration
+          (Lexeme "a")
+          Immutable
+          
+          false)
+        (Lexeme "array1"))
+      (Block
+        (Expressions
+          (PostfixExpression
+            (Lexeme "print")
+            (Paren
+              (Lexeme "a")))
+          (NoOp))))
+    (LoopFor
+      (In
+        (Lexeme "a")
+        (Lexeme "array1"))
+      (Block
+        (Expressions
+          (PostfixExpression
+            (Lexeme "print")
+            (Paren
+              (Lexeme "a")))
+          (NoOp))))
+    (LoopFor
+      (In
+        (Lexeme "a")
+        (Lexeme "array1"))
+      (PostfixExpression
+        (Lexeme "print")
+        (Paren
+          (Lexeme "a"))))
+    (NoOp)
+    (LoopFor
+      (In
+        (Lexeme "a")
+        (Lexeme "array1"))
+      (Then
+        (PostfixExpression
+          (Lexeme "print")
+          (Paren
+            (Lexeme "a")))))
+    (NoOp)
+    (LoopFor
+      (In
+        (Lexeme "a")
+        (Lexeme "array1"))
+      (Then
+        (PostfixExpression
+          (Lexeme "print")
+          (Paren
+            (Lexeme "a")))))
+    (NoOp)
+    (LoopFor
+      (In
+        (Lexeme "a")
+        (Lexeme "array1"))
+      (PostfixExpression
+        (Lexeme "print")
+        (Paren
+          (Lexeme "a"))))
+    (NoOp)
+    (LoopFor
+      (In
+        (Lexeme "a")
+        (Lexeme "array1"))
+      (Then
+        (PostfixExpression
+          (Lexeme "print")
+          (Paren
+            (Lexeme "a")))))
+    (NoOp)
+    (LoopFor
+      (In
+        (Lexeme "a")
+        (Lexeme "array1"))
+      (PostfixExpression
+        (Lexeme "print")
+        (Paren
+          (Lexeme "a"))))
+    (NoOp)
+    (LoopFor
+      (In
+        (Lexeme "a")
+        (Lexeme "array1"))
+      (Then
+        (PostfixExpression
+          (Lexeme "print")
+          (Paren
+            (Lexeme "a")))))
+    (NoOp)
+    (LoopFor
+      (In
+        (Lexeme "a")
+        (Lexeme "array1"))
+      (Block
+        (Expressions
+          (PostfixExpression
+            (Lexeme "print")
+            (Paren
+              (Lexeme "a")))
+          (NoOp))))
+    (LoopFor
+      (In
+        (Lexeme "a")
+        (Lexeme "array1"))
+      (Block
+        (Expressions
+          (Lexeme "break")
+          (BinaryOperation ADD
+            (Lexeme "a")
+            (Literal "1"))
+          (NoOp))))))

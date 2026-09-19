@@ -21,7 +21,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
 
     TokenType tokenType;
 
-    public void insert(String word, TokenType tokenType) {
+    public void insert(final String word, final TokenType tokenType) {
       TrieNode current = this;
 
       for (final char ch : word.toCharArray()) {
@@ -51,7 +51,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
 
   private final StringBuilder contentBuffer = new StringBuilder(128);
 
-  public InfLexer(InputStream is) {
+  public InfLexer(final InputStream is) {
 
     this.reader = new NoSyncBufferedReader(new InputStreamReader(is));
     this.advance();
@@ -135,14 +135,14 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
 
       nextToken = future;
 
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new UncheckedIOException(e);
     }
   }
 
   private Token advanceAsNotEqualsOtherwiseBang() throws IOException {
 
-    var c = this.read();
+    final var c = this.read();
     if (c == '=') {
       return newToken(TokenType.NOT_EQUALS);
     } else {
@@ -153,7 +153,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
 
   private Token advanceAsMulAssignmentOtherwiseMul() throws IOException {
 
-    var c = this.read();
+    final var c = this.read();
     if (c == '=') {
       return newToken(TokenType.MULTIPLY_ASSIGNMENT);
     } else {
@@ -164,7 +164,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
 
   private Token advanceAsAddAssignmentOrOtherwiseAdd() throws IOException {
 
-    var c = this.read();
+    final var c = this.read();
     if (c == '=') {
       return newToken(TokenType.ADDITION_ASSIGNMENT);
     } else if (c == '+') {
@@ -181,7 +181,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
     return this.advanceUntil('`');
   }
 
-  private Token advanceUntil(char endChar) throws IOException {
+  private Token advanceUntil(final char endChar) throws IOException {
 
     var escaped = false;
     int c;
@@ -201,7 +201,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
     return newToken(TokenType.LITERAL_STRING);
   }
 
-  private Token advanceUntil(String str) throws IOException {
+  private Token advanceUntil(final String str) throws IOException {
 
     var idx = 0;
     final var idx_stop = (str.length() - 1);
@@ -308,7 +308,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
 
   private Token advanceCommentOtherwiseDivAssignmentOrDiv() throws IOException {
 
-    var c = this.read();
+    final var c = this.read();
     if (c == '/') {
 
       // TODO: Add multiline support
@@ -351,7 +351,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
 
   private Token advanceAsDoubleColonOtherwiseColon() throws IOException {
 
-    var c = this.read();
+    final var c = this.read();
     if (c == ':') {
       return this.newToken(TokenType.COLON_DOUBLE);
     } else {
@@ -361,7 +361,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
   }
 
   private Token advanceAsArrowSingleOrSubAssOtherwiseSub() throws IOException {
-    var c = this.read();
+    final var c = this.read();
     if (c == '>') {
       return this.newToken(TokenType.ARROW_SINGLE);
     } else if (c == '=') {
@@ -373,7 +373,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
   }
 
   private Token advanceAsBitOrOtherwiseOr() throws IOException {
-    var c = this.read();
+    final var c = this.read();
     if (c == '|') {
       return this.newToken(TokenType.OR);
     } else {
@@ -383,7 +383,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
   }
 
   private Token advanceAsBitAndOtherwiseAnd() throws IOException {
-    var c = this.read();
+    final var c = this.read();
     if (c == '&') {
       return this.newToken(TokenType.AND);
     } else {
@@ -393,7 +393,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
   }
 
   private Token advanceAsGteOrBslOtherwiseGt() throws IOException {
-    var c = this.read();
+    final var c = this.read();
     if (c == '>') {
       return this.newToken(TokenType.BIT_SHIFT_RIGHT);
     } else if (c == '=') {
@@ -405,7 +405,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
   }
 
   private Token advanceAsLteOrBslOtherwiseLt() throws IOException {
-    var c = this.read();
+    final var c = this.read();
     if (c == '<') {
       return this.newToken(TokenType.BIT_SHIFT_LEFT);
     } else if (c == '=') {
@@ -417,7 +417,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
   }
 
   private Token advanceAsEqualsOrDoubleArrowOtherwiseAssign() throws IOException {
-    var c = this.read();
+    final var c = this.read();
     if (c == '=') {
       return this.newToken(TokenType.EQUALS);
     } else if (c == '>') {
@@ -430,7 +430,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
 
   private Token advanceAsModulusOtherwiseRemainder() throws IOException {
 
-    var c = this.read();
+    final var c = this.read();
     if (c == '%') {
       return this.newToken(TokenType.MODULUS);
     } else {
@@ -446,7 +446,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
     );
   }
 
-  private void backtrack(int ch) {
+  private void backtrack(final int ch) {
     if (ch != -1) {
       queue.push(ch);
       index--;
@@ -492,7 +492,7 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
       i++;
       if (c == '.') {
 
-        var c2 = read();
+        final var c2 = read();
         if (c2 == '.') {
 
           // There were 2 consecutive dots, which means this is a likely DOUBLE_DOT (range expression)
@@ -591,11 +591,11 @@ public class InfLexer implements AutoCloseable, Iterator<Token> {
     return ch;
   }
 
-  private Token newToken(TokenType type) {
+  private Token newToken(final TokenType type) {
     return newToken(type, 0, 0);
   }
 
-  private Token newToken(TokenType type, int offsetLeft, int offsetRight) {
+  private Token newToken(final TokenType type, final int offsetLeft, final int offsetRight) {
 
     // Do some changes to account for skipping chars.
     final var str = contentBuffer.substring(offsetLeft, contentBuffer.length() - offsetRight);

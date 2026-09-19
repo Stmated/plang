@@ -1,0 +1,31 @@
+dynamic-directory: true
+snapshot-name: invalid_struct_because_impl.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Comment " Valid when parsing, but should be invalid when validated (or should it?)")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Foo")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "a")
+                Immutable
+                
+                false)
+              (Callable
+                (Paren
+                  )
+                (Block
+                  )))
+            (NoOp)))))
+    (NoOp)))

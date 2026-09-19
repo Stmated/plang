@@ -1,0 +1,82 @@
+dynamic-directory: true
+snapshot-name: valid_generator.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Comment " Below will be a 'Generator<uint32>' which will implement 'Iterable<uint32>'")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "generator")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          )
+        (Block
+          (Expressions
+            (Yield
+              (Literal "1"))
+            (NoOp)
+            (Yield
+              (Literal "2"))
+            (NoOp)
+            (Conditional
+              (Paren
+                (BinaryOperation GT
+                  (DotAccess
+                    (Lexeme "System")
+                    (DotAccess
+                      (PostfixExpression
+                        (Lexeme "getTime")
+                        (Paren
+                          ))
+                      (PostfixExpression
+                        (Lexeme "getHour")
+                        (Paren
+                          ))))
+                  (Literal "12")))
+              (Block
+                (Expressions
+                  (Yield
+                    (Lexeme "break"))
+                  (NoOp)))
+              )
+            (Yield
+              (Literal "3"))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "consumer")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          )
+        (Block
+          (LoopFor
+            (In
+              (Lexeme "v")
+              (PostfixExpression
+                (Lexeme "generator")
+                (Paren
+                  )))
+            (Block
+              (Expressions
+                (DotAccess
+                  (Lexeme "System")
+                  (PostfixExpression
+                    (Lexeme "println")
+                    (Paren
+                      (Literal "No-cost iterable: ${v}"))))
+                (NoOp)))))))
+    (NoOp)
+    (Comment " Should it be possible somehow to have \"labels\" for what to yield back to")
+    (Comment " How could we make this typesafe and call-safe, to *ensure* someone is listening to the yielded data?")
+    (Comment " Or is that just stupid and it should be up to each caller to propagate the data further up?")
+    (Comment " Or is this something that can be used together with the context parameters to point to what to send to?")))

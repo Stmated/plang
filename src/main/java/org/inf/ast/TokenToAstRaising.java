@@ -9,7 +9,13 @@ import org.inf.ty.TyFlags;
 import org.inf.ty.TyValueNumberInteger;
 import org.inf.ty.util.Tys;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.EnumSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -20,8 +26,9 @@ public class TokenToAstRaising {
   private Token current;
 
   private final Deque<Token> queuedTokens = new ArrayDeque<>();
+  private final List<Token> history = new ArrayList<>();
 
-  public TokenToAstRaising(Iterator<Token> iterator) {
+  public TokenToAstRaising(final Iterator<Token> iterator) {
     this.iterator = iterator;
   }
 
@@ -33,7 +40,7 @@ public class TokenToAstRaising {
       while (hasNext()) {
         children.add(parseLevel0());
       }
-    } catch (Exception ex) {
+    } catch (final Exception ex) {
 
       final var expressionStrings = String.join("\n", children.stream().map(Object::toString).toList());
       throw new IllegalArgumentException("Exception '%s' after parsed:\n%s".formatted(ex.getMessage(), expressionStrings), ex);
@@ -42,9 +49,7 @@ public class TokenToAstRaising {
     return new Ast.Program(new Ast.Expressions(children.toArray(new Ast.Expression[0])));
   }
 
-  /**
-   * ASSIGN
-   */
+  /// ASSIGN
   private Ast.Expression parseLevel0() {
 
     final var lhs = parseLevel1();
@@ -68,9 +73,7 @@ public class TokenToAstRaising {
     return lhs;
   }
 
-  /**
-   * ARROW_DOUBLE
-   */
+  /// ARROW_DOUBLE
   private Ast.Expression parseLevel1() {
 
     final var lhs = parseLevel2();
@@ -405,6 +408,8 @@ public class TokenToAstRaising {
     return lhs;
   }
 
+  /// COLON_DOUBLE: Static Access
+  /// PAREN_OPEN: Likely fn call
   private Ast.Expression parseLevel11() {
 
     final var lhs = parseLevel12();
@@ -414,12 +419,8 @@ public class TokenToAstRaising {
 
       final var t = token.type();
       if (t == TokenType.COLON_DOUBLE) {
-        final var rhs = parseLevel11(); // Recursive
-        if (rhs != null) {
-          return new Ast.StaticAccess(lhs, rhs);
-        } else {
-          throw new IllegalArgumentException("No RHS for static access");
-        }
+        final var rhs = Objects.requireNonNull(parseLevel11(), "No RHS for static access"); // Recursive
+        return new Ast.StaticAccess(lhs, rhs);
       } else {
         queuedTokens.push(token);
       }
@@ -428,7 +429,31 @@ public class TokenToAstRaising {
     return lhs;
   }
 
+  /// Dot Access
   private Ast.Expression parseLevel12() {
+
+    final var lhs = parseLevel13();
+    final var token = next();
+
+    if (token != null) {
+
+      final var t = token.type();
+      if (t == TokenType.DOT) {
+        final var rhs = Objects.requireNonNull(parseLevel12(), "No RHS for dot access"); // Recursive
+        return new Ast.DotAccess(lhs, rhs);
+      } else {
+        queuedTokens.push(token);
+      }
+    }
+
+    return lhs;
+  }
+
+  /// Postfix
+  ///
+  /// This is where we need to handle some potential suffixes for expressions.
+  /// We try to keep them as few as possible, and resolve them later.
+  private Ast.Expression parseLevel13() {
 
     final var lhs = parseExpression();
     final var token = next();
@@ -436,13 +461,16 @@ public class TokenToAstRaising {
     if (token != null) {
 
       final var t = token.type();
-      if (t == TokenType.DOT) {
-        final var rhs = parseLevel12(); // Recursive
-        if (rhs != null) {
-          return new Ast.DotAccess(lhs, rhs);
-        } else {
-          throw new IllegalArgumentException("No RHS for dot access");
-        }
+      if (t == TokenType.OPEN_PAREN) {
+        final var rhs = this.parseParen();
+        return new Ast.PostfixExpression(lhs, rhs);
+      } else if (t == TokenType.OPEN_BRACKET) {
+        final var rhs = this.parseBracket();
+        return new Ast.PostfixExpression(lhs, rhs);
+      } else if (t == TokenType.QUESTION_MARK) {
+        // TODO: Perhaps remove? Or not call it "Bubble" and let it be something more generic.
+        //        Because likely `?` will also be used for null-safe member navigation.
+        return new Ast.Bubble(lhs);
       } else {
         queuedTokens.push(token);
       }
@@ -458,10 +486,8 @@ public class TokenToAstRaising {
       return null;
     }
 
-    final var callableAst = switch (token.type()) {
+    final var prioritized = switch (token.type()) {
       case LITERAL_INTEGER -> parseLiteralInteger(token);
-      // TODO: Need to add all the other precision number types, like double, float, etc. Especially with variable width...
-      //        Right now the default decimal number is FLOAT, to make things easier in LLVM. But DECIMAL should be DECIMAL ^^;
       case LITERAL_DECIMAL -> new Ast.Literal(token.content(), Ty.DECIMAL);
       case LITERAL_FLOAT -> new Ast.Literal(token.content(), Ty.FLOAT);
       case LITERAL_DOUBLE -> new Ast.Literal(token.content(), Ty.DOUBLE);
@@ -482,10 +508,11 @@ public class TokenToAstRaising {
       case FOR -> parseFor();
       case DO -> parseDo();
       case WHILE -> parseWhile();
+      case TILDE -> parsePartial();
       default -> null;
     };
 
-    if (callableAst == null) {
+    if (prioritized == null) {
       return switch (token.type()) {
         case ADD -> parsePotentialDeclaredPositiveLiteralNumber();
         case SUBTRACT -> parsePotentialDeclaredNegativeLiteralNumber();
@@ -512,14 +539,9 @@ public class TokenToAstRaising {
         case YIELD -> parseYield();
         default -> throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
       };
-    } else {
-      var prefixed = parsePotentialFnCall(callableAst);
-      if (prefixed == callableAst) {
-        prefixed = parsePotentialBracketAccess(callableAst);
-      }
-
-      return prefixed;
     }
+
+    return prioritized;
   }
 
   private Ast.Expression parsePotentialPointer() {
@@ -527,12 +549,13 @@ public class TokenToAstRaising {
     // NOTE: Ugly, but we might not want to support anything else
     final var identifier = parseIdentifier();
 
+    // TODO: We need a special Ast node which is "Starred Expression" which is just a reference to another expression, and we know it has a "*" prefix
     return new Ast.Lexeme("*" + identifier.name());
   }
 
   private final Pattern PATTERN_INTEGER_SUFFIX = Pattern.compile("\\d+([iu])(\\d+)");
 
-  private Ast.Literal parseLiteralInteger(Token token) {
+  private Ast.Literal parseLiteralInteger(final Token token) {
 
     final var matcher = PATTERN_INTEGER_SUFFIX.matcher(token.content());
     if (matcher.find()) {
@@ -552,21 +575,21 @@ public class TokenToAstRaising {
     return new Ast.Literal(token.content(), Ty.INTEGER);
   }
 
-  private Ast.Expression parsePotentialBracketAccess(Ast.Expression expr) {
-
-    var n = next();
-    if (n != null) {
-
-      if (n.type() == TokenType.OPEN_BRACKET) {
-        final var bracket = this.parseBracket();
-        return new Ast.BracketAccess(expr, bracket);
-      } else {
-        queuedTokens.add(n);
-      }
-    }
-
-    return expr;
-  }
+//  private Ast.Expression parsePotentialBracketAccess(Ast.Expression expr) {
+//
+//    var n = next();
+//    if (n != null) {
+//
+//      if (n.type() == TokenType.OPEN_BRACKET) {
+//        final var bracket = this.parseBracket();
+//        return new Ast.BracketAccess(expr, bracket);
+//      } else {
+//        queuedTokens.add(n);
+//      }
+//    }
+//
+//    return expr;
+//  }
 
   private Ast.Expression parseSpread() {
 
@@ -604,7 +627,7 @@ public class TokenToAstRaising {
     final var potentialNumber = this.parseExpression();
     if (potentialNumber != null) {
 
-      if (potentialNumber instanceof Ast.Literal literal && literal.ty().isNumber()) {
+      if (potentialNumber instanceof final Ast.Literal literal && literal.ty().isNumber()) {
         return new Ast.Literal("-" + literal.content(), literal.ty());
       } else {
         return new Ast.Negate(potentialNumber);
@@ -621,7 +644,7 @@ public class TokenToAstRaising {
     final var mutabilityKind = (token.type() == TokenType.VAR) ? Ast.MutabilityKind.Mutable : Ast.MutabilityKind.Immutable;
     // TODO: If possible generalize this into an "InitialLabel"?
 
-    Ast.Expression type;
+    final Ast.Expression type;
     final var potentialColon = next();
     if (potentialColon != null && potentialColon.type() == TokenType.COLON) {
 //      next(); // TODO: Wrong? Or is this what we should do always? next() before?
@@ -672,55 +695,61 @@ public class TokenToAstRaising {
     }
 
     current = iterator.next();
+    if (history.size() > 10) {
+      history.removeFirst();
+    }
+
+    history.add(current);
+
     return current;
   }
 
-  private Ast.Expression parseIdentifierLike() {
+  private Ast.Partial<Ast.Expression> parsePartial() {
 
-    final var identifier = this.parseIdentifier();
-    return parsePotentialFnCall(identifier);
+    final var next = this.parseExpression();
+    return new Ast.Partial<>(next);
   }
 
-  private Ast.Expression parsePotentialFnCall(Ast.Expression expr) {
-
-    var n = next();
-    if (n != null) {
-
-      boolean partial = false;
-      if (n.type() == TokenType.TILDE) {
-        partial = true;
-        n = next();
-      }
-
-      if (n != null && n.type() == TokenType.OPEN_PAREN) {
-
-        final var paren = this.parseParen();
-
-        boolean bubbleUp = false;
-        final var t2 = next();
-        if (t2 != null) {
-          if (t2.type() == TokenType.QUESTION_MARK) {
-            bubbleUp = true;
-          } else {
-            queuedTokens.add(t2);
-          }
-        }
-
-        return new Ast.Call(expr, paren, bubbleUp, partial);
-
-      } else if (partial) {
-        throw new IllegalArgumentException("Tilde (partial call indicator) must be followed by an opening parenthesis");
-      } else {
-        queuedTokens.add(n);
-      }
-    }
-
-    return expr;
-  }
+//  private Ast.Expression parsePotentialFnCall(Ast.Expression expr) {
+//
+//    var n = next();
+//    if (n != null) {
+//
+//      boolean partial = false;
+//      if (n.type() == TokenType.TILDE) {
+//        partial = true;
+//        n = next();
+//      }
+//
+//      if (n != null && n.type() == TokenType.OPEN_PAREN) {
+//
+//        final var paren = this.parseParen();
+//
+//        boolean bubbleUp = false;
+//        final var t2 = next();
+//        if (t2 != null) {
+//          if (t2.type() == TokenType.QUESTION_MARK) {
+//            bubbleUp = true;
+//          } else {
+//            queuedTokens.add(t2);
+//          }
+//        }
+//
+//        return new Ast.Call(expr, paren, bubbleUp, partial);
+//
+//      } else if (partial) {
+//        throw new IllegalArgumentException("Tilde (partial call indicator) must be followed by an opening parenthesis");
+//      } else {
+//        queuedTokens.add(n);
+//      }
+//    }
+//
+//    return expr;
+//  }
 
   private <T extends Ast.Expression> List<T> parseExpressionCollection(
-    TokenType[] endedBy,
-    Supplier<T> next
+    final TokenType[] endedBy,
+    final Supplier<T> next
   ) {
 
     if (matchesOneOf(current, endedBy)) {
@@ -756,7 +785,7 @@ public class TokenToAstRaising {
           throw new IllegalArgumentException("Encountered EOF before %s".formatted(token.type()));
         }
       }
-    } catch (Exception ex) {
+    } catch (final Exception ex) {
 
       final var expressionStrings = expressions.stream().map(Object::toString).toList();
       final var expressionsString = "\n    " + String.join("\n    ", expressionStrings);
@@ -788,11 +817,29 @@ public class TokenToAstRaising {
     return new Ast.Lexeme(token.content());
   }
 
-  private Token stayOrNext(TokenType t) {
+  private Ast.Lexeme parseIdentifierOrCall() {
+
+    final var id = this.parseIdentifier();
+
+    // TODO: THIS MUST BE SOLVED IN A GOOD WAY!
+    //        Do we actually need an "Ast.Call" anyway? Or can we abstract it somehow?
+    //        Figure out how the syntax might break
+
+
+    return id;
+//    final var token = stayOrNext(TokenType.IDENTIFIER);
+//    if (token == null) {
+//      return null;
+//    }
+//
+//    return new Ast.Lexeme(token.content());
+  }
+
+  private Token stayOrNext(final TokenType t) {
     return this.stayOrNext(t, t);
   }
 
-  private Token stayOrNext(TokenType stayIf, TokenType expectNext) {
+  private Token stayOrNext(final TokenType stayIf, final TokenType expectNext) {
 
     if (current != null && current.type() == stayIf) {
 
@@ -876,7 +923,7 @@ public class TokenToAstRaising {
     return new Ast.Match(target, new Ast.Expressions(collection.toArray(new Ast.Expression[0])));
   }
 
-  private boolean ifNextAndBacktrack(TokenType tt) {
+  private boolean ifNextAndBacktrack(final TokenType tt) {
 
     final var t = next();
     if (t != null && t.type() == tt) {
@@ -972,12 +1019,12 @@ public class TokenToAstRaising {
 
         var varval = this.parseVarVal(current);
 
-        if (varval instanceof Ast.Assignment ia) {
+        if (varval instanceof final Ast.Assignment ia) {
           varval = ia.lhs();
         }
 
-        Ast.VariableDeclaration varDec;
-        if (varval instanceof Ast.VariableDeclaration ivd) {
+        final Ast.VariableDeclaration varDec;
+        if (varval instanceof final Ast.VariableDeclaration ivd) {
           varDec = ivd;
         } else {
           throw new RuntimeException("Not implemented");
@@ -1083,7 +1130,7 @@ public class TokenToAstRaising {
 
   private Ast.ImportCapable parseImportPath_level2() {
 
-    var t = next();
+    final var t = next();
     if (t != null) {
       if (t.type() == TokenType.MULTIPLY) {
         return new Ast.ImportPathWildcard();
@@ -1139,13 +1186,17 @@ public class TokenToAstRaising {
 
     stayOrNext(TokenType.BECOME);
 
-    next();
-    final var identifierLike = parseIdentifierLike();
+    //next();
+    final var next = parseExpression(); // parseIdentifierLike();
+    /*
     if (identifierLike instanceof Ast.Call ic) {
-      return new Ast.Become(ic);
-    }
 
-    throw new IllegalArgumentException("Become can only become another function by a regular call");
+    }
+    */
+
+    return new Ast.Become(next);
+
+    //throw new IllegalArgumentException("Become can only become another function by a regular call");
   }
 
   private Ast.CompTime parseCompTime() {
@@ -1174,8 +1225,8 @@ public class TokenToAstRaising {
       throw new IllegalArgumentException("There must be further tokens for the impl");
     }
 
-    Ast.Lexeme traitLexeme;
-    Ast.Expression forExpression;
+    final Ast.Lexeme traitLexeme;
+    final Ast.Expression forExpression;
 
     if (token2.type() == TokenType.FOR) {
 
@@ -1191,7 +1242,7 @@ public class TokenToAstRaising {
       throw new IllegalArgumentException("Impl must have a for-target or lexeme, not %s".formatted(token_id1));
     }
 
-    List<Ast.Expression> withArguments = new ArrayList<>();
+    final List<Ast.Expression> withArguments = new ArrayList<>();
 
     Token maybeWith;
     while ((maybeWith = next()) != null && maybeWith.type() == TokenType.WITH) {
@@ -1208,7 +1259,7 @@ public class TokenToAstRaising {
     final var block = this.parseBlock();
     return new Ast.Impl(
       traitLexeme, forExpression, block,
-      (withArguments.isEmpty()) ? null : withArguments.toArray(new Ast.Expression[0])
+      (withArguments.isEmpty()) ? null : new Ast.Expressions(withArguments.toArray(new Ast.Expression[0]))
     );
   }
 
@@ -1220,7 +1271,7 @@ public class TokenToAstRaising {
       throw new IllegalArgumentException("No pass nor fail");
     }
 
-    Ast.Expression fail;
+    final Ast.Expression fail;
     final var potentialElse = this.next();
     if (potentialElse != null) {
       if (potentialElse.type() == TokenType.ELSE) {

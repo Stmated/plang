@@ -1,0 +1,58 @@
+dynamic-directory: true
+snapshot-name: valid_if_assign.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Conditional
+      (Paren
+        (Expressions
+          (Assignment
+            (VariableDeclaration
+              (Lexeme "a")
+              Immutable
+              
+              false)
+            (PostfixExpression
+              (Lexeme "load")
+              (Paren
+                )))
+          (BinaryOperation AND
+            (BinaryOperation LT
+              (Assignment
+                (VariableDeclaration
+                  (Lexeme "b")
+                  Immutable
+                  
+                  false)
+                (Where
+                  (DotAccess
+                    (Lexeme "a")
+                    (PostfixExpression
+                      (Lexeme "something")
+                      (Paren
+                        )))
+                  (DotAccess
+                    (Lexeme "b")
+                    (Lexeme "value"))))
+              (Literal "10"))
+            (BinaryOperation GT
+              (DotAccess
+                (Lexeme "b")
+                (Lexeme "value"))
+              (Literal "5")))
+          (Assignment
+            (VariableDeclaration
+              (Lexeme "c")
+              Immutable
+              
+              false)
+            (DotAccess
+              (Lexeme "a")
+              (Lexeme "foo")))))
+      (Block
+        (Comment " All operations succeeded, all values will be unwrapped away from \"Result\" -> Ok(T)"))
+      (Block
+        (Comment " A, B, C is an \"Ok\" or \"Error\" of tagged type (enum) \"Result\" or something else")))))

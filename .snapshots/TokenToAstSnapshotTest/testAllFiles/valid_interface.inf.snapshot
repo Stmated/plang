@@ -1,0 +1,127 @@
+dynamic-directory: true
+snapshot-name: valid_interface.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Point")
+        Immutable
+        
+        false)
+      (Paren
+        (Expressions
+          (Labeling
+            (Lexeme "x")
+            (Lexeme "uint32"))
+          (NoOp)
+          (Labeling
+            (Lexeme "y")
+            (Lexeme "uint64"))
+          (NoOp))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "p1")
+        Immutable
+        
+        false)
+      (New
+        (Lexeme "Point")
+        (Lexeme "stack")
+        (Block
+          (Expressions
+            (Literal "10")
+            (Literal "20")))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "p2")
+        Immutable
+        
+        false)
+      (New
+        (Lexeme "Point")
+        (Lexeme "stack")
+        (Block
+          (Expressions
+            (Assignment
+              (Lexeme "y")
+              (Literal "20"))
+            (Assignment
+              (Lexeme "x")
+              (Literal "10"))))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "implicit_p1")
+        Immutable
+        
+        false)
+      (Paren
+        (Expressions
+          (Assignment
+            (Lexeme "x")
+            (Literal "10"))
+          (Assignment
+            (Lexeme "y")
+            (Literal "20")))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          (Labeling
+            (Lexeme "p")
+            (Lexeme "Point")))
+        (Block
+          (Expressions
+            (Return
+              (BinaryOperation ADD
+                (BinaryOperation MULTIPLY
+                  (DotAccess
+                    (Lexeme "p")
+                    (Lexeme "x"))
+                  (DotAccess
+                    (Lexeme "p")
+                    (Lexeme "x")))
+                (BinaryOperation MULTIPLY
+                  (DotAccess
+                    (Lexeme "p")
+                    (Lexeme "y"))
+                  (DotAccess
+                    (Lexeme "p")
+                    (Lexeme "y")))))
+            (NoOp)))))
+    (NoOp)
+    (Comment " Both should work, because type declarations are interfaces.")
+    (Comment " And interfaces use duck-typing, so as long as the declarations overlap, they are valid")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "res1")
+        Immutable
+        
+        false)
+      (PostfixExpression
+        (Lexeme "fn")
+        (Paren
+          (Lexeme "p1"))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "res1")
+        Immutable
+        
+        false)
+      (PostfixExpression
+        (Lexeme "fn")
+        (Paren
+          (Lexeme "implicit_p1"))))
+    (NoOp)))

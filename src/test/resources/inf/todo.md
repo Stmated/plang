@@ -4,6 +4,26 @@
 
 # TODO
 
+## Must fix to get things working again!
+
+* Use `PostfixExpression` for `Ast.New`
+* Broaden/specify the definition of `PostfixExpression` to support things like `++` and `--`
+
+* Create a visitor which prints AST a multi-line string in some standardized format for rendering code nodes
+  * It should be used as snapshot files, to get an overview of AST and see if anything changes
+
+* Perhaps instead of "Call" it is a ParenExpression that contains a target and a paren
+  * Same thing as "Call" but a bit more generic; same thing can be used for things like `Ast.New` and others
+
+* Remove "ref" from `Ast.VariableDeclaration` -- it should be handled by `Ast.Ref`
+
+## Next
+* Create rudimentary/stupid support for UFC (Universal Function Cal), where we lookup potential "this could be a call"-sites
+  * This will require a lot of passes, iterating over the same source multiple times to figure out what is what.
+    * (and also to find all times when we simply *cannot* know what is what, and throw "needs disambiguation syntax" errors)
+
+## Other
+
 * Redo the lexer and parser after the new ideas for the language:
   - Almost everything is a Tuple
   - Everything is an expression
@@ -13,6 +33,8 @@
   - Universal Function Call Syntax
   - Prefix, infix and postfix function call syntax (with all operators being a function (which in turn are probably inlined to native code))
   - Make "var" and "val" optional, and make "val" default
+
+* Line and columns saved to the tokens/nodes, for syntax debugging
 
 * TokenToAstRaisingTest (and others) should be using snapshot testing instead, and compare the AST output to a snapshot file
   * Right now the test itself becomes too brittle, and it's hard to reason about the depth of the structure and all that.
@@ -29,3 +51,9 @@
   * So that for `BlogPost` if "id" is not specified then it is same as "title"
   * Would be nice if this could be a computed property, where if it is not specified then it is calculated each time.
   * Should still be possible to set a value, which then makes it behave like a regular property again.
+
+## Test cases
+
+* Create tests that checks exact result of:
+  * Result<(String, String), Error>
+  * something<unit8>(2)

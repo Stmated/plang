@@ -1,0 +1,171 @@
+dynamic-directory: true
+snapshot-name: valid_arguments.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Holder")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "value")
+              Immutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Tr")
+        Immutable
+        
+        false)
+      (Trait
+        (Block
+          (Expressions
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "add")
+                Immutable
+                
+                false)
+              (Labeling
+                (Paren
+                  (Expressions
+                    (Labeling
+                      (Lexeme "a")
+                      (Lexeme "uint32"))
+                    (Labeling
+                      (Lexeme "b")
+                      (Lexeme "uin32"))))
+                (Lexeme "uin64")))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "HolderImpl")
+        Immutable
+        
+        false)
+      (Impl
+        
+        (Lexeme "Holder")
+        (Block
+          (Expressions
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "something")
+                Immutable
+                
+                false)
+              (Callable
+                (Paren
+                  (Lexeme "self"))
+                (Block
+                  (Comment " This does not do something. Fooled ya ;)"))))
+            (NoOp)))
+        ))
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "TrImpl")
+        Immutable
+        
+        false)
+      (Impl
+        (Lexeme "Tr")
+        (Lexeme "Holder")
+        (Block
+          (Expressions
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "add")
+                Immutable
+                
+                false)
+              (Callable
+                (Paren
+                  (Expressions
+                    (Lexeme "self")
+                    (Lexeme "a")
+                    (Lexeme "b")))
+                (Block
+                  (Expressions
+                    (Return
+                      (BinaryOperation ADD
+                        (Lexeme "a")
+                        (BinaryOperation ADD
+                          (Lexeme "b")
+                          (DotAccess
+                            (Lexeme "self")
+                            (Lexeme "value")))))
+                    (NoOp)))))
+            (NoOp)))
+        ))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "main")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          )
+        (Block
+          (Expressions
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "h")
+                Immutable
+                
+                false)
+              (New
+                (Block
+                  (Literal "1"))
+                (Lexeme "Holder")
+                ))
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "partial")
+                Immutable
+                
+                false)
+              (DotAccess
+                (Lexeme "h")
+                (Lexeme "fn")))
+            (Partial
+              (Paren
+                (Assignment
+                  (Lexeme "b")
+                  (Literal "10"))))
+            (NoOp)
+            (Comment " will call with a=1, b=10")
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "result")
+                Immutable
+                
+                false)
+              (PostfixExpression
+                (Lexeme "partial")
+                (Paren
+                  (Literal "100"))))
+            (NoOp)
+            (Comment " should be 111")
+            (DotAccess
+              (Lexeme "h")
+              (PostfixExpression
+                (Lexeme "something")
+                (Paren
+                  )))
+            (NoOp)
+            (Comment " Do nothing")))))
+    (NoOp)))

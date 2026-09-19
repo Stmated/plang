@@ -1,0 +1,18 @@
+dynamic-directory: true
+snapshot-name: valid_struct_empty.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "s")
+        Mutable
+        
+        false)
+      (Struct
+        (Block
+          )))
+    (NoOp)))

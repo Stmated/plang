@@ -1,0 +1,157 @@
+dynamic-directory: true
+snapshot-name: valid_lambdas.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "globalFunction1")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          )
+        (Block
+          (Expressions
+            (BinaryOperation ADD
+              (Literal "1")
+              (Literal "1"))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "globalFunction2")
+        Mutable
+        
+        false)
+      (Callable
+        (Paren
+          )
+        (Block
+          (Expressions
+            (Return
+              (BinaryOperation ADD
+                (Literal "1")
+                (Literal "1")))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "globalFunction3")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          )
+        (Block
+          (Expressions
+            (Then
+              (Return
+                (BinaryOperation ADD
+                  (Literal "1")
+                  (Literal "1"))))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "globalFunction4")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          )
+        (Block
+          (Expressions
+            (Return
+              (BinaryOperation ADD
+                (Literal "1")
+                (Literal "1")))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "globalFunction5")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          )
+        (BinaryOperation ADD
+          (Literal "1")
+          (Literal "1"))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "globalFunction6")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          )
+        (BinaryOperation ADD
+          (Literal "1")
+          (Literal "1"))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "globalFunction7")
+        Immutable
+        
+        false)
+      (Callable
+        (VariableSink)
+        (BinaryOperation ADD
+          (Literal "1")
+          (Literal "1"))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "globalFunction8")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          )
+        (Block
+          (Expressions
+            (Return
+              (BinaryOperation ADD
+                (Literal "1")
+                (Literal "1")))
+            (NoOp)))))
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "globalFunction9")
+        Immutable
+        
+        false)
+      (Callable
+        (VariableSink)
+        (Block
+          (Expressions
+            (Then
+              (BinaryOperation ADD
+                (Literal "1")
+                (Literal "1")))
+            (NoOp)))))
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "globalFunction8")
+        Immutable
+        
+        false)
+      (Callable
+        (VariableSink)
+        (BinaryOperation ADD
+          (Literal "1")
+          (Literal "1"))))
+    (NoOp)))

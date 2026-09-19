@@ -1,0 +1,45 @@
+dynamic-directory: true
+snapshot-name: valid_numbers.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "one")
+        Immutable
+        
+        false)
+      (DotAccess
+        (Literal "1")
+        (PostfixExpression
+          (Lexeme "toString")
+          (Paren
+            ))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "number")
+        Mutable
+        
+        false)
+      (Literal "12.13"))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "number_also_val")
+        Immutable
+        
+        false)
+      (Literal "14.15"))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "number_decimal")
+        Immutable
+        (Lexeme "float")
+        false)
+      (Literal "16.17"))
+    (NoOp)))

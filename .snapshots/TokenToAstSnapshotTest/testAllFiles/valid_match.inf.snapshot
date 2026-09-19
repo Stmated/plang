@@ -1,0 +1,75 @@
+dynamic-directory: true
+snapshot-name: valid_match.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "v")
+        Immutable
+        
+        false)
+      (Match
+        (Paren
+          (Lexeme "value"))
+        (Expressions
+          (Callable
+            (Literal "1")
+            (Literal "Something"))
+          (Callable
+            (Paren
+              (Expressions
+                (Labeling
+                  (Lexeme "x")
+                  (Lexeme "uint32"))
+                (Labeling
+                  (Lexeme "y")
+                  (Lexeme "uint32"))))
+            (BinaryOperation ADD
+              (Lexeme "x")
+              (Lexeme "y")))
+          (Callable
+            (Literal "a")
+            (Block
+              (Expressions
+                (Return
+                  (Literal "A"))
+                (NoOp))))
+          (Callable
+            (Paren
+              (Expressions
+                (Literal "10")
+                (Rest)))
+            (Literal "First type item is ten"))
+          (Callable
+            (Range
+              (Literal "20")
+              (Literal "30"))
+            (Literal "Semi-big"))
+          (Callable
+            (Bracket
+              (Literal "10")
+              (Literal "20"))
+            (Literal "Array of 10 & 20"))
+          (Callable
+            (Bracket
+              (Literal "10")
+              (VariableSink)
+              (Literal "20"))
+            (Literal "Array of 10 & unknown & 20"))
+          (Callable
+            (Bracket
+              (Literal "10")
+              (Labeling
+                (Lexeme "middle")
+                (Rest))
+              (Literal "20"))
+            (Literal "Array of 10 & something then at the end 20"))
+          (Callable
+            (VariableSink)
+            (Literal "what?")))))
+    (NoOp)
+    (Comment " type of \"v\" should be: String | uint32")))

@@ -1,0 +1,170 @@
+dynamic-directory: true
+snapshot-name: valid_error_handling.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn")
+        Immutable
+        
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            )
+          (PostfixExpression
+            (Lexeme "Result")
+            (Paren
+              (Expressions
+                (Paren
+                  (Expressions
+                    (Lexeme "String")
+                    (Lexeme "String")))
+                (Lexeme "Error")))))
+        (Block
+          (Expressions
+            (Return
+              (DotAccess
+                (Lexeme "Result")
+                (PostfixExpression
+                  (Lexeme "Ok")
+                  (Paren
+                    (Paren
+                      (Expressions
+                        (Literal "Hello")
+                        (Literal "World")))))))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "value")
+        Immutable
+        
+        false)
+      (PostfixExpression
+        (Lexeme "fn")
+        (Paren
+          )))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "unwrapped1")
+        Immutable
+        
+        false)
+      (Match
+        (Lexeme "value")
+        (Expressions
+          (Callable
+            (PostfixExpression
+              (Lexeme "Ok")
+              (Paren
+                (Expressions
+                  (Lexeme "v1")
+                  (Lexeme "v2"))))
+            (Paren
+              (BinaryOperation ADD
+                (Lexeme "v1")
+                (BinaryOperation ADD
+                  (Literal ", ")
+                  (Lexeme "v2")))))
+          (Callable
+            (PostfixExpression
+              (Lexeme "Error")
+              (Paren
+                (Lexeme "v")))
+            (DotAccess
+              (Lexeme "v")
+              (Lexeme "reason"))))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "unwrapped2")
+        Immutable
+        
+        false)
+      (Match
+        (Lexeme "value")
+        (Expressions
+          (Callable
+            (Lexeme "Ok")
+            (Paren
+              (BinaryOperation ADD
+                (Lexeme "it")
+                (BinaryOperation ADD
+                  (Literal ", ")
+                  (Lexeme "other")))))
+          (Callable
+            (Lexeme "Error")
+            (DotAccess
+              (Lexeme "it")
+              (Lexeme "reason"))))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn2")
+        Immutable
+        
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            )
+          (PostfixExpression
+            (Lexeme "Result")
+            (Paren
+              (Expressions
+                (Paren
+                  (Expressions
+                    (Lexeme "String")
+                    (Lexeme "String")))
+                (Lexeme "Error")))))
+        (Block
+          (Expressions
+            (Bubble
+              (Return
+                (PostfixExpression
+                  (Lexeme "fn")
+                  (Paren
+                    ))))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn3")
+        Immutable
+        
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            )
+          (Lexeme "String"))
+        (Block
+          (Expressions
+            (Return
+              (Conditional
+                (Assignment
+                  (VariableDeclaration
+                    (Lexeme "v")
+                    Immutable
+                    
+                    false)
+                  (PostfixExpression
+                    (Lexeme "fn")
+                    (Paren
+                      )))
+                (Then
+                  (Lexeme "v"))
+                (Paren
+                  (BinaryOperation ADD
+                    (Literal "Failure: ")
+                    (DotAccess
+                      (Lexeme "v")
+                      (Lexeme "reason"))))))
+            (NoOp)))))
+    (NoOp)))

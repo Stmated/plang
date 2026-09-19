@@ -1,0 +1,365 @@
+dynamic-directory: true
+snapshot-name: valid_generics.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn")
+        Immutable
+        
+        false)
+      (Callable
+        (Where
+          (Labeling
+            (Paren
+              (Labeling
+                (Lexeme "v")
+                (Paren
+                  (Expressions
+                    (TypePlaceholder
+                      (Lexeme "T1"))
+                    (TypePlaceholder
+                      (Lexeme "T2"))))))
+            (TypePlaceholder
+              (Lexeme "T3")))
+          (Where
+            (Labeling
+              (Lexeme "T1")
+              (Lexeme "Add"))
+            (Where
+              (Assignment
+                (Labeling
+                  (Lexeme "T2")
+                  (Lexeme "Add"))
+                (Lexeme "T1"))
+              (Assignment
+                (Labeling
+                  (Lexeme "T3")
+                  (Lexeme "Add"))
+                (BinaryOperation BIT_AND
+                  (Lexeme "T1")
+                  (Lexeme "T2"))))))
+        (Block
+          (Expressions
+            (Return
+              (BinaryOperation ADD
+                (PostfixExpression
+                  (Lexeme "v")
+                  (Bracket
+                    (Literal "0")))
+                (PostfixExpression
+                  (Lexeme "v")
+                  (Bracket
+                    (Literal "1")))))
+            (NoOp)))))
+    (NoOp)
+    (PostfixExpression
+      (Lexeme "fn")
+      (Paren
+        (Lexeme "uint8")))
+    (Paren
+      (Paren
+        (Expressions
+          (Literal "1")
+          (Literal "2"))))
+    (NoOp)
+    (PostfixExpression
+      (Lexeme "fn")
+      (Paren
+        (Assignment
+          (Lexeme "T1")
+          (Lexeme "uint8"))))
+    (Paren
+      (Paren
+        (Expressions
+          (Literal "1")
+          (Literal "2"))))
+    (NoOp)
+    (PostfixExpression
+      (Lexeme "fn")
+      (Paren
+        (Expressions
+          (Lexeme "uint8")
+          (Assignment
+            (TypePlaceholder
+              (Lexeme "T3"))
+            (Lexeme "uint64")))))
+    (Paren
+      (Paren
+        (Expressions
+          (Literal "1")
+          (Literal "2"))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Point")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          (Labeling
+            (TypePlaceholder
+              (Lexeme "T"))
+            (Lexeme "Number")))
+        (Struct
+          (Block
+            (Expressions
+              (Labeling
+                (Lexeme "x")
+                (Lexeme "T"))
+              (NoOp)
+              (Labeling
+                (Lexeme "y")
+                (Lexeme "T")))))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "p")
+        Mutable
+        
+        false)
+      (New
+        (Paren
+          (Lexeme "uint64"))
+        (Lexeme "Point")
+        (Block
+          (Expressions
+            (Assignment
+              (Lexeme "x")
+              (Literal "1"))
+            (Assignment
+              (Lexeme "y")
+              (Literal "2"))))))
+    (Comment " Meta/comptime referencing")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn5")
+        Immutable
+        
+        false)
+      (Callable
+        (Where
+          (Labeling
+            (Paren
+              (Labeling
+                (Lexeme "t")
+                (Paren
+                  (Expressions
+                    (Labeling
+                      (Lexeme "v1")
+                      (Lexeme "Add"))
+                    (Labeling
+                      (Lexeme "v2")
+                      (TypePlaceholder
+                        (Lexeme "TV2")))))))
+            (CompTime
+              (Paren
+                (BinaryOperation BIT_AND
+                  (StaticAccess
+                    (Lexeme "t")
+                    (DotAccess
+                      (Lexeme "v1")
+                      (Lexeme "type")))
+                  (Lexeme "TV2")))))
+          (Labeling
+            (Lexeme "TV2")
+            (Lexeme "Add")))
+        (Block
+          (Expressions
+            (Return
+              (BinaryOperation ADD
+                (DotAccess
+                  (Lexeme "t")
+                  (Lexeme "v1"))
+                (DotAccess
+                  (Lexeme "t")
+                  (Lexeme "v2"))))
+            (NoOp)))))
+    (NoOp)
+    (Comment " Higher Kind Types. Sort of?")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn2")
+        Immutable
+        
+        false)
+      (Callable
+        (Where
+          (Labeling
+            (Paren
+              (Labeling
+                (Lexeme "t")
+                (TypePlaceholder
+                  (Lexeme "T1"))))
+            (TypePlaceholder
+              (Lexeme "T2")))
+          (Where
+            (Labeling
+              (Lexeme "T1")
+              (PostfixExpression
+                (Lexeme "Iterable")
+                (Paren
+                  (TypePlaceholder
+                    (Lexeme "TT")))))
+            (Where
+              (Labeling
+                (Lexeme "TT")
+                (Lexeme "Number"))
+              (Labeling
+                (Lexeme "T2")
+                (Lexeme "Number")))))
+        (Block
+          (Comment " ... convert iterable of numbers to one number"))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn3")
+        Immutable
+        
+        false)
+      (Callable
+        (Where
+          (Labeling
+            (Paren
+              (Labeling
+                (Lexeme "t")
+                (PostfixExpression
+                  (Lexeme "Iterable")
+                  (Paren
+                    (TypePlaceholder
+                      (Lexeme "TT"))))))
+            (TypePlaceholder
+              (Lexeme "T2")))
+          (Where
+            (Labeling
+              (Lexeme "TT")
+              (Lexeme "Number"))
+            (Labeling
+              (Lexeme "T2")
+              (Lexeme "TT"))))
+        (Block
+          (Comment " ... convert iterable of numbers to one number"))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn4")
+        Immutable
+        
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            (Labeling
+              (Lexeme "t")
+              (Labeling
+                (TypePlaceholder
+                  (Lexeme "T1"))
+                (PostfixExpression
+                  (Lexeme "Iterable")
+                  (Paren
+                    (Labeling
+                      (TypePlaceholder
+                        (Lexeme "TT"))
+                      (Lexeme "Number")))))))
+          (Lexeme "TT"))
+        (Block
+          (Comment " ... convert iterable of numbers to one number"))))
+    (NoOp)
+    (Comment " Alternative syntax, using \"infer\" instead of $ to mean placeholder generic declaration")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn2")
+        Immutable
+        
+        false)
+      (Callable
+        (Where
+          (Labeling
+            (Paren
+              (Labeling
+                (Lexeme "t")
+                (Infer
+                  (Lexeme "T1"))))
+            (Infer
+              (Lexeme "T2")))
+          (Where
+            (Labeling
+              (Lexeme "T1")
+              (PostfixExpression
+                (Lexeme "Iterable")
+                (Paren
+                  (Infer
+                    (Lexeme "TT")))))
+            (Where
+              (Labeling
+                (Lexeme "TT")
+                (Lexeme "Number"))
+              (Labeling
+                (Lexeme "T2")
+                (Lexeme "Number")))))
+        (Block
+          (Comment " ... convert iterable of numbers to one number"))))
+    (NoOp)
+    (Comment " Alternative syntax:")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn4")
+        Immutable
+        
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            (Labeling
+              (Lexeme "t")
+              (Labeling
+                (Infer
+                  (Lexeme "T1"))
+                (PostfixExpression
+                  (Lexeme "Iterable")
+                  (Paren
+                    (Labeling
+                      (Infer
+                        (Lexeme "TT"))
+                      (Lexeme "Number")))))))
+          (Lexeme "TT"))
+        (Block
+          (Comment " ... convert iterable of numbers to one number"))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Type")
+        Immutable
+        
+        false)
+      (PostfixExpression
+        (Lexeme "Iterable")
+        (Paren
+          (Labeling
+            (Infer
+              (Lexeme "TT"))
+            (Lexeme "Number")))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn5")
+        Immutable
+        
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            (Labeling
+              (Lexeme "t")
+              (Lexeme "Type")))
+          (StaticAccess
+            (Lexeme "Type")
+            (Lexeme "TT")))
+        (Block
+          (Comment " ... convert iterable of numbers to one number"))))
+    (NoOp)))

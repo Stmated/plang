@@ -15,7 +15,7 @@ import java.util.List;
 public class InterpreterCodeExecutor implements CodeExecutor {
 
   @Override
-  public Object execute(MirNode node) {
+  public Object execute(final MirNode node) {
 
     final var scopes = new ArrayList<Scope>();
     scopes.add(new Scope());
@@ -23,21 +23,21 @@ public class InterpreterCodeExecutor implements CodeExecutor {
     return this.execute(node, scopes);
   }
 
-  public Object execute(MirNode node, List<Scope> scopes) {
+  public Object execute(final MirNode node, final List<Scope> scopes) {
 
     for (final var instr : node.instructions()) {
 
       switch (instr) {
-        case Mir.InstrCreateLiteral lit -> {
+        case final Mir.InstrCreateLiteral lit -> {
           final var javaValue = this.lower_literal(lit);
           final var valueId = (long) lit.hashCode();
           final var scope = scopes.getLast();
           scope.valueMap.put(valueId, javaValue);
         }
-        case Mir.InstrStore store -> {
-          var i = 0;
+        case final Mir.InstrStore store -> {
+          final var i = 0;
         }
-        case Mir.InstrBinaryOperation bin -> {
+        case final Mir.InstrBinaryOperation bin -> {
 
           final var lhsId = (long) bin.lhs().hashCode();
           final var rhsId = (long) bin.rhs().hashCode();
@@ -46,12 +46,12 @@ public class InterpreterCodeExecutor implements CodeExecutor {
           final var lhsValue = scope.valueMap.get(lhsId);
           final var rhsValue = scope.valueMap.get(rhsId);
 
-          if (lhsValue instanceof Number lhsNumber && rhsValue instanceof Number rhsNumber) {
+          if (lhsValue instanceof final Number lhsNumber && rhsValue instanceof final Number rhsNumber) {
 
             final var lhsBd = new BigDecimal(lhsNumber.toString());
             final var rhsBd = new BigDecimal(rhsNumber.toString());
 
-            final var scale = bin.ty() instanceof TyValueNumberPrecisioned np
+            final var scale = bin.ty() instanceof final TyValueNumberPrecisioned np
               ? np.precision()
               : 0;
 
@@ -64,7 +64,7 @@ public class InterpreterCodeExecutor implements CodeExecutor {
             };
 
             final Number res = switch (bin.ty()) {
-              case TyValueNumberInteger tyi -> {
+              case final TyValueNumberInteger tyi -> {
                 if (tyi.width().value() > Ty.INTEGER.width().value()) {
                   yield resBd.longValue();
                 } else if (tyi.width().value() <= Ty.SHORT.width().value()) {
@@ -73,7 +73,7 @@ public class InterpreterCodeExecutor implements CodeExecutor {
                   yield resBd.intValue();
                 }
               }
-              case TyValueNumberPrecisioned typ -> switch (typ.kind()) {
+              case final TyValueNumberPrecisioned typ -> switch (typ.kind()) {
                 case RealKind.FLOAT -> resBd.floatValue();
                 case RealKind.DOUBLE -> resBd.doubleValue();
               };
@@ -86,21 +86,21 @@ public class InterpreterCodeExecutor implements CodeExecutor {
             throw new NotImplementedException("Not yet implemented " + rhsValue);
           }
         }
-        case Mir.InstrReturn ret -> {
+        case final Mir.InstrReturn ret -> {
 
           final var id = (long) ret.instr().hashCode();
           final var scope = scopes.getLast();
 
           scope.result = scope.valueMap.get(id);
         }
-        case Mir.InstrCreateFn fn -> {
+        case final Mir.InstrCreateFn fn -> {
 
           final var id = (long) fn.hashCode();
           final var scope = scopes.getLast();
 
           scope.functions.put(id, fn);
         }
-        case Mir.InstrCall call -> {
+        case final Mir.InstrCall call -> {
 
           // TODO: Make sure there is a difference in the instructions between `val fn = () => ...` and `var fn = () => ...`
           //        Since for the first the function will never move, so we can just reference the function directly
@@ -109,7 +109,7 @@ public class InterpreterCodeExecutor implements CodeExecutor {
 
           // TODO: Do the actual call...
 
-          if (call.target() instanceof Mir.InstrCreateFn fn) {
+          if (call.target() instanceof final Mir.InstrCreateFn fn) {
 
             final var scope = scopes.getLast();
             final var arguments = call.arguments();
@@ -117,7 +117,7 @@ public class InterpreterCodeExecutor implements CodeExecutor {
             try {
 
               for (int i = 0, argumentsLength = arguments.length; i < argumentsLength; i++) {
-                var argument = arguments[i];
+                final var argument = arguments[i];
                 var name = argument.name();
                 if (name == null) {
                   name = fn.signature().parameters()[i].name();
@@ -130,7 +130,7 @@ public class InterpreterCodeExecutor implements CodeExecutor {
 
             } finally {
               for (int i = 0, argumentsLength = arguments.length; i < argumentsLength; i++) {
-                var argument = arguments[i];
+                final var argument = arguments[i];
                 var name = argument.name();
                 if (name == null) {
                   name = fn.signature().parameters()[i].name();
@@ -145,7 +145,7 @@ public class InterpreterCodeExecutor implements CodeExecutor {
           }
 
         }
-        case Mir.InstrGetParam param -> {
+        case final Mir.InstrGetParam param -> {
 
           final var hash = (long) param.parameter().name().hashCode();
           for (var i = scopes.size() - 1; i >= 0; i--) {
@@ -165,22 +165,22 @@ public class InterpreterCodeExecutor implements CodeExecutor {
     return scopes.getLast().result;
   }
 
-  private Object lower_literal(Mir.InstrCreateLiteral literal) {
+  private Object lower_literal(final Mir.InstrCreateLiteral literal) {
 
     return switch (literal.ty()) {
-      case TyValueString str -> literal.content();
-      case TyValueNumberInteger ni -> {
+      case final TyValueString str -> literal.content();
+      case final TyValueNumberInteger ni -> {
         if (ni.width().value() == 64) {
           yield Long.parseLong(literal.content(), ni.radix());
         } else {
           yield Integer.parseInt(literal.content(), ni.radix());
         }
       }
-      case TyValueNumberPrecisioned np -> switch (np.kind()) {
+      case final TyValueNumberPrecisioned np -> switch (np.kind()) {
         case FLOAT -> Float.parseFloat(literal.content());
         case DOUBLE -> Double.parseDouble(literal.content());
       };
-      case TyValueBoolean b -> Boolean.parseBoolean(literal.content());
+      case final TyValueBoolean b -> Boolean.parseBoolean(literal.content());
       default -> throw new UnexpectedExpressionException(literal);
     };
   }

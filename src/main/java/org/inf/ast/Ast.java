@@ -28,7 +28,7 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitAssignment(this);
     }
   }
@@ -37,10 +37,10 @@ public class Ast {
   @AllArgsConstructor
   public static class Become implements Expression {
 
-    Call call;
+    Expression expression;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitBecome(this);
     }
   }
@@ -55,11 +55,11 @@ public class Ast {
 
     @Override
     public String toString() {
-      return lhs + " " + kind + " " + rhs;
+      return "%s %s %s".formatted(lhs, kind, rhs);
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitBinaryOperation(this);
     }
   }
@@ -76,14 +76,14 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitBlock(this);
     }
   }
 
   @Data
   @AllArgsConstructor
-  public static class Bracket implements Expression {
+  public static class Bracket implements Expression, HasChildren {
 
     Expression[] children;
 
@@ -91,61 +91,89 @@ public class Ast {
     public String toString() {
 
       final var childrenString = Arrays.stream(children).map(Object::toString).collect(Collectors.joining(", "));
-      return "[" + childrenString + "]";
+      return "[%s]".formatted(childrenString);
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitBracket(this);
     }
   }
 
-  /**
-   * This should be removed in favor of a more agnostic AST stage, and convert brackets based on context in HIR stage.
-   * This will require less backtracking, since we will not actually care what it is inside the AST stage.
-   */
+//  /**
+//   * This should be removed in favor of a more agnostic AST stage, and convert brackets based on context in HIR stage.
+//   * This will require less backtracking, since we will not actually care what it is inside the AST stage.
+//   */
+//  @Data
+//  @AllArgsConstructor
+//  public static class BracketAccess implements Expression {
+//
+//    Expression target;
+//    Bracket accessor;
+//
+//    @Override
+//    public String toString() {
+//      return target + "[" + accessor + "]";
+//    }
+//
+//    @Override
+//    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+//      return visitor.visitBracketAccess(this);
+//    }
+//  }
+
+  /// Represents things like `func(arg1, arg2)` and `array[0]`.
+  /// Where a target has a suffix, with the suffix having some kind of relevance to the target.
   @Data
   @AllArgsConstructor
-  public static class BracketAccess implements Expression {
+  public static class PostfixExpression implements Expression {
 
     Expression target;
-    Bracket accessor;
+    Expression suffix;
 
     @Override
     public String toString() {
-      return target + "[" + accessor + "]";
+      return "%s%s".formatted(this.target, this.suffix);
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
-      return visitor.visitBracketAccess(this);
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
+      return visitor.visitPostfixExpression(this);
     }
   }
 
-  /**
-   * TODO: Remove this and instead convert directly to HirCall in AstToHir -- the AST should be more agnostic!
-   *        Will help us in allowing strange and incorrect syntax to flow a bit further, so we can give better error messages when we know more info.
-   *        It should work more like array access for HirArrayAccess!
-   */
   @Data
   @AllArgsConstructor
-  public static class Call implements Expression {
+  public static class Partial<E extends Expression> implements Expression {
 
-    Expression target;
-    Paren paren;
-    boolean onErrorBubbleUp;
-    boolean partial;
+    E expression;
 
     @Override
     public String toString() {
-      return target +
-        (partial ? "~" : "") +
-        "(" + paren + ")" + (onErrorBubbleUp ? "!" : "");
+      return "~%s".formatted(this.expression);
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
-      return visitor.visitCall(this);
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
+      return visitor.visitPartial(this);
+    }
+  }
+
+  /// Put as suffix on another expression to mean "bubble any error from this up the call stack"
+  @Data
+  @AllArgsConstructor
+  public static class Bubble implements Expression {
+
+    Expression expression;
+
+    @Override
+    public String toString() {
+      return "!%s".formatted(this.expression);
+    }
+
+    @Override
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
+      return visitor.visitBubble(this);
     }
   }
 
@@ -157,7 +185,7 @@ public class Ast {
     Expression rhs;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitCallable(this);
     }
   }
@@ -174,7 +202,7 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitComment(this);
     }
   }
@@ -186,7 +214,7 @@ public class Ast {
     Expression target;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitCompTime(this);
     }
   }
@@ -200,7 +228,12 @@ public class Ast {
     Expression fail;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public String toString() {
+      return "if %s then %s else %s".formatted(predicate, pass, fail);
+    }
+
+    @Override
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitConditional(this);
     }
   }
@@ -214,11 +247,11 @@ public class Ast {
 
     @Override
     public String toString() {
-      return lhs + "." + rhs;
+      return "%s.%s".formatted(lhs, rhs);
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitDotAccess(this);
     }
   }
@@ -231,19 +264,22 @@ public class Ast {
     boolean isDefault;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitExport(this);
     }
   }
 
   public interface Expression {
-
     <R, V extends AstVisitor<R>> R visit(V visitor);
+  }
+
+  public interface HasChildren {
+    Expression[] children();
   }
 
   @Data
   @AllArgsConstructor
-  public static class Expressions implements Expression {
+  public static class Expressions implements Expression, HasChildren {
 
     Expression[] children;
 
@@ -253,11 +289,11 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
-      return visitor.visitExpressionCollection(this);
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
+      return visitor.visitExpressions(this);
     }
 
-    public static Expression from(List<Expression> collection) {
+    public static Expression from(final List<Expression> collection) {
 
       if (collection.isEmpty()) {
         return null;
@@ -283,8 +319,8 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
-      return visitor.visitIdentifier(this);
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
+      return visitor.visitLexeme(this);
     }
   }
 
@@ -295,7 +331,7 @@ public class Ast {
     ImportCapable path;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitImport(this);
     }
   }
@@ -311,7 +347,7 @@ public class Ast {
     ImportCapable rhs;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitImportPath(this);
     }
   }
@@ -324,7 +360,7 @@ public class Ast {
     ImportCapable target;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitImportPathAlias(this);
     }
   }
@@ -336,7 +372,7 @@ public class Ast {
     ImportCapable[] items;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitImportPathGroup(this);
     }
   }
@@ -348,7 +384,7 @@ public class Ast {
     Lexeme lexeme;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitImportPathIdentifier(this);
     }
   }
@@ -358,7 +394,7 @@ public class Ast {
   public static class ImportPathWildcard implements Expression, ImportCapable {
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitImportPathWildcard(this);
     }
   }
@@ -376,7 +412,7 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitIn(this);
     }
   }
@@ -388,7 +424,7 @@ public class Ast {
     Expression expression;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitInfer(this);
     }
   }
@@ -406,7 +442,7 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitLabeling(this);
     }
   }
@@ -427,7 +463,7 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitLiteral(this);
     }
   }
@@ -439,7 +475,7 @@ public class Ast {
     Expression body;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitLoop(this);
     }
   }
@@ -452,7 +488,7 @@ public class Ast {
     Expression predicate;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitLoopDoWhile(this);
     }
   }
@@ -465,7 +501,7 @@ public class Ast {
     Expression block;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitLoopFor(this);
     }
   }
@@ -478,7 +514,7 @@ public class Ast {
     Expression body;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitLoopWhile(this);
     }
   }
@@ -491,7 +527,7 @@ public class Ast {
     Expressions children;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitMatch(this);
     }
   }
@@ -503,7 +539,7 @@ public class Ast {
     Expression expression;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitNegate(this);
     }
   }
@@ -522,7 +558,7 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitNew(this);
     }
   }
@@ -537,7 +573,7 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitNoOp(this);
     }
   }
@@ -549,7 +585,7 @@ public class Ast {
     Expression expression;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitNot(this);
     }
   }
@@ -562,7 +598,12 @@ public class Ast {
     Expression expression;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public String toString() {
+      return (this.expression == null) ? "()" : "(%s)".formatted(this.expression);
+    }
+
+    @Override
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitParen(this);
     }
   }
@@ -571,10 +612,15 @@ public class Ast {
   @AllArgsConstructor
   public static class Program implements Expression {
 
-    Expressions children;
+    Expression children;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public String toString() {
+      return Objects.toString(children);
+    }
+
+    @Override
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitProgram(this);
     }
   }
@@ -587,7 +633,7 @@ public class Ast {
     Expression rhs;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitRange(this);
     }
   }
@@ -597,7 +643,7 @@ public class Ast {
   public static class Rest implements Expression {
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitRest(this);
     }
 
@@ -614,7 +660,7 @@ public class Ast {
     Expression expression;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitReturn(this);
     }
   }
@@ -627,7 +673,7 @@ public class Ast {
     Expression expression;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitSpread(this);
     }
 
@@ -650,7 +696,7 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitStaticAccess(this);
     }
   }
@@ -662,7 +708,7 @@ public class Ast {
     Block block;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitStruct(this);
     }
   }
@@ -674,7 +720,7 @@ public class Ast {
     Expression expression;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitThen(this);
     }
   }
@@ -686,7 +732,7 @@ public class Ast {
     Block block;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitTrait(this);
     }
   }
@@ -698,7 +744,7 @@ public class Ast {
     Lexeme lexeme;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitType(this);
     }
   }
@@ -715,7 +761,7 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitTypePlaceholder(this);
     }
   }
@@ -735,7 +781,7 @@ public class Ast {
     }
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitVariableDeclaration(this);
     }
   }
@@ -745,7 +791,7 @@ public class Ast {
   public static class VariableSink implements Expression {
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitVariableSink(this);
     }
   }
@@ -758,7 +804,7 @@ public class Ast {
     Expression rhs;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitWhere(this);
     }
   }
@@ -771,7 +817,7 @@ public class Ast {
     Block block;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitWith(this);
     }
   }
@@ -783,7 +829,7 @@ public class Ast {
     Expression expression;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitYield(this);
     }
   }
@@ -795,10 +841,10 @@ public class Ast {
     Lexeme traitLexeme;
     Expression forExpression;
     Block block;
-    Expression[] with;
+    Expression with;
 
     @Override
-    public <R, V extends AstVisitor<R>> R visit(V visitor) {
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitImpl(this);
     }
   }
@@ -834,7 +880,7 @@ public class Ast {
     BIT_OR,
     BIT_AND;
 
-    public static BinaryOperationKind fromTokenType(TokenType tokenType) {
+    public static BinaryOperationKind fromTokenType(final TokenType tokenType) {
 
       return switch (tokenType) {
         case LTE -> BinaryOperationKind.LTE;

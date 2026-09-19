@@ -4,8 +4,6 @@
 // Stack will simply be re-used, effectively turning the code from recursion -> loop
 
 val fn = (value: Container) => {
-
     val local = 123;
-    value.inner[15].something().other = value.foo  == 1;
     become fn(value);
 };

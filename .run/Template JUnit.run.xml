@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="true" type="JUnit" factoryName="JUnit" activateToolWindowBeforeRun="false">
+  <configuration default="true" type="JUnit" factoryName="JUnit" focusToolWindowBeforeRun="true">
     <module name="inf" />
     <option name="MAIN_CLASS_NAME" value="" />
     <option name="METHOD_NAME" value="" />

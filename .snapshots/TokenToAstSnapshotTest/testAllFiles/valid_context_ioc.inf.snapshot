@@ -1,0 +1,171 @@
+dynamic-directory: true
+snapshot-name: valid_context_ioc.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "A")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "v1")
+              Immutable
+              (Lexeme "uin32")
+              false)
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "B")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "v2")
+              Immutable
+              (Lexeme "uin32")
+              false)
+            (NoOp)))))
+    (NoOp)
+    (Comment " This says \"Q is a nominal type, it is unique\"")
+    (Comment " Which means that it can be used as a qualifier.")
+    (Comment " Much like a \"A: nominal uint8\" and \"B: nominal uint8\"")
+    (Comment " would be considered different types (but subtype of uint8)")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Q")
+        Immutable
+        
+        false)
+      (Lexeme "nominal"))
+    (Lexeme "uint8")
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "T")
+        Immutable
+        
+        false)
+      (Trait
+        (Block
+          (Expressions
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "call")
+                Immutable
+                
+                false)
+              (Labeling
+                (Paren
+                  (Labeling
+                    (Lexeme "x")
+                    (Lexeme "uint32")))
+                (Lexeme "uint64")))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "A")
+        Immutable
+        
+        false)
+      (Impl
+        (Lexeme "T")
+        (Lexeme "A")
+        (Block
+          (Expressions
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "call")
+                Immutable
+                
+                false)
+              (Callable
+                (Paren
+                  (Expressions
+                    (Lexeme "self")
+                    (Labeling
+                      (Lexeme "x")
+                      (Lexeme "uint32"))))
+                (Block
+                  (Expressions
+                    (Return
+                      (BinaryOperation ADD
+                        (DotAccess
+                          (Lexeme "self")
+                          (Lexeme "v1"))
+                        (BinaryOperation ADD
+                          (Lexeme "x")
+                          (BinaryOperation ADD
+                            (DotAccess
+                              (Lexeme "b")
+                              (Lexeme "v2"))
+                            (Lexeme "uniqueNumber")))))
+                    (NoOp)))))
+            (NoOp)))
+        (Expressions
+          (Labeling
+            (Lexeme "b")
+            (Lexeme "B"))
+          (Labeling
+            (Lexeme "uniqueNumber")
+            (Lexeme "Q")))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "f")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          )
+        (Block
+          (Expressions
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "a")
+                Immutable
+                
+                false)
+              (New
+                (Block
+                  (Literal "1"))
+                (Lexeme "A")
+                ))
+            (Comment " Should work since only 1 value, would also work if called \"value\"")
+            (With
+              (Paren
+                (Expressions
+                  (New
+                    (Block
+                      (Assignment
+                        (Lexeme "v2")
+                        (Literal "10")))
+                    (Lexeme "B")
+                    )
+                  (Labeling
+                    (Literal "1")
+                    (Lexeme "Q"))))
+              (Block
+                (Expressions
+                  (DotAccess
+                    (Lexeme "a")
+                    (PostfixExpression
+                      (Lexeme "call")
+                      (Paren
+                        (Literal "100"))))
+                  (NoOp)
+                  (Comment " Should be 112"))))))))
+    (NoOp)))

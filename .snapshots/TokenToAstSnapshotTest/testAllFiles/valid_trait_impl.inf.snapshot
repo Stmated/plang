@@ -1,0 +1,274 @@
+dynamic-directory: true
+snapshot-name: valid_trait_impl.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Foo")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "a")
+              Immutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)
+            (VariableDeclaration
+              (Lexeme "b")
+              Immutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Bar")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "c")
+              Immutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)
+            (VariableDeclaration
+              (Lexeme "d")
+              Immutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Baz")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "d")
+              Mutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)
+            (VariableDeclaration
+              (Lexeme "e")
+              Immutable
+              (Lexeme "uint32")
+              false)
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "FooTrait")
+        Immutable
+        
+        false)
+      (Trait
+        (Block
+          (Expressions
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "calculate1")
+                Immutable
+                
+                false)
+              (Labeling
+                (Paren
+                  (VariableDeclaration
+                    (Lexeme "self")
+                    Immutable
+                    
+                    true))
+                (Lexeme "uint32")))
+            (NoOp)
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "calculate2")
+                Immutable
+                
+                false)
+              (Labeling
+                (Paren
+                  (Lexeme "self"))
+                (Lexeme "uint32")))
+            (NoOp)
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "calculate3")
+                Immutable
+                
+                false)
+              (Labeling
+                (Paren
+                  )
+                (BinaryOperation BIT_OR
+                  (Lexeme "uint32")
+                  (Lexeme "uint64"))))
+            (NoOp)))))
+    (NoOp)
+    (Export
+      (Assignment
+        (VariableDeclaration
+          (Lexeme "SpecificImplName")
+          Immutable
+          
+          false)
+        (Impl
+          (Lexeme "FooTrait")
+          (BinaryOperation ADD
+            (Lexeme "Foo")
+            (Lexeme "Bar"))
+          (Block
+            (Expressions
+              (Assignment
+                (VariableDeclaration
+                  (Lexeme "calculate1")
+                  Immutable
+                  
+                  false)
+                (Callable
+                  (Paren
+                    (VariableDeclaration
+                      (Lexeme "self")
+                      Immutable
+                      
+                      true))
+                  (BinaryOperation ADD
+                    (DotAccess
+                      (Lexeme "self")
+                      (Lexeme "a"))
+                    (DotAccess
+                      (Lexeme "self")
+                      (Lexeme "b")))))
+              (NoOp)
+              (Assignment
+                (VariableDeclaration
+                  (Lexeme "calculate2")
+                  Immutable
+                  
+                  false)
+                (Callable
+                  (Paren
+                    (Lexeme "self"))
+                  (BinaryOperation ADD
+                    (DotAccess
+                      (Lexeme "self")
+                      (Lexeme "a"))
+                    (DotAccess
+                      (Lexeme "self")
+                      (Lexeme "c")))))
+              (NoOp)
+              (Assignment
+                (VariableDeclaration
+                  (Lexeme "calculate3")
+                  Immutable
+                  
+                  false)
+                (Callable
+                  (Paren
+                    )
+                  (BinaryOperation ADD
+                    (DotAccess
+                      (Lexeme "self")
+                      (Lexeme "b"))
+                    (DotAccess
+                      (Lexeme "self")
+                      (Lexeme "d")))))
+              (NoOp)))
+          ))
+      false)
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "aNewType")
+        Immutable
+        
+        false)
+      (BinaryOperation SUBTRACT
+        (Paren
+          (BinaryOperation BIT_OR
+            (Lexeme "Foo")
+            (Lexeme "Bar")))
+        (Lexeme "Baz")))
+    (NoOp)
+    (Comment " Below will be exported as \"default\" -- ie as an entry in the list of things exposed from this module")
+    (Export
+      (Impl
+        (Lexeme "FooTrait")
+        (Lexeme "aNewType")
+        (Block
+          (Expressions
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "toggle1")
+                Immutable
+                
+                false)
+              (Callable
+                (Labeling
+                  (Paren
+                    (Lexeme "self"))
+                  (BinaryOperation BIT_OR
+                    (Literal "0")
+                    (Literal "1")))
+                (Not
+                  (Lexeme "self"))))
+            (NoOp)
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "toggle2")
+                Immutable
+                
+                false)
+              (Callable
+                (Labeling
+                  (Paren
+                    (Lexeme "self"))
+                  (Paren
+                    (Conditional
+                      (Lexeme "self")
+                      (Then
+                        (Literal "0"))
+                      (Literal "1"))))
+                (Not
+                  (Lexeme "self"))))
+            (NoOp)
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "toggle3")
+                Immutable
+                
+                false)
+              (Callable
+                (Labeling
+                  (Paren
+                    (Lexeme "self"))
+                  (Paren
+                    (Conditional
+                      (Lexeme "self")
+                      (Then
+                        (Literal "0"))
+                      (Literal "1"))))
+                (Not
+                  (Lexeme "self"))))
+            (NoOp)))
+        )
+      false)
+    (NoOp)
+    (Comment " Then it should be up to creating extension points with possible constraints to decide who gets to add traits where")
+    (Comment " See `extension_functions.inf` for more information, and retrofit it for traits instead")))

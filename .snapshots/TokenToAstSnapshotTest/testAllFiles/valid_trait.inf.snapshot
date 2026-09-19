@@ -1,0 +1,57 @@
+dynamic-directory: true
+snapshot-name: valid_trait.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "FooTrait")
+        Immutable
+        
+        false)
+      (Trait
+        (Block
+          (Expressions
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "calculate1")
+                Immutable
+                
+                false)
+              (Labeling
+                (Paren
+                  (VariableDeclaration
+                    (Lexeme "self")
+                    Immutable
+                    
+                    true))
+                (Lexeme "uint32")))
+            (NoOp)
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "calculate2")
+                Immutable
+                
+                false)
+              (Labeling
+                (Paren
+                  (Lexeme "self"))
+                (Lexeme "uint32")))
+            (NoOp)
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "calculate3")
+                Immutable
+                
+                false)
+              (Labeling
+                (Paren
+                  )
+                (BinaryOperation BIT_OR
+                  (Lexeme "uint32")
+                  (Lexeme "uint64"))))
+            (NoOp)))))
+    (NoOp)))

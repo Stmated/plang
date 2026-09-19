@@ -1,0 +1,198 @@
+dynamic-directory: true
+snapshot-name: valid_ufc.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Comment " File which describes all the way that it should be possible to call things.")
+    (Comment " It is important that we can differ between a `fn call` and a `fn reference`")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Person")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "firstName")
+              Immutable
+              (Lexeme "string")
+              false)
+            (NoOp)
+            (VariableDeclaration
+              (Lexeme "lastName")
+              Immutable
+              (Lexeme "string")
+              false)
+            (NoOp)
+            (Callable
+              (VariableDeclaration
+                (Lexeme "getFullName")
+                Immutable
+                (Paren
+                  )
+                false)
+              (Literal "${this.firstName} ${this.lastName}"))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Office")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (VariableDeclaration
+              (Lexeme "address")
+              Immutable
+              (Lexeme "string")
+              false)
+            (NoOp)
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "workers")
+                Immutable
+                
+                false)
+              (New
+                (Paren
+                  (Lexeme "Person"))
+                (Lexeme "Array")
+                ))
+            (Callable
+              (VariableDeclaration
+                (Lexeme "enter")
+                Immutable
+                (Paren
+                  (Labeling
+                    (Lexeme "p")
+                    (Lexeme "Person")))
+                false)
+              (DotAccess
+                (Lexeme "this")
+                (DotAccess
+                  (Lexeme "workers")
+                  (PostfixExpression
+                    (Lexeme "add")
+                    (Paren
+                      (Lexeme "p"))))))
+            (NoOp)
+            (Callable
+              (VariableDeclaration
+                (Lexeme "leave")
+                Immutable
+                (Paren
+                  (Labeling
+                    (Lexeme "p")
+                    (Lexeme "Person")))
+                false)
+              (DotAccess
+                (Lexeme "this")
+                (DotAccess
+                  (Lexeme "workers")
+                  (PostfixExpression
+                    (Lexeme "remove")
+                    (Paren
+                      (Lexeme "p"))))))
+            (NoOp)))))
+    (NoOp)
+    (Lexeme "const")
+    (Assignment
+      (Lexeme "office")
+      (New
+        (Lexeme "Office")
+        (Lexeme "stack")
+        (Block
+          (Assignment
+            (Lexeme "address")
+            (Literal "Ankeborg")))))
+    (NoOp)
+    (Lexeme "const")
+    (Assignment
+      (Lexeme "person1")
+      (New
+        (Lexeme "Person")
+        (Lexeme "stack")
+        (Block
+          (Expressions
+            (Assignment
+              (Lexeme "firstName")
+              (Literal "Kalle"))
+            (Assignment
+              (Lexeme "lastName")
+              (Literal "Anka"))))))
+    (NoOp)
+    (Lexeme "const")
+    (Assignment
+      (Lexeme "person2")
+      (New
+        (Lexeme "Person")
+        (Lexeme "stack")
+        (Block
+          (Expressions
+            (Assignment
+              (Lexeme "firstName")
+              (Literal "Joakim"))
+            (Assignment
+              (Lexeme "lastName")
+              (Literal "Von Anka"))))))
+    (NoOp)
+    (DotAccess
+      (Lexeme "office")
+      (PostfixExpression
+        (Lexeme "enter")
+        (Paren
+          (Lexeme "person1"))))
+    (NoOp)
+    (DotAccess
+      (Lexeme "person1")
+      (PostfixExpression
+        (Lexeme "enter")
+        (Paren
+          (Lexeme "office"))))
+    (NoOp)
+    (Lexeme "office")
+    (Lexeme "enter")
+    (Lexeme "person2")
+    (NoOp)
+    (PostfixExpression
+      (Lexeme "enter")
+      (Paren
+        (Expressions
+          (Lexeme "office")
+          (Lexeme "person1"))))
+    (NoOp)
+    (Comment " Perhaps should require explicit \"global\" export somehow")
+    (Lexeme "const")
+    (Assignment
+      (Lexeme "fnRef")
+      (Lexeme "office"))
+    (Lexeme "enter")
+    (NoOp)
+    (Lexeme "const")
+    (Assignment
+      (Lexeme "fnExplicitRef")
+      (StaticAccess
+        (Lexeme "office")
+        (Lexeme "enter")))
+    (NoOp)
+    (DotAccess
+      (Lexeme "person1")
+      (PostfixExpression
+        (Lexeme "getFullName")
+        (Paren
+          )))
+    (NoOp)
+    (StaticAccess
+      (Lexeme "Person")
+      (PostfixExpression
+        (Lexeme "getFullName")
+        (Paren
+          (Lexeme "person1"))))
+    (NoOp)))

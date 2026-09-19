@@ -1,0 +1,20 @@
+dynamic-directory: true
+snapshot-name: valid_bubble.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Bubble
+      (Assignment
+        (VariableDeclaration
+          (Lexeme "res")
+          Immutable
+          
+          false)
+        (PostfixExpression
+          (Lexeme "fn")
+          (Paren
+            ))))
+    (NoOp)))

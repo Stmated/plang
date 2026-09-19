@@ -1,0 +1,67 @@
+dynamic-directory: true
+snapshot-name: valid_construct.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "Person")
+        Immutable
+        
+        false)
+      (Struct
+        (Block
+          (Expressions
+            (Assignment
+              (VariableDeclaration
+                (Lexeme "GivenName")
+                Immutable
+                (Lexeme "string")
+                false)
+              (Literal "Pontus"))
+            (NoOp)
+            (VariableDeclaration
+              (Lexeme "value")
+              Immutable
+              (Lexeme "string")
+              false)
+            (NoOp)))))
+    (NoOp)
+    (Comment "\r\nThis is a multiline comment\r\n")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "quickObject")
+        Immutable
+        
+        false)
+      (New
+        (Lexeme "Person")
+        (Lexeme "stack")
+        (Block
+          (Expressions
+            (Assignment
+              (Lexeme "FamilyName")
+              (Literal "Eliason"))
+            (Comment " next will be set to 'value' ")
+            (Literal "198706046615")))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "quickObject2")
+        Immutable
+        
+        false)
+      (New
+        (Lexeme "Person")
+        (Lexeme "stack")
+        (Block
+          (Expressions
+            (Assignment
+              (Lexeme "FamilyName")
+              (Literal "Eliazon"))
+            (Comment " below has no key, so will set property \"value\"")
+            (Literal "191212121212")))))
+    (NoOp)))

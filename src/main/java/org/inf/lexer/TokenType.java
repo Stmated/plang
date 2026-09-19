@@ -18,7 +18,7 @@ public enum TokenType {
 
   TILDE, // ~
 
-  TRIPLE_DOT, // ...f
+  TRIPLE_DOT, // ...
   DOUBLE_DOT, // ..
   UNDERSCORE, // _
   DOT, // .

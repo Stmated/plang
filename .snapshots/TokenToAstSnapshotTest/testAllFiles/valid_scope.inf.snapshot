@@ -1,0 +1,95 @@
+dynamic-directory: true
+snapshot-name: valid_scope.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array1")
+        Immutable
+        
+        false)
+      (Bracket
+        (Literal "1")
+        (Literal "2")
+        (Literal "3")))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array2")
+        Immutable
+        
+        false)
+      (Bracket
+        (Literal "3")
+        (Literal "4")
+        (Literal "5")))
+    (NoOp)
+    (Comment " Arguments implicitly named 'it', since it is a single argument")
+    (Comment " By saying 'identifier'@'identifier' you can specify the owner")
+    (Comment " TODO: Should there be a \"magical\" name for the second as well? \"other\"?")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "result")
+        Immutable
+        
+        false)
+      (DotAccess
+        (Lexeme "array1")
+        (PostfixExpression
+          (Lexeme "filter")
+          (Paren
+            (Callable
+              (Lexeme "it")
+              (Block
+                (Expressions
+                  (Return
+                    (DotAccess
+                      (Lexeme "array2")
+                      (PostfixExpression
+                        (Lexeme "any")
+                        (Paren
+                          (Callable
+                            (Lexeme "it")
+                            (Block
+                              (Expressions
+                                (Return
+                                  (BinaryOperation EQUALS
+                                    (Lexeme "it")
+                                    (Lexeme "it")))
+                                (CompTime
+                                  (Lexeme "array1"))
+                                (NoOp))))))))
+                  (NoOp))))))))
+    (NoOp)
+    (Comment " Or maybe this should be it' which is used in math to say \"the other it\"")
+    (Comment " Then you would also be able to say it'' to mean \"the second other it\"")
+    (Comment " Or is it better to be explicit like the example below?")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "result")
+        Immutable
+        
+        false)
+      (PostfixExpression
+        (Lexeme "array1")
+        (Bracket
+          (Callable
+            (Lexeme "it")
+            (DotAccess
+              (Lexeme "array2")
+              (PostfixExpression
+                (Lexeme "any")
+                (Paren
+                  (Expressions
+                    (Callable
+                      (Lexeme "it")
+                      (BinaryOperation EQUALS
+                        (Lexeme "it")
+                        (Lexeme "it")))
+                    (CompTime
+                      (Lexeme "array1"))))))))))
+    (NoOp)))

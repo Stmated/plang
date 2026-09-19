@@ -1,0 +1,145 @@
+dynamic-directory: true
+snapshot-name: valid_meta.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "value")
+        Immutable
+        
+        false)
+      (Literal "10"))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn")
+        Immutable
+        
+        false)
+      (Callable
+        (Paren
+          )
+        (Block
+          (Expressions
+            (DotAccess
+              (Lexeme "System")
+              (PostfixExpression
+                (Lexeme "println")
+                (Paren
+                  (BinaryOperation ADD
+                    (Literal "Variable name: ")
+                    (BinaryOperation ADD
+                      (CompTime
+                        (DotAccess
+                          (Lexeme "value")
+                          (Lexeme "name")))
+                      (Literal "!"))))))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn2")
+        Immutable
+        
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            (Labeling
+              (Lexeme "arg")
+              (Lexeme "uint32")))
+          (Lexeme "uint64"))
+        (Block
+          (Expressions
+            (Return
+              (BinaryOperation ADD
+                (Lexeme "arg")
+                (Literal "1")))
+            (NoOp)))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "v")
+        Immutable
+        (CompTime
+          (DotAccess
+            (Lexeme "fn2")
+            (DotAccess
+              (Lexeme "result")
+              (Lexeme "type"))))
+        false)
+      (Literal "32"))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn3")
+        Immutable
+        
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            (Labeling
+              (Lexeme "arg")
+              (Lexeme "uint32")))
+          (CompTime
+            (DotAccess
+              (Lexeme "fn2")
+              (DotAccess
+                (Lexeme "result")
+                (Lexeme "type")))))
+        (Block
+          (Expressions
+            (Return
+              (BinaryOperation MULTIPLY
+                (Lexeme "arg")
+                (Literal "2")))
+            (NoOp)))))
+    (NoOp)
+    (Comment " This is stupid, having \"dynamic\" parameter name, but we will allow it")
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn3")
+        Immutable
+        
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            (Labeling
+              (CompTime
+                (DotAccess
+                  (Lexeme "fn2")
+                  (DotAccess
+                    (PostfixExpression
+                      (Lexeme "args")
+                      (Bracket
+                        (Literal "0")))
+                    (Lexeme "name"))))
+              (CompTime
+                (DotAccess
+                  (Lexeme "fn2")
+                  (DotAccess
+                    (PostfixExpression
+                      (Lexeme "args")
+                      (Bracket
+                        (Literal "0")))
+                    (Lexeme "type"))))))
+          (CompTime
+            (DotAccess
+              (Lexeme "fn2")
+              (DotAccess
+                (Lexeme "result")
+                (Lexeme "type")))))
+        (Block
+          (Expressions
+            (Return
+              (BinaryOperation MULTIPLY
+                (Lexeme "arg")
+                (Literal "2")))
+            (NoOp)))))
+    (NoOp)))

@@ -1,0 +1,28 @@
+dynamic-directory: true
+snapshot-name: valid_assignment.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (DotAccess
+        (Lexeme "value")
+        (DotAccess
+          (PostfixExpression
+            (Lexeme "inner")
+            (Bracket
+              (Literal "15")))
+          (DotAccess
+            (PostfixExpression
+              (Lexeme "something")
+              (Paren
+                ))
+            (Lexeme "other"))))
+      (BinaryOperation EQUALS
+        (DotAccess
+          (Lexeme "value")
+          (Lexeme "foo"))
+        (Literal "1")))
+    (NoOp)))
