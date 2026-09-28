@@ -15,7 +15,10 @@ public record TyValueNumberInteger(byte radix, BitWidth width, boolean signed, E
 
   @Override
   public String toString() {
-    return (signed ? "" : "u") + "int" + width + (radix == 10 ? "" : "base" + radix);
+    if (width.explicit()) {
+      return (signed ? "" : "u") + "int" + width.value() + (radix == 10 ? "" : "base" + radix);
+    }
+    return (signed ? "" : "u") + "int(" + width.value() + "?)" + (radix == 10 ? "" : "base" + radix);
   }
 
   @Override
@@ -37,7 +40,10 @@ public record TyValueNumberInteger(byte radix, BitWidth width, boolean signed, E
       return false;
     }
     TyValueNumberInteger that = (TyValueNumberInteger) o;
-    return radix == that.radix && Objects.equals(width, that.width) && signed == that.signed && Objects.equals(flags, that.flags);
+    return radix == that.radix
+      && Objects.equals(width, that.width)
+      && signed == that.signed
+      && Objects.equals(flags, that.flags);
   }
 
   @Override

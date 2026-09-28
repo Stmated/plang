@@ -6,6 +6,7 @@ import org.bytedeco.llvm.LLVM.LLVMContextRef;
 import org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import org.bytedeco.llvm.global.LLVM;
 import org.inf.exceptions.NotImplementedException;
+import org.inf.mir.MirTypes;
 import org.inf.ty.*;
 
 @RequiredArgsConstructor
@@ -46,9 +47,9 @@ public class LLVMTypeResolver {
 
       case TyValueString _ -> resolve(new TyPointer<>(Ty.CHAR));
 
-      case TyPointer p -> LLVM.LLVMPointerType(resolve(p.inner()), getAddressSpace(p.addressSpace()));
-      case TyValueArray a when a.size() != null && a.size() >= 0 -> LLVM.LLVMArrayType2(resolve(a.elementType()), a.size());
-      case TyValueArray a -> LLVM.LLVMPointerType(resolve(a.elementType()), 0);
+      case TyPointer p -> LLVM.LLVMPointerTypeInContext(context, getAddressSpace(p.addressSpace()));
+      case TyValueArray a when a.size() != null && a.size() >= 0 -> LLVM.LLVMArrayType2(resolve(MirTypes.valueType(a.elementType())), a.size());
+      case TyValueArray a -> LLVM.LLVMArrayType2(resolve(MirTypes.valueType(a.elementType())), 0);
 
       case TyValueBoolean _ -> LLVM.LLVMInt1TypeInContext(context);
 
@@ -60,12 +61,25 @@ public class LLVMTypeResolver {
 
         final var types = new PointerPointer<>(s.fields().length);
         for (var i = 0; i < s.fields().length; i++) {
-          types.put(i, resolve(s.fields()[i].ty()));
+          types.put(i, resolve(MirTypes.valueType(s.fields()[i].ty())));
         }
-
         final var type = LLVM.LLVMStructTypeInContext(context, types, s.fields().length, 0);
         cache.put(s, type);
 
+        yield type;
+      }
+
+      case TyUnion union -> {
+        final var fields = new java.util.ArrayList<LLVMTypeRef>();
+        fields.add(LLVM.LLVMInt32TypeInContext(context));
+        for (final var variant : union.types()) {
+          if (!variant.equals(Ty.VOID)) {
+            fields.add(resolve(variant));
+          }
+        }
+        final var type = LLVM.LLVMStructTypeInContext(context,
+          new PointerPointer<>(fields.toArray(LLVMTypeRef[]::new)), fields.size(), 0);
+        cache.put(union, type);
         yield type;
       }
 

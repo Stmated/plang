@@ -302,7 +302,7 @@ public class Ast {
       if (collection.size() == 1) {
         return collection.getFirst();
       } else {
-        return new Expressions(collection.toArray(new Expression[0]));
+        return new Ast.Expressions(collection.toArray(new Expression[0]));
       }
     }
   }

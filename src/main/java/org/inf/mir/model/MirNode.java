@@ -1,80 +1,57 @@
 package org.inf.mir.model;
 
-import jakarta.annotation.Nonnull;
-import lombok.AllArgsConstructor;
-import lombok.Setter;
-import lombok.Value;
-import lombok.experimental.NonFinal;
-import org.inf.mir.Mir.Instr;
-import org.inf.ty.Ty;
+import org.inf.mir.Mir;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
-@Value
-@NonFinal
-@AllArgsConstructor
-public class MirNode {
+/** A basic block; identity is independent of its diagnostic name. */
+public final class MirNode {
 
-  String name;
-
-  @Nonnull
-  List<Instr> instructions;
-
-  /**
-   * @deprecated Remove and instead work with the last instruction being a terminal instruction
-   */
-  @Nonnull
-  @Deprecated
-  List<MirNode> successors;
-
-  @NonFinal
-  @Setter
-  Ty ty;
+  private final String name;
+  private final List<Mir.Instruction> instructions = new ArrayList<>();
+  private Mir.Terminator terminator;
 
   public MirNode(String name) {
-    this(name, new ArrayList<>(), new ArrayList<>(), null);
+    this.name = Objects.requireNonNull(name);
   }
 
-  public boolean isTerminal() {
+  public String name() {
+    return name;
+  }
 
-    if (this.instructions().isEmpty()) {
-      return false;
+  public List<Mir.Instruction> instructions() {
+    return Collections.unmodifiableList(instructions);
+  }
+
+  public Mir.Terminator terminator() {
+    return terminator;
+  }
+
+  public List<MirNode> successors() {
+    return terminator == null ? List.of() : terminator.successors();
+  }
+
+  public void append(Mir.Instruction instruction) {
+    requireOpen();
+    instructions.add(Objects.requireNonNull(instruction));
+  }
+
+  public void terminate(Mir.Terminator terminal) {
+    requireOpen();
+    terminator = Objects.requireNonNull(terminal);
+  }
+
+  private void requireOpen() {
+    if (terminator != null) {
+      throw new IllegalStateException("Block '" + name + "' already has a terminator");
     }
-
-    return this.instructions().getLast().isTerminal();
-  }
-
-  public void addSuccessor(MirNode successor) {
-    successors().add(successor);
   }
 
   @Override
   public String toString() {
-    final var to = String.join(", ", successors().stream().map(MirNode::name).toList());
-
-    final var terminalStr = isTerminal()
-      ? "*"
-      : "";
-
-    final var singleInstruction = instructions.size() == 1
-      ? " does " + instructions.getFirst()
-      : "";
-
-    return terminalStr + name() + " (to [" + to + "])" + singleInstruction;
-  }
-
-  public String toShortString() {
-    return name();
-  }
-
-  @Override
-  public int hashCode() {
-    return System.identityHashCode(this);
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    return obj == this;
+    return name;
   }
 }

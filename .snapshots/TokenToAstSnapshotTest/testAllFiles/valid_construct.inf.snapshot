@@ -30,7 +30,7 @@ test-method: testAllFiles
               false)
             (NoOp)))))
     (NoOp)
-    (Comment "\r\nThis is a multiline comment\r\n")
+    (Comment "\nThis is a multiline comment\n")
     (Assignment
       (VariableDeclaration
         (Lexeme "quickObject")

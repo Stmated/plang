@@ -32,7 +32,7 @@ public enum MirBinaryOperationKind {
   BIT_AND;
 
   public boolean isPredicate() {
-    return this == LTE || this == GTE || this == LT || this == GT || this == EQUALS || this == IS || this == OR || this == AND;
+    return this == LTE || this == GTE || this == LT || this == GT || this == EQUALS || this == NOT_EQUALS || this == IS || this == OR || this == AND;
   }
 
   public static MirBinaryOperationKind ofHirKind(BinaryOperationKind kind) {

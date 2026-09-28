@@ -1,18 +1,22 @@
 package org.inf.mir;
 
-import jakarta.annotation.Nonnull;
+import org.inf.mir.model.MirFunction;
 import org.inf.mir.model.MirNode;
 
-/**
- * A lowering can result in multiple nodes, where each node in essence is a function.
- * <p>
- * TODO: Need a way of saying that a node is capturing context of another node.
- *        So we can know that it should be backed by a struct of captured data or whatever.
- */
-public record MirLoweringResult(
+import java.util.List;
+import java.util.Objects;
 
-  @Nonnull
-  MirNode initNode
-) {
+public record MirLoweringResult(MirFunction script, List<MirFunction> functions) {
 
+  public MirLoweringResult {
+    Objects.requireNonNull(script);
+    functions = List.copyOf(functions);
+    if (!functions.contains(script)) {
+      throw new IllegalArgumentException("Module must own its script function");
+    }
+  }
+
+  public MirNode initNode() {
+    return script.entry();
+  }
 }

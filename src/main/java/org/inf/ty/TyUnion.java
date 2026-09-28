@@ -1,5 +1,8 @@
 package org.inf.ty;
 
+import java.util.Arrays;
+
+/** The types array is shared and must not be mutated after construction. */
 public record TyUnion(Ty[] types) implements Ty {
 
   public TyUnion {
@@ -12,6 +15,16 @@ public record TyUnion(Ty[] types) implements Ty {
         throw new IllegalArgumentException("No kind is allowed to be null");
       }
     }
+  }
+
+  @Override
+  public boolean equals(Object other) {
+    return this == other || other instanceof TyUnion union && Arrays.equals(types, union.types);
+  }
+
+  @Override
+  public int hashCode() {
+    return Arrays.hashCode(types);
   }
 
   @Override

@@ -2,6 +2,7 @@ package org.inf.ty.util;
 
 import jakarta.annotation.Nullable;
 import lombok.experimental.UtilityClass;
+import org.inf.hir.Hir;
 import org.inf.ty.*;
 
 import java.util.*;
@@ -46,13 +47,15 @@ public class Tys {
           if (ani.radix() != bni.radix()) {
             yield new TyResult<>(Ty.INTEGER, TyDiffKind.DIFF_RADIX);
           }
-          if (ani.width().value() != bni.width().value()) {
+          final var widthDiff = ani.width().value() != bni.width().value();
+          final var explicitDiff = ani.width().explicit() != bni.width().explicit();
+          if (widthDiff || explicitDiff) {
             final var newWidthValue = Math.max(ani.width().value(), bni.width().value());
             final var newWidth = new BitWidth(newWidthValue, ani.width().explicit() || bni.width().explicit());
             final var newFlags = mixFlags(ani.flags(), bni.flags());
             yield new TyResult<>(
               Tys.intern(new TyValueNumberInteger((byte) 10, newWidth, ani.signed(), newFlags)),
-              TyDiffKind.DIFF_WIDTH_EXT
+              widthDiff ? TyDiffKind.DIFF_WIDTH_EXT : TyDiffKind.DIFF_WIDTH_EXPLICIT
             );
           }
 
@@ -72,6 +75,7 @@ public class Tys {
           final var newFlags = mixFlags(anp.flags(), bnp.flags());
 
           final var diffWidth = newWidthValue != anp.width().value() || newWidthValue != bnp.width().value();
+          final var diffExpl = newExplicit != anp.width().explicit() || newExplicit != bnp.width().explicit();
           final var diffPrecision = newPrecisionValue != anp.precision() || newPrecisionValue != bnp.precision();
 
           if (diffWidth && diffPrecision) {
@@ -80,6 +84,9 @@ public class Tys {
           } else if (diffWidth) {
             final var newWidth = new BitWidth(newWidthValue, newExplicit);
             yield new TyResult<>(Tys.intern(new TyValueNumberPrecisioned(anp.kind(), newWidth, newPrecisionValue, newSigned, newFlags)), TyDiffKind.DIFF_WIDTH_EXT);
+          } else if (diffExpl) {
+            final var newWidth = new BitWidth(newWidthValue, newExplicit);
+            yield new TyResult<>(Tys.intern(new TyValueNumberPrecisioned(anp.kind(), newWidth, newPrecisionValue, newSigned, newFlags)), TyDiffKind.DIFF_WIDTH_EXPLICIT);
           } else if (diffPrecision) {
             yield new TyResult<>(Tys.intern(new TyValueNumberPrecisioned(anp.kind(), anp.width(), newPrecisionValue, newSigned, newFlags)), TyDiffKind.DIFF_PRECISION_EXT);
           }
@@ -101,17 +108,8 @@ public class Tys {
         }
         default -> new TyResult<>(null, TyDiffKind.INCOMPATIBLE);
       };
-      case TyValueNumber an -> switch (b) {
-        default -> new TyResult<>(null, TyDiffKind.INCOMPATIBLE);
-      };
       default -> new TyResult<>(null, TyDiffKind.INCOMPATIBLE);
     };
-  }
-
-  public static TyDiffKind[] getDifferences(Ty a, Ty b) {
-
-    final var common = getCommonDenominator(a, b);
-    return common.diffs();
   }
 
   private Pair<Ty, Ty> reorder(Ty a, Ty b) {
@@ -159,19 +157,60 @@ public class Tys {
 
   public static Ty union(Ty... types) {
 
-    final var uniqueSet = new LinkedHashSet<>(Arrays.asList(types));
-    final var uniqueArray = uniqueSet.toArray(new Ty[0]);
-    if (uniqueArray.length == 1) {
-      return uniqueArray[0];
-    } else if (uniqueArray.length == 0) {
-      return Ty.INVALID;
+    final var newUnionMembers = new ArrayList<Ty>();
+    final var remaining = new ArrayList<>(Arrays.asList(types));
+    while (!remaining.isEmpty()) {
+      final var current = remaining.removeFirst();
+      if (current == null || current == Ty.DEADEND) {
+        continue;
+      }
+
+      if (current instanceof TyUnion union) {
+        remaining.addAll(Arrays.asList(union.types()));
+      } else {
+
+        boolean found = false;
+        Ty foundCommon = null;
+        Ty toRemove = null;
+        for (final var existing : newUnionMembers) {
+          if (existing.equals(current)) {
+            found = true;
+            break;
+          }
+
+          final var common = getCommonDenominator(existing, current);
+          if (isGenerallyCompatible(common.diffs())) {
+            found = true;
+            foundCommon = common.ty();
+            toRemove = existing;
+            break;
+          }
+        }
+
+        if (!found) {
+          newUnionMembers.add(current);
+        } else if (foundCommon != null) {
+          newUnionMembers.remove(toRemove);
+          newUnionMembers.add(foundCommon);
+        }
+      }
     }
 
-    return new TyUnion(uniqueArray);
+    if (newUnionMembers.size() == 1) {
+      return newUnionMembers.getFirst();
+    } else if (newUnionMembers.isEmpty()) {
+      return Ty.DEADEND;
+    }
+
+    return new TyUnion(newUnionMembers.toArray(new Ty[0]));
   }
 
   public boolean isGenerallyCompatible(TyDiffKind[] diffs) {
-    return diffs == null || diffs.length == 0;
+      if (diffs == null || diffs.length == 0) {
+        return true;
+      } else {
+        return diffs.length == 1 && diffs[0] == TyDiffKind.DIFF_WIDTH_EXPLICIT;
+      }
   }
 
   public boolean isSizeCompatible(TyDiffKind[] diffs) {
@@ -296,5 +335,14 @@ public class Tys {
     }
 
     return (numberIndex != lastIndex) ? Integer.parseInt(name.substring(numberIndex + 1, lastIndex + 1)) : defaultWidth;
+  }
+
+  public static boolean isDeadEnd(Hir.Expression... children) {
+    for (final var child : children) {
+      if (child.ty() == Ty.DEADEND) {
+        return true;
+      }
+    }
+    return false;
   }
 }

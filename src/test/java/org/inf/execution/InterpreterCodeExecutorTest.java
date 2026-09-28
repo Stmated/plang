@@ -3,7 +3,6 @@ package org.inf.execution;
 import org.inf.Inf;
 import org.inf.execution.interpreter.InterpreterCodeExecutor;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class InterpreterCodeExecutorTest {
@@ -40,7 +39,13 @@ class InterpreterCodeExecutorTest {
   }
 
   @Test
-  @Disabled("Enable sometime in the future when we get back to working on the interpreter")
+  void unsignedShortValuesRemainPositiveWhenLoadedAndWidened() {
+    final var executor = new InterpreterCodeExecutor();
+    Assertions.assertEquals(65535, executor.execute(Inf.codeToMir("val x: uint16 = 65535; x + 0").initNode()));
+    Assertions.assertEquals(65535, executor.execute(Inf.codeToMir("val a = [65535;uint16;1]; a[0] + 0").initNode()));
+  }
+
+  @Test
   void testFunctionCall() {
     final var executor = new InterpreterCodeExecutor();
 

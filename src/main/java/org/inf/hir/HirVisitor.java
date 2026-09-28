@@ -2,31 +2,36 @@ package org.inf.hir;
 
 public interface HirVisitor {
 
+  /** Entry point for child traversal; specialized visitors may restrict reachability. */
+  default void visitChild(Hir.Expression expr) {
+    expr.visit(this);
+  }
+
   default void visitExpressions(Hir.Expressions expr) {
     for (final var child : expr.children()) {
-      child.visit(this);
+      visitChild(child);
     }
   }
 
   default void visitArgument(Hir.Argument expr) {
-    expr.value().visit(this);
+    visitChild(expr.value());
   }
 
   default void visitArray(Hir.Array expr) {
-    expr.elementType().visit(this);
+    visitChild(expr.elementType());
 
     if (expr.length() != null) {
-      expr.length().visit(this);
+      visitChild(expr.length());
     }
 
     for (final var element : expr.elements()) {
-      element.visit(this);
+      visitChild(element);
     }
   }
 
   default void visitArrayAccess(Hir.ArrayAccess expr) {
-    expr.target().visit(this);
-    expr.accessor().visit(this);
+    visitChild(expr.target());
+    visitChild(expr.accessor());
   }
 
   default void visitAssignment(Hir.Assignment expr) {
@@ -35,55 +40,60 @@ public interface HirVisitor {
   }
 
   default void visitAssignmentLhs(Hir.Expression expr) {
-    expr.visit(this);
+    visitChild(expr);
   }
 
   default void visitAssignmentRhs(Hir.Expression expr) {
-    expr.visit(this);
+    visitChild(expr);
   }
 
   default void visitBinaryOperation(Hir.BinaryOperation expr) {
-    expr.lhs().visit(this);
-    expr.rhs().visit(this);
+    visitChild(expr.lhs());
+    visitChild(expr.rhs());
+  }
+
+  default void visitCompoundAssignment(Hir.CompoundAssignment expr) {
+    visitChild(expr.target());
+    visitChild(expr.rhs());
   }
 
   default void visitBlock(Hir.Block expr) {
-    expr.children().visit(this);
+    visitChild(expr.children());
   }
 
   default void visitConditional(Hir.Conditional expr) {
-    expr.predicate().visit(this);
-    expr.pass().visit(this);
+    visitChild(expr.predicate());
+    visitChild(expr.pass());
     if (expr.fail() != null) {
-      expr.fail().visit(this);
+      visitChild(expr.fail());
     }
   }
 
   default void visitFunction(Hir.Function expr) {
-    expr.signature().visit(this);
+    visitChild(expr.signature());
     visitFunctionBody(expr.body());
   }
 
   default void visitFunctionSignature(Hir.FunctionSignature expr) {
     for (final var parameter : expr.parameters()) {
-      parameter.visit(this);
+      visitChild(parameter);
     }
 
     if (expr.returnType() != null) {
-      expr.returnType().visit(this);
+      visitChild(expr.returnType());
     }
   }
 
   default void visitFunctionBody(Hir.Expression expr) {
-    expr.visit(this);
+    visitChild(expr);
   }
 
   default void visitIdentifier(Hir.Identifier expr) {
   }
 
   default void visitLabeling(Hir.Labeling expr) {
-    expr.lhs().visit(this);
-    expr.rhs().visit(this);
+    visitChild(expr.lhs());
+    visitChild(expr.rhs());
   }
 
   default void visitLiteral(Hir.Literal expr) {
@@ -91,12 +101,12 @@ public interface HirVisitor {
   }
 
   default void visitLoop(Hir.Loop expr) {
-    expr.body().visit(this);
+    visitChild(expr.body());
   }
 
   default void visitLoopBreak(Hir.LoopBreak expr) {
     if (expr.value() != null) {
-      expr.value().visit(this);
+      visitChild(expr.value());
     }
   }
 
@@ -105,31 +115,31 @@ public interface HirVisitor {
   }
 
   default void visitNewByBlock(Hir.NewByBlock expr) {
-    expr.target().visit(this);
+    visitChild(expr.target());
     visitAllocator(expr.allocator());
 
     for (final var field : expr.fields()) {
-      field.visit(this);
+      visitChild(field);
     }
   }
 
   default void visitNewByCtor(Hir.NewByCtor expr) {
-    expr.target().visit(this);
+    visitChild(expr.target());
     visitAllocator(expr.allocator());
 
     if (expr.arguments() != null) {
-      expr.arguments().visit(this);
+      visitChild(expr.arguments());
     }
   }
 
   default void visitAllocator(Hir.Identifier expr) {
     if (expr != null) {
-      expr.visit(this);
+      visitChild(expr);
     }
   }
 
   default void visitNot(Hir.Not expr) {
-    expr.expression().visit(this);
+    visitChild(expr.expression());
   }
 
   default void visitParameter(Hir.Parameter expr) {
@@ -138,11 +148,11 @@ public interface HirVisitor {
   }
 
   default void visitParameterName(Hir.Lexeme expr) {
-    expr.visit(this);
+    visitChild(expr);
   }
 
   default void visitParameterType(Hir.Expression expr) {
-    expr.visit(this);
+    visitChild(expr);
   }
 
   default void visitPath(Hir.Path expr) {
@@ -152,46 +162,50 @@ public interface HirVisitor {
   }
 
   default void visitPathElement(Hir.Expression expr) {
-    expr.visit(this);
+    visitChild(expr);
   }
 
   default void visitRange(Hir.Range expr) {
-    expr.lower().visit(this);
-    expr.higher().visit(this);
+    visitChild(expr.lower());
+    visitChild(expr.higher());
   }
 
   default void visitProgram(Hir.Program expr) {
-    expr.expressions().visit(this);
+    visitChild(expr.expressions());
   }
 
   default void visitReturn(Hir.Return expr) {
-    expr.expression().visit(this);
+    visitChild(expr.expression());
+  }
+
+  default void visitDeadEnd(Hir.DeadEnd expr) {
+    visitChild(expr.expression());
   }
 
   default void visitStruct(Hir.Struct expr) {
     for (final var item : expr.declarations()) {
-      item.visit(this);
+      visitChild(item);
     }
   }
 
   default void visitTrait(Hir.Trait expr) {
     for (final var item : expr.children()) {
-      item.visit(this);
+      visitChild(item);
     }
   }
 
   default void visitTuple(Hir.Tuple expr) {
     for (final var item : expr.children()) {
-      item.visit(this);
+      visitChild(item);
     }
   }
 
   default void visitTupleKeyValue(Hir.TupleKeyValue expr) {
     if (expr.key() != null) {
-      expr.key().visit(this);
+      visitChild(expr.key());
     }
 
-    expr.value().visit(this);
+    visitChild(expr.value());
   }
 
   default void visitTyExpr(Hir.TyExpr expr) {
@@ -204,17 +218,17 @@ public interface HirVisitor {
   }
 
   default void visitDecName(Hir.Expression expr) {
-    expr.visit(this);
+    visitChild(expr);
   }
 
   default void visitDecType(Hir.Expression expr) {
-    expr.visit(this);
+    visitChild(expr);
   }
 
   default void visitCall(Hir.Call expr) {
-    expr.target().visit(this);
+    visitChild(expr.target());
     for (final var argument : expr.arguments()) {
-      argument.visit(this);
+      visitChild(argument);
     }
   }
 

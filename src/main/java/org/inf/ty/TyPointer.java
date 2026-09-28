@@ -1,9 +1,8 @@
 package org.inf.ty;
 
 /**
- * Used to say that "this value will be a pointer but should always be de-referenced upon use".
- * <p>
- * This is the regular kind of safe pointer that should be used throughout the language.
+ * A reference to storage in the given address space. In MIR this is a value type,
+ * not a request for an implicit load; loads and field/element access are explicit.
  */
 public record TyPointer<T extends Ty>(
   T inner,

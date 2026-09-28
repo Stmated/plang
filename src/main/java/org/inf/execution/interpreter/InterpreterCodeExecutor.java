@@ -1,187 +1,208 @@
 package org.inf.execution.interpreter;
 
 import org.inf.exceptions.NotImplementedException;
-import org.inf.exceptions.UnexpectedExpressionException;
 import org.inf.execution.CodeExecutor;
 import org.inf.mir.Mir;
+import org.inf.mir.MirUnionValue;
+import org.inf.mir.model.MirFunction;
 import org.inf.mir.model.MirNode;
 import org.inf.ty.*;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
-import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class InterpreterCodeExecutor implements CodeExecutor {
 
-  @Override
-  public Object execute(final MirNode node) {
+  private static final class Frame {
+    final Map<Mir.Value, Object> values = new IdentityHashMap<>();
+    final Map<Mir.Local, Object> locals = new IdentityHashMap<>();
+    final List<Object> arguments;
 
-    final var scopes = new ArrayList<Scope>();
-    scopes.add(new Scope());
-
-    return this.execute(node, scopes);
+    Frame(List<Object> arguments) {
+      this.arguments = arguments;
+    }
   }
 
-  public Object execute(final MirNode node, final List<Scope> scopes) {
+  @Override
+  public Object execute(MirNode entry) {
+    return execute(entry, List.of());
+  }
 
-    for (final var instr : node.instructions()) {
-
-      switch (instr) {
-        case final Mir.InstrCreateLiteral lit -> {
-          final var javaValue = this.lower_literal(lit);
-          final var valueId = (long) lit.hashCode();
-          final var scope = scopes.getLast();
-          scope.valueMap.put(valueId, javaValue);
-        }
-        case final Mir.InstrStore store -> {
-          final var i = 0;
-        }
-        case final Mir.InstrBinaryOperation bin -> {
-
-          final var lhsId = (long) bin.lhs().hashCode();
-          final var rhsId = (long) bin.rhs().hashCode();
-          final var scope = scopes.getLast();
-
-          final var lhsValue = scope.valueMap.get(lhsId);
-          final var rhsValue = scope.valueMap.get(rhsId);
-
-          if (lhsValue instanceof final Number lhsNumber && rhsValue instanceof final Number rhsNumber) {
-
-            final var lhsBd = new BigDecimal(lhsNumber.toString());
-            final var rhsBd = new BigDecimal(rhsNumber.toString());
-
-            final var scale = bin.ty() instanceof final TyValueNumberPrecisioned np
-              ? np.precision()
-              : 0;
-
-            final var resBd = switch (bin.kind()) {
-              case ADD -> lhsBd.add(rhsBd);
-              case SUBTRACT -> lhsBd.subtract(rhsBd);
-              case MULTIPLY -> lhsBd.multiply(rhsBd);
-              case DIVIDE -> lhsBd.divide(rhsBd, scale, RoundingMode.HALF_DOWN);
-              default -> throw new NotImplementedException("Not yet implemented " + rhsValue);
-            };
-
-            final Number res = switch (bin.ty()) {
-              case final TyValueNumberInteger tyi -> {
-                if (tyi.width().value() > Ty.INTEGER.width().value()) {
-                  yield resBd.longValue();
-                } else if (tyi.width().value() <= Ty.SHORT.width().value()) {
-                  yield resBd.shortValue();
-                } else {
-                  yield resBd.intValue();
-                }
-              }
-              case final TyValueNumberPrecisioned typ -> switch (typ.kind()) {
-                case RealKind.FLOAT -> resBd.floatValue();
-                case RealKind.DOUBLE -> resBd.doubleValue();
-              };
-              default -> throw new NotImplementedException("Not implemented type conversion to " + bin.ty());
-            };
-
-            final var id = (long) bin.hashCode();
-            scope.valueMap.put(id, res);
-          } else {
-            throw new NotImplementedException("Not yet implemented " + rhsValue);
+  private Object execute(MirNode entry, List<Object> arguments) {
+    final var frame = new Frame(arguments);
+    var block = entry;
+    while (true) {
+      for (final var instruction : block.instructions()) {
+        final Object result = switch (instruction) {
+          case Mir.Load load -> load(load.place(), frame);
+          case Mir.Store store -> {
+            store(store.place(), operand(store.value(), frame), frame);
+            yield null;
           }
-        }
-        case final Mir.InstrReturn ret -> {
-
-          final var id = (long) ret.instr().hashCode();
-          final var scope = scopes.getLast();
-
-          scope.result = scope.valueMap.get(id);
-        }
-        case final Mir.InstrCreateFn fn -> {
-
-          final var id = (long) fn.hashCode();
-          final var scope = scopes.getLast();
-
-          scope.functions.put(id, fn);
-        }
-        case final Mir.InstrCall call -> {
-
-          // TODO: Make sure there is a difference in the instructions between `val fn = () => ...` and `var fn = () => ...`
-          //        Since for the first the function will never move, so we can just reference the function directly
-          //        But for `var` the function could in theory be replaced, so it needs to be stored as a pointer to a function!
-          // TODO: Create a test case where we replace the function reference between calls, and make sure things work properly!
-
-          // TODO: Do the actual call...
-
-          if (call.target() instanceof final Mir.InstrCreateFn fn) {
-
-            final var scope = scopes.getLast();
-            final var arguments = call.arguments();
-
-            try {
-
-              for (int i = 0, argumentsLength = arguments.length; i < argumentsLength; i++) {
-                final var argument = arguments[i];
-                var name = argument.name();
-                if (name == null) {
-                  name = fn.signature().parameters()[i].name();
-                }
-
-                scope.valueMap.put((long) name.hashCode(), argument.instruction());
-              }
-
-              return this.execute(fn.entry(), scopes);
-
-            } finally {
-              for (int i = 0, argumentsLength = arguments.length; i < argumentsLength; i++) {
-                final var argument = arguments[i];
-                var name = argument.name();
-                if (name == null) {
-                  name = fn.signature().parameters()[i].name();
-                }
-
-                scope.valueMap.remove((long) name.hashCode());
-              }
+          case Mir.Parameter parameter -> frame.arguments.get(parameter.index());
+          case Mir.Binary binary -> binary(binary, frame);
+          case Mir.Convert convert -> convert(operand(convert.value(), frame), convert.result().ty());
+          case Mir.UnionVariant variant -> new MirUnionValue((TyUnion) variant.result().ty(), variant.variant(), operand(variant.value(), frame));
+          case Mir.Call call -> {
+            final var target = (MirFunction) operand(call.target(), frame);
+            if (target.external()) {
+              throw new NotImplementedException("Interpreter cannot call external function: " + target.name());
             }
-
-          } else {
-            throw new IllegalArgumentException("Do not know how to handle fn target: " + call.target());
+            yield execute(target.entry(), call.arguments().stream().map(argument -> operand(argument, frame)).toList());
           }
-
-        }
-        case final Mir.InstrGetParam param -> {
-
-          final var hash = (long) param.parameter().name().hashCode();
-          for (var i = scopes.size() - 1; i >= 0; i--) {
-
-            final var scope = scopes.get(i);
-            if (scope.valueMap.containsKey(hash)) {
-              return scope.valueMap.get(hash);
+          case Mir.NewArray array -> {
+            final var length = new BigInteger(operand(array.length(), frame).toString()).intValueExact();
+            final var values = array.elements().stream().map(element -> operand(element, frame)).toArray();
+            final var type = (TyValueArray) ((TyPointer<?>) array.result().ty()).inner();
+            if (length < values.length || length < 0 || type.size() != null && length != type.size()) {
+              throw new IllegalArgumentException("Invalid array allocation length: " + length);
             }
+            final var resultArray = new Object[length];
+            for (var i = 0; i < length && values.length > 0; i++) {
+              resultArray[i] = values[i % values.length];
+            }
+            yield resultArray;
           }
-
-          throw new IllegalArgumentException("Could not find argument value for parameter: " + param.parameter().name());
+          case Mir.NewStruct struct -> struct.fields().stream().map(field -> operand(field, frame)).toArray();
+        };
+        if (instruction.result() != null) {
+          frame.values.put(instruction.result(), Objects.requireNonNull(result, "Value instruction produced no result"));
         }
-        default -> throw new IllegalArgumentException("Unexpected instruction: " + instr + " (" + instr.getClass().getName() + ")");
+      }
+      switch (block.terminator()) {
+        case Mir.Jump jump -> block = jump.target();
+        case Mir.Branch branch -> block = (Boolean) operand(branch.predicate(), frame) ? branch.pass() : branch.fail();
+        case Mir.Return ret -> {
+          return operand(ret.value(), frame);
+        }
+        case Mir.Unreachable ignored -> throw new IllegalStateException("Reached unreachable block " + block.name());
+        case null -> throw new IllegalStateException("Unterminated block " + block.name());
       }
     }
-
-    return scopes.getLast().result;
   }
 
-  private Object lower_literal(final Mir.InstrCreateLiteral literal) {
+  private Object operand(Mir.Operand operand, Frame frame) {
+    return switch (operand) {
+      case Mir.Value value -> Objects.requireNonNull(frame.values.get(value), "Value used before definition: " + value);
+      case Mir.Constant constant -> constant(constant);
+      case Mir.FunctionRef reference -> reference.function();
+      case Mir.Unit ignored -> null;
+    };
+  }
 
-    return switch (literal.ty()) {
-      case final TyValueString str -> literal.content();
-      case final TyValueNumberInteger ni -> {
-        if (ni.width().value() == 64) {
-          yield Long.parseLong(literal.content(), ni.radix());
-        } else {
-          yield Integer.parseInt(literal.content(), ni.radix());
+  private Object load(Mir.Place place, Frame frame) {
+    final var result = switch (place) {
+      case Mir.Local local -> frame.locals.get(local);
+      case Mir.Field field -> ((Object[]) operand(field.target(), frame))[field.index()];
+      case Mir.Element element -> ((Object[]) operand(element.target(), frame))[((Number) operand(element.index(), frame)).intValue()];
+    };
+    return Objects.requireNonNull(result, "Read of uninitialized storage: " + place);
+  }
+
+  private void store(Mir.Place place, Object value, Frame frame) {
+    switch (place) {
+      case Mir.Local local -> frame.locals.put(local, value);
+      case Mir.Field field -> ((Object[]) operand(field.target(), frame))[field.index()] = value;
+      case Mir.Element element -> ((Object[]) operand(element.target(), frame))[((Number) operand(element.index(), frame)).intValue()] = value;
+    }
+  }
+
+  private Object constant(Mir.Constant constant) {
+    return switch (constant.ty()) {
+      case TyValueString ignored -> constant.content();
+      case TyValueBoolean ignored -> Boolean.parseBoolean(constant.content());
+      case TyValueNumberInteger integer -> number(new BigDecimal(new BigInteger(constant.content(), integer.radix())), integer);
+      case TyValueNumberPrecisioned real -> number(new BigDecimal(constant.content()), real);
+      default -> throw new NotImplementedException("Unsupported constant type: " + constant.ty());
+    };
+  }
+
+  private Object convert(Object value, Ty expected) {
+    if (expected instanceof TyUnion union && value instanceof MirUnionValue old) {
+      final var variantType = old.type().types()[old.variant()];
+      for (var i = 0; i < union.types().length; i++) {
+        if (variantType.equals(union.types()[i])) {
+          return new MirUnionValue(union, i, old.payload());
         }
       }
-      case final TyValueNumberPrecisioned np -> switch (np.kind()) {
-        case FLOAT -> Float.parseFloat(literal.content());
-        case DOUBLE -> Double.parseDouble(literal.content());
-      };
-      case final TyValueBoolean b -> Boolean.parseBoolean(literal.content());
-      default -> throw new UnexpectedExpressionException(literal);
+      throw new IllegalArgumentException("Union conversion loses variant " + variantType);
+    }
+    if (value instanceof Number number && expected instanceof TyValueNumber) {
+      return number(new BigDecimal(number.toString()), expected);
+    }
+    if (value instanceof Boolean bool && expected instanceof TyValueNumberInteger) {
+      return number(BigDecimal.valueOf(bool ? 1 : 0), expected);
+    }
+    if (expected instanceof TyPointer<?>) {
+      return value;
+    }
+    throw new NotImplementedException("Unsupported interpreter conversion to " + expected);
+  }
+
+  private Object binary(Mir.Binary binary, Frame frame) {
+    final var lhs = operand(binary.lhs(), frame);
+    final var rhs = operand(binary.rhs(), frame);
+    if (binary.kind() == org.inf.mir.model.MirBinaryOperationKind.EQUALS || binary.kind() == org.inf.mir.model.MirBinaryOperationKind.IS) {
+      return lhs instanceof Number a && rhs instanceof Number b
+        ? new BigDecimal(a.toString()).compareTo(new BigDecimal(b.toString())) == 0 : Objects.equals(lhs, rhs);
+    }
+    if (binary.kind() == org.inf.mir.model.MirBinaryOperationKind.NOT_EQUALS) {
+      return !Objects.equals(lhs, rhs);
+    }
+    if (!(lhs instanceof Number a) || !(rhs instanceof Number b)) {
+      throw new NotImplementedException("Non-numeric binary operation: " + binary.kind());
+    }
+    final var left = new BigDecimal(a.toString());
+    final var right = new BigDecimal(b.toString());
+    final var comparison = left.compareTo(right);
+    switch (binary.kind()) {
+      case LT -> { return comparison < 0; }
+      case LTE -> { return comparison <= 0; }
+      case GT -> { return comparison > 0; }
+      case GTE -> { return comparison >= 0; }
+      default -> { }
+    }
+    final var precision = binary.result().ty() instanceof TyValueNumberPrecisioned real ? real.precision() : 0;
+    final var result = switch (binary.kind()) {
+      case ADD -> left.add(right);
+      case SUBTRACT -> left.subtract(right);
+      case MULTIPLY -> left.multiply(right);
+      case DIVIDE -> left.divide(right, precision, RoundingMode.HALF_DOWN);
+      case REMAINDER, MODULUS -> left.remainder(right);
+      case BIT_AND -> new BigDecimal(left.toBigInteger().and(right.toBigInteger()));
+      case BIT_OR -> new BigDecimal(left.toBigInteger().or(right.toBigInteger()));
+      case BIT_SHIFT_LEFT -> new BigDecimal(left.toBigInteger().shiftLeft(right.intValue()));
+      case BIT_SHIFT_RIGHT -> new BigDecimal(left.toBigInteger().shiftRight(right.intValue()));
+      default -> throw new NotImplementedException("Unsupported interpreter binary operation: " + binary.kind());
+    };
+    return number(result, binary.result().ty());
+  }
+
+  private Number number(BigDecimal value, Ty type) {
+    return switch (type) {
+      case TyValueNumberInteger integer -> {
+        final var width = integer.width().value();
+        final var modulus = BigInteger.ONE.shiftLeft(width);
+        var normalized = value.toBigInteger().mod(modulus);
+        if (integer.signed() && normalized.testBit(width - 1)) {
+          normalized = normalized.subtract(modulus);
+        }
+        if (width < 32 || width == 32 && integer.signed()) {
+          yield normalized.intValue();
+        }
+        if (width < 64 || width == 64 && integer.signed()) {
+          yield normalized.longValue();
+        }
+        yield normalized;
+      }
+      case TyValueNumberPrecisioned real when real.kind() == RealKind.FLOAT -> value.floatValue();
+      case TyValueNumberPrecisioned ignored -> value.doubleValue();
+      default -> throw new NotImplementedException("Unsupported interpreter number: " + type);
     };
   }
 }

@@ -93,7 +93,7 @@ public interface HirTransformer {
   default Hir.Expression transformAssignment(final Hir.Assignment expr) {
     final var lhs = transformAssignmentLhs(expr.lhs());
     final var rhs = transformAssignmentRhs(expr.rhs());
-    return new Hir.Assignment(lhs, rhs);
+    return new Hir.Assignment(lhs, rhs, expr.ty(), expr.valueTy());
   }
 
   default Hir.Expression transformAssignmentLhs(final Hir.Expression expr) {
@@ -106,6 +106,12 @@ public interface HirTransformer {
 
   default Hir.Expression transformBinaryOperation(final Hir.BinaryOperation expr) {
     expr.lhs(expr.lhs().transform(this));
+    expr.rhs(expr.rhs().transform(this));
+    return expr;
+  }
+
+  default Hir.Expression transformCompoundAssignment(final Hir.CompoundAssignment expr) {
+    expr.target(expr.target().transform(this));
     expr.rhs(expr.rhs().transform(this));
     return expr;
   }
@@ -252,6 +258,11 @@ public interface HirTransformer {
   }
 
   default Hir.Expression transformReturn(final Hir.Return expr) {
+    expr.expression(expr.expression().transform(this));
+    return expr;
+  }
+
+  default Hir.Expression transformDeadEnd(final Hir.DeadEnd expr) {
     expr.expression(expr.expression().transform(this));
     return expr;
   }

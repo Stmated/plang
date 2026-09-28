@@ -3,6 +3,7 @@ package org.inf.ty;
 import lombok.Builder;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 @Builder(toBuilder = true)
 public record TyFn(
@@ -10,6 +11,19 @@ public record TyFn(
   boolean vararg,
   Ty returnTy
 ) implements Ty {
+
+  @Override
+  public boolean equals(Object other) {
+    return other instanceof TyFn fn
+      && vararg == fn.vararg
+      && Arrays.equals(parameters, fn.parameters)
+      && Objects.equals(returnTy, fn.returnTy);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(Arrays.hashCode(parameters), vararg, returnTy);
+  }
 
   @Override
   public String toString() {

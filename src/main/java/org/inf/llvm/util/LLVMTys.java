@@ -1,7 +1,6 @@
 package org.inf.llvm.util;
 
 import lombok.experimental.UtilityClass;
-import org.inf.mir.Mir.Instr;
 import org.inf.ty.*;
 import org.inf.ty.util.Tys;
 
@@ -28,19 +27,11 @@ public class LLVMTys {
     return ty;
   }
 
-  /**
-   * NOTE: This might require a {@link Instr} to be given. To know context of usage.
-   */
   public static Ty normalize(Ty ty) {
-
-    if (ty instanceof TyPointer<?> tp) {
-      return tp.inner();
-    }
-
-    return ty;
+    return getLowTy(ty);
   }
 
   public static boolean isPointer(Ty ty) {
-    return ty instanceof TyPointer<?> || ty instanceof TyStruct || ty instanceof TyValueArray;
+    return ty instanceof TyPointer<?>;
   }
 }

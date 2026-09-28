@@ -7,17 +7,9 @@ import java.util.Objects;
 @Builder(toBuilder = true)
 public record BitWidth(int value, boolean explicit) {
 
-  public static BitWidth merge(BitWidth a, BitWidth b) {
-
-    return new BitWidth(
-      Math.max(a.value(), b.value()),
-      a.explicit() || b.explicit()
-    );
-  }
-
   @Override
   public String toString() {
-    return Objects.toString(value);
+    return Objects.toString(value) + (explicit ? "" : "?");
   }
 
   @Override
@@ -26,11 +18,12 @@ public record BitWidth(int value, boolean explicit) {
       return true;
     }
 
-    if (!(obj instanceof BitWidth(int v, boolean e))) {
-      return false;
+    if (obj instanceof BitWidth(int v, boolean e)) {
+      return v == this.value && e == this.explicit;
+
     }
 
-    return v == this.value && e == this.explicit;
+    return false;
   }
 
   @Override

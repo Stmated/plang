@@ -1,12 +1,12 @@
 package org.inf.hir.raising;
 
 import org.inf.Inf;
+import org.inf.ast.Ast;
 import org.inf.ast.Ast.BinaryOperation;
 import org.inf.ast.Ast.BinaryOperationKind;
 import org.inf.ast.Ast.Block;
 import org.inf.ast.Ast.Conditional;
 import org.inf.ast.Ast.Expression;
-import org.inf.ast.Ast.Expressions;
 import org.inf.ast.Ast.Literal;
 import org.inf.ast.Ast.Return;
 import org.inf.hir.AstToHirRaising;
@@ -31,7 +31,7 @@ class AstToHirRaisingTest {
         new Literal("1", Ty.INTEGER)
       ),
       new Block(
-        new Expressions(
+        new Ast.Expressions(
           new Expression[]{
             new Return(
               new Literal("10", Ty.INTEGER)
@@ -40,7 +40,7 @@ class AstToHirRaisingTest {
         )
       ),
       new Block(
-        new Expressions(
+        new Ast.Expressions(
           new Expression[]{
             new Return(
               new Literal("20", Ty.INTEGER)

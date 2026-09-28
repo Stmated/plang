@@ -6,13 +6,13 @@ import org.inf.Inf;
 import org.inf.InfRunOptions;
 import org.inf.exceptions.InvalidImplementationException;
 import org.inf.exceptions.InvalidTypeConversionException;
-import org.inf.exceptions.UnreachableCodeLLVMException;
+import org.inf.exceptions.UnreachableCodeException;
+import org.inf.hir.Hir;
 import org.inf.hir.Hir.*;
 import org.inf.ty.Ty;
 import org.inf.ty.TyValueNumberInteger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -28,15 +28,14 @@ class MirToLLVMLoweringTest {
   @Test
   void testBinaryOperationFromHir() {
 
-    final var program = new Program(new Expressions(new Expression[]{
+    final var program = new Program(new Hir.Expressions(new Expression[]{
       new Return(
         new BinaryOperation(
           new Literal("1", Ty.INTEGER),
           BinaryOperationKind.ADD,
           new Literal("2", Ty.INTEGER),
-          null
-        ),
-        null
+          null, null
+        )
       )
     }));
 
@@ -115,7 +114,7 @@ class MirToLLVMLoweringTest {
 
   @Test
   void testCompactReturnWithUnreachableCodeAfter() {
-    Assertions.assertThrows(UnreachableCodeLLVMException.class, () -> Inf.codeToResult("return if (1 == 1) 1 2"));
+    Assertions.assertThrows(UnreachableCodeException.class, () -> Inf.codeToResult("return if (1 == 1) 1 2"));
   }
 
   @Test
@@ -272,12 +271,15 @@ class MirToLLVMLoweringTest {
     Assertions.assertEquals(Ty.CHAR, ex.expected());
   }
 
-  @RepeatedTest(10)
-  void when_creating_array_without_initialization_expect_garbage() {
-
-    // Slight chance it actually might be zero, but very, very, very low
-    final var code = "val a = [;int;100]; var t = 0; for (var i = 0; i < 100; i += 1) t += a[i]; return t;";
-    Assertions.assertNotEquals(0, Inf.codeToResult(code).resultValue());
+  @Test
+  void arrayWithoutInitializerCanBeExplicitlyInitialized() {
+    final var code = """
+      val a = [;int;100];
+      var t = 0;
+      for (var i = 0; i < 100; i += 1) { a[i] = i; t += a[i]; }
+      return t;
+      """;
+    Assertions.assertEquals(4950, Inf.codeToResult(code).resultValue());
   }
 
   @Test
@@ -296,9 +298,6 @@ class MirToLLVMLoweringTest {
     "val fn = (): uint => 10; fn()",
     "val fn = (): sint => 10; fn()",
     "val fn = (): int32 => 10; fn()",
-    "val fn = (): int64 => 10; fn()",
-    "val fn = (): int64 => 10L; fn()",
-    "val fn = (): uint128 => 10; fn()",
     "val fn = () => 10; return fn()",
     "val fn = (a: int, b: int) => a + b; fn(5, 5)",
     "val fn = (a: int, b: int) => a + b; fn(10, 0)",
@@ -309,6 +308,20 @@ class MirToLLVMLoweringTest {
   })
   void testFnCall(String code) {
     Assertions.assertEquals(10, Inf.codeToResult(code).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val fn = (): int64 => 10; fn()",
+    "val fn = (): int64 => 10L; fn()"
+  })
+  void testFnCallPreserves64BitReturnType(String code) {
+    Assertions.assertEquals(10L, Inf.codeToResult(code).resultValue());
+  }
+
+  @Test
+  void testFnCallPreserves128BitReturnType() {
+    Assertions.assertEquals(java.math.BigInteger.TEN, Inf.codeToResult("val fn = (): uint128 => 10; fn()").resultValue());
   }
 
   // TODO: Make TyArrayConst that is a const array with constant values. Should it just take the HirArray?

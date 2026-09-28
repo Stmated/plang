@@ -112,26 +112,6 @@ public class HirIdentifierResolverVisitorPass {
       final var found = find(expr);
       if (found != null) {
         expr.target(found);
-
-//        Ty ty;
-//        if (found instanceof Hir.Parameter param) {
-//          ty = param.valueType().ty();
-//        } else if (found instanceof Hir.Assignment ass) {
-//          ty = ass.rhs().ty();
-//        } else if (found instanceof Hir.Dec dec) {
-//          ty = dec.valueType().ty();
-//        } else {
-//          ty = found.ty();
-//        }
-
-//        if (ty == null) {
-//
-//          // If the ty is unknown, then it will need to be inferred at a later stage.
-//          // It is a good idea to try to resolve the ty as early as possible to propagate it throughout.
-//          ty = Ty.INFER;
-//        }
-
-//        expr.ty(ty);
       }
     }
   }

@@ -22,6 +22,11 @@ public class Hir {
       return this.ty();
     }
 
+    /// Returns a "helpful" ty, which can be used for things like typechecking even when the syntax/type (or similar) is invalid.
+    default Ty helpfulTy() {
+      return Objects.requireNonNullElse(this.valueTy(), this.ty());
+    }
+
     void visit(HirVisitor visitor);
 
     Hir.Expression transform(HirTransformer transformer);
@@ -45,6 +50,22 @@ public class Hir {
     /// TODO: This should likely be fully derived from the child expressions, more specifically the last one.
     ///       There should not be any real need to cache a `ty` here, unless it turns out to be very expensive.
     Ty ty;
+
+    @Override
+    public Ty valueTy() {
+      if (this.children == null || this.children.length == 0) {
+        return this.ty();
+      }
+      return this.children[this.children.length - 1].valueTy();
+    }
+
+    /// Only compiler-generated sequencing may discard unreachable suffixes.
+    /// TODO: Would be preferable if this could be done some other way, with a specific "DEADEND-allowed container" node.
+    boolean generated;
+
+    public Expressions(final Expression[] children, final Ty ty) {
+      this(children, ty, false);
+    }
 
     public Expressions(final Expression[] children) {
       this(children, null);
@@ -103,6 +124,7 @@ public class Hir {
     Expression elementType;
     Expression length;
     Ty ty;
+    Ty valueTy;
 
     @Override
     public String toString() {
@@ -131,6 +153,7 @@ public class Hir {
     Expression target;
     Expression accessor;
     Ty ty;
+    Ty valueTy;
 
     @Override
     public String toString() {
@@ -154,9 +177,11 @@ public class Hir {
 
     Expression lhs;
     Expression rhs;
+    Ty ty;
+    Ty valueTy;
 
-    public Ty ty() {
-      return Ty.VOID;
+    public Assignment(Expression lhs, Expression rhs) {
+      this(lhs, rhs, null, null);
     }
 
     @Override
@@ -186,12 +211,43 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  public static class CompoundAssignment implements Expression {
+
+    Expression target;
+    BinaryOperationKind kind;
+    Expression rhs;
+    Ty ty;
+
+    public CompoundAssignment(Expression target, BinaryOperationKind kind, Expression rhs) {
+      this(target, kind, rhs, null);
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitCompoundAssignment(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformCompoundAssignment(this);
+    }
+  }
+
+  @Data
+  @AllArgsConstructor
   public static class BinaryOperation implements Expression {
 
     Expression lhs;
     BinaryOperationKind kind;
     Expression rhs;
     Ty ty;
+    Ty valueTy;
+
+    public BinaryOperation(Expression lhs, BinaryOperationKind kind, Expression rhs) {
+      this.lhs = lhs;
+      this.kind = kind;
+      this.rhs = rhs;
+    }
 
     @Override
     public String toString() {
@@ -241,6 +297,10 @@ public class Hir {
     public boolean isPredicate() {
       return this == LTE || this == GTE || this == LT || this == GT || this == EQUALS || this == NOT_EQUALS || this == IS || this == OR || this == AND;
     }
+
+    public boolean isShortCircuiting() {
+      return this == OR || this == AND;
+    }
   }
 
   @Data
@@ -251,13 +311,8 @@ public class Hir {
     Ty ty;
 
     @Override
-    public Ty ty() {
-
-      if (ty != null) {
-        return ty;
-      }
-
-      return children().ty();
+    public Ty valueTy() {
+      return this.children.valueTy();
     }
 
     @Override
@@ -279,6 +334,12 @@ public class Hir {
     Argument[] arguments;
     boolean partial;
     Ty ty;
+    Ty valueTy;
+
+    public Call(Expression target, Argument[] arguments) {
+      this.target = target;
+      this.arguments = arguments;
+    }
 
     @Override
     public String toString() {
@@ -305,6 +366,13 @@ public class Hir {
     Expression pass;
     Expression fail;
     Ty ty;
+    Ty valueTy;
+
+    public Conditional(Expression predicate, Expression pass, Expression fail) {
+      this.predicate = predicate;
+      this.pass = pass;
+      this.fail = fail;
+    }
 
     @Override
     public String toString() {
@@ -377,6 +445,12 @@ public class Hir {
     Expression returnType;
     TyFn ty;
 
+    public FunctionSignature(@Nonnull Parameter[] parameters, boolean vararg, Expression returnType) {
+      this.parameters = parameters;
+      this.vararg = vararg;
+      this.returnType = returnType;
+    }
+
     @Override
     public String toString() {
 
@@ -397,6 +471,7 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  @RequiredArgsConstructor
   public static class Lexeme implements Expression {
 
     @Nonnull
@@ -537,6 +612,11 @@ public class Hir {
 
     Expression body;
     Ty ty;
+    Ty valueTy;
+
+    public Loop(Expression body) {
+      this.body = body;
+    }
 
     @Override
     public void visit(final HirVisitor visitor) {
@@ -554,11 +634,19 @@ public class Hir {
    * Are there benefits to being able to represent a "break" further down the chain?
    */
   @Data
-  @AllArgsConstructor
   public static class LoopBreak implements Expression {
 
     Expression value;
-    Ty ty;
+    //Ty ty;
+
+    @Override
+    public Ty ty() {
+      return TyStruct.DEADEND;
+    }
+
+    public LoopBreak(Expression value) {
+      this.value = value;
+    }
 
     @Override
     public String toString() {
@@ -586,7 +674,7 @@ public class Hir {
 
     @Override
     public Ty ty() {
-      return Ty.VOID;
+      return Ty.DEADEND;
     }
 
     @Override
@@ -620,6 +708,7 @@ public class Hir {
     Identifier allocator;
     Assignment[] fields;
     Ty ty;
+    Ty valueTy;
 
     @Override
     public String toString() {
@@ -645,6 +734,7 @@ public class Hir {
     Identifier allocator;
     Expression arguments;
     Ty ty;
+    Ty valueTy;
 
     @Override
     public String toString() {
@@ -668,6 +758,7 @@ public class Hir {
 
     Expression expression;
     Ty ty;
+    Ty valueTy;
 
     @Override
     public void visit(final HirVisitor visitor) {
@@ -719,6 +810,7 @@ public class Hir {
     @Nonnull
     Expression[] elements;
     Ty ty;
+    Ty valueTy;
 
     @Override
     public String toString() {
@@ -759,11 +851,22 @@ public class Hir {
   }
 
   @Data
-  @AllArgsConstructor
+  //@AllArgsConstructor
   public static class Range implements Expression {
     Expression lower;
     Expression higher;
     Ty ty;
+    Ty valueTy;
+
+//    @Override
+//    public Ty ty() {
+//      return null;
+//    }
+
+    public Range(Expression lower, Expression higher) {
+      this.lower = lower;
+      this.higher = higher;
+    }
 
     @Override
     public void visit(final HirVisitor visitor) {
@@ -781,7 +884,16 @@ public class Hir {
   public static class Return implements Expression {
 
     Expression expression;
-    Ty ty;
+
+    @Override
+    public Ty ty() {
+      return Ty.DEADEND;
+    }
+
+    @Override
+    public Ty helpfulTy() {
+      return this.expression.valueTy();
+    }
 
     @Override
     public String toString() {
@@ -796,6 +908,33 @@ public class Hir {
     @Override
     public Expression transform(final HirTransformer transformer) {
       return transformer.transformReturn(this);
+    }
+  }
+
+  @Data
+  @AllArgsConstructor
+  public static class DeadEnd implements Expression {
+
+    Expression expression;
+
+    @Override
+    public Ty ty() {
+      return Ty.DEADEND;
+    }
+
+    @Override
+    public String toString() {
+      return "DeadEnd %s".formatted(expression);
+    }
+
+    @Override
+    public void visit(final HirVisitor visitor) {
+      visitor.visitDeadEnd(this);
+    }
+
+    @Override
+    public Expression transform(final HirTransformer transformer) {
+      return transformer.transformDeadEnd(this);
     }
   }
 

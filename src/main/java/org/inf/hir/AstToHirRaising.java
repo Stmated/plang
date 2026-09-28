@@ -4,6 +4,7 @@ import org.inf.ast.Ast;
 import org.inf.exceptions.NotImplementedException;
 import org.inf.exceptions.UnexpectedExpressionException;
 import org.inf.hir.passes.HirLexemeToIdentifierTransformerPass;
+import org.inf.hir.passes.HirSimplifyTransformerPass;
 import org.inf.ty.Ty;
 import org.inf.ty.util.MachineTarget;
 
@@ -28,10 +29,14 @@ public class AstToHirRaising {
   public static Hir.Expression lower_program(final Ast.Program astProgram, final MachineTarget machineTarget) {
 
     final var raising = new AstToHirRaising(machineTarget);
+    final var raised = raising.raise(astProgram.children());
+    final var implicitlyReturned = raising.implicit_return(raised, true);
 
-    final var program = new Hir.Program(raising.implicit_return(raising.lower(astProgram.children()), true));
+    final var program = new Hir.Program(implicitlyReturned);
+    final var identifiersResolved = HirLexemeToIdentifierTransformerPass.pass(program);
+    final var simplified = HirSimplifyTransformerPass.pass(identifiersResolved);
 
-    return HirLexemeToIdentifierTransformerPass.pass(program);
+    return simplified;
   }
 
   private Hir.Expression implicit_return(Hir.Expression expression, final boolean program) {
@@ -51,7 +56,7 @@ public class AstToHirRaising {
         final var last = children[children.length - 1];
         if (!(last instanceof Hir.Return)) {
 
-          final var implicitReturn = new Hir.Return(last, null);
+          final var implicitReturn = new Hir.Return(last);
           children[children.length - 1] = implicitReturn;
 
           return exprs;
@@ -73,7 +78,7 @@ public class AstToHirRaising {
     } else if (expression instanceof Hir.Return) {
       return expression;
     } else {
-      return new Hir.Return(expression, null);
+      return new Hir.Return(expression);
     }
   }
 
@@ -82,7 +87,7 @@ public class AstToHirRaising {
     final var lowered = new Hir.Expression[expressions.length];
     var targetIndex = 0;
     for (final var expression : expressions) {
-      final var hir = lower(expression);
+      final var hir = raise(expression);
 
       if (hir != null) {
         lowered[targetIndex] = hir;
@@ -100,7 +105,7 @@ public class AstToHirRaising {
     return lowered;
   }
 
-  public Hir.Expression lower(final Ast.Expression expr) {
+  public Hir.Expression raise(final Ast.Expression expr) {
 
     return switch (expr) {
       case final Ast.LoopFor ast -> lower_loop_for(ast);
@@ -114,7 +119,7 @@ public class AstToHirRaising {
       case final Ast.Lexeme ast -> lower_lexeme(ast);
       case final Ast.Paren ast -> lower_paren(ast);
       case final Ast.Bracket ast -> lower_bracket(ast);
-      case final Ast.Then ast -> lower(ast.expression());
+      case final Ast.Then ast -> raise(ast.expression());
       case final Ast.VariableDeclaration ast -> lower_variable_declaration(ast);
       case final Ast.Assignment ast -> lower_assignment(ast);
       case final Ast.Labeling ast -> lower_labeling(ast);
@@ -140,25 +145,25 @@ public class AstToHirRaising {
     Ast.Expression pointer = ast;
     while (pointer instanceof final Ast.DotAccess dot) {
 
-      final var lhs = lower(dot.lhs());
+      final var lhs = raise(dot.lhs());
       elements.add(lhs);
 
       pointer = ast.rhs();
     }
 
     // The last child of the path should be added.
-    final var edge = lower(pointer);
+    final var edge = raise(pointer);
     assert edge != null;
     elements.add(edge);
 
-    return new Hir.Path(elements.toArray(new Hir.Expression[0]), null);
+    return new Hir.Path(elements.toArray(new Hir.Expression[0]), null, null);
   }
 
   private Hir.Expression lower_new(final Ast.New ast) {
 
-    final var target = lower(ast.target());
+    final var target = raise(ast.target());
     final var allocatorLexeme = lower_lexeme(ast.allocator());
-    final var argumentExpr = lower(ast.arguments());
+    final var argumentExpr = raise(ast.arguments());
 
     final var allocatorIdentifier = new Hir.Identifier(allocatorLexeme, null);
 
@@ -174,11 +179,11 @@ public class AstToHirRaising {
         }
 
 
-        yield new Hir.NewByBlock(target, allocatorIdentifier, assignments.toArray(new Hir.Assignment[0]), null);
+        yield new Hir.NewByBlock(target, allocatorIdentifier, assignments.toArray(new Hir.Assignment[0]), null, null);
       }
 
       // This is a creation using `new Obj('1')` syntax, meaning it is trying to call a manually added constructor.
-      case final Hir.Expressions exprs -> new Hir.NewByCtor(target, allocatorIdentifier, exprs, null);
+      case final Hir.Expressions exprs -> new Hir.NewByCtor(target, allocatorIdentifier, exprs, null, null);
       default -> throw new UnexpectedExpressionException(argumentExpr);
     };
   }
@@ -188,7 +193,7 @@ public class AstToHirRaising {
     final var declarations = new ArrayList<Hir.Dec>();
 
     if (ast.block() != null && ast.block().expression() != null) {
-      final var block = lower(ast.block().expression());
+      final var block = raise(ast.block().expression());
       for (final var field : expand(block)) {
 
         switch (field) {
@@ -222,7 +227,7 @@ public class AstToHirRaising {
         continue;
       }
 
-      final var lowered = lower(entry);
+      final var lowered = raise(entry);
 
       if (section == 0) {
         elements.add(lowered);
@@ -248,13 +253,13 @@ public class AstToHirRaising {
       // TODO: Ty here should be "inferred" until THIR kicks in
       final var tyExpr = new Hir.TyExpr(Ty.INFER); // (elementArray.length > 0) ? getTy(elementArray[0]) : Ty.INFER);
       final var arrayLengthExpr = new Hir.Literal(Objects.toString(elementArray.length), Ty.INTEGER);
-      return new Hir.Array(elementArray, tyExpr, arrayLengthExpr, null);
+      return new Hir.Array(elementArray, tyExpr, arrayLengthExpr, null, null);
 
     } else if (section == 1) {
 
       final var tyExpr = new Hir.TyExpr(Ty.INFER); // new Hir.TyExpr((elementArray.length > 0) ? getTy(elementArray[0]) : Ty.INFER);
       final var size = sections[1];
-      return new Hir.Array(elementArray, tyExpr, size, null);
+      return new Hir.Array(elementArray, tyExpr, size, null, null);
 
     } else if (section == 2) {
 
@@ -262,7 +267,7 @@ public class AstToHirRaising {
       // TODO: Ty here should be "inferred" until THIR kicks in (?) Or is info lost here?
       //final var exprArrayElementTy = getTyFromType(tyExpr);
       final var sizeExpr = sections[2];
-      return new Hir.Array(elementArray, tyExpr, sizeExpr, null);
+      return new Hir.Array(elementArray, tyExpr, sizeExpr, null, null);
 
     } else {
       throw new IllegalArgumentException("Unknown array syntax");
@@ -297,8 +302,8 @@ public class AstToHirRaising {
       return find_and_lower_parameters(ast);
     }
 
-    final var lhs = lower(ast.lhs());
-    final var rhs = lower(ast.rhs());
+    final var lhs = raise(ast.lhs());
+    final var rhs = raise(ast.rhs());
 
     return new Hir.Labeling(lhs, rhs, null);
   }
@@ -306,7 +311,7 @@ public class AstToHirRaising {
   private Hir.Expression lower_callable(final Ast.Callable ast) {
 
     final var signature = find_and_lower_parameters(ast.lhs());
-    final var body = implicit_return(lower(ast.rhs()), false);
+    final var body = implicit_return(raise(ast.rhs()), false);
 
     return new Hir.Function(signature, body);
   }
@@ -317,7 +322,7 @@ public class AstToHirRaising {
       case final Ast.Labeling labeling -> {
 
         final var signature = find_and_lower_parameters(labeling.lhs());
-        final var returnTypeExpr = lower(labeling.rhs());
+        final var returnTypeExpr = raise(labeling.rhs());
 
         yield new Hir.FunctionSignature(signature.parameters(), signature.vararg(), returnTypeExpr, null);
       }
@@ -365,7 +370,7 @@ public class AstToHirRaising {
       }
       case final Ast.Labeling labeling -> {
         final var labelingLhs = lower_parameter(labeling.lhs(), restVararg);
-        final var labelingRhs = lower(labeling.rhs());
+        final var labelingRhs = raise(labeling.rhs());
         yield new Hir.Parameter(labelingLhs.lexeme(), labelingRhs, labelingLhs.vararg(), null);
       }
       default -> new Hir.Parameter(asLexeme(expr), new Hir.TyExpr(Ty.INFER), false, null);
@@ -387,26 +392,27 @@ public class AstToHirRaising {
         case Immutable -> Hir.MutabilityKind.IMMUTABLE;
         case Mutable -> Hir.MutabilityKind.MUTABLE;
       },
-      ast.type() == null ? new Hir.TyExpr(Ty.INFER) : lower(ast.type())
+      ast.type() == null ? new Hir.TyExpr(Ty.INFER) : raise(ast.type())
     );
   }
 
   private Hir.Expression lower_assignment(final Ast.Assignment ast) {
 
     final var target = switch (ast.lhs()) {
-      case final Ast.VariableDeclaration lhs -> lower(lhs);
-      case final Ast.Lexeme lhs -> lower(lhs);
-      case final Ast.DotAccess lhs -> lower(lhs);
+      case final Ast.VariableDeclaration lhs -> raise(lhs);
+      case final Ast.Lexeme lhs -> raise(lhs);
+      case final Ast.DotAccess lhs -> raise(lhs);
+      case final Ast.PostfixExpression lhs -> raise(lhs);
       default -> throw new UnexpectedExpressionException(ast.lhs());
     };
 
-    final var source = lower(ast.rhs());
+    final var source = raise(ast.rhs());
 
     return new Hir.Assignment(target, source);
   }
 
   private Hir.Lexeme lower_lexeme(final Ast.Lexeme ast) {
-    return new Hir.Lexeme(ast.name(), null);
+    return new Hir.Lexeme(ast.name());
   }
 
   private Hir.Expression lower_postfix(final Ast.PostfixExpression ast) {
@@ -414,25 +420,25 @@ public class AstToHirRaising {
     if (ast.suffix() instanceof final Ast.Bracket bracket) {
 
       // Array access. Might perhaps be other things as well. Will need to add some abstraction in that case.
-      final var target = lower(ast.target());
+      final var target = raise(ast.target());
       final var astAccessors = bracket.children();
       final var hirAccessors = new Hir.Expression[astAccessors.length];
       for (var i = 0; i < astAccessors.length; i++) {
-        hirAccessors[i] = lower(astAccessors[i]);
+        hirAccessors[i] = raise(astAccessors[i]);
       }
 
       if (hirAccessors.length == 0) {
         throw new IllegalArgumentException("Missing array access index");
       } else if (hirAccessors.length == 1) {
-        return new Hir.ArrayAccess(target, hirAccessors[0], null);
+        return new Hir.ArrayAccess(target, hirAccessors[0], null, null);
       } else {
-        return new Hir.ArrayAccess(target, new Hir.Expressions(hirAccessors), null);
+        return new Hir.ArrayAccess(target, new Hir.Expressions(hirAccessors), null, null);
       }
 
     } else if (ast.suffix() instanceof final Ast.Paren paren) {
 
       // A function call. Might perhaps be other things as well. Will need to add some abstraction in that case.
-      final var target = lower(ast.target());
+      final var target = raise(ast.target());
       final var hirParen = lower_paren(paren);
 
       // TODO: This could be a HirTuple, but it is badly handled right now, and no support for mixing positional and named arguments
@@ -452,7 +458,7 @@ public class AstToHirRaising {
         };
       }
 
-      return new Hir.Call(target, hirArguments, false, null);
+      return new Hir.Call(target, hirArguments, false, null, null);
     }
 
     throw new IllegalArgumentException("Unknown postfix expression");
@@ -460,7 +466,7 @@ public class AstToHirRaising {
 
   private <E extends Ast.Expression> Hir.Expression lower_partial(final Ast.Partial<E> ast) {
 
-    final var child = lower(ast.expression());
+    final var child = raise(ast.expression());
 
     if (child instanceof final Hir.Call call) {
       return call.partial(true);
@@ -471,12 +477,12 @@ public class AstToHirRaising {
 
   private Hir.Expression lower_block(final Ast.Block ast) {
 
-    final var lowered = lower(ast.expression());
+    final var lowered = raise(ast.expression());
     return new Hir.Block(lowered, null);
   }
 
   private Hir.Return lower_return(final Ast.Return ast) {
-    return new Hir.Return(lower(ast.expression()), null);
+    return new Hir.Return(raise(ast.expression()));
   }
 
   private Hir.Literal lower_literal(final Ast.Literal ast) {
@@ -494,7 +500,7 @@ public class AstToHirRaising {
     };
 
     if (expandedKind != null) {
-      return lower(new Ast.Assignment(ast.lhs(), new Ast.BinaryOperation(ast.lhs(), expandedKind, ast.rhs())));
+      return new Hir.CompoundAssignment(raise(ast.lhs()), lower_binary_operation_type(expandedKind), raise(ast.rhs()));
     }
 
     return lower_binary_operation_explicit(ast);
@@ -503,10 +509,10 @@ public class AstToHirRaising {
   private Hir.BinaryOperation lower_binary_operation_explicit(final Ast.BinaryOperation ast) {
 
     return new Hir.BinaryOperation(
-      lower(ast.lhs()),
+      raise(ast.lhs()),
       lower_binary_operation_type(ast.kind()),
-      lower(ast.rhs()),
-      null
+      raise(ast.rhs()),
+      null, null
     );
   }
 
@@ -539,8 +545,8 @@ public class AstToHirRaising {
 
   private Hir.Expression lower_loop_for(final Ast.LoopFor astLoopFor) {
 
-    final var loweredHead = lower(astLoopFor.head());
-    final var loweredBody = lower(astLoopFor.block());
+    final var loweredHead = raise(astLoopFor.head());
+    final var loweredBody = raise(astLoopFor.block());
 
     final Hir.Expression[] loopFields;
     final Hir.Expression loopPredicate;
@@ -574,6 +580,7 @@ public class AstToHirRaising {
           final var third = head.children()[2];
           switch (third) {
             case final Hir.Assignment hir -> loopAction = hir;
+            case final Hir.CompoundAssignment hir -> loopAction = hir;
             default -> throw new IllegalArgumentException("The second for-loop part cannot be a '" + third + "'");
           }
 
@@ -592,22 +599,14 @@ public class AstToHirRaising {
       // Q: Is it better if this was flipped and do nothing on fail but break on pass? Less branching???
       new Hir.Conditional(
         loopPredicate,
-        new Hir.Expressions(
-          new Hir.Expression[]{
-            loweredBody,
-            loopAction,
-            new Hir.LoopContinue()
-          },
-          null
-        ),
+        new Hir.Expressions(new Hir.Expression[]{loweredBody, loopAction}, null, true),
         // TODO: Add support for adding value to the break
-        new Hir.LoopBreak(null, null),
-        null
-      ),
-      null
+        new Hir.LoopBreak(null),
+        null, null
+      )
     );
 
-    return new Hir.Expressions(loopExpressions);
+    return new Hir.Expressions(loopExpressions, null, true);
   }
 
   private Hir.Expression lower_paren(final Ast.Paren astParen) {
@@ -619,7 +618,8 @@ public class AstToHirRaising {
 
     return switch (astExpr) {
       case final Ast.Expressions collection -> lower_paren_expression_collection(collection);
-      default -> lower(astExpr);
+      case final Ast.Labeling labeling -> lower_labeling_to_tuple_key_value(labeling);
+      default -> raise(astExpr);
     };
   }
 
@@ -641,7 +641,7 @@ public class AstToHirRaising {
         }
         default -> {
           unlabeledExpressionCount++;
-          yield lower(expression);
+          yield raise(expression);
         }
       };
 
@@ -662,7 +662,7 @@ public class AstToHirRaising {
 
       // This is a tuple. There are probably smarted ways of doing this.
       return new Hir.Tuple(
-        (Hir.TupleKeyValue[]) children_lowered,
+        java.util.Arrays.copyOf(children_lowered, children_lowered.length, Hir.TupleKeyValue[].class),
         null
       );
 
@@ -675,27 +675,29 @@ public class AstToHirRaising {
 
     return new Hir.TupleKeyValue(
       lower_expression_to_identifier(astLabeling.lhs()),
-      lower(astLabeling.rhs()),
+      raise(astLabeling.rhs()),
       null
     );
   }
 
   private Hir.Identifier lower_expression_to_identifier(final Ast.Expression expression) {
-
-    throw new NotImplementedException();
+    if (expression instanceof Ast.Lexeme lexeme) {
+      return new Hir.Identifier(lower_lexeme(lexeme), null);
+    }
+    throw new IllegalArgumentException("Argument label must be a name: " + expression);
   }
 
   public Hir.Conditional lower_conditional(final Ast.Conditional astConditional) {
 
     final var fail = (astConditional.fail() == null)
       ? null
-      : lower(astConditional.fail());
+      : raise(astConditional.fail());
 
     return new Hir.Conditional(
-      lower(astConditional.predicate()),
-      lower(astConditional.pass()),
+      raise(astConditional.predicate()),
+      raise(astConditional.pass()),
       fail,
-      null
+      null, null
     );
   }
 }

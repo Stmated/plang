@@ -1,173 +1,253 @@
 package org.inf.mir;
 
 import org.inf.Inf;
-import org.inf.mir.Mir.*;
+import org.inf.exceptions.UnreachableCodeException;
+import org.inf.execution.interpreter.InterpreterCodeExecutor;
+import org.inf.hir.Hir;
 import org.inf.mir.model.MirNode;
-import org.junit.jupiter.api.Assertions;
+import org.inf.thir.raising.HirToThirRaising;
+import org.inf.ty.Ty;
+import org.inf.ty.TyUnion;
+import org.inf.ty.util.MachineTarget;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Stack;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class ThirToMirLoweringTest {
 
-  @Test
-  void testBinaryOperation() {
+  private Object run(String code) {
+    return new InterpreterCodeExecutor().execute(Inf.codeToMir(code).initNode());
+  }
 
-    final var mir = Inf.codeToMir("1 + 1").initNode();
-
-    Assertions.assertEquals(0, mir.successors().size());
-    Assertions.assertEquals(4, mir.instructions().size());
+  private List<Mir.Instruction> instructions(MirLoweringResult module) {
+    return module.script().blocks().stream().flatMap(block -> block.instructions().stream()).toList();
   }
 
   @Test
-  void testDeclarationAndReassignment() {
-
-    final var mir = Inf.codeToMir("var a = 0; a = a + 1; return a").initNode();
-
-    Assertions.assertEquals(0, mir.successors().size());
-    Assertions.assertEquals(6, mir.instructions().size());
-
-    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(0));
-    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(1));
-    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(2));
-    Assertions.assertInstanceOf(InstrBinaryOperation.class, mir.instructions().get(3));
-    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(4));
-    Assertions.assertInstanceOf(InstrReturn.class, mir.instructions().get(5));
+  void arithmeticHasValuesAndSeparateTerminator() {
+    final var module = Inf.codeToMir("1 + 1");
+    final var entry = module.initNode();
+    final var binary = assertInstanceOf(Mir.Binary.class, entry.instructions().getFirst());
+    final var ret = assertInstanceOf(Mir.Return.class, entry.terminator());
+    assertSame(binary.result(), ret.value());
+    assertTrue(entry.successors().isEmpty());
+    assertThrows(UnsupportedOperationException.class, () -> entry.instructions().clear());
   }
 
   @Test
-  void testAssignments() {
-
-    final var mir = Inf.codeToMir("var a = 0; var b = a + 1; return b;").initNode();
-
-    Assertions.assertEquals(0, mir.successors().size());
-    Assertions.assertEquals(6, mir.instructions().size());
-
-    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(0));
-    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(1));
-    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(2));
-    Assertions.assertInstanceOf(InstrBinaryOperation.class, mir.instructions().get(3));
-    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(4));
-    Assertions.assertInstanceOf(InstrReturn.class, mir.instructions().get(5));
-  }
-
-  @Test
-  void testConditional() {
-
-    final var mir = Inf.codeToMir("var a = 0; if (a == 0) { a = 10; } else { a = 20; } return a;").initNode();
-
-    Assertions.assertEquals(5, mir.instructions().size());
-
-    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(0));
-    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(1));
-    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(2));
-    Assertions.assertInstanceOf(InstrBinaryOperation.class, mir.instructions().get(3));
-    Assertions.assertInstanceOf(InstrConditionalJump.class, mir.instructions().get(4));
-
-    assertEdges(mir, new Edge[]{
-      new Edge("main", "conditional_pass"),
-      new Edge("main", "conditional_fail"),
-      new Edge("conditional_pass", "conditional_merge"),
-      new Edge("conditional_fail", "conditional_merge")
-    });
-
-    final var conditional_pass = mir.successors().getFirst();
-    Assertions.assertEquals("conditional_pass", conditional_pass.name());
-    Assertions.assertEquals(3, conditional_pass.instructions().size());
-    Assertions.assertInstanceOf(InstrCreateLiteral.class, conditional_pass.instructions().getFirst());
-    Assertions.assertInstanceOf(InstrStore.class, conditional_pass.instructions().get(1));
-    Assertions.assertInstanceOf(InstrJump.class, conditional_pass.instructions().getLast());
-
-    final var conditional_fail = mir.successors().getLast();
-    Assertions.assertEquals("conditional_fail", conditional_fail.name());
-    Assertions.assertEquals(3, conditional_fail.instructions().size());
-    Assertions.assertInstanceOf(InstrCreateLiteral.class, conditional_fail.instructions().getFirst());
-    Assertions.assertInstanceOf(InstrStore.class, conditional_fail.instructions().get(1));
-    Assertions.assertInstanceOf(InstrJump.class, conditional_fail.instructions().getLast());
-
-    final var conditional_merge = conditional_fail.successors().getFirst();
-    Assertions.assertEquals("conditional_merge", conditional_merge.name());
-    Assertions.assertEquals(2, conditional_merge.instructions().size());
-    Assertions.assertInstanceOf(InstrPhi.class, conditional_merge.instructions().getFirst());
-    Assertions.assertInstanceOf(InstrReturn.class, conditional_merge.instructions().getLast());
-  }
-
-  @Test
-  void testLoopWithOutsideVariable() {
-
-    // TODO: Need a way to easily test and verify a MIR structure
-    //        Maybe some easy string format that lets us "pattern match" the structure
-    //        Such as saying: "A -> B, B -> C, B -> D, D -> E" to give the node/edge path of the whole CFG
-
-    // TODO: There also needs to be some way of describing the structure, but that seems almost impossible?
-
-    final var mir = Inf.codeToMir("var a = 0; for (var i = 0; i < 10; i += 1) { a += i } return a;").initNode();
-
-    Assertions.assertEquals(1, mir.successors().size());
-    Assertions.assertEquals(5, mir.instructions().size());
-
-    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(0));
-    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(1));
-    Assertions.assertInstanceOf(InstrCreateLiteral.class, mir.instructions().get(2));
-    Assertions.assertInstanceOf(InstrStore.class, mir.instructions().get(3));
-    Assertions.assertInstanceOf(InstrJump.class, mir.instructions().get(4));
-
-    assertEdges(mir, new Edge[]{
-      new Edge("main", "loop_body"),
-      new Edge("loop_body", "loop_body_conditional_pass"),
-      new Edge("loop_body", "loop_body_conditional_fail"),
-      new Edge("loop_body_conditional_pass", "loop_body"),
-      new Edge("loop_body_conditional_fail", "loop_after")
-    });
-  }
-
-  private record Edge(String from, String to) {
-
-    @Override
-    public String toString() {
-      return from + " -> " + to;
+  void scriptSignatureUsesCompletedThirType() {
+    for (final var code : List.of(
+      "return 7;",
+      "if (1 == 1) 42",
+      "val x = 1;",
+      "[1, 2]",
+      "val fn = (x: int) => x + 1; fn"
+    )) {
+      final var thir = Inf.codeToThir(code);
+      final var expected = MirTypes.returnType(thir.root().ty());
+      final var module = ThirToMirLowering.lower(thir);
+      assertEquals(expected, module.script().signature().returnType(), code);
     }
   }
 
-  private void assertEdges(MirNode start, Edge[] edges) {
+  @Test
+  void assigningScalarCopiesItsValueRatherThanItsStorage() {
+    final var code = "var a = 1; var b = a; a = 2; return b;";
+    final var module = Inf.codeToMir(code);
+    assertEquals(2, module.script().locals().size());
+    assertEquals(1, run(code));
+    final var stores = instructions(module).stream().filter(Mir.Store.class::isInstance).map(Mir.Store.class::cast).toList();
+    assertSame(stores.get(0).place(), stores.get(2).place());
+    assertNotSame(stores.get(0).place(), stores.get(1).place());
+  }
 
-    final var found = new HashSet<Edge>();
-    final var expected = new HashSet<>(List.of(edges));
-    final var remaining = new HashSet<>(expected);
+  @Test
+  void nestedConditionalsUseActualFallthroughBlocks() {
+    final var code = "var a = 0; if (1 == 1) { if (2 == 2) { a = 10; } else { a = 20; } a += 1; } else { a = 30; } return a;";
+    final var module = Inf.codeToMir(code);
+    assertEquals(11, run(code));
+    assertTrue(module.script().blocks().stream().allMatch(block -> block.terminator() != null));
+    assertEquals(2, module.script().blocks().stream().filter(block -> block.terminator() instanceof Mir.Branch).count());
+  }
 
-    final var visited = new ArrayList<MirNode>();
-    final var nodes = new Stack<MirNode>();
-    nodes.push(start);
+  @Test
+  void loopReadsAndWritesStableLocalsAcrossIterations() {
+    assertEquals(45, run("var a = 0; for (var i = 0; i < 10; i += 1) { a += i; } return a;"));
+    assertEquals(12, run("var a = 0; for (var i = 0; i < 4; i += 1) { if (i < 2) { a += 1; } else { a += 5; } } return a;"));
+  }
 
-    while (!nodes.isEmpty()) {
+  @Test
+  void sequentialLoopsDoNotLeakTheInsertionPoint() {
+    assertEquals(6, run("var a = 0; for (var i = 0; i < 2; i += 1) { a += 1; } for (var j = 0; j < 2; j += 1) { a += 2; } return a;"));
+  }
 
-      final var node = nodes.pop();
+  @Test
+  void generatedUpdatesAreSkippedOnlyOnNonContinuingPaths() {
+    assertEquals(7, run("for (var i = 0; i < 3; i += 1) { return 7; } return 9;"));
+    assertEquals(7, run("for (var i = 0; i < 3; i += 1) { if (i == 0) { return 7; } else { return 8; } } return 9;"));
+    assertEquals(1, run("for (var i = 0; i < 3; i += 1) { if (i == 1) { return i; } } return 9;"));
+  }
 
-      for (final var successor : node.successors()) {
+  @Test
+  void shadowedDeclarationsHaveDistinctStorage() {
+    assertEquals(1, run("var a = 1; { var a = 2; a = 3; } return a;"));
+  }
 
-        final var localEdge = new Edge(node.name(), successor.name());
+  @Test
+  void returningArmDoesNotSupplyAnOptionalVariant() {
+    assertEquals(7, run("val fn = (x: int) => { val y = if (x == 0) { return 7; } else 8; return y; }; fn(0)"));
+    assertEquals(8, run("val fn = (x: int) => { val y = if (x == 0) { return 7; } else 8; return y; }; fn(1)"));
+  }
 
-        if (!expected.contains(localEdge)) {
-          Assertions.fail("Encountered unexpected edge: " + localEdge);
-        }
+  @Test
+  void missingElseProducesTaggedVoidVariant() {
+    final var present = assertInstanceOf(MirUnionValue.class, run("if (1 == 1) 42"));
+    assertEquals(Ty.INTEGER, present.type().types()[present.variant()]);
+    assertEquals(42, present.payload());
+    final var absent = assertInstanceOf(MirUnionValue.class, run("if (1 == 2) 42"));
+    assertEquals(Ty.VOID, absent.type().types()[absent.variant()]);
+    assertNull(absent.payload());
+    assertInstanceOf(TyUnion.class, Inf.codeToMir("if (1 == 1) 42").script().signature().returnType());
+  }
 
-        remaining.remove(localEdge);
-        found.add(localEdge);
+  @ParameterizedTest
+  @CsvSource({
+    "(1 == 2) && (1 / 0 == 0),false",
+    "(1 == 1) || (1 / 0 == 0),true",
+    "(1 == 1) && (2 == 2),true",
+    "(1 == 2) || (2 == 3),false"
+  })
+  void shortCircuitSkipsDangerousRightOperand(String code, boolean expected) {
+    assertEquals(expected, run(code));
+//    assertEquals(false, run("(1 == 2) && (1 / 0 == 0)"));
+//    assertEquals(true, run("(1 == 1) || (1 / 0 == 0)"));
+//    assertEquals(true, run("(1 == 1) && (2 == 2)"));
+//    assertEquals(false, run("(1 == 2) || (2 == 3)"));
+  }
 
-        if (visited.contains(successor)) {
-          continue;
-        }
+  @Test
+  void callResultsAreStoredOnEveryIteration() {
+    assertEquals(3, run("val next = (x: int) => x + 1; var a = 0; for (var i = 0; i < 3; i += 1) { a = next(a); } return a;"));
+  }
 
-        visited.add(successor);
-        nodes.push(successor);
-      }
-    }
+  @Test
+  void functionDefinitionsAreNotExecutableInstructions() {
+    final var module = Inf.codeToMir("val add = (a: int, b: int) => a + b; add(1, 2)");
+    assertEquals(2, module.functions().size());
+    assertEquals(3, run("val add = (a: int, b: int) => a + b; add(1, 2)"));
+  }
 
-    if (!remaining.isEmpty()) {
-      Assertions.fail("Edges not found:\n" + remaining + "\nBut found: " + found);
+  @Test
+  void liftedFunctionsCaptureDynamicCallableBindingsByDeclaration() {
+    assertEquals(2, run("""
+      val one = () => 1;
+      val two = () => 2;
+      var selected = one;
+      val invoke = () => selected();
+      selected = two;
+      invoke()
+      """));
+  }
+
+  @Test
+  void typeNamesAreNotRuntimeCaptures() {
+    assertEquals(7, run("""
+      val S = struct { val value: int; };
+      val make = () => new heap S { value = 7; };
+      val instance = make();
+      instance.value
+      """));
+  }
+
+  @Test
+  void assignmentOfArrayCopiesTheReference() {
+    assertEquals(9, run("var a = [1, 2]; var b = a; b[0] = 9; return a[0];"));
+  }
+
+  @Test
+  void readsHappenBeforeLaterArgumentSideEffects() {
+    final var code = """
+      val bump = (a: [;int;2]) => { a[0] = 9; return 2; };
+      val first = (a: int, b: int) => a;
+      val values = [1, 2];
+      first(values[0], bump(values))
+      """;
+    assertEquals(1, run(code));
+  }
+
+  @Test
+  void namedArgumentsAreEvaluatedInSourceOrder() {
+    final var code = """
+      val bump = (a: [;int;2]) => { a[0] += 1; return a[0]; };
+      val pair = (a: int, b: int) => a * 10 + b;
+      val values = [0, 0];
+      pair(b: bump(values), a: bump(values))
+      """;
+    assertEquals(21, run(code));
+  }
+
+  @Test
+  void compoundAssignmentEvaluatesItsPlaceOnce() {
+    final var code = """
+      val next = (a: [;int;2]) => { a[0] += 1; return 0; };
+      val counter = [0, 0];
+      val values = [10];
+      values[next(counter)] += 1;
+      return values[0] * 10 + counter[0];
+      """;
+    assertEquals(111, run(code));
+  }
+
+  @Test
+  void unreachableSourceStatementsAreRejectedDuringMirLowering() {
+    assertThrows(UnreachableCodeException.class, () -> Inf.codeToMir("return 1; 2;"));
+    assertThrows(UnreachableCodeException.class, () -> Inf.codeToMir("if (1 == 1) { return 1; } else { return 2; } 3;"));
+    assertThrows(UnreachableCodeException.class, () -> Inf.codeToMir(
+      "for (var i = 0; i < 3; i += 1) { return 7; 8; } return 9;"
+    ));
+  }
+
+  @Test
+  void blockTerminatorIsItsOnlySourceOfEdges() {
+    final var block = new MirNode("entry");
+    final var target = new MirNode("target");
+    block.terminate(new Mir.Jump(target));
+    assertEquals(List.of(target), block.successors());
+    assertThrows(IllegalStateException.class, () -> block.terminate(new Mir.Return(Mir.Unit.INSTANCE)));
+    assertThrows(IllegalStateException.class, () -> block.append(new Mir.Store(new Mir.Local(0, "x", Ty.INTEGER), new Mir.Constant("1", Ty.INTEGER))));
+  }
+
+  @Test
+  void breakAndContinueTerminateTheirBlocks() {
+    final var loop = new Hir.Loop(
+      new Hir.Conditional(
+        new Hir.Literal("true", Ty.BOOLEAN),
+        new Hir.LoopBreak(null),
+        new Hir.LoopContinue(),
+        Ty.DEADEND, null
+      ),
+      Ty.VOID, null
+    );
+    final var root = new Hir.Program(new Hir.Expressions(new Hir.Expression[]{
+      loop, new Hir.Return(new Hir.Literal("7", Ty.INTEGER))
+    }, Ty.INTEGER));
+    final var thir = new HirToThirRaising(new MachineTarget(64)).raise(root);
+    final var module = ThirToMirLowering.lower(thir);
+    assertEquals(7, new InterpreterCodeExecutor().execute(module.initNode()));
+    assertEquals(1, module.script().blocks().stream().filter(block -> block.terminator() instanceof Mir.Branch).count());
+  }
+
+  @Test
+  void statementsAfterBreakOrContinueAreRejected() {
+    for (final var transfer : List.of(new Hir.LoopBreak(null), new Hir.LoopContinue())) {
+      final var body = new Hir.Expressions(new Hir.Expression[]{transfer, new Hir.Literal("1", Ty.INTEGER)}, Ty.INTEGER);
+      final var root = new Hir.Program(new Hir.Loop(body, Ty.VOID, null));
+      final var thir = new HirToThirRaising(new MachineTarget(64)).raise(root);
+      assertThrows(UnreachableCodeException.class, () -> ThirToMirLowering.lower(thir));
     }
   }
 }

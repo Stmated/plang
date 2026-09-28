@@ -1,125 +1,51 @@
 package org.inf.mir;
 
-import jakarta.annotation.Nonnull;
-import lombok.*;
-import lombok.experimental.UtilityClass;
-import org.inf.mir.model.*;
+import org.inf.mir.model.MirBinaryOperationKind;
+import org.inf.mir.model.MirFnSignature;
+import org.inf.mir.model.MirFunction;
+import org.inf.mir.model.MirNode;
 import org.inf.ty.Ty;
-import org.inf.ty.TyStruct;
-import org.inf.ty.TyValueArray;
+import org.inf.ty.TyPointer;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
-@UtilityClass
-public class Mir {
+/** Values, storage locations, instructions and control transfers are deliberately separate. */
+public final class Mir {
 
-  public interface Instr {
+  private Mir() {
+  }
 
-    MirIdentifierId name();
-
-    default boolean isTerminal() {
-      return false;
-    }
-
-    default String toShortString() {
-      return this.toString();
-    }
-
-    /**
-     * The intrinsic result ty of the instruction itself.
-     */
+  public sealed interface Operand permits Value, Constant, FunctionRef, Unit {
     Ty ty();
   }
 
-  @Data
-  public abstract static class AbstractInstr implements Instr {
-
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
-    private MirIdentifierId name;
-
-    @Override
-    public MirIdentifierId name() {
-      return name;
-    }
-
-    public void name(MirIdentifierId iid) {
-      this.name = iid;
-    }
-
-    @Override
-    public int hashCode() {
-      return System.identityHashCode(this);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      return this == obj;
+  public record Value(int id, Ty ty) implements Operand {
+    public Value {
+      Objects.requireNonNull(ty);
     }
   }
 
-  /**
-   * TODO: This should be a terminal instruction which has a "success" and a "fail" path (for GC and other unwind)
-   */
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrCall extends AbstractInstr {
-
-    Instr target;
-    MirFnSignature fnSignature;
-    MirFnArgument[] arguments;
-
-    @Override
-    public Ty ty() {
-      return fnSignature.returnType();
+  public record Constant(String content, Ty ty) implements Operand {
+    public Constant {
+      Objects.requireNonNull(content);
+      Objects.requireNonNull(ty);
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrBinaryOperation extends AbstractInstr {
-
-    Instr lhs;
-    MirBinaryOperationKind kind;
-    Instr rhs;
-    Ty ty;
-
-    @Override
-    public String toString() {
-      return lhs.toShortString() + " " + kind + " " + rhs.toShortString();
-    }
-
-    public Instr lhs() {
-      return lhs;
-    }
-
-    public MirBinaryOperationKind kind() {
-      return kind;
-    }
-
-    public Instr rhs() {
-      return rhs;
+  public record FunctionRef(MirFunction function) implements Operand {
+    public FunctionRef {
+      Objects.requireNonNull(function);
     }
 
     @Override
     public Ty ty() {
-      return ty;
+      return new TyPointer<>(MirTypes.functionType(function.signature()));
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrConditionalJump extends AbstractInstr {
-
-    Instr predicate;
-    MirNode pass;
-    MirNode fail;
-
-    @Override
-    public String toString() {
-      return "if " + predicate + " then " + pass.name() + " else " + fail.name();
-    }
+  public enum Unit implements Operand {
+    INSTANCE;
 
     @Override
     public Ty ty() {
@@ -127,285 +53,190 @@ public class Mir {
     }
   }
 
-  @Data
+  public sealed interface Place permits Local, Field, Element {
+    Ty ty();
 
-  @EqualsAndHashCode(callSuper = true)
-  @AllArgsConstructor
-  public static class InstrCreateFn extends AbstractInstr {
-
-    MirNode entry;
-    @Nonnull
-    MirFnSignature signature;
-    @Nonnull
-    Ty ty;
-
-    @Override
-    public String toString() {
-      return (name() == null ? "anon" : name()) + "" + signature + " @ " + entry;
-    }
-
-    @Override
-    public Ty ty() {
-      return ty;
+    default List<Operand> operands() {
+      return List.of();
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrCreateLiteral extends AbstractInstr {
-
-    String content;
-    Ty ty;
-
-    @Override
-    public String toString() {
-      return content + ":" + ty.toShortString();
+  public record Local(int id, String name, Ty ty) implements Place {
+    public Local {
+      Objects.requireNonNull(name);
+      Objects.requireNonNull(ty);
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrCreateStruct extends AbstractInstr {
-
-    TyStruct ty;
+  public record Field(Operand target, int index, Ty ty) implements Place {
+    public Field {
+      Objects.requireNonNull(target);
+      Objects.requireNonNull(ty);
+    }
 
     @Override
-    public String toString() {
-      return Objects.toString(ty);
+    public List<Operand> operands() {
+      return List.of(target);
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrGetParam extends AbstractInstr {
-
-    MirFnParameter parameter;
-
-    @Override
-    public Ty ty() {
-      return parameter.ty();
+  public record Element(Operand target, Operand index, Ty ty) implements Place {
+    public Element {
+      Objects.requireNonNull(target);
+      Objects.requireNonNull(index);
+      Objects.requireNonNull(ty);
     }
 
     @Override
-    public String toString() {
-      return "param:" + parameter.name();
+    public List<Operand> operands() {
+      return List.of(target, index);
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrJump extends AbstractInstr {
-
-    MirNode node;
-
-    @Override
-    public boolean isTerminal() {
-      return true;
+  public sealed interface Instruction permits Binary, Load, Store, Call, Convert, UnionVariant, NewArray, NewStruct, Parameter {
+    default Value result() {
+      return null;
     }
 
-    @Override
-    public String toString() {
-      return "Jump To '" + node.name() + "'";
-    }
+    List<Operand> operands();
+  }
 
+  public record Binary(Value result, Operand lhs, MirBinaryOperationKind kind, Operand rhs) implements Instruction {
     @Override
-    public Ty ty() {
-      return Ty.VOID;
+    public List<Operand> operands() {
+      return List.of(lhs, rhs);
     }
   }
 
-  /**
-   * The phi operand of the result of a branching. That is the result of the final instruction of the pass or fail nodes. The result could be
-   * nothing.
-   */
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrPhi extends AbstractInstr {
-
-    Instr[] operands;
-    MirNode[] from;
-    Ty ty;
-
+  public record Load(Value result, Place place) implements Instruction {
     @Override
-    public String toString() {
-
-      final var strings = new String[operands.length];
-      for (var i = 0; i < strings.length; i++) {
-        strings[i] = "%s from %s".formatted(operands[i].toShortString(), from[i].toShortString());
-      }
-
-      return "Φ %s".formatted(String.join(" OR ", strings));
-    }
-
-    @Override
-    public Ty ty() {
-      return ty;
+    public List<Operand> operands() {
+      return place.operands();
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrGetGlobal extends AbstractInstr {
-
-    String globalName;
-    Ty ty;
-
+  public record Store(Place place, Operand value) implements Instruction {
     @Override
-    public String toString() {
-      return globalName;
+    public List<Operand> operands() {
+      final var operands = new java.util.ArrayList<>(place.operands());
+      operands.add(value);
+      return List.copyOf(operands);
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrCreateInstance extends AbstractInstr {
-
-    Ty ty;
-
-    Instr allocator;
-
-    /**
-     * The arguments will be in the order of the fields of the type that we are creating an instance of. Either all fields must be present, or all fields of the
-     * constructor must be.
-     */
-    Instr[] arguments;
+  /** A void call has no result value. Argument positions have already been resolved. */
+  public record Call(Value result, Operand target, MirFnSignature signature, List<Operand> arguments) implements Instruction {
+    public Call {
+      arguments = List.copyOf(arguments);
+    }
 
     @Override
-    public String toString() {
-      return "new %s %s(%s)".formatted(allocator, ty, Arrays.toString(arguments));
+    public List<Operand> operands() {
+      final var operands = new java.util.ArrayList<Operand>();
+      operands.add(target);
+      operands.addAll(arguments);
+      return List.copyOf(operands);
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrCreateArray extends AbstractInstr {
-
-    Instr[] elements;
-    Instr length;
-    TyValueArray ty;
-    Ty elementTy;
-
+  /** Explicit numeric/pointer conversion, or widening from one tagged union to another. */
+  public record Convert(Value result, Operand value) implements Instruction {
     @Override
-    public String toString() {
-
-      final var elementStrings = Arrays.stream(elements()).map(Object::toString).toList();
-      final var elementsString = String.join(", ", elementStrings);
-
-      return "[%s;%s;%s]".formatted(elementsString, ty().toShortString(), length());
+    public List<Operand> operands() {
+      return List.of(value);
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrGetArrayElement extends AbstractInstr {
-
-    Instr target;
-    Instr accessor;
-    Ty ty;
-
+  public record UnionVariant(Value result, int variant, Operand value) implements Instruction {
     @Override
-    public String toString() {
-      return target() + "[" + accessor + "]";
+    public List<Operand> operands() {
+      return List.of(value);
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrGetStructElement extends AbstractInstr {
-
-    Instr target;
-    int index;
-    Ty ty;
+  /** Elements are evaluated once; their values repeat when length exceeds the initializer count. */
+  public record NewArray(Value result, List<Operand> elements, Operand length) implements Instruction {
+    public NewArray {
+      elements = List.copyOf(elements);
+    }
 
     @Override
-    public String toString() {
-      return target() + "[" + index + "]";
+    public List<Operand> operands() {
+      final var operands = new java.util.ArrayList<>(elements);
+      operands.add(length);
+      return List.copyOf(operands);
     }
   }
 
-  /**
-   * Load the value of a previous store.
-   */
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrLoad extends AbstractInstr {
-
-    InstrStore store;
+  /** Field values are in layout order, after evaluation in source order. */
+  public record NewStruct(Value result, List<Operand> fields) implements Instruction {
+    public NewStruct {
+      fields = List.copyOf(fields);
+    }
 
     @Override
-    public Ty ty() {
-      return store.ty();
+    public List<Operand> operands() {
+      return fields;
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrReference extends AbstractInstr {
-
-    Instr target;
-
+  public record Parameter(Value result, int index) implements Instruction {
     @Override
-    public Ty ty() {
-      return target.ty();
+    public List<Operand> operands() {
+      return List.of();
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrStore extends AbstractInstr {
+  public sealed interface Terminator permits Jump, Branch, Return, Unreachable {
+    default List<MirNode> successors() {
+      return List.of();
+    }
 
-    InstrStore target;
-    Instr value;
-    Ty ty;
-
-    @Override
-    public String toString() {
-      return "Store (" + value.toShortString() + ")";
+    default List<Operand> operands() {
+      return List.of();
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrSetStructElement extends AbstractInstr {
-
-    Instr target;
-    int index;
-    Instr value;
-    Ty ty;
+  public record Jump(MirNode target) implements Terminator {
+    public Jump {
+      Objects.requireNonNull(target);
+    }
 
     @Override
-    public String toString() {
-      return target() + "[" + index + "] = " + value;
+    public List<MirNode> successors() {
+      return List.of(target);
     }
   }
 
-  @Value
-  @EqualsAndHashCode(callSuper = true)
-  public static class InstrReturn extends AbstractInstr {
-
-    Instr instr;
-
-    public InstrReturn(Instr instr) {
-      this.instr = Objects.requireNonNull(instr, "Return operand not allowed to be null");
+  public record Branch(Operand predicate, MirNode pass, MirNode fail) implements Terminator {
+    public Branch {
+      Objects.requireNonNull(predicate);
+      Objects.requireNonNull(pass);
+      Objects.requireNonNull(fail);
     }
 
     @Override
-    public boolean isTerminal() {
-      return true;
+    public List<MirNode> successors() {
+      return pass == fail ? List.of(pass) : List.of(pass, fail);
     }
 
     @Override
-    public String toString() {
-      return "return " + instr.toShortString();
+    public List<Operand> operands() {
+      return List.of(predicate);
+    }
+  }
+
+  public record Return(Operand value) implements Terminator {
+    public Return {
+      Objects.requireNonNull(value);
     }
 
     @Override
-    public Ty ty() {
-      return instr.ty();
+    public List<Operand> operands() {
+      return List.of(value);
     }
+  }
 
-    public Instr instr() {
-      return instr;
-    }
+  public record Unreachable() implements Terminator {
   }
 }

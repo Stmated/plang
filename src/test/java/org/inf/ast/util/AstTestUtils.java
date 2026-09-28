@@ -118,9 +118,9 @@ public class AstTestUtils {
     );
   }
 
-  public static <TA extends Ast.Expression, TB extends Ast.Expression> void as(
-    final Ast.Expression a, final Class<TA> ac, final Consumer<TA> aa,
-    final Ast.Expression b, final Class<TB> bc, final Consumer<TB> ba
+  public static <TA, TB> void as(
+    final Object a, final Class<TA> ac, final Consumer<TA> aa,
+    final Object b, final Class<TB> bc, final Consumer<TB> ba
   ) {
 
     assertAll(
@@ -181,11 +181,11 @@ public class AstTestUtils {
     );
   }
 
-  public static String getExpressionsDescription(final Ast.Expression... exprs) {
+  public static String getExpressionsDescription(final Object... exprs) {
     return Arrays.stream(exprs).map(AstTestUtils::getExpressionDescription).collect(Collectors.joining(", "));
   }
 
-  public static <T extends Ast.Expression> String getExpressionDescription(final T expr) {
+  public static <T> String getExpressionDescription(final T expr) {
 
     // TODO: Refine this a whole lot, so we get actually useful simple and helpful strings.
     return expr.getClass().getSimpleName();

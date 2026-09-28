@@ -1,22 +1,37 @@
 # MIR
 
-The Mid-Level Intermediate Representation takes the hierarchical THIR (Typed High-Level Intermediate Representation)
-and converts it into a CFG (Control Flow Graph).
+MIR lowers typed HIR into a module of functions, each with its own control-flow
+graph. Function calls are not CFG edges. Definitions and external declarations
+belong to the module, not to executable instruction lists.
 
-This is so that we have one more level where we manage our own structure before we send it down to be converted into LLVM IR, and then finally the executable byte code.
+## Representation
 
-The MIR should have as few, or none, of the syntactical sugar of the higher levels of representations.
-It does not know the concept of loops or other flow control, and instead uses jumps.
+* A function owns its signature, locals, entry block and basic blocks.
+* A block contains ordered instructions and exactly one separate terminator:
+  jump, conditional branch, return, or unreachable.
+* Successors are derived from that terminator. Predecessors are computed by
+  analyses, rather than stored as another mutable description of the graph.
+* An operand is an immutable temporary value, constant, function reference or
+  the payload-free `Void` value. Reading an operand never executes an expression.
+* A place is a local storage location or a field/element location. `Load` produces
+  a value; `Store` writes a value and produces no result.
+* Source declaration identity selects a local. Names are diagnostic labels only.
 
-## Basic concept of the MIR
-* Graph begins with a `start` `node`.
-* Each `node` has a list of `predecessor` and `successor` `edges`.
-* Each `edge` has a `source` and a `destination` `node`
-* Each `node` has a list of `instructions`.
-* Each `instruction` may make use of zero or more `operands`.
-* Each `operand` is either the result of another `instruction` or a `literal`.
-* Each `node` must end with (and **only** end with) an `instruction` that branches to one or more new `edges` or *terminate* with a terminal instruction (such as `return`).
-  * There will never be a `return` in the middle of `instructions`. All `instructions` of a node must always run (unless terminates exceptionally). 
+Blocks are not lexical scopes and do not have result types. A source block can
+lower into part of one basic block or into many basic blocks. Loops become jumps;
+there are no loop instructions.
 
-The graph does not follow any function calls, it will only resolve its local CFG.
-It is up to other kinds of optimization to figure out any inlining or other advanced techniques.
+## Lowering contracts
+
+Evaluation is left-to-right in source order. Named arguments and field
+initializers are evaluated before their resulting values are reordered into
+parameter/layout order. Logical AND/OR use short-circuit control flow.
+
+Executable instructions belong to exactly one block. Consumers must not
+recursively emit operands, infer loads, repair CFG edges, or infer function
+return types from traversal order.
+
+`MirVerifier` validates completed modules before backend lowering, including
+ownership, termination, types, definition dominance and definite initialization
+of locals. Structurally unreachable source statements are diagnosed while
+lowering, rather than emitted after a terminator.
