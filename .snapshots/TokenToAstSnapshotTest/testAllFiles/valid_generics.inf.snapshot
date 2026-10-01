@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn")
         Immutable
-        
         false)
       (Callable
         (Where
@@ -98,7 +97,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Point")
         Immutable
-        
         false)
       (Callable
         (Paren
@@ -121,7 +119,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "p")
         Mutable
-        
         false)
       (New
         (Paren
@@ -140,7 +137,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn5")
         Immutable
-        
         false)
       (Callable
         (Where
@@ -186,7 +182,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn2")
         Immutable
-        
         false)
       (Callable
         (Where
@@ -220,7 +215,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn3")
         Immutable
-        
         false)
       (Callable
         (Where
@@ -249,7 +243,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn4")
         Immutable
-        
         false)
       (Callable
         (Labeling
@@ -275,7 +268,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn2")
         Immutable
-        
         false)
       (Callable
         (Where
@@ -310,7 +302,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn4")
         Immutable
-        
         false)
       (Callable
         (Labeling
@@ -335,7 +326,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Type")
         Immutable
-        
         false)
       (PostfixExpression
         (Lexeme "Iterable")
@@ -349,7 +339,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn5")
         Immutable
-        
         false)
       (Callable
         (Labeling

@@ -321,16 +321,20 @@ public class ToStringTreeAstVisitor implements AstVisitor<String> {
       return "(%s)".formatted(name);
     }
 
-    if (name == null) {
-      return Arrays.stream(children)
-        .reduce("%s\n%s"::formatted)
-        .orElseThrow();
-    }
-
-    return "(%s\n%s)".formatted(name, Arrays.stream(children)
-      .map(ToStringTreeAstVisitor::indent)
+    final var childString = Arrays.stream(children)
+      .filter(c -> c != null && !c.isEmpty())
       .reduce("%s\n%s"::formatted)
-      .orElseThrow());
+      .orElse("");
+
+    if (name == null && childString.isEmpty()) {
+      return "()";
+    } else if (name == null) {
+      return childString;
+    } else if (childString.isEmpty()) {
+      return "(%s)".formatted(name);
+    } else {
+      return "(%s\n%s)".formatted(name, indent(childString));
+    }
   }
 
   private static String indent(final String value) {

@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "t")
         Immutable
-        
         false)
       (Paren
         (Expressions
@@ -22,7 +21,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn")
         Immutable
-        
         false)
       (Callable
         (Labeling
@@ -47,12 +45,10 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn2")
         Immutable
-        
         false)
       (Callable
         (Labeling
-          (Paren
-            )
+          (Paren)
           (Paren
             (Expressions
               (Literal "1")
@@ -70,7 +66,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn3")
         Immutable
-        
         false)
       (Callable
         (Labeling

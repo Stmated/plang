@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "a")
         Immutable
-        
         false)
       (Conditional
         (Paren
@@ -30,13 +29,11 @@ test-method: testAllFiles
         (Expressions
           (Return
             (Literal "true"))
-          (NoOp)))
-      )
+          (NoOp))))
     (Assignment
       (VariableDeclaration
         (Lexeme "b")
         Immutable
-        
         false)
       (Conditional
         (BinaryOperation GT
@@ -64,8 +61,7 @@ test-method: testAllFiles
                 (Literal "1")
                 (Literal "10")))
             (Return
-              (Literal "true"))
-            )
+              (Literal "true")))
           (NoOp)
           (Return
             (Literal "false"))
@@ -74,7 +70,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "c")
         Immutable
-        
         false)
       (Conditional
         (Paren

@@ -10,11 +10,9 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "globalFunction1")
         Immutable
-        
         false)
       (Callable
-        (Paren
-          )
+        (Paren)
         (Block
           (Expressions
             (BinaryOperation ADD
@@ -26,11 +24,9 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "globalFunction2")
         Mutable
-        
         false)
       (Callable
-        (Paren
-          )
+        (Paren)
         (Block
           (Expressions
             (Return
@@ -43,11 +39,9 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "globalFunction3")
         Immutable
-        
         false)
       (Callable
-        (Paren
-          )
+        (Paren)
         (Block
           (Expressions
             (Then
@@ -61,11 +55,9 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "globalFunction4")
         Immutable
-        
         false)
       (Callable
-        (Paren
-          )
+        (Paren)
         (Block
           (Expressions
             (Return
@@ -78,11 +70,9 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "globalFunction5")
         Immutable
-        
         false)
       (Callable
-        (Paren
-          )
+        (Paren)
         (BinaryOperation ADD
           (Literal "1")
           (Literal "1"))))
@@ -91,11 +81,9 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "globalFunction6")
         Immutable
-        
         false)
       (Callable
-        (Paren
-          )
+        (Paren)
         (BinaryOperation ADD
           (Literal "1")
           (Literal "1"))))
@@ -104,7 +92,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "globalFunction7")
         Immutable
-        
         false)
       (Callable
         (VariableSink)
@@ -116,11 +103,9 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "globalFunction8")
         Immutable
-        
         false)
       (Callable
-        (Paren
-          )
+        (Paren)
         (Block
           (Expressions
             (Return
@@ -132,7 +117,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "globalFunction9")
         Immutable
-        
         false)
       (Callable
         (VariableSink)
@@ -147,7 +131,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "globalFunction8")
         Immutable
-        
         false)
       (Callable
         (VariableSink)

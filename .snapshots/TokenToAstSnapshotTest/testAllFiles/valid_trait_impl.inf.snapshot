@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Foo")
         Immutable
-        
         false)
       (Struct
         (Block
@@ -32,7 +31,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Bar")
         Immutable
-        
         false)
       (Struct
         (Block
@@ -54,7 +52,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Baz")
         Immutable
-        
         false)
       (Struct
         (Block
@@ -76,7 +73,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "FooTrait")
         Immutable
-        
         false)
       (Trait
         (Block
@@ -85,14 +81,12 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "calculate1")
                 Immutable
-                
                 false)
               (Labeling
                 (Paren
                   (VariableDeclaration
                     (Lexeme "self")
                     Immutable
-                    
                     true))
                 (Lexeme "uint32")))
             (NoOp)
@@ -100,7 +94,6 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "calculate2")
                 Immutable
-                
                 false)
               (Labeling
                 (Paren
@@ -111,11 +104,9 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "calculate3")
                 Immutable
-                
                 false)
               (Labeling
-                (Paren
-                  )
+                (Paren)
                 (BinaryOperation BIT_OR
                   (Lexeme "uint32")
                   (Lexeme "uint64"))))
@@ -126,7 +117,6 @@ test-method: testAllFiles
         (VariableDeclaration
           (Lexeme "SpecificImplName")
           Immutable
-          
           false)
         (Impl
           (Lexeme "FooTrait")
@@ -139,14 +129,12 @@ test-method: testAllFiles
                 (VariableDeclaration
                   (Lexeme "calculate1")
                   Immutable
-                  
                   false)
                 (Callable
                   (Paren
                     (VariableDeclaration
                       (Lexeme "self")
                       Immutable
-                      
                       true))
                   (BinaryOperation ADD
                     (DotAccess
@@ -160,7 +148,6 @@ test-method: testAllFiles
                 (VariableDeclaration
                   (Lexeme "calculate2")
                   Immutable
-                  
                   false)
                 (Callable
                   (Paren
@@ -177,11 +164,9 @@ test-method: testAllFiles
                 (VariableDeclaration
                   (Lexeme "calculate3")
                   Immutable
-                  
                   false)
                 (Callable
-                  (Paren
-                    )
+                  (Paren)
                   (BinaryOperation ADD
                     (DotAccess
                       (Lexeme "self")
@@ -189,15 +174,13 @@ test-method: testAllFiles
                     (DotAccess
                       (Lexeme "self")
                       (Lexeme "d")))))
-              (NoOp)))
-          ))
+              (NoOp)))))
       false)
     (NoOp)
     (Assignment
       (VariableDeclaration
         (Lexeme "aNewType")
         Immutable
-        
         false)
       (BinaryOperation SUBTRACT
         (Paren
@@ -217,7 +200,6 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "toggle1")
                 Immutable
-                
                 false)
               (Callable
                 (Labeling
@@ -233,7 +215,6 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "toggle2")
                 Immutable
-                
                 false)
               (Callable
                 (Labeling
@@ -252,7 +233,6 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "toggle3")
                 Immutable
-                
                 false)
               (Callable
                 (Labeling
@@ -266,8 +246,7 @@ test-method: testAllFiles
                       (Literal "1"))))
                 (Not
                   (Lexeme "self"))))
-            (NoOp)))
-        )
+            (NoOp))))
       false)
     (NoOp)
     (Comment " Then it should be up to creating extension points with possible constraints to decide who gets to add traits where")

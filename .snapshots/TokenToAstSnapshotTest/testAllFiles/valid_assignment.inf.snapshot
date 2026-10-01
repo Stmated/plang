@@ -17,8 +17,7 @@ test-method: testAllFiles
           (DotAccess
             (PostfixExpression
               (Lexeme "something")
-              (Paren
-                ))
+              (Paren))
             (Lexeme "other"))))
       (BinaryOperation EQUALS
         (DotAccess

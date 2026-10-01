@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Person")
         Immutable
-        
         false)
       (Struct
         (Block
@@ -35,7 +34,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "quickObject")
         Immutable
-        
         false)
       (New
         (Lexeme "Person")
@@ -52,7 +50,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "quickObject2")
         Immutable
-        
         false)
       (New
         (Lexeme "Person")

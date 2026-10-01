@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "v")
         Immutable
-        
         false)
       (Match
         (Paren

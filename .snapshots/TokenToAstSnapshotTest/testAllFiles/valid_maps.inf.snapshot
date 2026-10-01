@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "StructABC")
         Immutable
-        
         false)
       (Struct
         (Block
@@ -38,7 +37,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "StructADE")
         Immutable
-        
         false)
       (Struct
         (Block
@@ -65,7 +63,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "v")
         Immutable
-        
         false)
       (BinaryOperation ADD
         (DotAccess
@@ -84,7 +81,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "map")
         Immutable
-        
         false)
       (Bracket
         (Assignment

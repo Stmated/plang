@@ -11,11 +11,9 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "generator")
         Immutable
-        
         false)
       (Callable
-        (Paren
-          )
+        (Paren)
         (Block
           (Expressions
             (Yield
@@ -32,19 +30,16 @@ test-method: testAllFiles
                     (DotAccess
                       (PostfixExpression
                         (Lexeme "getTime")
-                        (Paren
-                          ))
+                        (Paren))
                       (PostfixExpression
                         (Lexeme "getHour")
-                        (Paren
-                          ))))
+                        (Paren))))
                   (Literal "12")))
               (Block
                 (Expressions
                   (Yield
                     (Lexeme "break"))
-                  (NoOp)))
-              )
+                  (NoOp))))
             (Yield
               (Literal "3"))
             (NoOp)))))
@@ -53,19 +48,16 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "consumer")
         Immutable
-        
         false)
       (Callable
-        (Paren
-          )
+        (Paren)
         (Block
           (LoopFor
             (In
               (Lexeme "v")
               (PostfixExpression
                 (Lexeme "generator")
-                (Paren
-                  )))
+                (Paren)))
             (Block
               (Expressions
                 (DotAccess

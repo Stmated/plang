@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Foo")
         Immutable
-        
         false)
       (Struct
         (Block
@@ -32,7 +31,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Bar")
         Immutable
-        
         false)
       (Struct
         (Block
@@ -54,7 +52,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Baz")
         Immutable
-        
         false)
       (Struct
         (Block

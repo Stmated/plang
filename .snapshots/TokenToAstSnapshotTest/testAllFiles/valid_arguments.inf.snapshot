@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Holder")
         Immutable
-        
         false)
       (Struct
         (Block
@@ -26,7 +25,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Tr")
         Immutable
-        
         false)
       (Trait
         (Block
@@ -35,7 +33,6 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "add")
                 Immutable
-                
                 false)
               (Labeling
                 (Paren
@@ -53,10 +50,8 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "HolderImpl")
         Immutable
-        
         false)
       (Impl
-        
         (Lexeme "Holder")
         (Block
           (Expressions
@@ -64,20 +59,17 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "something")
                 Immutable
-                
                 false)
               (Callable
                 (Paren
                   (Lexeme "self"))
                 (Block
                   (Comment " This does not do something. Fooled ya ;)"))))
-            (NoOp)))
-        ))
+            (NoOp)))))
     (Assignment
       (VariableDeclaration
         (Lexeme "TrImpl")
         Immutable
-        
         false)
       (Impl
         (Lexeme "Tr")
@@ -88,7 +80,6 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "add")
                 Immutable
-                
                 false)
               (Callable
                 (Paren
@@ -107,36 +98,30 @@ test-method: testAllFiles
                             (Lexeme "self")
                             (Lexeme "value")))))
                     (NoOp)))))
-            (NoOp)))
-        ))
+            (NoOp)))))
     (NoOp)
     (Assignment
       (VariableDeclaration
         (Lexeme "main")
         Immutable
-        
         false)
       (Callable
-        (Paren
-          )
+        (Paren)
         (Block
           (Expressions
             (Assignment
               (VariableDeclaration
                 (Lexeme "h")
                 Immutable
-                
                 false)
               (New
                 (Block
                   (Literal "1"))
-                (Lexeme "Holder")
-                ))
+                (Lexeme "Holder")))
             (Assignment
               (VariableDeclaration
                 (Lexeme "partial")
                 Immutable
-                
                 false)
               (DotAccess
                 (Lexeme "h")
@@ -152,7 +137,6 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "result")
                 Immutable
-                
                 false)
               (PostfixExpression
                 (Lexeme "partial")
@@ -164,8 +148,7 @@ test-method: testAllFiles
               (Lexeme "h")
               (PostfixExpression
                 (Lexeme "something")
-                (Paren
-                  )))
+                (Paren)))
             (NoOp)
             (Comment " Do nothing")))))
     (NoOp)))

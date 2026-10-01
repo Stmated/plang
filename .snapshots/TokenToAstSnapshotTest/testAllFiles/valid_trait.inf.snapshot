@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "FooTrait")
         Immutable
-        
         false)
       (Trait
         (Block
@@ -19,14 +18,12 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "calculate1")
                 Immutable
-                
                 false)
               (Labeling
                 (Paren
                   (VariableDeclaration
                     (Lexeme "self")
                     Immutable
-                    
                     true))
                 (Lexeme "uint32")))
             (NoOp)
@@ -34,7 +31,6 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "calculate2")
                 Immutable
-                
                 false)
               (Labeling
                 (Paren
@@ -45,11 +41,9 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "calculate3")
                 Immutable
-                
                 false)
               (Labeling
-                (Paren
-                  )
+                (Paren)
                 (BinaryOperation BIT_OR
                   (Lexeme "uint32")
                   (Lexeme "uint64"))))

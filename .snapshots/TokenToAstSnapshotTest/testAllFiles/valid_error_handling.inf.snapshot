@@ -10,12 +10,10 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn")
         Immutable
-        
         false)
       (Callable
         (Labeling
-          (Paren
-            )
+          (Paren)
           (PostfixExpression
             (Lexeme "Result")
             (Paren
@@ -43,18 +41,15 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "value")
         Immutable
-        
         false)
       (PostfixExpression
         (Lexeme "fn")
-        (Paren
-          )))
+        (Paren)))
     (NoOp)
     (Assignment
       (VariableDeclaration
         (Lexeme "unwrapped1")
         Immutable
-        
         false)
       (Match
         (Lexeme "value")
@@ -85,7 +80,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "unwrapped2")
         Immutable
-        
         false)
       (Match
         (Lexeme "value")
@@ -108,12 +102,10 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn2")
         Immutable
-        
         false)
       (Callable
         (Labeling
-          (Paren
-            )
+          (Paren)
           (PostfixExpression
             (Lexeme "Result")
             (Paren
@@ -129,20 +121,17 @@ test-method: testAllFiles
               (Return
                 (PostfixExpression
                   (Lexeme "fn")
-                  (Paren
-                    ))))
+                  (Paren))))
             (NoOp)))))
     (NoOp)
     (Assignment
       (VariableDeclaration
         (Lexeme "fn3")
         Immutable
-        
         false)
       (Callable
         (Labeling
-          (Paren
-            )
+          (Paren)
           (Lexeme "String"))
         (Block
           (Expressions
@@ -152,12 +141,10 @@ test-method: testAllFiles
                   (VariableDeclaration
                     (Lexeme "v")
                     Immutable
-                    
                     false)
                   (PostfixExpression
                     (Lexeme "fn")
-                    (Paren
-                      )))
+                    (Paren)))
                 (Then
                   (Lexeme "v"))
                 (Paren

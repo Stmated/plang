@@ -11,10 +11,8 @@ test-method: testAllFiles
         (VariableDeclaration
           (Lexeme "res")
           Immutable
-          
           false)
         (PostfixExpression
           (Lexeme "fn")
-          (Paren
-            ))))
+          (Paren))))
     (NoOp)))

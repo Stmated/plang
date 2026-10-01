@@ -10,9 +10,7 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "s")
         Mutable
-        
         false)
       (Struct
-        (Block
-          )))
+        (Block)))
     (NoOp)))

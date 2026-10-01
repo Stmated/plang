@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Point")
         Immutable
-        
         false)
       (Paren
         (Expressions
@@ -27,7 +26,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "p1")
         Immutable
-        
         false)
       (New
         (Lexeme "Point")
@@ -41,7 +39,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "p2")
         Immutable
-        
         false)
       (New
         (Lexeme "Point")
@@ -59,7 +56,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "implicit_p1")
         Immutable
-        
         false)
       (Paren
         (Expressions
@@ -74,7 +70,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn")
         Immutable
-        
         false)
       (Callable
         (Paren
@@ -107,7 +102,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "res1")
         Immutable
-        
         false)
       (PostfixExpression
         (Lexeme "fn")
@@ -118,7 +112,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "res1")
         Immutable
-        
         false)
       (PostfixExpression
         (Lexeme "fn")

@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "array1")
         Immutable
-        
         false)
       (Bracket
         (Literal "1")
@@ -21,7 +20,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "array2")
         Immutable
-        
         false)
       (Bracket
         (Literal "3")
@@ -35,7 +33,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "result")
         Immutable
-        
         false)
       (DotAccess
         (Lexeme "array1")
@@ -72,7 +69,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "result")
         Immutable
-        
         false)
       (PostfixExpression
         (Lexeme "array1")

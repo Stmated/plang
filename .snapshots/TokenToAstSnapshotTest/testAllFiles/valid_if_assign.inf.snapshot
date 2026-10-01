@@ -13,27 +13,23 @@ test-method: testAllFiles
             (VariableDeclaration
               (Lexeme "a")
               Immutable
-              
               false)
             (PostfixExpression
               (Lexeme "load")
-              (Paren
-                )))
+              (Paren)))
           (BinaryOperation AND
             (BinaryOperation LT
               (Assignment
                 (VariableDeclaration
                   (Lexeme "b")
                   Immutable
-                  
                   false)
                 (Where
                   (DotAccess
                     (Lexeme "a")
                     (PostfixExpression
                       (Lexeme "something")
-                      (Paren
-                        )))
+                      (Paren)))
                   (DotAccess
                     (Lexeme "b")
                     (Lexeme "value"))))
@@ -47,7 +43,6 @@ test-method: testAllFiles
             (VariableDeclaration
               (Lexeme "c")
               Immutable
-              
               false)
             (DotAccess
               (Lexeme "a")

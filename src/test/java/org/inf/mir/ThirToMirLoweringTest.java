@@ -38,20 +38,19 @@ class ThirToMirLoweringTest {
     assertThrows(UnsupportedOperationException.class, () -> entry.instructions().clear());
   }
 
-  @Test
-  void scriptSignatureUsesCompletedThirType() {
-    for (final var code : List.of(
-      "return 7;",
-      "if (1 == 1) 42",
-      "val x = 1;",
-      "[1, 2]",
-      "val fn = (x: int) => x + 1; fn"
-    )) {
-      final var thir = Inf.codeToThir(code);
-      final var expected = MirTypes.returnType(thir.root().ty());
-      final var module = ThirToMirLowering.lower(thir);
-      assertEquals(expected, module.script().signature().returnType(), code);
-    }
+  @ParameterizedTest
+  @CsvSource({
+    "return 7;",
+    "if (1 == 1) 42",
+    "val x = 1;",
+    "[1, 2]",
+    "val fn = (x: int) => x + 1; fn"
+  })
+  void scriptSignatureUsesCompletedThirType(final String code) {
+    final var thir = Inf.codeToThir(code);
+    final var expected = MirTypes.returnType(thir.root().ty());
+    final var module = ThirToMirLowering.lower(thir);
+    assertEquals(expected, module.script().signature().returnType(), code);
   }
 
   @Test
@@ -123,10 +122,6 @@ class ThirToMirLoweringTest {
   })
   void shortCircuitSkipsDangerousRightOperand(String code, boolean expected) {
     assertEquals(expected, run(code));
-//    assertEquals(false, run("(1 == 2) && (1 / 0 == 0)"));
-//    assertEquals(true, run("(1 == 1) || (1 / 0 == 0)"));
-//    assertEquals(true, run("(1 == 1) && (2 == 2)"));
-//    assertEquals(false, run("(1 == 2) || (2 == 3)"));
   }
 
   @Test

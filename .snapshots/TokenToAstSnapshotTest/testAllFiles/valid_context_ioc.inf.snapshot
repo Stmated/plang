@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "A")
         Immutable
-        
         false)
       (Struct
         (Block
@@ -26,7 +25,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "B")
         Immutable
-        
         false)
       (Struct
         (Block
@@ -46,7 +44,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Q")
         Immutable
-        
         false)
       (Lexeme "nominal"))
     (Lexeme "uint8")
@@ -55,7 +52,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "T")
         Immutable
-        
         false)
       (Trait
         (Block
@@ -64,7 +60,6 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "call")
                 Immutable
-                
                 false)
               (Labeling
                 (Paren
@@ -78,7 +73,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "A")
         Immutable
-        
         false)
       (Impl
         (Lexeme "T")
@@ -89,7 +83,6 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "call")
                 Immutable
-                
                 false)
               (Callable
                 (Paren
@@ -126,24 +119,20 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "f")
         Immutable
-        
         false)
       (Callable
-        (Paren
-          )
+        (Paren)
         (Block
           (Expressions
             (Assignment
               (VariableDeclaration
                 (Lexeme "a")
                 Immutable
-                
                 false)
               (New
                 (Block
                   (Literal "1"))
-                (Lexeme "A")
-                ))
+                (Lexeme "A")))
             (Comment " Should work since only 1 value, would also work if called \"value\"")
             (With
               (Paren
@@ -153,8 +142,7 @@ test-method: testAllFiles
                       (Assignment
                         (Lexeme "v2")
                         (Literal "10")))
-                    (Lexeme "B")
-                    )
+                    (Lexeme "B"))
                   (Labeling
                     (Literal "1")
                     (Lexeme "Q"))))

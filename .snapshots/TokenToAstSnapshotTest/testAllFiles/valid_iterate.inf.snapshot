@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "array1")
         Immutable
-        
         false)
       (Bracket
         (Literal "1")
@@ -18,8 +17,7 @@ test-method: testAllFiles
         (Literal "3")))
     (NoOp)
     (LoopDoWhile
-      (Block
-        )
+      (Block)
       (LoopWhile
         (Paren
           (BinaryOperation EQUALS
@@ -29,106 +27,88 @@ test-method: testAllFiles
     (LoopDoWhile
       (PostfixExpression
         (Lexeme "eat")
-        (Paren
-          ))
+        (Paren))
       (LoopWhile
         (PostfixExpression
           (Lexeme "hungry")
-          (Paren
-            ))
+          (Paren))
         (NoOp)))
     (LoopDoWhile
       (Then
         (PostfixExpression
           (Lexeme "eat")
-          (Paren
-            )))
+          (Paren)))
       (LoopWhile
         (PostfixExpression
           (Lexeme "hungry")
-          (Paren
-            ))
+          (Paren))
         (NoOp)))
     (LoopDoWhile
       (Then
         (PostfixExpression
           (Lexeme "eat")
-          (Paren
-            )))
+          (Paren)))
       (LoopWhile
         (Paren
           (PostfixExpression
             (Lexeme "hungry")
-            (Paren
-              )))
+            (Paren)))
         (NoOp)))
     (LoopDoWhile
       (Then
         (PostfixExpression
           (Lexeme "eat")
-          (Paren
-            )))
+          (Paren)))
       (LoopWhile
         (Block
           (PostfixExpression
             (Lexeme "hungry")
-            (Paren
-              )))
+            (Paren)))
         (NoOp)))
     (LoopWhile
       (Paren
         (PostfixExpression
           (Lexeme "hungry")
-          (Paren
-            )))
+          (Paren)))
       (Block
         (Expressions
           (PostfixExpression
             (Lexeme "eat")
-            (Paren
-              ))
+            (Paren))
           (NoOp))))
     (LoopWhile
       (PostfixExpression
         (Lexeme "hungry")
-        (Paren
-          ))
+        (Paren))
       (PostfixExpression
         (Lexeme "eat")
-        (Paren
-          )))
+        (Paren)))
     (NoOp)
     (LoopWhile
       (PostfixExpression
         (Lexeme "hungry")
-        (Paren
-          ))
+        (Paren))
       (Then
         (PostfixExpression
           (Lexeme "eat")
-          (Paren
-            ))))
+          (Paren))))
     (NoOp)
     (LoopWhile
       (PostfixExpression
         (Lexeme "hungry")
-        (Paren
-          ))
+        (Paren))
       (PostfixExpression
         (Lexeme "eatAnd")
-        (Paren
-          )))
+        (Paren)))
     (NoOp)
     (LoopWhile
       (PostfixExpression
         (Lexeme "hungry")
-        (Paren
-          ))
+        (Paren))
       (Then
         (PostfixExpression
           (Lexeme "eat")
-          (Paren
-            ))))
+          (Paren))))
     (LoopFor
       (Paren
         (Expressions
@@ -136,7 +116,6 @@ test-method: testAllFiles
             (VariableDeclaration
               (Lexeme "i")
               Mutable
-              
               false)
             (Literal "0"))
           (NoOp)
@@ -148,10 +127,8 @@ test-method: testAllFiles
             (Lexeme "i")
             (PostfixExpression
               (Lexeme "increment")
-              (Paren
-                )))))
-      (Block
-        ))
+              (Paren)))))
+      (Block))
     (LoopFor
       (Paren
         (Expressions
@@ -159,7 +136,6 @@ test-method: testAllFiles
             (VariableDeclaration
               (Lexeme "i")
               Mutable
-              
               false)
             (Literal "0"))
           (Assignment
@@ -174,10 +150,8 @@ test-method: testAllFiles
             (Lexeme "i")
             (PostfixExpression
               (Lexeme "increment")
-              (Paren
-                )))))
-      (Block
-        ))
+              (Paren)))))
+      (Block))
     (LoopFor
       (In
         (Lexeme "a")
@@ -213,8 +187,7 @@ test-method: testAllFiles
         (Lexeme "array")
         (PostfixExpression
           (Lexeme "to_keys")
-          (Paren
-            )))
+          (Paren)))
       (PostfixExpression
         (Lexeme "print")
         (Paren
@@ -225,7 +198,6 @@ test-method: testAllFiles
         (VariableDeclaration
           (Lexeme "a")
           Mutable
-          
           false)
         (Lexeme "array1"))
       (Block
@@ -240,7 +212,6 @@ test-method: testAllFiles
         (VariableDeclaration
           (Lexeme "a")
           Immutable
-          
           false)
         (Lexeme "array1"))
       (Block

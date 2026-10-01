@@ -10,20 +10,17 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "one")
         Immutable
-        
         false)
       (DotAccess
         (Literal "1")
         (PostfixExpression
           (Lexeme "toString")
-          (Paren
-            ))))
+          (Paren))))
     (NoOp)
     (Assignment
       (VariableDeclaration
         (Lexeme "number")
         Mutable
-        
         false)
       (Literal "12.13"))
     (NoOp)
@@ -31,7 +28,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "number_also_val")
         Immutable
-        
         false)
       (Literal "14.15"))
     (NoOp)

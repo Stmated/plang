@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "s1")
         Mutable
-        
         false)
       (Literal "some 'string' here"))
     (NoOp)
@@ -18,7 +17,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "s2")
         Mutable
-        
         false)
       (Literal "some \"string\" here"))
     (NoOp)
@@ -26,7 +24,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "s3")
         Mutable
-        
         false)
       (Literal "some 'string' \"here\""))
     (NoOp)
@@ -34,7 +31,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "v")
         Mutable
-        
         false)
       (Literal "10"))
     (NoOp)
@@ -42,7 +38,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "s4")
         Mutable
-        
         false)
       (Literal "some value: ${v}!"))
     (NoOp)))

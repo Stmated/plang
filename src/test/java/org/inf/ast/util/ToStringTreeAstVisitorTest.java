@@ -45,6 +45,41 @@ class ToStringTreeAstVisitorTest {
         (Lexeme "right"))""".strip(), render(node));
   }
 
+  @Test
+  void rendersManyExpressionsCorrectly() {
+
+    final var node = new Ast.Program(
+      new Ast.Expressions(
+        new Ast.Expression[] {
+          new Ast.Comment("a"),
+          new Ast.Comment("b"),
+          new Ast.Comment("c"),
+          new Ast.Comment("d"),
+          new Ast.Comment("e"),
+          new Ast.Comment("f")
+        }
+      )
+    );
+
+    assertEquals("""
+      (Program
+        (Expressions
+          (Comment "a")
+          (Comment "b")
+          (Comment "c")
+          (Comment "d")
+          (Comment "e")
+          (Comment "f")))""".strip(), render(node));
+  }
+
+  @Test
+  void rendersEmptyExpressionListsWithoutChildren() {
+
+    final var node = new Ast.Expressions(new Ast.Expression[0]);
+
+    assertEquals("(Expressions)", render(node));
+  }
+
   private static String render(final Ast.Expression node) {
     return new ToStringTreeAstVisitor().visit(node);
   }

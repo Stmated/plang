@@ -15,7 +15,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "Enum")
         Immutable
-        
         false)
       (Labeling
         (Lexeme "A")
@@ -35,7 +34,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "e1")
         Immutable
-        
         false)
       (New
         (DotAccess
@@ -50,7 +48,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "e2")
         Immutable
-        
         false)
       (DotAccess
         (Lexeme "Enum")

@@ -10,7 +10,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "value")
         Immutable
-        
         false)
       (Literal "10"))
     (NoOp)
@@ -18,11 +17,9 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn")
         Immutable
-        
         false)
       (Callable
-        (Paren
-          )
+        (Paren)
         (Block
           (Expressions
             (DotAccess
@@ -44,7 +41,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn2")
         Immutable
-        
         false)
       (Callable
         (Labeling
@@ -78,7 +74,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn3")
         Immutable
-        
         false)
       (Callable
         (Labeling
@@ -105,7 +100,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn3")
         Immutable
-        
         false)
       (Callable
         (Labeling

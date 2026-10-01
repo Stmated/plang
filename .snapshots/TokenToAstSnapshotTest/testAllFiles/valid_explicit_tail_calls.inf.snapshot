@@ -13,7 +13,6 @@ test-method: testAllFiles
       (VariableDeclaration
         (Lexeme "fn")
         Immutable
-        
         false)
       (Callable
         (Paren
@@ -26,7 +25,6 @@ test-method: testAllFiles
               (VariableDeclaration
                 (Lexeme "local")
                 Immutable
-                
                 false)
               (Literal "123"))
             (NoOp)
