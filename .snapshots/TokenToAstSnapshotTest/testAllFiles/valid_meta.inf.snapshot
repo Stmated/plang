@@ -95,7 +95,6 @@ test-method: testAllFiles
                 (Literal "2")))
             (NoOp)))))
     (NoOp)
-    (Comment " This is stupid, having \"dynamic\" parameter name, but we will allow it")
     (Assignment
       (VariableDeclaration
         (Lexeme "fn3")

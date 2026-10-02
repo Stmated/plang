@@ -14,7 +14,9 @@ test-method: testAllFiles
       (Paren
         (Expressions
           (Literal "10")
+          (Comma)
           (Literal "10")
+          (Comma)
           (Literal "10"))))
     (NoOp)
     (Assignment
@@ -31,6 +33,7 @@ test-method: testAllFiles
           (Paren
             (Expressions
               (Lexeme "uint8")
+              (Comma)
               (Lexeme "uint8"))))
         (Block
           (Expressions
@@ -38,6 +41,7 @@ test-method: testAllFiles
               (Paren
                 (Expressions
                   (Literal "1")
+                  (Comma)
                   (Literal "2"))))
             (NoOp)))))
     (NoOp)
@@ -52,6 +56,7 @@ test-method: testAllFiles
           (Paren
             (Expressions
               (Literal "1")
+              (Comma)
               (Literal "2"))))
         (Block
           (Expressions
@@ -59,6 +64,7 @@ test-method: testAllFiles
               (Paren
                 (Expressions
                   (Literal "1")
+                  (Comma)
                   (Literal "2"))))
             (NoOp)))))
     (NoOp)
@@ -75,6 +81,7 @@ test-method: testAllFiles
               (Paren
                 (Expressions
                   (Lexeme "uint8")
+                  (Comma)
                   (Lexeme "uint8")))))
           (Lexeme "uint16"))
         (Block
@@ -97,5 +104,6 @@ test-method: testAllFiles
         (Paren
           (Expressions
             (Literal "1")
+            (Comma)
             (Literal "2")))))
     (NoOp)))

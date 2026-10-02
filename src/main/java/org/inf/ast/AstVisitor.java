@@ -81,6 +81,10 @@ public interface AstVisitor<T> {
     return visit(expr.target(), expr.suffix());
   }
 
+  default T visitJuxtaposition(final Ast.Juxtaposition expr) {
+    return aggregate(visit(expr.target()), visit(expr.arguments()));
+  }
+
   default T visitCallable(final Ast.Callable expr) {
     return visit(expr.lhs(), expr.rhs());
   }
@@ -178,6 +182,10 @@ public interface AstVisitor<T> {
   }
 
   default T visitNoOp(final Ast.NoOp expr) {
+    return this.noValue();
+  }
+
+  default T visitComma(final Ast.Comma expr) {
     return this.noValue();
   }
 

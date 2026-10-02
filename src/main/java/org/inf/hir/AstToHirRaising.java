@@ -1,6 +1,7 @@
 package org.inf.hir;
 
 import org.inf.ast.Ast;
+import org.inf.ast.AstVisitor;
 import org.inf.exceptions.NotImplementedException;
 import org.inf.exceptions.UnexpectedExpressionException;
 import org.inf.hir.passes.HirLexemeToIdentifierTransformerPass;
@@ -115,6 +116,7 @@ public class AstToHirRaising {
       case final Ast.Return ast -> lower_return(ast);
       case final Ast.Block ast -> lower_block(ast);
       case final Ast.PostfixExpression ast -> lower_postfix(ast);
+      case final Ast.Juxtaposition ast -> raise_juxta(ast);
       case final Ast.Partial ast -> lower_partial(ast);
       case final Ast.Lexeme ast -> lower_lexeme(ast);
       case final Ast.Paren ast -> lower_paren(ast);
@@ -128,6 +130,7 @@ public class AstToHirRaising {
       case final Ast.Struct ast -> lower_struct(ast);
       case final Ast.New ast -> lower_new(ast);
       case final Ast.DotAccess ast -> lower_dot_access(ast);
+      case Ast.Comma _ -> throw new IllegalArgumentException("Normalize the AST before raising comma-separated expressions to HIR");
       case Ast.Comment _ -> null;
       // TODO: Important that a NoOp means "nothing" if last expression of block.
       //        Since everything is an expression, if "x" is last expression, then give back "x"
@@ -138,23 +141,48 @@ public class AstToHirRaising {
     };
   }
 
+  private Hir.Expression raise_juxta(Ast.Juxtaposition ast) {
+
+    final var target = raise(ast.target());
+    final var arguments = new Hir.Argument[ast.arguments().length];
+    for (var i = 0; i < arguments.length; i++) {
+      arguments[i] = new Hir.Argument(null, raise(ast.arguments()[i]));
+    }
+
+    // Keep the same path representation as explicit member calls.
+    if (target instanceof final Hir.Path path) {
+      final var elements = path.elements();
+      final var last = elements.length - 1;
+      elements[last] = new Hir.Call(elements[last], arguments);
+      return path;
+    }
+
+    return new Hir.Call(target, arguments);
+  }
+
   private Hir.Expression lower_dot_access(final Ast.DotAccess ast) {
 
     final var elements = new ArrayList<Hir.Expression>();
+    ast.visit(new AstVisitor<Void>() {
+      @Override
+      public Void aggregate(final Void a, final Void b) {
+        return null;
+      }
 
-    Ast.Expression pointer = ast;
-    while (pointer instanceof final Ast.DotAccess dot) {
+      @Override
+      public Void noValue() {
+        return null;
+      }
 
-      final var lhs = raise(dot.lhs());
-      elements.add(lhs);
-
-      pointer = ast.rhs();
-    }
-
-    // The last child of the path should be added.
-    final var edge = raise(pointer);
-    assert edge != null;
-    elements.add(edge);
+      @Override
+      public Void visit(final Ast.Expression expression) {
+        if (expression instanceof Ast.DotAccess) {
+          return expression.visit(this);
+        }
+        elements.add(raise(expression));
+        return null;
+      }
+    });
 
     return new Hir.Path(elements.toArray(new Hir.Expression[0]), null, null);
   }
@@ -470,6 +498,13 @@ public class AstToHirRaising {
 
     if (child instanceof final Hir.Call call) {
       return call.partial(true);
+    }
+
+    if (child instanceof final Hir.Path path
+      && path.elements().length > 0
+      && path.elements()[path.elements().length - 1] instanceof final Hir.Call call) {
+      call.partial(true);
+      return path;
     }
 
     throw new IllegalArgumentException("Do not know how to make a %s partial".formatted(child));

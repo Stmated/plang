@@ -1,0 +1,90 @@
+dynamic-directory: true
+snapshot-name: function
+snapshot-number: 0
+test-class: org.inf.hir.util.ToStringTreeHirVisitorTest
+test-method: given__source__when__hir_rendered__then__structural_snapshot
+
+(Program
+  (ty null)
+  (expressions
+    (Expressions
+      (generated false)
+      (ty null)
+      (children
+        (Assignment
+          (ty null)
+          (lhs
+            (Dec
+              (mutability IMMUTABLE)
+              (ty (named "VOID"))
+              (lexeme
+                (Lexeme
+                  (name "f")
+                  (ty null)))
+              (valueType
+                (TyExpr
+                  (ty (named "INFER"))))))
+          (rhs
+            (Function
+              (signature
+                (FunctionSignature
+                  (vararg false)
+                  (ty null)
+                  (parameters
+                    (Parameter
+                      (vararg false)
+                      (ty null)
+                      (lexeme
+                        (Lexeme
+                          (name "x")
+                          (ty null)))
+                      (valueType
+                        (Identifier
+                          (lexeme
+                            (Lexeme
+                              (name "int")
+                              (ty null)))
+                          (target null)))))
+                  (returnType
+                    (TyExpr
+                      (ty (named "INFER"))))))
+              (body
+                (Return
+                  (ty (named "DEADEND"))
+                  (expression
+                    (BinaryOperation
+                      (kind ADD)
+                      (ty null)
+                      (valueTy null)
+                      (lhs
+                        (Identifier
+                          (lexeme
+                            (Lexeme
+                              (name "x")
+                              (ty null)))
+                          (target null)))
+                      (rhs
+                        (Literal
+                          (content "1")
+                          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))
+        (Return
+          (ty (named "DEADEND"))
+          (expression
+            (Call
+              (partial false)
+              (ty null)
+              (valueTy null)
+              (target
+                (Identifier
+                  (lexeme
+                    (Lexeme
+                      (name "f")
+                      (ty null)))
+                  (target null)))
+              (arguments
+                (Argument
+                  (label null)
+                  (value
+                    (Literal
+                      (content "2")
+                      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))))

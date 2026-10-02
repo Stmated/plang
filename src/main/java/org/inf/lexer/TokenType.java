@@ -197,6 +197,10 @@ public enum TokenType {
     return false;
   }
 
+  public boolean isComment() {
+    return this == TokenType.COMMENT_SINGLE_LINE || this == TokenType.COMMENT_MULTI_LINE;
+  }
+
   public boolean isLiteralNumber() {
     return this == LITERAL_INTEGER
       || this == LITERAL_DECIMAL || this == LITERAL_DOUBLE || this == LITERAL_FLOAT

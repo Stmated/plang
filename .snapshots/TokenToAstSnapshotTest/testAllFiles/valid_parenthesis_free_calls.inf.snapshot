@@ -1,0 +1,103 @@
+dynamic-directory: true
+snapshot-name: valid_parenthesis_free_calls.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "sum")
+        Immutable
+        false)
+      (Callable
+        (Paren
+          (Expressions
+            (Labeling
+              (Lexeme "a")
+              (Lexeme "int"))
+            (Comma)
+            (Labeling
+              (Lexeme "b")
+              (Lexeme "int"))))
+        (BinaryOperation ADD
+          (Lexeme "a")
+          (Lexeme "b"))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "twice")
+        Immutable
+        false)
+      (Callable
+        (Paren
+          (Labeling
+            (Lexeme "x")
+            (Lexeme "int")))
+        (BinaryOperation MULTIPLY
+          (Lexeme "x")
+          (Literal "2"))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "answer")
+        Immutable
+        false)
+      (Lexeme "twice"))
+    (Lexeme "sum")
+    (Literal "10")
+    (Comma)
+    (Literal "11")
+    (NoOp)
+    (PostfixExpression
+      (Lexeme "outer")
+      (Paren
+        (Expressions
+          (Lexeme "inner")
+          (Lexeme "x")
+          (Comma)
+          (Lexeme "y"))))
+    (NoOp)
+    (PostfixExpression
+      (Lexeme "outer")
+      (Paren
+        (Expressions
+          (Paren
+            (Expressions
+              (Lexeme "inner")
+              (Lexeme "x")))
+          (Comma)
+          (Lexeme "y"))))
+    (NoOp)
+    (DotAccess
+      (Lexeme "service")
+      (Lexeme "call"))
+    (BinaryOperation ADD
+      (Lexeme "x")
+      (Lexeme "y"))
+    (Comma)
+    (Lexeme "z")
+    (NoOp)
+    (Lexeme "sum")
+    (Literal "20")
+    (Comma)
+    (Literal "22")
+    (NoOp)
+    (Conditional
+      (Paren
+        (Literal "true"))
+      (Then
+        (Paren
+          (Expressions
+            (Lexeme "sum")
+            (Literal "20")
+            (Comma)
+            (Literal "22"))))
+      (Paren
+        (Expressions
+          (Lexeme "sum")
+          (Literal "1")
+          (Comma)
+          (Literal "2"))))
+    (NoOp)))

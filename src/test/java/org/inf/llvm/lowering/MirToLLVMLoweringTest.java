@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -24,6 +25,75 @@ import java.util.UUID;
 
 @Slf4j
 class MirToLLVMLoweringTest {
+
+  @ParameterizedTest
+  @CsvSource(value = {
+    "sum 20, 22 | 42",
+    "sum 44, -2 | 42",
+    "sum 10 + 10, 2 * 11 | 42",
+    "twice sum 10, 11 | 42",
+    "twice(sum 10, 11) | 42",
+    "sum((twice 10), 22) | 42",
+    "sum(twice(10), 22) | 42",
+    "val result = sum 20, 22; result | 42",
+    "return sum 20, 22 | 42",
+    "{ sum 20, 22 } | 42",
+    "if (true) then (sum 20, 22) else (sum 1, 2) | 42",
+    "val fn = (x: int) => sum x, 22; fn 20 | 42",
+    "sum 1, 2; sum 20, 22 | 42",
+    "val alias = sum; alias 20, 22 | 42"
+  }, delimiter = '|')
+  void given__parenthesis_free_calls__when__executed__then__expected_result(final String expression, final int expected) {
+    final var code = "val sum = (a: int, b: int) => a + b; val twice = (a: int) => a * 2; " + expression;
+    Assertions.assertEquals(expected, Inf.codeToResult(code).resultValue());
+  }
+
+  @Test
+  void given__alternative_grouping_would_match__when__lowered__then__no_regrouping() {
+    final var code = """
+      val inner = (x: int) => x;
+      val outer = (x: int, y: int) => x + y;
+      outer(inner 20, 22)
+      """;
+    final var error = Assertions.assertThrows(IllegalArgumentException.class, () -> Inf.codeToMir(code));
+    Assertions.assertEquals("Too many arguments for function", error.getMessage());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "sum 20,\n22",
+    "sum\n20, 22",
+    "sum 20 // first argument\n, 22",
+    "sum 20\n+ 1, 21",
+    "sum /* first argument */ 20, /* second argument */ 22"
+  })
+  void given__multiline_call__when__executed__then__newlines_do_not_terminate_it(final String expression) {
+    Assertions.assertEquals(42, Inf.codeToResult("val sum = (a: int, b: int) => a + b; " + expression).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "sum 1",
+    "sum 1, 2, 3"
+  })
+  void given__wrong_argument_count__when__lowered__then__error(final String expression) {
+    Assertions.assertThrows(IllegalArgumentException.class,
+      () -> Inf.codeToMir("val sum = (a: int, b: int) => a + b; " + expression));
+  }
+
+  @ParameterizedTest
+  @CsvSource(value = {
+    "if (positive 1) then (sum 20, 22) else { sum 0, 1 } | 42",
+    "if (positive 0) then (sum 20, 22) else { sum 0, 1 } | 1",
+    "if (true) 1 2; | 2",
+    "if (true) sum; 42 | 42",
+    "var total = 0; for (var i = 0; i < 3; i += 1) { total = sum total, i; } total | 3",
+    "val value = ((x: int) => sum x, 22)(20); value | 42"
+  }, delimiter = '|')
+  void given__bounded_implicit_calls__when__executed__then__scope_is_preserved(final String expression, final int expected) {
+    final var code = "val sum = (a: int, b: int) => a + b; val positive = (x: int) => x > 0; " + expression;
+    Assertions.assertEquals(expected, Inf.codeToResult(code).resultValue());
+  }
 
   @Test
   void testBinaryOperationFromHir() {

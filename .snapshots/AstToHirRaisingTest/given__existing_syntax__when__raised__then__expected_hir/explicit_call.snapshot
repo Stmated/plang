@@ -1,0 +1,42 @@
+dynamic-directory: true
+snapshot-name: explicit_call
+snapshot-number: 0
+test-class: org.inf.hir.raising.AstToHirRaisingTest
+test-method: given__existing_syntax__when__raised__then__expected_hir
+
+(Program
+  (ty null)
+  (expressions
+    (Return
+      (ty (named "DEADEND"))
+      (expression
+        (Call
+          (partial false)
+          (ty null)
+          (valueTy null)
+          (target
+            (Identifier
+              (lexeme
+                (Lexeme
+                  (name "f")
+                  (ty null)))
+              (target null)))
+          (arguments
+            (Argument
+              (label null)
+              (value
+                (Identifier
+                  (lexeme
+                    (Lexeme
+                      (name "x")
+                      (ty null)))
+                  (target null))))
+            (Argument
+              (label null)
+              (value
+                (Identifier
+                  (lexeme
+                    (Lexeme
+                      (name "y")
+                      (ty null)))
+                  (target null))))))))))

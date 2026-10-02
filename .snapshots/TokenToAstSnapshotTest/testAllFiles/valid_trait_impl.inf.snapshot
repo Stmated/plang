@@ -189,7 +189,6 @@ test-method: testAllFiles
             (Lexeme "Bar")))
         (Lexeme "Baz")))
     (NoOp)
-    (Comment " Below will be exported as \"default\" -- ie as an entry in the list of things exposed from this module")
     (Export
       (Impl
         (Lexeme "FooTrait")
@@ -248,6 +247,4 @@ test-method: testAllFiles
                   (Lexeme "self"))))
             (NoOp))))
       false)
-    (NoOp)
-    (Comment " Then it should be up to creating extension points with possible constraints to decide who gets to add traits where")
-    (Comment " See `extension_functions.inf` for more information, and retrofit it for traits instead")))
+    (NoOp)))

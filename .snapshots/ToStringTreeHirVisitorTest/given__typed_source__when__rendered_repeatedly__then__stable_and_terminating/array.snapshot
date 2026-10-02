@@ -1,0 +1,82 @@
+dynamic-directory: true
+snapshot-name: array
+snapshot-number: 0
+test-class: org.inf.hir.util.ToStringTreeHirVisitorTest
+test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_terminating
+
+(Program
+  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+  (expressions
+    (Expressions
+      (generated false)
+      (ty (named "DEADEND"))
+      (children
+        (Assignment
+          (ty (named "VOID"))
+          (lhs
+            (Dec
+              (mutability MUTABLE)
+              (ty (named "VOID"))
+              (lexeme
+                (Lexeme
+                  (name "a")
+                  (ty null)))
+              (valueType
+                (TyExpr
+                  (ty (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+          (rhs
+            (Array
+              (ty (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
+              (valueTy (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
+              (elementType
+                (TyExpr
+                  (ty (named "INFER"))))
+              (length
+                (Literal
+                  (content "2")
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+              (elements
+                (Literal
+                  (content "1")
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
+                (Literal
+                  (content "2")
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+        (Assignment
+          (ty (named "VOID"))
+          (lhs
+            (ArrayAccess
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (target
+                (Identifier
+                  (lexeme
+                    (Lexeme
+                      (name "a")
+                      (ty null)))
+                  (target (reference "a"))))
+              (accessor
+                (Literal
+                  (content "0")
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))))
+          (rhs
+            (Literal
+              (content "9")
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+        (Return
+          (ty (named "DEADEND"))
+          (expression
+            (ArrayAccess
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (target
+                (Identifier
+                  (lexeme
+                    (Lexeme
+                      (name "a")
+                      (ty null)))
+                  (target (reference "a"))))
+              (accessor
+                (Literal
+                  (content "0")
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))

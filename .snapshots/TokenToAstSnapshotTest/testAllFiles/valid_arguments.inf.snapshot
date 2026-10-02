@@ -40,6 +40,7 @@ test-method: testAllFiles
                     (Labeling
                       (Lexeme "a")
                       (Lexeme "uint32"))
+                    (Comma)
                     (Labeling
                       (Lexeme "b")
                       (Lexeme "uin32"))))
@@ -63,8 +64,7 @@ test-method: testAllFiles
               (Callable
                 (Paren
                   (Lexeme "self"))
-                (Block
-                  (Comment " This does not do something. Fooled ya ;)"))))
+                (Block)))
             (NoOp)))))
     (Assignment
       (VariableDeclaration
@@ -85,7 +85,9 @@ test-method: testAllFiles
                 (Paren
                   (Expressions
                     (Lexeme "self")
+                    (Comma)
                     (Lexeme "a")
+                    (Comma)
                     (Lexeme "b")))
                 (Block
                   (Expressions
@@ -132,7 +134,6 @@ test-method: testAllFiles
                   (Lexeme "b")
                   (Literal "10"))))
             (NoOp)
-            (Comment " will call with a=1, b=10")
             (Assignment
               (VariableDeclaration
                 (Lexeme "result")
@@ -143,12 +144,10 @@ test-method: testAllFiles
                 (Paren
                   (Literal "100"))))
             (NoOp)
-            (Comment " should be 111")
             (DotAccess
               (Lexeme "h")
               (PostfixExpression
                 (Lexeme "something")
                 (Paren)))
-            (NoOp)
-            (Comment " Do nothing")))))
+            (NoOp)))))
     (NoOp)))

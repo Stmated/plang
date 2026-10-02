@@ -29,7 +29,6 @@ test-method: testAllFiles
               false)
             (NoOp)))))
     (NoOp)
-    (Comment "\nThis is a multiline comment\n")
     (Assignment
       (VariableDeclaration
         (Lexeme "quickObject")
@@ -43,7 +42,7 @@ test-method: testAllFiles
             (Assignment
               (Lexeme "FamilyName")
               (Literal "Eliason"))
-            (Comment " next will be set to 'value' ")
+            (Comma)
             (Literal "198706046615")))))
     (NoOp)
     (Assignment
@@ -59,6 +58,6 @@ test-method: testAllFiles
             (Assignment
               (Lexeme "FamilyName")
               (Literal "Eliazon"))
-            (Comment " below has no key, so will set property \"value\"")
+            (Comma)
             (Literal "191212121212")))))
     (NoOp)))

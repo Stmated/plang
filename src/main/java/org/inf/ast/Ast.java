@@ -144,6 +144,19 @@ public class Ast {
 
   @Data
   @AllArgsConstructor
+  public static class Juxtaposition implements Expression {
+
+    Expression target;
+    Expression[] arguments;
+
+    @Override
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
+      return visitor.visitJuxtaposition(this);
+    }
+  }
+
+  @Data
+  @AllArgsConstructor
   public static class Partial<E extends Expression> implements Expression {
 
     E expression;
@@ -560,6 +573,16 @@ public class Ast {
     @Override
     public <R, V extends AstVisitor<R>> R visit(final V visitor) {
       return visitor.visitNew(this);
+    }
+  }
+
+  @Data
+  @AllArgsConstructor
+  public static class Comma implements Expression {
+
+    @Override
+    public <R, V extends AstVisitor<R>> R visit(final V visitor) {
+      return visitor.visitComma(this);
     }
   }
 

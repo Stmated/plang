@@ -65,6 +65,16 @@ public class ToStringTreeAstVisitor implements AstVisitor<String> {
   }
 
   @Override
+  public String visitJuxtaposition(final Ast.Juxtaposition expr) {
+    return node("Juxtaposition", visit(expr.target()), visit(expr.arguments()));
+  }
+
+  @Override
+  public String visitComma(final Ast.Comma expr) {
+    return node("Comma");
+  }
+
+  @Override
   public <E extends Ast.Expression> String visitPartial(final Ast.Partial<E> expr) {
     return node("Partial", visit(expr.expression()));
   }

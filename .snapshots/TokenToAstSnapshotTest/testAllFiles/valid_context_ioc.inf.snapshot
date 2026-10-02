@@ -36,10 +36,6 @@ test-method: testAllFiles
               false)
             (NoOp)))))
     (NoOp)
-    (Comment " This says \"Q is a nominal type, it is unique\"")
-    (Comment " Which means that it can be used as a qualifier.")
-    (Comment " Much like a \"A: nominal uint8\" and \"B: nominal uint8\"")
-    (Comment " would be considered different types (but subtype of uint8)")
     (Assignment
       (VariableDeclaration
         (Lexeme "Q")
@@ -88,6 +84,7 @@ test-method: testAllFiles
                 (Paren
                   (Expressions
                     (Lexeme "self")
+                    (Comma)
                     (Labeling
                       (Lexeme "x")
                       (Lexeme "uint32"))))
@@ -133,7 +130,6 @@ test-method: testAllFiles
                 (Block
                   (Literal "1"))
                 (Lexeme "A")))
-            (Comment " Should work since only 1 value, would also work if called \"value\"")
             (With
               (Paren
                 (Expressions
@@ -154,6 +150,5 @@ test-method: testAllFiles
                       (Lexeme "call")
                       (Paren
                         (Literal "100"))))
-                  (NoOp)
-                  (Comment " Should be 112"))))))))
+                  (NoOp))))))))
     (NoOp)))

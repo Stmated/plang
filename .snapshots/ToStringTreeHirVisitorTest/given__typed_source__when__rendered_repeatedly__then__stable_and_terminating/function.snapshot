@@ -1,0 +1,86 @@
+dynamic-directory: true
+snapshot-name: function
+snapshot-number: 0
+test-class: org.inf.hir.util.ToStringTreeHirVisitorTest
+test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_terminating
+
+(Program
+  (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+  (expressions
+    (Expressions
+      (generated false)
+      (ty (named "DEADEND"))
+      (children
+        (Assignment
+          (ty (named "VOID"))
+          (lhs
+            (Dec
+              (mutability IMMUTABLE)
+              (ty (named "VOID"))
+              (lexeme
+                (Lexeme
+                  (name "f")
+                  (ty null)))
+              (valueType
+                (TyExpr
+                  (ty (function vararg=false (parameters ("x" (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))))))
+          (rhs
+            (Function
+              (signature
+                (FunctionSignature
+                  (vararg false)
+                  (ty (function vararg=false (parameters ("x" (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+                  (parameters
+                    (Parameter
+                      (vararg false)
+                      (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+                      (lexeme
+                        (Lexeme
+                          (name "x")
+                          (ty null)))
+                      (valueType
+                        (TyExpr
+                          (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))))
+                  (returnType
+                    (TyExpr
+                      (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))))
+              (body
+                (Return
+                  (ty (named "DEADEND"))
+                  (expression
+                    (BinaryOperation
+                      (kind ADD)
+                      (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+                      (valueTy (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+                      (lhs
+                        (Identifier
+                          (lexeme
+                            (Lexeme
+                              (name "x")
+                              (ty null)))
+                          (target (reference "x"))))
+                      (rhs
+                        (Literal
+                          (content "1")
+                          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))
+        (Return
+          (ty (named "DEADEND"))
+          (expression
+            (Call
+              (partial false)
+              (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+              (valueTy (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+              (target
+                (Identifier
+                  (lexeme
+                    (Lexeme
+                      (name "f")
+                      (ty null)))
+                  (target (reference "f"))))
+              (arguments
+                (Argument
+                  (label null)
+                  (value
+                    (Literal
+                      (content "2")
+                      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))))

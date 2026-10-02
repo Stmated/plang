@@ -6,8 +6,6 @@ test-method: testAllFiles
 
 (Program
   (Expressions
-    (Comment " File which describes all the way that it should be possible to call things.")
-    (Comment " It is important that we can differ between a `fn call` and a `fn reference`")
     (Assignment
       (VariableDeclaration
         (Lexeme "Person")
@@ -119,6 +117,7 @@ test-method: testAllFiles
             (Assignment
               (Lexeme "firstName")
               (Literal "Kalle"))
+            (Comma)
             (Assignment
               (Lexeme "lastName")
               (Literal "Anka"))))))
@@ -134,6 +133,7 @@ test-method: testAllFiles
             (Assignment
               (Lexeme "firstName")
               (Literal "Joakim"))
+            (Comma)
             (Assignment
               (Lexeme "lastName")
               (Literal "Von Anka"))))))
@@ -161,9 +161,9 @@ test-method: testAllFiles
       (Paren
         (Expressions
           (Lexeme "office")
+          (Comma)
           (Lexeme "person1"))))
     (NoOp)
-    (Comment " Perhaps should require explicit \"global\" export somehow")
     (Lexeme "const")
     (Assignment
       (Lexeme "fnRef")

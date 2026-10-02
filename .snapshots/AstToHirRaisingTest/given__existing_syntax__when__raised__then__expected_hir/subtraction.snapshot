@@ -1,0 +1,27 @@
+dynamic-directory: true
+snapshot-name: subtraction
+snapshot-number: 0
+test-class: org.inf.hir.raising.AstToHirRaisingTest
+test-method: given__existing_syntax__when__raised__then__expected_hir
+
+(Program
+  (ty null)
+  (expressions
+    (Return
+      (ty (named "DEADEND"))
+      (expression
+        (BinaryOperation
+          (kind SUBTRACT)
+          (ty null)
+          (valueTy null)
+          (lhs
+            (Identifier
+              (lexeme
+                (Lexeme
+                  (name "f")
+                  (ty null)))
+              (target null)))
+          (rhs
+            (Literal
+              (content "1")
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))

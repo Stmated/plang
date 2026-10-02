@@ -1,0 +1,205 @@
+dynamic-directory: true
+snapshot-name: given__remaining_node_shapes__when__rendered__then__all_child_roles_are_preserved_0
+snapshot-number: 0
+test-class: org.inf.hir.util.ToStringTreeHirVisitorTest
+test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles_are_preserved
+
+(Program
+  (ty null)
+  (expressions
+    (Expressions
+      (generated false)
+      (ty null)
+      (children
+        (Array
+          (ty (named "VOID"))
+          (valueTy (array size=1 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
+          (elementType
+            (TyExpr
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+          (length
+            (Literal
+              (content "7")
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+          (elements
+            (Literal
+              (content "7")
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+        (ArrayAccess
+          (ty (named "VOID"))
+          (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+          (target
+            (Identifier
+              (lexeme
+                (Lexeme
+                  (name "name")
+                  (ty null)))
+              (target null)))
+          (accessor
+            (Literal
+              (content "7")
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+        (Labeling
+          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+          (lhs
+            (Lexeme
+              (name "name")
+              (ty null)))
+          (rhs
+            (Literal
+              (content "7")
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+        (Loop
+          (ty null)
+          (valueTy null)
+          (body
+            (Block
+              (ty (named "DEADEND"))
+              (children
+                (LoopBreak
+                  (ty (named "DEADEND"))
+                  (value
+                    (Literal
+                      (content "7")
+                      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))
+        (LoopContinue
+          (ty (named "DEADEND")))
+        (NewByBlock
+          (ty (named "VOID"))
+          (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+          (target
+            (Identifier
+              (lexeme
+                (Lexeme
+                  (name "name")
+                  (ty null)))
+              (target null)))
+          (allocator
+            (Identifier
+              (lexeme
+                (Lexeme
+                  (name "name")
+                  (ty null)))
+              (target null)))
+          (fields
+            (Assignment
+              (ty null)
+              (lhs
+                (Dec
+                  (mutability CONSTANT)
+                  (ty (named "VOID"))
+                  (lexeme
+                    (Lexeme
+                      (name "name")
+                      (ty null)))
+                  (valueType
+                    (TyExpr
+                      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))))
+              (rhs
+                (Literal
+                  (content "7")
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+        (NewByCtor
+          (ty null)
+          (valueTy null)
+          (target
+            (Identifier
+              (lexeme
+                (Lexeme
+                  (name "name")
+                  (ty null)))
+              (target null)))
+          (allocator null)
+          (arguments
+            (Tuple
+              (ty null)
+              (children))))
+        (Not
+          (ty (boolean))
+          (valueTy (boolean))
+          (expression
+            (Literal
+              (content "7")
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+        (Path
+          (ty null)
+          (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+          (elements
+            (Identifier
+              (lexeme
+                (Lexeme
+                  (name "name")
+                  (ty null)))
+              (target null))
+            (Lexeme
+              (name "name")
+              (ty null))))
+        (Range
+          (ty null)
+          (valueTy null)
+          (lower
+            (Literal
+              (content "7")
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+          (higher
+            (Literal
+              (content "9")
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+        (DeadEnd
+          (ty (named "DEADEND"))
+          (expression
+            (Return
+              (ty (named "DEADEND"))
+              (expression
+                (Literal
+                  (content "7")
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+        (Struct
+          (ty null)
+          (declarations
+            (Dec
+              (mutability CONSTANT)
+              (ty (named "VOID"))
+              (lexeme
+                (Lexeme
+                  (name "name")
+                  (ty null)))
+              (valueType
+                (TyExpr
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+        (Trait
+          (ty null)
+          (children
+            (Dec
+              (mutability CONSTANT)
+              (ty (named "VOID"))
+              (lexeme
+                (Lexeme
+                  (name "name")
+                  (ty null)))
+              (valueType
+                (TyExpr
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+        (Tuple
+          (ty null)
+          (children
+            (TupleKeyValue
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (key
+                (Identifier
+                  (lexeme
+                    (Lexeme
+                      (name "name")
+                      (ty null)))
+                  (target null)))
+              (value
+                (Literal
+                  (content "7")
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+            (TupleKeyValue
+              (ty null)
+              (key null)
+              (value
+                (Literal
+                  (content "7")
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))

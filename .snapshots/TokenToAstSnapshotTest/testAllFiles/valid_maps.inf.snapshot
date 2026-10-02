@@ -76,7 +76,6 @@ test-method: testAllFiles
             (Lexeme "agg")
             (Lexeme "D")))))
     (NoOp)
-    (Comment " = 4 + 2 + 5 = 11")
     (Assignment
       (VariableDeclaration
         (Lexeme "map")
@@ -86,12 +85,15 @@ test-method: testAllFiles
         (Assignment
           (Literal "A")
           (Literal "1"))
+        (Comma)
         (Assignment
           (Literal "B")
           (Literal "2"))
+        (Comma)
         (Assignment
           (Literal "C")
-          (Literal "3"))))
+          (Literal "3"))
+        (Comma)))
     (NoOp)
     (DotAccess
       (Lexeme "map")
@@ -100,5 +102,6 @@ test-method: testAllFiles
         (Paren
           (Expressions
             (Literal "D")
+            (Comma)
             (Literal "4")))))
     (NoOp)))

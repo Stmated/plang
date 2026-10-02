@@ -1,6 +1,7 @@
 package org.inf.ast;
 
 import org.inf.exceptions.UnexpectedTokenException;
+import org.inf.lexer.CommentFilteringIterator;
 import org.inf.lexer.Token;
 import org.inf.lexer.TokenType;
 import org.inf.ty.BitWidth;
@@ -29,7 +30,7 @@ public class TokenToAstRaising {
   private final List<Token> history = new ArrayList<>();
 
   public TokenToAstRaising(final Iterator<Token> iterator) {
-    this.iterator = iterator;
+    this.iterator = new CommentFilteringIterator(iterator);
   }
 
   public Ast.Program parse() {
@@ -51,6 +52,18 @@ public class TokenToAstRaising {
 
   /// ASSIGN
   private Ast.Expression parseLevel0() {
+
+    final var first = next();
+    if (first == null) {
+      return null;
+    }
+    if (first.type() == TokenType.COMMA) {
+      return new Ast.Comma();
+    }
+    if (first.type() == TokenType.SEMI_COLON || first.type() == TokenType.END) {
+      return new Ast.NoOp();
+    }
+    queuedTokens.push(first);
 
     final var lhs = parseLevel1();
     final var token = next();
@@ -535,7 +548,6 @@ public class TokenToAstRaising {
         case IMPORT -> parseImport();
         case BECOME -> parseBecome();
         case META -> parseCompTime();
-        case COMMENT_SINGLE_LINE, COMMENT_MULTI_LINE -> new Ast.Comment(token.content());
         case YIELD -> parseYield();
         default -> throw new IllegalArgumentException("Unknown token '%s'".formatted(token));
       };
@@ -766,12 +778,6 @@ public class TokenToAstRaising {
 
         if (matchesOneOf(token, endedBy)) {
           break;
-        }
-
-        if (token.type() == TokenType.COMMA) {
-
-          // Skip this one, it is a valid delimiter. Go to the next item.
-          continue;
         }
 
         // Let's stay on our current token.

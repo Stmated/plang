@@ -1,0 +1,54 @@
+dynamic-directory: true
+snapshot-name: nested_calls
+snapshot-number: 0
+test-class: org.inf.hir.util.ToStringTreeHirVisitorTest
+test-method: given__source__when__hir_rendered__then__structural_snapshot
+
+(Program
+  (ty null)
+  (expressions
+    (Return
+      (ty (named "DEADEND"))
+      (expression
+        (Call
+          (partial false)
+          (ty null)
+          (valueTy null)
+          (target
+            (Identifier
+              (lexeme
+                (Lexeme
+                  (name "f")
+                  (ty null)))
+              (target null)))
+          (arguments
+            (Argument
+              (label null)
+              (value
+                (Call
+                  (partial false)
+                  (ty null)
+                  (valueTy null)
+                  (target
+                    (Identifier
+                      (lexeme
+                        (Lexeme
+                          (name "g")
+                          (ty null)))
+                      (target null)))
+                  (arguments
+                    (Argument
+                      (label null)
+                      (value
+                        (Literal
+                          (content "1")
+                          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))
+            (Argument
+              (label
+                (Lexeme
+                  (name "label")
+                  (ty null)))
+              (value
+                (Literal
+                  (content "2")
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))

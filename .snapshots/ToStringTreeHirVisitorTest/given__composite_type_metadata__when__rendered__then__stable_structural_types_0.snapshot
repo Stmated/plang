@@ -1,0 +1,40 @@
+dynamic-directory: true
+snapshot-name: given__composite_type_metadata__when__rendered__then__stable_structural_types_0
+snapshot-number: 0
+test-class: org.inf.hir.util.ToStringTreeHirVisitorTest
+test-method: given__composite_type_metadata__when__rendered__then__stable_structural_types
+
+(Expressions
+  (generated false)
+  (ty null)
+  (children
+    (TyExpr
+      (ty (named "UNKNOWN")))
+    (TyExpr
+      (ty (identifier "Named")))
+    (TyExpr
+      (ty (opaque)))
+    (TyExpr
+      (ty (number INTEGER width=32 explicit=false signed=true radix=2 flags=[])))
+    (TyExpr
+      (ty (number FLOAT width=32 explicit=false signed=true radix=10 flags=[] precision=7)))
+    (TyExpr
+      (ty (number DECIMAL width=128 explicit=false signed=true radix=10 flags=[] scale=10)))
+    (TyExpr
+      (ty (boolean)))
+    (TyExpr
+      (ty (string)))
+    (TyExpr
+      (ty (array size=null (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+    (TyExpr
+      (ty (array size=0 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+    (TyExpr
+      (ty (uninitialized (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+    (TyExpr
+      (ty (explicit-pointer CPU (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+    (TyExpr
+      (ty (union (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]) (string))))
+    (TyExpr
+      (ty (function vararg=true (parameters ("p" (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))) (returns (named "VOID")))))
+    (TyExpr
+      (ty (struct ("field" (string)))))))

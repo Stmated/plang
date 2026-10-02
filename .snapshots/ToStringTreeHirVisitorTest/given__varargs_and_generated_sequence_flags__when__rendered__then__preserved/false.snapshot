@@ -1,0 +1,37 @@
+dynamic-directory: true
+snapshot-name: false
+snapshot-number: 0
+test-class: org.inf.hir.util.ToStringTreeHirVisitorTest
+test-method: given__varargs_and_generated_sequence_flags__when__rendered__then__preserved
+
+(Expressions
+  (generated false)
+  (ty null)
+  (children
+    (Function
+      (signature
+        (FunctionSignature
+          (vararg false)
+          (ty null)
+          (parameters
+            (Parameter
+              (vararg false)
+              (ty (named "VOID"))
+              (lexeme
+                (Lexeme
+                  (name "p")
+                  (ty null)))
+              (valueType
+                (TyExpr
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))))
+          (returnType null)))
+      (body
+        (Return
+          (ty (named "DEADEND"))
+          (expression
+            (Identifier
+              (lexeme
+                (Lexeme
+                  (name "p")
+                  (ty null)))
+              (target (reference "p")))))))))

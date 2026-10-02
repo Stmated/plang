@@ -1,0 +1,14 @@
+dynamic-directory: true
+snapshot-name: given__arithmetic_argument__when__parsed__then__operators_belong_to_argument_0
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: given__arithmetic_argument__when__parsed__then__operators_belong_to_argument
+
+(Program
+  (Expressions
+    (Juxtaposition
+      (Lexeme "f")
+      (BinaryOperation ADD
+        (Lexeme "x")
+        (Lexeme "y"))
+      (Lexeme "z"))))

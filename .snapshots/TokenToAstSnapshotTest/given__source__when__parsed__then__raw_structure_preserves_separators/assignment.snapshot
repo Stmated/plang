@@ -1,0 +1,20 @@
+dynamic-directory: true
+snapshot-name: assignment
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: given__source__when__parsed__then__raw_structure_preserves_separators
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "r")
+        Immutable
+        false)
+      (Lexeme "f"))
+    (BinaryOperation ADD
+      (Lexeme "x")
+      (Lexeme "y"))
+    (Comma)
+    (Lexeme "z")
+    (NoOp)))

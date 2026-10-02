@@ -1,0 +1,33 @@
+dynamic-directory: true
+snapshot-name: true
+snapshot-number: 0
+test-class: org.inf.hir.util.ToStringTreeHirVisitorTest
+test-method: given__call_flags_and_labels__when__rendered__then__preserved
+
+(Call
+  (partial true)
+  (ty null)
+  (valueTy null)
+  (target
+    (Identifier
+      (lexeme
+        (Lexeme
+          (name "f")
+          (ty null)))
+      (target null)))
+  (arguments
+    (Argument
+      (label
+        (Lexeme
+          (name "label")
+          (ty null)))
+      (value
+        (Literal
+          (content "1")
+          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+    (Argument
+      (label null)
+      (value
+        (Literal
+          (content "2")
+          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))

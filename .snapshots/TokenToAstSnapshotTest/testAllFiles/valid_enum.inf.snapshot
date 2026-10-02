@@ -6,11 +6,6 @@ test-method: testAllFiles
 
 (Program
   (Expressions
-    (Comment " uint8: Backed by a number, kept in runtime")
-    (Comment " symbol: Backed by compile-time symbol, removed in runtime")
-    (Comment " val Enum = type { A: uint8 | B: $T | C: symbol };")
-    (Comment " B's type will not be comparable to other uint8 -- because the type is nominal.")
-    (Comment " C will be a compile-time symbol that only works in static situations and is lost at runtime.")
     (Assignment
       (VariableDeclaration
         (Lexeme "Enum")
@@ -29,7 +24,6 @@ test-method: testAllFiles
         (Lexeme "C"))
       (Lexeme "symbol"))
     (NoOp)
-    (Comment " They must all be callable in this fashion:")
     (Assignment
       (VariableDeclaration
         (Lexeme "e1")
@@ -43,7 +37,6 @@ test-method: testAllFiles
         (Block
           (Literal "1"))))
     (NoOp)
-    (Comment " NOTE: Is this ugly? We do \"alloc\" something by giving value (?)")
     (Assignment
       (VariableDeclaration
         (Lexeme "e2")
@@ -65,6 +58,7 @@ test-method: testAllFiles
             (Lexeme "println")
             (Paren
               (Lexeme "e2"))))
+        (Comma)
         (Callable
           (DotAccess
             (Lexeme "Enum")
@@ -73,6 +67,7 @@ test-method: testAllFiles
             (Lexeme "println")
             (Paren
               (Lexeme "e2"))))
+        (Comma)
         (Callable
           (DotAccess
             (Lexeme "Enum")
@@ -80,4 +75,5 @@ test-method: testAllFiles
           (PostfixExpression
             (Lexeme "println")
             (Paren
-              (Literal "Matched symbol"))))))))
+              (Literal "Matched symbol"))))
+        (Comma)))))

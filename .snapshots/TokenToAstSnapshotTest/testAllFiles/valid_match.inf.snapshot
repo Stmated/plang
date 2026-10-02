@@ -18,18 +18,21 @@ test-method: testAllFiles
           (Callable
             (Literal "1")
             (Literal "Something"))
+          (Comma)
           (Callable
             (Paren
               (Expressions
                 (Labeling
                   (Lexeme "x")
                   (Lexeme "uint32"))
+                (Comma)
                 (Labeling
                   (Lexeme "y")
                   (Lexeme "uint32"))))
             (BinaryOperation ADD
               (Lexeme "x")
               (Lexeme "y")))
+          (Comma)
           (Callable
             (Literal "a")
             (Block
@@ -37,38 +40,49 @@ test-method: testAllFiles
                 (Return
                   (Literal "A"))
                 (NoOp))))
+          (Comma)
           (Callable
             (Paren
               (Expressions
                 (Literal "10")
+                (Comma)
                 (Rest)))
             (Literal "First type item is ten"))
+          (Comma)
           (Callable
             (Range
               (Literal "20")
               (Literal "30"))
             (Literal "Semi-big"))
+          (Comma)
           (Callable
             (Bracket
               (Literal "10")
+              (Comma)
               (Literal "20"))
             (Literal "Array of 10 & 20"))
+          (Comma)
           (Callable
             (Bracket
               (Literal "10")
+              (Comma)
               (VariableSink)
+              (Comma)
               (Literal "20"))
             (Literal "Array of 10 & unknown & 20"))
+          (Comma)
           (Callable
             (Bracket
               (Literal "10")
+              (Comma)
               (Labeling
                 (Lexeme "middle")
                 (Rest))
+              (Comma)
               (Literal "20"))
             (Literal "Array of 10 & something then at the end 20"))
+          (Comma)
           (Callable
             (VariableSink)
             (Literal "what?")))))
-    (NoOp)
-    (Comment " type of \"v\" should be: String | uint32")))
+    (NoOp)))

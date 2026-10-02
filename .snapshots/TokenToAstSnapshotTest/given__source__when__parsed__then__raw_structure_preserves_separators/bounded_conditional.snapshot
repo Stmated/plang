@@ -1,0 +1,22 @@
+dynamic-directory: true
+snapshot-name: bounded_conditional
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: given__source__when__parsed__then__raw_structure_preserves_separators
+
+(Program
+  (Expressions
+    (Conditional
+      (Paren
+        (Expressions
+          (Lexeme "p")
+          (Lexeme "x")))
+      (Then
+        (Paren
+          (Expressions
+            (Lexeme "f")
+            (Lexeme "y"))))
+      (Block
+        (Expressions
+          (Lexeme "g")
+          (Lexeme "z"))))))

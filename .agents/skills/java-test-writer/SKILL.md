@@ -6,6 +6,7 @@ description: Use when writing Java test cases, including for the Inf compiler wr
 # Test writer
 
 * Prefer parameterized tests when testing multiple inputs and outputs for the same method.
+  * Always add newline after each parameterized test case, such as between different values sent in as @ValueSource.  
 * Prefer using `assertAll` if there are several assertions one after another that do not have dependencies on each other.
 * Prefer using `assertEquals` for comparing expected and actual values, rather than `assertTrue`
 
@@ -23,6 +24,8 @@ If there is a need to create a test class that is not limited to the testing of 
 
 ## Snapshot testing
 Strongly prefer using snapshot testing for complex outputs, to assert toString-able structures.
+But do not introduce snapshot testing if other assertions in the test already cover the same need for verification.
+The main goal of snapshot testing is only to avoid complex comparison of deep structures of result data.
 
 ```java
 import org.inf.ast.util.SnapshotTestUtils;

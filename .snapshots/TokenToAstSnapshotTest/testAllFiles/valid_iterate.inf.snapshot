@@ -13,7 +13,9 @@ test-method: testAllFiles
         false)
       (Bracket
         (Literal "1")
+        (Comma)
         (Literal "2")
+        (Comma)
         (Literal "3")))
     (NoOp)
     (LoopDoWhile
@@ -138,6 +140,7 @@ test-method: testAllFiles
               Mutable
               false)
             (Literal "0"))
+          (Comma)
           (Assignment
             (Lexeme "n")
             (Lexeme "i"))

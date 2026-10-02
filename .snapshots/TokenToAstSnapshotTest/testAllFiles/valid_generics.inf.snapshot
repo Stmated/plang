@@ -21,6 +21,7 @@ test-method: testAllFiles
                   (Expressions
                     (TypePlaceholder
                       (Lexeme "T1"))
+                    (Comma)
                     (TypePlaceholder
                       (Lexeme "T2"))))))
             (TypePlaceholder
@@ -64,6 +65,7 @@ test-method: testAllFiles
       (Paren
         (Expressions
           (Literal "1")
+          (Comma)
           (Literal "2"))))
     (NoOp)
     (PostfixExpression
@@ -76,6 +78,7 @@ test-method: testAllFiles
       (Paren
         (Expressions
           (Literal "1")
+          (Comma)
           (Literal "2"))))
     (NoOp)
     (PostfixExpression
@@ -83,6 +86,7 @@ test-method: testAllFiles
       (Paren
         (Expressions
           (Lexeme "uint8")
+          (Comma)
           (Assignment
             (TypePlaceholder
               (Lexeme "T3"))
@@ -91,6 +95,7 @@ test-method: testAllFiles
       (Paren
         (Expressions
           (Literal "1")
+          (Comma)
           (Literal "2"))))
     (NoOp)
     (Assignment
@@ -129,10 +134,10 @@ test-method: testAllFiles
             (Assignment
               (Lexeme "x")
               (Literal "1"))
+            (Comma)
             (Assignment
               (Lexeme "y")
               (Literal "2"))))))
-    (Comment " Meta/comptime referencing")
     (Assignment
       (VariableDeclaration
         (Lexeme "fn5")
@@ -149,6 +154,7 @@ test-method: testAllFiles
                     (Labeling
                       (Lexeme "v1")
                       (Lexeme "Add"))
+                    (Comma)
                     (Labeling
                       (Lexeme "v2")
                       (TypePlaceholder
@@ -177,7 +183,6 @@ test-method: testAllFiles
                   (Lexeme "v2"))))
             (NoOp)))))
     (NoOp)
-    (Comment " Higher Kind Types. Sort of?")
     (Assignment
       (VariableDeclaration
         (Lexeme "fn2")
@@ -208,8 +213,7 @@ test-method: testAllFiles
               (Labeling
                 (Lexeme "T2")
                 (Lexeme "Number")))))
-        (Block
-          (Comment " ... convert iterable of numbers to one number"))))
+        (Block)))
     (NoOp)
     (Assignment
       (VariableDeclaration
@@ -236,8 +240,7 @@ test-method: testAllFiles
             (Labeling
               (Lexeme "T2")
               (Lexeme "TT"))))
-        (Block
-          (Comment " ... convert iterable of numbers to one number"))))
+        (Block)))
     (NoOp)
     (Assignment
       (VariableDeclaration
@@ -260,10 +263,8 @@ test-method: testAllFiles
                         (Lexeme "TT"))
                       (Lexeme "Number")))))))
           (Lexeme "TT"))
-        (Block
-          (Comment " ... convert iterable of numbers to one number"))))
+        (Block)))
     (NoOp)
-    (Comment " Alternative syntax, using \"infer\" instead of $ to mean placeholder generic declaration")
     (Assignment
       (VariableDeclaration
         (Lexeme "fn2")
@@ -294,10 +295,8 @@ test-method: testAllFiles
               (Labeling
                 (Lexeme "T2")
                 (Lexeme "Number")))))
-        (Block
-          (Comment " ... convert iterable of numbers to one number"))))
+        (Block)))
     (NoOp)
-    (Comment " Alternative syntax:")
     (Assignment
       (VariableDeclaration
         (Lexeme "fn4")
@@ -319,8 +318,7 @@ test-method: testAllFiles
                         (Lexeme "TT"))
                       (Lexeme "Number")))))))
           (Lexeme "TT"))
-        (Block
-          (Comment " ... convert iterable of numbers to one number"))))
+        (Block)))
     (NoOp)
     (Assignment
       (VariableDeclaration
@@ -349,6 +347,5 @@ test-method: testAllFiles
           (StaticAccess
             (Lexeme "Type")
             (Lexeme "TT")))
-        (Block
-          (Comment " ... convert iterable of numbers to one number"))))
+        (Block)))
     (NoOp)))

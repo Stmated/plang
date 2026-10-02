@@ -1,5 +1,7 @@
 package org.inf.hir.raising;
 
+import de.skuzzle.test.snapshots.Snapshot;
+import de.skuzzle.test.snapshots.junit5.EnableSnapshotTests;
 import org.inf.Inf;
 import org.inf.ast.Ast;
 import org.inf.ast.Ast.BinaryOperation;
@@ -14,12 +16,35 @@ import org.inf.hir.Hir;
 import org.inf.hir.Hir.Call;
 import org.inf.hir.Hir.Function;
 import org.inf.hir.Hir.Program;
+import org.inf.ast.util.SnapshotTestUtils;
+import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.util.MachineTarget;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
+@EnableSnapshotTests
+@Execution(ExecutionMode.SAME_THREAD)
 class AstToHirRaisingTest {
+
+  @ParameterizedTest
+  @CsvSource(value = {
+    "function_reference | f",
+    "explicit_call | f(x, y)",
+    "adjacent_expressions | if (true) 1 2",
+    "subtraction | f - 1",
+    "indexing | f[0]"
+  }, delimiter = '|')
+  void given__existing_syntax__when__raised__then__expected_hir(
+    final String name, final String code, final TestInfo testInfo, final Snapshot snapshot
+  ) {
+    SnapshotTestUtils.assertMatches(testInfo, snapshot, name, new ToStringTreeHirVisitor().render(Inf.codeToHir(code)));
+  }
 
   @Test
   void lowerConditional() {

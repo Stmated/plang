@@ -1,0 +1,28 @@
+dynamic-directory: true
+snapshot-name: for_boundary
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: given__source__when__parsed__then__raw_structure_preserves_separators
+
+(Program
+  (Expressions
+    (LoopFor
+      (Paren
+        (Expressions
+          (Assignment
+            (VariableDeclaration
+              (Lexeme "i")
+              Mutable
+              false)
+            (Literal "0"))
+          (NoOp)
+          (BinaryOperation LT
+            (Lexeme "i")
+            (Literal "3"))
+          (NoOp)
+          (BinaryOperation ADDITION_ASSIGNMENT
+            (Lexeme "i")
+            (Literal "1"))))
+      (Lexeme "f"))
+    (Lexeme "x")
+    (NoOp)))

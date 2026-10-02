@@ -7,15 +7,17 @@ description: Use this skill for changes to the Inf compiler written in Java.
 
 * Make the smallest change that addresses the task.
 * Use existing tests where possible.
+* Always ask me clarifying questions rather than making assumptions about the task.
+* Always attempt to investigate and plan first, then summarize the plan and ask for confirmation before implementing.
 
 ## Compiler pipeline
 Consider the compiler pipeline, including:
 * lexing,
 * parsing, 
-* Parse → AST,
-* AST → HIR raising,
+* Parse → AST (Abstract Syntax Tree),
+* AST → HIR (High Intermediate Representation) raising,
 * HIR → THIR raising (typed HIR, a "pseudo-step" inside HIR raising)
-* THIR → MIR lowering,
+* THIR → MIR (Middle-level Intermediate Representation) lowering,
 * MIR -> LLVM lowering,
 * Execution.
 
@@ -27,8 +29,33 @@ Expect the programmer to not modify returned arrays/collections, rather than dev
 When developing a new feature, avoid setting default values that are too specific.
 It is better to let a caller decide what the default value should be if nothing is found by the feature.
 
+For an enum, rather than having a helper method like `enum.isXorY()`, prefer adding a public boolean `this == Enum.X || this == Enum.Y` inside `Enum`.
+
+Prefer modern Java comments in Markdown format, inside `///` comments.
+Also prefer backtick code sections over `{@code some.code()}`.
+
 ## Traversing AST, HIR, and MIR nodes
 Never use custom logic for traversing AST, HIR or MIR nodes, always use the existing visitor pattern. `XyzVisitor` interface and node `#visit` method.
+
+## AST
+The AST should be as abstract and agnostic as possible.
+Its purpose is to group a lexed stream of words into a tree structure that explains the code structure rather than being an accurate representation of the Inf code.
+It is rather up to the HIR stage to represent the code in its logical groups/aggregations.
+
+## HIR
+HIR and THIR are the same tree node classes (for now),
+where the first is the High-Level Intermediate Representation, and second is Typed High-Level Intermediate Representation.
+
+The HIR will represent things as the logical structures of something, such as a predicate, loop, or lambda function.
+
+## Implementing a new feature
+It is important to put the changes in the correct compiler pipeline step.
+
+It is important to prefer implementing a new transformer/pass class to make an isolated change for a feature, rather than adding logic to a main lowerer/raiser class.
+The more isolated and separated a feature can be made, so it does its limited job in its own pass over a set of tree nodes, the better.
+
+If the feature is a new language feature that needs explaining, then create a new `*.md` file in `/docs` to document it.
+Be sure to use the `docs-writing` skill to write the documentation.
 
 ## Language references
 See `*.inf` files in `src/test/resources/inf` for examples of the Inf language.

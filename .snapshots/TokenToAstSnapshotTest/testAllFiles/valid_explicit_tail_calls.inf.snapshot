@@ -6,9 +6,6 @@ test-method: testAllFiles
 
 (Program
   (Expressions
-    (Comment " Tail Call Elimination")
-    (Comment " \"local\" will be dropped BEFORE calling fn \"recursively\"")
-    (Comment " Stack will simply be re-used, effectively turning the code from recursion -> loop")
     (Assignment
       (VariableDeclaration
         (Lexeme "fn")

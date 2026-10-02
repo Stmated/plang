@@ -21,7 +21,9 @@ test-method: testAllFiles
                 (Paren
                   (Expressions
                     (Lexeme "String")
+                    (Comma)
                     (Lexeme "String")))
+                (Comma)
                 (Lexeme "Error")))))
         (Block
           (Expressions
@@ -34,6 +36,7 @@ test-method: testAllFiles
                     (Paren
                       (Expressions
                         (Literal "Hello")
+                        (Comma)
                         (Literal "World")))))))
             (NoOp)))))
     (NoOp)
@@ -60,6 +63,7 @@ test-method: testAllFiles
               (Paren
                 (Expressions
                   (Lexeme "v1")
+                  (Comma)
                   (Lexeme "v2"))))
             (Paren
               (BinaryOperation ADD
@@ -67,6 +71,7 @@ test-method: testAllFiles
                 (BinaryOperation ADD
                   (Literal ", ")
                   (Lexeme "v2")))))
+          (Comma)
           (Callable
             (PostfixExpression
               (Lexeme "Error")
@@ -74,7 +79,8 @@ test-method: testAllFiles
                 (Lexeme "v")))
             (DotAccess
               (Lexeme "v")
-              (Lexeme "reason"))))))
+              (Lexeme "reason")))
+          (Comma))))
     (NoOp)
     (Assignment
       (VariableDeclaration
@@ -92,11 +98,13 @@ test-method: testAllFiles
                 (BinaryOperation ADD
                   (Literal ", ")
                   (Lexeme "other")))))
+          (Comma)
           (Callable
             (Lexeme "Error")
             (DotAccess
               (Lexeme "it")
-              (Lexeme "reason"))))))
+              (Lexeme "reason")))
+          (Comma))))
     (NoOp)
     (Assignment
       (VariableDeclaration
@@ -113,7 +121,9 @@ test-method: testAllFiles
                 (Paren
                   (Expressions
                     (Lexeme "String")
+                    (Comma)
                     (Lexeme "String")))
+                (Comma)
                 (Lexeme "Error")))))
         (Block
           (Expressions

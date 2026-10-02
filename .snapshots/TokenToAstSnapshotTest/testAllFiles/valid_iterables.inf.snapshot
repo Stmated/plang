@@ -13,7 +13,9 @@ test-method: testAllFiles
         false)
       (Bracket
         (Literal "1")
+        (Comma)
         (Literal "2")
+        (Comma)
         (Literal "3")))
     (NoOp)
     (Assignment
@@ -23,11 +25,11 @@ test-method: testAllFiles
         false)
       (Bracket
         (Literal "1")
+        (Comma)
         (Literal "2")
+        (Comma)
         (Literal "3")))
     (NoOp)
-    (Comment " Quick creation without property keys should go to field \"value\"")
-    (Comment " If there are several entries without property keys, it is expected that \"value\" is an array")
     (Assignment
       (VariableDeclaration
         (Lexeme "array3")
@@ -39,7 +41,9 @@ test-method: testAllFiles
         (Block
           (Expressions
             (Literal "1")
+            (Comma)
             (Literal "2")
+            (Comma)
             (Literal "3")))))
     (NoOp)
     (Assignment
@@ -55,8 +59,11 @@ test-method: testAllFiles
             (Assignment
               (Lexeme "initial")
               (Literal "6"))
+            (Comma)
             (Literal "1")
+            (Comma)
             (Literal "2")
+            (Comma)
             (Literal "3")))))
     (NoOp)
     (Assignment
@@ -75,11 +82,13 @@ test-method: testAllFiles
             (Assignment
               (Lexeme "initial")
               (Literal "6"))
+            (Comma)
             (Literal "1")
+            (Comma)
             (Literal "2")
+            (Comma)
             (Literal "3")))))
     (NoOp)
-    (Comment " Vec = pointer, capacity, length")
     (Assignment
       (VariableDeclaration
         (Lexeme "vec1")
@@ -91,10 +100,11 @@ test-method: testAllFiles
         (Block
           (Expressions
             (Literal "1")
+            (Comma)
             (Literal "2")
+            (Comma)
             (Literal "3")))))
     (NoOp)
-    (Comment " Variable-sized array where memory is consecutive")
     (Assignment
       (VariableDeclaration
         (Lexeme "list1")
@@ -106,11 +116,11 @@ test-method: testAllFiles
         (Block
           (Expressions
             (Literal "1")
+            (Comma)
             (Literal "2")
             (NoOp)
             (Literal "3")))))
     (NoOp)
-    (Comment " Variable-sized Linked array where memory is not consecutive")
     (Assignment
       (VariableDeclaration
         (Lexeme "array1_0")
@@ -133,7 +143,6 @@ test-method: testAllFiles
             (Literal "0")
             (Literal "1")))))
     (NoOp)
-    (Comment " Slice is a view into original -- mutable or immutable?")
     (Assignment
       (VariableDeclaration
         (Lexeme "array1_filtered1")
@@ -148,8 +157,6 @@ test-method: testAllFiles
               (Lexeme "v")
               (Literal "2"))))))
     (NoOp)
-    (Comment " \"it\" is the default implicit name for single-argument lambdas")
-    (Comment " (which is not supported yet, removed it because of a lack of good ways to parse it)")
     (Assignment
       (VariableDeclaration
         (Lexeme "array1_filtered2")
@@ -178,6 +185,7 @@ test-method: testAllFiles
               (Paren
                 (Expressions
                   (Lexeme "it")
+                  (Comma)
                   (Lexeme "other")))
               (DotAccess
                 (Lexeme "it")

@@ -6,7 +6,6 @@ test-method: testAllFiles
 
 (Program
   (Expressions
-    (Comment " Below will be a 'Generator<uint32>' which will implement 'Iterable<uint32>'")
     (Assignment
       (VariableDeclaration
         (Lexeme "generator")
@@ -67,8 +66,4 @@ test-method: testAllFiles
                     (Paren
                       (Literal "No-cost iterable: ${v}"))))
                 (NoOp)))))))
-    (NoOp)
-    (Comment " Should it be possible somehow to have \"labels\" for what to yield back to")
-    (Comment " How could we make this typesafe and call-safe, to *ensure* someone is listening to the yielded data?")
-    (Comment " Or is that just stupid and it should be up to each caller to propagate the data further up?")
-    (Comment " Or is this something that can be used together with the context parameters to point to what to send to?")))
+    (NoOp)))

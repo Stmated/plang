@@ -6,7 +6,6 @@ test-method: testAllFiles
 
 (Program
   (Expressions
-    (Comment " Valid when parsing, but should be invalid when validated (or should it?)")
     (Assignment
       (VariableDeclaration
         (Lexeme "Foo")

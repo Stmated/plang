@@ -1,0 +1,26 @@
+dynamic-directory: true
+snapshot-name: indexing
+snapshot-number: 0
+test-class: org.inf.hir.raising.AstToHirRaisingTest
+test-method: given__existing_syntax__when__raised__then__expected_hir
+
+(Program
+  (ty null)
+  (expressions
+    (Return
+      (ty (named "DEADEND"))
+      (expression
+        (ArrayAccess
+          (ty null)
+          (valueTy null)
+          (target
+            (Identifier
+              (lexeme
+                (Lexeme
+                  (name "f")
+                  (ty null)))
+              (target null)))
+          (accessor
+            (Literal
+              (content "0")
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))

@@ -42,7 +42,6 @@ test-method: testAllFiles
           (ImportPathIdentifier
             (Lexeme "b")))))
     (NoOp)
-    (Comment " Usable as z1.Something")
     (Import
       (ImportPathAlias
         (Lexeme "z2")
@@ -54,7 +53,6 @@ test-method: testAllFiles
               (Lexeme "b"))
             (ImportPathWildcard)))))
     (NoOp)
-    (Comment " Same target as above, but z2")
     (Import
       (ImportPath
         (ImportPathIdentifier
@@ -64,7 +62,6 @@ test-method: testAllFiles
             (Lexeme "b"))
           (ImportPathWildcard))))
     (NoOp)
-    (Comment " Usable as Something")
     (Import
       (ImportPath
         (ImportPathIdentifier
@@ -75,7 +72,6 @@ test-method: testAllFiles
           (ImportPathIdentifier
             (Lexeme "Something")))))
     (NoOp)
-    (Comment " Usable as Something")
     (Import
       (ImportPath
         (ImportPathIdentifier
@@ -83,7 +79,6 @@ test-method: testAllFiles
         (ImportPathIdentifier
           (Lexeme "b"))))
     (NoOp)
-    (Comment " Usable as b.Something")
     (Import
       (ImportPath
         (ImportPathIdentifier
@@ -99,17 +94,14 @@ test-method: testAllFiles
             (ImportPathIdentifier
               (Lexeme "function"))))))
     (NoOp)
-    (Comment " a.b.{self} is same as above: b.Something")
     (Export
       (Lexeme "z2")
       false)
     (NoOp)
-    (Comment " exported as 'z2'")
     (Export
       (Lexeme "y")
       true)
     (NoOp)
-    (Comment " exported as 'default'")
     (Export
       (Assignment
         (VariableDeclaration
@@ -119,7 +111,6 @@ test-method: testAllFiles
         (Literal "10"))
       false)
     (NoOp)
-    (Comment " exported as 'a'")
     (Export
       (Assignment
         (VariableDeclaration
@@ -129,7 +120,6 @@ test-method: testAllFiles
         (Literal "20"))
       true)
     (NoOp)
-    (Comment " exported as 'default'")
     (Export
       (Import
         (ImportPath
@@ -142,7 +132,6 @@ test-method: testAllFiles
               (Lexeme "c")))))
       false)
     (NoOp)
-    (Comment " exported as 'default'")
     (Export
       (Import
         (ImportPathAlias
@@ -157,7 +146,6 @@ test-method: testAllFiles
                 (Lexeme "c"))))))
       false)
     (NoOp)
-    (Comment " exported as 'd'")
     (Export
       (Import
         (ImportPathAlias
@@ -172,13 +160,14 @@ test-method: testAllFiles
                 (Lexeme "c"))))))
       true)
     (NoOp)
-    (Comment " exported as 'default'")
     (Export
       (PostfixExpression
         (Lexeme "group")
         (Bracket
           (Lexeme "Struct")
+          (Comma)
           (Lexeme "StructImpl1")
+          (Comma)
           (Lexeme "StructImpl2")))
       false)
     (NoOp)))

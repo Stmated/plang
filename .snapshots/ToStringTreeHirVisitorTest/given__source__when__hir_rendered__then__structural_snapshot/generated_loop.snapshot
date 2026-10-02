@@ -1,0 +1,88 @@
+dynamic-directory: true
+snapshot-name: generated_loop
+snapshot-number: 0
+test-class: org.inf.hir.util.ToStringTreeHirVisitorTest
+test-method: given__source__when__hir_rendered__then__structural_snapshot
+
+(Program
+  (ty null)
+  (expressions
+    (Return
+      (ty (named "DEADEND"))
+      (expression
+        (Expressions
+          (generated true)
+          (ty null)
+          (children
+            (Assignment
+              (ty null)
+              (lhs
+                (Dec
+                  (mutability MUTABLE)
+                  (ty (named "VOID"))
+                  (lexeme
+                    (Lexeme
+                      (name "i")
+                      (ty null)))
+                  (valueType
+                    (TyExpr
+                      (ty (named "INFER"))))))
+              (rhs
+                (Literal
+                  (content "0")
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+            (Loop
+              (ty null)
+              (valueTy null)
+              (body
+                (Conditional
+                  (ty null)
+                  (valueTy null)
+                  (predicate
+                    (BinaryOperation
+                      (kind LT)
+                      (ty null)
+                      (valueTy null)
+                      (lhs
+                        (Identifier
+                          (lexeme
+                            (Lexeme
+                              (name "i")
+                              (ty null)))
+                          (target null)))
+                      (rhs
+                        (Literal
+                          (content "3")
+                          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))))
+                  (pass
+                    (Expressions
+                      (generated true)
+                      (ty null)
+                      (children
+                        (Block
+                          (ty null)
+                          (children
+                            (Identifier
+                              (lexeme
+                                (Lexeme
+                                  (name "continue")
+                                  (ty null)))
+                              (target null))))
+                        (CompoundAssignment
+                          (kind ADD)
+                          (ty null)
+                          (target
+                            (Identifier
+                              (lexeme
+                                (Lexeme
+                                  (name "i")
+                                  (ty null)))
+                              (target null)))
+                          (rhs
+                            (Literal
+                              (content "1")
+                              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))))))
+                  (fail
+                    (LoopBreak
+                      (ty (named "DEADEND"))
+                      (value null))))))))))))

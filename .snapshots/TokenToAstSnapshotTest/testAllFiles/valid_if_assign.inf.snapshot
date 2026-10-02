@@ -17,6 +17,7 @@ test-method: testAllFiles
             (PostfixExpression
               (Lexeme "load")
               (Paren)))
+          (Comma)
           (BinaryOperation AND
             (BinaryOperation LT
               (Assignment
@@ -39,6 +40,7 @@ test-method: testAllFiles
                 (Lexeme "b")
                 (Lexeme "value"))
               (Literal "5")))
+          (Comma)
           (Assignment
             (VariableDeclaration
               (Lexeme "c")
@@ -47,7 +49,5 @@ test-method: testAllFiles
             (DotAccess
               (Lexeme "a")
               (Lexeme "foo")))))
-      (Block
-        (Comment " All operations succeeded, all values will be unwrapped away from \"Result\" -> Ok(T)"))
-      (Block
-        (Comment " A, B, C is an \"Ok\" or \"Error\" of tagged type (enum) \"Result\" or something else")))))
+      (Block)
+      (Block))))

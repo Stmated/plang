@@ -33,6 +33,7 @@ test-method: testAllFiles
         (Block
           (Expressions
             (Literal "10")
+            (Comma)
             (Literal "20")))))
     (NoOp)
     (Assignment
@@ -48,6 +49,7 @@ test-method: testAllFiles
             (Assignment
               (Lexeme "y")
               (Literal "20"))
+            (Comma)
             (Assignment
               (Lexeme "x")
               (Literal "10"))))))
@@ -62,6 +64,7 @@ test-method: testAllFiles
           (Assignment
             (Lexeme "x")
             (Literal "10"))
+          (Comma)
           (Assignment
             (Lexeme "y")
             (Literal "20")))))
@@ -96,8 +99,6 @@ test-method: testAllFiles
                     (Lexeme "y")))))
             (NoOp)))))
     (NoOp)
-    (Comment " Both should work, because type declarations are interfaces.")
-    (Comment " And interfaces use duck-typing, so as long as the declarations overlap, they are valid")
     (Assignment
       (VariableDeclaration
         (Lexeme "res1")

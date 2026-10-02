@@ -1,0 +1,9 @@
+val sum = (a: int, b: int) => a + b;
+val twice = (x: int) => x * 2;
+val answer = twice sum 10, 11;
+outer(inner x, y);
+outer((inner x), y);
+service.call x + y, z;
+sum 20,
+    22;
+if (true) then (sum 20, 22) else (sum 1, 2);

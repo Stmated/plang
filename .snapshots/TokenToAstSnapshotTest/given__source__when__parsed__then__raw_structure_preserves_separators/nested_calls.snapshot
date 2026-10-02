@@ -1,0 +1,16 @@
+dynamic-directory: true
+snapshot-name: nested_calls
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: given__source__when__parsed__then__raw_structure_preserves_separators
+
+(Program
+  (Expressions
+    (PostfixExpression
+      (Lexeme "outer")
+      (Paren
+        (Expressions
+          (Lexeme "inner")
+          (Lexeme "x")
+          (Comma)
+          (Lexeme "y"))))))

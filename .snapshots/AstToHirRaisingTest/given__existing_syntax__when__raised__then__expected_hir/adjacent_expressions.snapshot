@@ -1,0 +1,31 @@
+dynamic-directory: true
+snapshot-name: adjacent_expressions
+snapshot-number: 0
+test-class: org.inf.hir.raising.AstToHirRaisingTest
+test-method: given__existing_syntax__when__raised__then__expected_hir
+
+(Program
+  (ty null)
+  (expressions
+    (Expressions
+      (generated false)
+      (ty null)
+      (children
+        (Conditional
+          (ty null)
+          (valueTy null)
+          (predicate
+            (Literal
+              (content "true")
+              (ty (boolean))))
+          (pass
+            (Literal
+              (content "1")
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+          (fail null))
+        (Return
+          (ty (named "DEADEND"))
+          (expression
+            (Literal
+              (content "2")
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))

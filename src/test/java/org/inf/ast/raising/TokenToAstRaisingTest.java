@@ -10,7 +10,9 @@ import org.inf.lexer.InfLexer;
 import org.inf.lexer.InfLexerSteps;
 import org.inf.ty.Ty;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Files;
@@ -25,9 +27,32 @@ import static org.inf.ast.util.AstTestUtils.path;
 import static org.inf.ast.util.AstTestUtils.toExpressions;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Slf4j
 class TokenToAstRaisingTest {
+
+  @Test
+  void given__undelimited_conditional_call__when__parsed__then__rejected() {
+    assertThrows(RuntimeException.class, () -> Inf.codeToRawAst("if p f x else g y"));
+  }
+
+  @ParameterizedTest
+  @CsvSource(value = {
+    "f /* comment */ (x) | f(x)",
+    "f x /* before operator */ + /* after operator */ y, z | f x + y, z",
+    "val /* name */ r = /* value */ f x, y; | val r = f x, y;",
+    "if /* predicate */ (p x) then /* branch */ (f y) else { g z } | if (p x) then (f y) else { g z }",
+    "for (var i = 0; /* condition */ i < 3; i += 1) { f i } | for (var i = 0; i < 3; i += 1) { f i }",
+    "[1, /* element */ 2] | [1, 2]"
+  }, delimiter = '|')
+  void given__comments_in_syntax__when__parsed__then__same_raw_and_normalized_structure(final String commented, final String plain) {
+    final var printer = new ToStringTreeAstVisitor();
+    Assertions.assertAll(
+      () -> assertEquals(printer.visit(Inf.codeToRawAst(plain)), printer.visit(Inf.codeToRawAst(commented))),
+      () -> assertEquals(printer.visit(Inf.codeToAst(plain)), printer.visit(Inf.codeToAst(commented)))
+    );
+  }
 
   @Test
   void testParse() {
@@ -195,24 +220,80 @@ class TokenToAstRaisingTest {
   }
 
   @Test
-  void given__possible_fn_call_as_3_words__expect__lexemes() {
+  void given__three_words__when__parsed__then__applications_nest_right() {
     final var ast = toExpressions(Inf.codeToAst("person eats fruit"));
-    asAll(ast, Ast.Lexeme.class,
-      expectLexeme("person"),
-      expectLexeme("eats"),
-      expectLexeme("fruit")
+    final var outer = Assertions.assertInstanceOf(Ast.Juxtaposition.class, ast[0]);
+    final var inner = Assertions.assertInstanceOf(Ast.Juxtaposition.class, outer.arguments()[0]);
+    Assertions.assertAll(
+      () -> assertEquals(1, ast.length),
+      () -> assertEquals(new Ast.Lexeme("person"), outer.target()),
+      () -> assertEquals(new Ast.Lexeme("eats"), inner.target()),
+      () -> Assertions.assertArrayEquals(new Ast.Expression[]{new Ast.Lexeme("fruit")}, inner.arguments())
     );
   }
 
   @Test
-  void given__possible_fn_call_as_parenthesised_3_words__expect__lexemes_and_paren() {
+  void given__explicit_call_argument__when__parsed__then__outer_application_wraps_it() {
     final var ast = toExpressions(Inf.codeToAst("person eats(fruit)"));
-    as(ast,
-      Ast.Lexeme.class, expectLexeme("person"),
+    final var application = Assertions.assertInstanceOf(Ast.Juxtaposition.class, ast[0]);
+    assertEquals(new Ast.Lexeme("person"), application.target());
+    as(application.arguments(),
       Ast.PostfixExpression.class, pe -> as(
         pe.target(), Ast.Lexeme.class, expectLexeme("eats"),
         pe.suffix(), Ast.Paren.class, paren -> asAll(paren.expression(), Ast.Lexeme.class, expectLexeme("fruit"))
       ));
+  }
+
+  @ParameterizedTest
+  @CsvSource(value = {
+    "f x | 1",
+    "f x, y | 2",
+    "f x + y, z * 2 | 2",
+    "f x, -2 | 2",
+    "f x, [1, 2] | 2"
+  }, delimiter = '|')
+  void given__implicit_call__when__parsed__then__arguments_are_grouped(final String code, final int count) {
+    final var expressions = toExpressions(Inf.codeToAst(code));
+    final var call = Assertions.assertInstanceOf(Ast.Juxtaposition.class, expressions[0]);
+    Assertions.assertAll(
+      () -> assertEquals(1, expressions.length),
+      () -> assertEquals(new Ast.Lexeme("f"), call.target()),
+      () -> assertEquals(count, call.arguments().length)
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "f x,\ny",
+    "f\nx, y",
+    "f /* comment */ x, y",
+    "f x // comment\n, y"
+  })
+  void given__whitespace_or_comments__when__parsed__then__grouping_is_unchanged(final String code) {
+    assertEquals(Inf.codeToAst("f x, y"), Inf.codeToAst(code));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "f 1,",
+    "f 1,;",
+    "outer(f 1,)",
+    "f 1 2",
+    "f 1 g 2"
+  })
+  void given__malformed_implicit_arguments__when__parsed__then__error(final String code) {
+    Assertions.assertThrows(RuntimeException.class, () -> Inf.codeToAst(code));
+  }
+
+  @Test
+  void given__semicolon__when__parsed__then__calls_are_separate() {
+    final var expressions = toExpressions(Inf.codeToAst("f x; g y"));
+    Assertions.assertAll(
+      () -> assertEquals(3, expressions.length),
+      () -> Assertions.assertInstanceOf(Ast.Juxtaposition.class, expressions[0]),
+      () -> Assertions.assertInstanceOf(Ast.NoOp.class, expressions[1]),
+      () -> Assertions.assertInstanceOf(Ast.Juxtaposition.class, expressions[2])
+    );
   }
 
   @Test

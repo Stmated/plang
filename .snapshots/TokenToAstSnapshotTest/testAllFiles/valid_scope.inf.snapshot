@@ -13,7 +13,9 @@ test-method: testAllFiles
         false)
       (Bracket
         (Literal "1")
+        (Comma)
         (Literal "2")
+        (Comma)
         (Literal "3")))
     (NoOp)
     (Assignment
@@ -23,12 +25,11 @@ test-method: testAllFiles
         false)
       (Bracket
         (Literal "3")
+        (Comma)
         (Literal "4")
+        (Comma)
         (Literal "5")))
     (NoOp)
-    (Comment " Arguments implicitly named 'it', since it is a single argument")
-    (Comment " By saying 'identifier'@'identifier' you can specify the owner")
-    (Comment " TODO: Should there be a \"magical\" name for the second as well? \"other\"?")
     (Assignment
       (VariableDeclaration
         (Lexeme "result")
@@ -62,9 +63,6 @@ test-method: testAllFiles
                                 (NoOp))))))))
                   (NoOp))))))))
     (NoOp)
-    (Comment " Or maybe this should be it' which is used in math to say \"the other it\"")
-    (Comment " Then you would also be able to say it'' to mean \"the second other it\"")
-    (Comment " Or is it better to be explicit like the example below?")
     (Assignment
       (VariableDeclaration
         (Lexeme "result")

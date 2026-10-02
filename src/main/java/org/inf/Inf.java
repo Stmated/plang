@@ -3,6 +3,7 @@ package org.inf;
 import lombok.extern.slf4j.Slf4j;
 import org.inf.ast.Ast.Program;
 import org.inf.ast.TokenToAstRaising;
+import org.inf.ast.passes.implicit_calls.AstExpressionGroupingTransformer;
 import org.inf.hir.AstToHirRaising;
 import org.inf.hir.Hir;
 import org.inf.lexer.InfLexer;
@@ -25,6 +26,10 @@ public class Inf {
   }
 
   public static Program codeToAst(String code) {
+    return AstExpressionGroupingTransformer.pass(codeToRawAst(code));
+  }
+
+  public static Program codeToRawAst(String code) {
 
     final var pass2 = new InfLexerSteps();
     try (final var tokens = new InfLexer(stringToStream(code))) {
