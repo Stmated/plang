@@ -14,6 +14,33 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class MirVerifierTest {
 
+  @Test
+  void given__different_tuple_layouts__when__pointer_converted__then__rejected() {
+    final var from = new TyPointer<>(new TyStruct(new TyField[]{new TyField(null, Ty.INTEGER)}));
+    final var to = new TyPointer<>(new TyStruct(new TyField[]{new TyField(null, Ty.LONG)}));
+    final var function = function(to, from);
+    final var parameter = function.newValue(from);
+    final var converted = function.newValue(to);
+    function.entry().append(new Mir.Parameter(parameter, 0));
+    function.entry().append(new Mir.Convert(converted, parameter));
+    function.entry().terminate(new Mir.Return(converted));
+    reject(function, "Invalid explicit conversion");
+  }
+
+  @Test
+  void given__same_tuple_layout_with_explicit_width_metadata__when__pointer_converted__then__accepted() {
+    final var from = new TyPointer<>(new TyStruct(new TyField[]{new TyField(null, Ty.INTEGER)}));
+    final var explicit = Ty.INTEGER.toBuilder().width(new BitWidth(32, true)).build();
+    final var to = new TyPointer<>(new TyStruct(new TyField[]{new TyField(null, explicit)}));
+    final var function = function(to, from);
+    final var parameter = function.newValue(from);
+    final var converted = function.newValue(to);
+    function.entry().append(new Mir.Parameter(parameter, 0));
+    function.entry().append(new Mir.Convert(converted, parameter));
+    function.entry().terminate(new Mir.Return(converted));
+    assertDoesNotThrow(() -> verify(function));
+  }
+
   private static final Mir.Constant ONE = new Mir.Constant("1", Ty.INTEGER);
   private static final Mir.Constant TRUE = new Mir.Constant("true", Ty.BOOLEAN);
 

@@ -982,12 +982,18 @@ public class Hir {
   @AllArgsConstructor
   public static class Tuple implements Expression {
 
-    TupleKeyValue[] children;
+    TupleEntry[] children;
     Ty ty;
+    Ty valueTy;
+
+    public Tuple(final TupleEntry[] children, final Ty ty) {
+      this(children, ty, ty);
+    }
 
     @Override
     public String toString() {
-      return "(%s)".formatted(String.join(", ", Arrays.stream(children).map(TupleKeyValue::toString).toList()));
+      final var contents = String.join(", ", Arrays.stream(children).map(TupleEntry::toString).toList());
+      return "(%s%s)".formatted(contents, children.length == 1 ? "," : "");
     }
 
     @Override
@@ -1001,26 +1007,37 @@ public class Hir {
     }
   }
 
-  /**
-   * TODO: Delete in favor of just a simple "Labeling"?
-   */
   @Data
   @AllArgsConstructor
-  public static class TupleKeyValue implements Expression {
+  public static class TupleEntry implements Expression {
 
-    Identifier key;
+    final Lexeme label;
     @Nonnull
     Hir.Expression value;
-    Ty ty;
+
+    @Override
+    public Ty ty() {
+      return value.ty();
+    }
+
+    @Override
+    public Ty valueTy() {
+      return value.valueTy();
+    }
+
+    @Override
+    public String toString() {
+      return "%s%s".formatted(label == null ? "" : ("%s:".formatted(label)), value);
+    }
 
     @Override
     public void visit(final HirVisitor visitor) {
-      visitor.visitTupleKeyValue(this);
+      visitor.visitTupleEntry(this);
     }
 
     @Override
     public Expression transform(final HirTransformer transformer) {
-      return transformer.transformTupleKeyValue(this);
+      return transformer.transformTupleEntry(this);
     }
   }
 

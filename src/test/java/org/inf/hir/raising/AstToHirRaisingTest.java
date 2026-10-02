@@ -16,6 +16,8 @@ import org.inf.hir.Hir;
 import org.inf.hir.Hir.Call;
 import org.inf.hir.Hir.Function;
 import org.inf.hir.Hir.Program;
+import org.inf.hir.HirTransformer;
+import org.inf.hir.HirVisitor;
 import org.inf.ast.util.SnapshotTestUtils;
 import org.inf.ast.util.ToStringTreeAstVisitor;
 import org.inf.hir.util.ToStringTreeHirVisitor;
@@ -29,29 +31,28 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import java.util.ArrayList;
+
 @EnableSnapshotTests
 @Execution(ExecutionMode.SAME_THREAD)
 class AstToHirRaisingTest {
 
   @ParameterizedTest
   @CsvSource(value = {
-    "(1,) | (1)",
-    "(1, 2,) | (1; 2)",
-    "((1,),) | 1",
-    "((1, 2), (3,)) | ((1; 2); 3)",
-    "f((1, 2)) | f(1, 2)",
     "f(1,) | f(1)",
-    "f((1,),) | f(1)",
-    "(a: 1,) | (a: 1)",
+    "f((1,),) | f((1,))",
     "(a: 1, b: 2,) | (a: 1, b: 2)",
     "f(a: 1, b: 2,) | f(a: 1, b: 2)",
+    "f(a: 1) | f(a: 1)",
+    "f(1; 2) | f(1, 2)",
+    "(1) | 1",
     "(a: int,) => a | (a: int) => a",
     "(a: int, b: bool,) => a | (a: int, b: bool) => a",
     "(a: int, ...rest,) => a | (a: int, ...rest) => a",
     "(a: int, ...,) => a | (a: int, ...) => a",
     "() => 1 | () => 1",
     "f() | f()",
-    "for (var i = (0,); i < 3; i += (1,)) { f(i,) } | for (var i = 0; i < 3; i += 1) { f(i) }"
+    "for (var i = (0); i < 3; i += (1)) { f(i,) } | for (var i = 0; i < 3; i += 1) { f(i) }"
   }, delimiter = '|')
   void given__parenthesized_comma_nodes__when__raised__then__legacy_hir_behavior_is_preserved(
     final String code, final String equivalent
@@ -66,6 +67,124 @@ class AstToHirRaisingTest {
       () -> Assertions.assertEquals(printer.render(Inf.codeToHir(equivalent)), printer.render(hir)),
       () -> Assertions.assertEquals(before, astPrinter.visit(ast))
     );
+  }
+
+  @ParameterizedTest
+  @CsvSource(value = {
+    "(1,) | 1",
+    "(1, 2) | 2",
+    "(1, 2,) | 2",
+    "((1,),) | 1",
+    "((1, 2), (3,)) | 2",
+    "(a: 1,) | 1",
+    "(a: 1, 2) | 2"
+  }, delimiter = '|')
+  void given__value_parentheses_with_commas__when__raised__then__tuple_entries_are_preserved(
+    final String code, final int size
+  ) {
+    final var ast = Inf.codeToAst(code);
+    final var astPrinter = new ToStringTreeAstVisitor();
+    final var before = astPrinter.visit(ast);
+    final var program = Assertions.assertInstanceOf(
+      Program.class, AstToHirRaising.lower_program(ast, new MachineTarget(64))
+    );
+    final var ret = Assertions.assertInstanceOf(Hir.Return.class, program.expressions());
+    final var tuple = Assertions.assertInstanceOf(Hir.Tuple.class, ret.expression());
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(size, tuple.children().length),
+      () -> Assertions.assertEquals(before, astPrinter.visit(ast))
+    );
+  }
+
+  @Test
+  void given__nested_singleton_tuples__when__raised__then__both_tuple_boundaries_remain() {
+    final var outer = Assertions.assertInstanceOf(Hir.Tuple.class, returned("((1,),)"));
+    final var inner = Assertions.assertInstanceOf(Hir.Tuple.class, outer.children()[0].value());
+    final var value = Assertions.assertInstanceOf(Hir.Literal.class, inner.children()[0].value());
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(1, outer.children().length),
+      () -> Assertions.assertEquals(1, inner.children().length),
+      () -> Assertions.assertEquals("1", value.content())
+    );
+  }
+
+  @ParameterizedTest
+  @CsvSource(value = {
+    "f() | 0 | 0",
+    "f(x, y) | 2 | 0",
+    "f((x, y)) | 1 | 1",
+    "f((x,),) | 1 | 1",
+    "f((x, y), (z,)) | 2 | 2",
+    "f((x)) | 1 | 0",
+    "f(x; y) | 2 | 0",
+    "f((x; y)) | 1 | 0",
+    "outer(inner x, y) | 1 | 0",
+    "outer(inner(x), y) | 2 | 0"
+  }, delimiter = '|')
+  void given__explicit_call__when__raised__then__only_outer_list_becomes_arguments(
+    final String code, final int arity, final int tuples
+  ) {
+    final var call = Assertions.assertInstanceOf(Call.class, returned(code));
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(arity, call.arguments().length),
+      () -> Assertions.assertEquals(tuples, java.util.Arrays.stream(call.arguments())
+        .filter(argument -> argument.value() instanceof Hir.Tuple).count())
+    );
+  }
+
+  @Test
+  void given__named_call__when__raised__then__labels_are_argument_metadata() {
+    final var call = Assertions.assertInstanceOf(Call.class, returned("f(a: 1, b: 2)"));
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(2, call.arguments().length),
+      () -> Assertions.assertEquals("a", call.arguments()[0].label().name()),
+      () -> Assertions.assertEquals("b", call.arguments()[1].label().name()),
+      () -> Assertions.assertInstanceOf(Hir.Literal.class, call.arguments()[0].value()),
+      () -> Assertions.assertInstanceOf(Hir.Literal.class, call.arguments()[1].value())
+    );
+  }
+
+  @Test
+  void given__tuple_label__when__visited_and_transformed__then__only_value_is_traversed() {
+    final var tuple = Assertions.assertInstanceOf(Hir.Tuple.class, returned("(label: value,)"));
+    final var entry = tuple.children()[0];
+    final var visited = new ArrayList<String>();
+    tuple.visit(new HirVisitor() {
+      @Override
+      public void visitLexeme(final Hir.Lexeme lexeme) {
+        visited.add(lexeme.name());
+      }
+
+      @Override
+      public void visitIdentifier(final Hir.Identifier identifier) {
+        visited.add(identifier.lexeme().name());
+      }
+    });
+    final var transformed = new ArrayList<String>();
+    tuple.transform(new HirTransformer() {
+      @Override
+      public Hir.Expression transformLexeme(final Hir.Lexeme lexeme) {
+        transformed.add(lexeme.name());
+        return lexeme;
+      }
+
+      @Override
+      public Hir.Expression transformIdentifier(final Hir.Identifier identifier) {
+        transformed.add(identifier.lexeme().name());
+        return identifier;
+      }
+    });
+    Assertions.assertAll(
+      () -> Assertions.assertEquals("label", entry.label().name()),
+      () -> Assertions.assertInstanceOf(Hir.Identifier.class, entry.value()),
+      () -> Assertions.assertEquals(java.util.List.of("value"), visited),
+      () -> Assertions.assertEquals(java.util.List.of("value"), transformed)
+    );
+  }
+
+  private Hir.Expression returned(final String code) {
+    final var program = Assertions.assertInstanceOf(Program.class, Inf.codeToHir(code));
+    return Assertions.assertInstanceOf(Hir.Return.class, program.expressions()).expression();
   }
 
   @Test

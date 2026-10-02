@@ -36,8 +36,7 @@ error, not a reason to try another grouping.
 - `if (true) 1 2;` contains a conditional returning `1`, followed by a separate
   literal `2`; the latter still participates in the enclosing scope's usual
   implicit-return rules.
-- A bare function name remains a reference. Call zero-argument functions with
-  `f()`.
+- A bare function name remains a reference. Call zero-argument functions with `f()`.
 
 Existing postfix syntax takes precedence: `f (x)` is an explicit call and
 `f [x]` is indexing, regardless of whitespace. Use explicit calls for an array

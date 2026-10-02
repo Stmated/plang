@@ -30,6 +30,9 @@ class AstJuxtapositionToHirTest {
     "if (true) then (f x) else (g y) | if (true) f(x) else g(y)",
     "if (f x) { g y } | if (f(x)) { g(y) }",
     "f x, (a: 1, b: 2) | f(x, (a: 1, b: 2))",
+    "f x, (y, z) | f(x, (y, z))",
+    "f x, (y,) | f(x, (y,))",
+    "outer inner x, (y, z) | outer(inner(x, (y, z)))",
     "f tuple | f(tuple)",
     "outer inner x, y | outer(inner(x, y))",
   }, delimiter = '|')

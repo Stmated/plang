@@ -10,6 +10,8 @@ import org.inf.hir.HirJavaUtil;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.*;
 import org.inf.ty.util.Tys;
+import org.inf.ty.util.TupleTypes;
+import org.inf.ty.util.TypeComparison;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,6 +30,41 @@ public class HirTyCommonVisitorPass {
 
   @RequiredArgsConstructor
   private static class Visitor implements HirVisitor {
+
+    private int typeModeCounter;
+
+    private void visitType(Hir.Expression expression) {
+      try {
+        typeModeCounter++;
+        expression.visit(this);
+      } finally {
+        typeModeCounter--;
+      }
+    }
+
+    @Override
+    public void visitDecType(Hir.Expression expr) {
+      visitType(expr);
+    }
+
+    @Override
+    public void visitParameterType(Hir.Expression expr) {
+      visitType(expr);
+    }
+
+    @Override
+    public void visitTuple(Hir.Tuple expr) {
+      HirVisitor.super.visitTuple(expr);
+      HirTupleTyping.resolve(expr, typeModeCounter > 0);
+    }
+
+    @Override
+    public void visitTupleEntry(Hir.TupleEntry expr) {
+      HirVisitor.super.visitTupleEntry(expr);
+      if (expr.label() != null) {
+        throw new IllegalArgumentException("Named and mixed tuples are not supported yet");
+      }
+    }
 
     @Override
     public void visitParameter(Hir.Parameter expr) {
@@ -67,7 +104,13 @@ public class HirTyCommonVisitorPass {
 
     @Override
     public void visitArray(Hir.Array expr) {
-      HirVisitor.super.visitArray(expr);
+      visitType(expr.elementType());
+      if (expr.length() != null) {
+        visitChild(expr.length());
+      }
+      for (final var element : expr.elements()) {
+        visitChild(element);
+      }
 
       var arrayElementTy = expr.elementType().ty();
       for (final var element : expr.elements()) {
@@ -91,6 +134,10 @@ public class HirTyCommonVisitorPass {
         }
         if (Tys.isInferred(arrayElementTy)) {
           arrayElementTy = elementTy;
+        } else if (TupleTypes.containsTuple(arrayElementTy) || TupleTypes.containsTuple(elementTy)) {
+          if (!TypeComparison.sameValueType(elementTy, arrayElementTy)) {
+            throw new InvalidTypeConversionException("Array tuple elements must have matching shapes and slot types", elementTy, arrayElementTy);
+          }
         } else {
 
           final var common = Tys.getCommonDenominator(arrayElementTy, elementTy);
@@ -281,7 +328,12 @@ public class HirTyCommonVisitorPass {
 
     @Override
     public void visitFunctionSignature(Hir.FunctionSignature expr) {
-      HirVisitor.super.visitFunctionSignature(expr);
+      for (final var parameter : expr.parameters()) {
+        visitChild(parameter);
+      }
+      if (expr.returnType() != null) {
+        visitType(expr.returnType());
+      }
 
       if (expr.ty() == null) {
 
@@ -443,8 +495,8 @@ public class HirTyCommonVisitorPass {
               case TyStruct struct -> {
 
                 final var field = Arrays.stream(struct.fields())
-                  .filter(f -> f.name().equals(lexeme.name()))
-                  .findFirst().orElseThrow();
+                  .filter(f -> lexeme.name().equals(f.name()))
+                  .findFirst().orElseThrow(() -> new IllegalArgumentException("Unknown field: " + lexeme.name()));
 
                 pointer = field.ty();
                 lexeme.ty(pointer);

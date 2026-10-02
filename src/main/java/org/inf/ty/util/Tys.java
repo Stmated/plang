@@ -25,6 +25,10 @@ public class Tys {
     if (a == b) {
       return new TyResult<>(a);
     }
+    if (a instanceof TyStruct && b instanceof TyStruct
+      && (TupleTypes.containsTuple(a) || TupleTypes.containsTuple(b)) && TypeComparison.sameValueType(a, b)) {
+      return new TyResult<>(a);
+    }
 
     final var reordered = reorder(a, b);
     a = reordered.a();
@@ -41,14 +45,14 @@ public class Tys {
     return switch (a) {
       case TyValueNumberInteger ani -> switch (b) {
         case TyValueNumberInteger bni -> {
-          if (ani.signed() != bni.signed()) {
+          if (!TypeComparison.sameSignedness(ani, bni)) {
             yield new TyResult<>(Ty.INTEGER, TyDiffKind.DIFF_SIGNED);
           }
-          if (ani.radix() != bni.radix()) {
+          if (!TypeComparison.sameRadix(ani, bni)) {
             yield new TyResult<>(Ty.INTEGER, TyDiffKind.DIFF_RADIX);
           }
-          final var widthDiff = ani.width().value() != bni.width().value();
-          final var explicitDiff = ani.width().explicit() != bni.width().explicit();
+          final var widthDiff = !TypeComparison.sameBitWidth(ani, bni);
+          final var explicitDiff = !TypeComparison.sameWidthExplicitness(ani, bni);
           if (widthDiff || explicitDiff) {
             final var newWidthValue = Math.max(ani.width().value(), bni.width().value());
             final var newWidth = new BitWidth(newWidthValue, ani.width().explicit() || bni.width().explicit());
@@ -74,9 +78,9 @@ public class Tys {
           final var newExplicit = anp.width().explicit() || bnp.width().explicit();
           final var newFlags = mixFlags(anp.flags(), bnp.flags());
 
-          final var diffWidth = newWidthValue != anp.width().value() || newWidthValue != bnp.width().value();
-          final var diffExpl = newExplicit != anp.width().explicit() || newExplicit != bnp.width().explicit();
-          final var diffPrecision = newPrecisionValue != anp.precision() || newPrecisionValue != bnp.precision();
+          final var diffWidth = !TypeComparison.sameBitWidth(anp, bnp);
+          final var diffExpl = !TypeComparison.sameWidthExplicitness(anp, bnp);
+          final var diffPrecision = !TypeComparison.samePrecision(anp, bnp);
 
           if (diffWidth && diffPrecision) {
             final var newWidth = new BitWidth(newWidthValue, newExplicit);
@@ -94,7 +98,7 @@ public class Tys {
           yield new TyResult<>(anp);
         }
         case TyValueNumberInteger bni -> {
-          if (anp.width().value() != bni.width().value()) {
+          if (!TypeComparison.sameBitWidth(anp, bni)) {
             final var newWidthValue = Math.max(anp.width().value(), bni.width().value());
             final var newWidth = new BitWidth(newWidthValue, anp.width().explicit() || bni.width().explicit());
             final var newFlags = mixFlags(anp.flags(), bni.flags());

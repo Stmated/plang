@@ -4,6 +4,8 @@ import org.inf.mir.model.MirFnSignature;
 import org.inf.mir.model.MirFunction;
 import org.inf.mir.model.MirNode;
 import org.inf.ty.*;
+import org.inf.ty.util.TupleTypes;
+import org.inf.ty.util.TypeComparison;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -203,7 +205,8 @@ public final class MirVerifier {
             || numericConversion(from, to)
             || from instanceof TyValueString && characterReference(to)
             || characterReference(from) && to instanceof TyValueString
-            || from instanceof TyPointer<?> && to instanceof TyPointer<?>;
+            || from instanceof TyPointer<?> && to instanceof TyPointer<?>
+              && (!(TupleTypes.containsTuple(from) || TupleTypes.containsTuple(to)) || TypeComparison.sameValueType(from, to));
         }
         require(allowed, "Invalid explicit conversion from " + from + " to " + to);
       }

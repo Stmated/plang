@@ -3,11 +3,14 @@ package org.inf.mir;
 import org.inf.exceptions.NotImplementedException;
 import org.inf.exceptions.UnreachableCodeException;
 import org.inf.hir.Hir;
+import org.inf.hir.HirArgumentBinding;
 import org.inf.hir.HirVisitor;
 import org.inf.mir.model.*;
 import org.inf.thir.raising.ThirRaiseResult;
 import org.inf.ty.*;
 import org.inf.ty.util.Tys;
+import org.inf.ty.util.TupleTypes;
+import org.inf.ty.util.TypeComparison;
 
 import java.util.*;
 
@@ -188,6 +191,7 @@ public final class ThirToMirLowering {
       case Hir.Struct _ -> UNIT;
       case Hir.TyExpr _ -> UNIT;
       case Hir.NewByCtor _ -> throw new NotImplementedException("Constructor calls are not yet normalized by THIR");
+      case Hir.Tuple _ -> throw new NotImplementedException("Runtime tuple construction is not supported yet");
       default -> throw new NotImplementedException("Unsupported typed expression: " + expression.getClass().getSimpleName());
     };
   }
@@ -361,7 +365,7 @@ public final class ThirToMirLowering {
   private static int fieldIndex(TyStruct struct, String name) {
     final var fields = struct.fields();
     for (var i = 0; i < fields.length; i++) {
-      if (fields[i].name().equals(name)) {
+      if (name.equals(fields[i].name())) {
         return i;
       }
     }
@@ -519,45 +523,24 @@ public final class ThirToMirLowering {
       .map(p -> new MirFnParameter(p.name(), p.ty())).toArray(MirFnParameter[]::new), type.vararg(), type.returnTy());
     final var parameters = signature.parameters();
     final var arguments = new Mir.Operand[Math.max(parameters.length, call.arguments().length)];
-    var positional = 0;
+    final var binding = new HirArgumentBinding(
+      Arrays.stream(parameters).map(MirFnParameter::name).toArray(String[]::new),
+      signature.vararg(), call.arguments().length
+    );
     for (final var argument : call.arguments()) {
       final var flow = lower(argument.value());
       if (flow instanceof Diverges) {
         return flow;
       }
-      int index;
-      if (argument.label() != null) {
-        index = -1;
-        for (var i = 0; i < parameters.length; i++) {
-          if (Objects.equals(argument.label().name(), parameters[i].name())) {
-            index = i;
-            break;
-          }
-        }
-        if (index < 0) {
-          throw new IllegalArgumentException("Unknown argument label: " + argument.label().name());
-        }
-      } else {
-        while (positional < arguments.length && arguments[positional] != null) {
-          positional++;
-        }
-        index = positional++;
-      }
-      if (index >= arguments.length || arguments[index] != null) {
-        throw new IllegalArgumentException("Duplicate or excess argument");
-      }
+      final var index = binding.bind(argument.label() == null ? null : argument.label().name());
       final var value = ((Continues) flow).value();
       if (index < parameters.length) {
         arguments[index] = convert(value, parameters[index].ty());
-      } else if (signature.vararg()) {
-        arguments[index] = promoteVararg(value);
       } else {
-        throw new IllegalArgumentException("Too many arguments for function");
+        arguments[index] = promoteVararg(value);
       }
     }
-    if (Arrays.stream(arguments).anyMatch(Objects::isNull)) {
-      throw new IllegalArgumentException("Missing function argument");
-    }
+    binding.requireComplete();
     final var result = signature.returnType() == Ty.VOID ? null : function.newValue(signature.returnType());
     emit(new Mir.Call(result, target, signature, Arrays.asList(arguments)));
     if (call.ty() == Ty.DEADEND) {
@@ -645,6 +628,10 @@ public final class ThirToMirLowering {
     }
     if (operand.ty() == Ty.VOID || expected == Ty.VOID || expected == Ty.DEADEND) {
       throw new IllegalArgumentException("Cannot convert " + operand.ty() + " to " + expected);
+    }
+    if ((TupleTypes.containsTuple(operand.ty()) || TupleTypes.containsTuple(expected))
+      && !TypeComparison.sameValueType(operand.ty(), expected)) {
+      throw new IllegalArgumentException("Cannot reinterpret incompatible tuple layouts: " + operand.ty() + " to " + expected);
     }
     emit(new Mir.Convert(result, operand));
     return result;

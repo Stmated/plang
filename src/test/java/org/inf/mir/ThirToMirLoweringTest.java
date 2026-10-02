@@ -19,6 +19,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ThirToMirLoweringTest {
 
+  @Test
+  void given__typed_tuple_value__when__lowered__then__runtime_support_is_explicitly_deferred() {
+    final var error = assertThrows(org.inf.exceptions.NotImplementedException.class, () -> Inf.codeToMir("(1, true)"));
+    assertEquals("Runtime tuple construction is not supported yet", error.getMessage());
+  }
+
   private Object run(String code) {
     return new InterpreterCodeExecutor().execute(Inf.codeToMir(code).initNode());
   }

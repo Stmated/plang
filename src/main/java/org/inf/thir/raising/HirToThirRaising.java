@@ -23,6 +23,7 @@ public class HirToThirRaising {
     e = HirTyIdentifierToTyTransformerPass.pass(e, machineTarget);
     HirIdentifierResolverVisitorPass.pass(e, Hir.Identifier::target);
     HirTyCommonVisitorPass.pass(e);
+    HirTupleValidationVisitorPass.pass(e);
     e = HirGeneratedSequenceTransformerPass.pass(e);
     e = HirLambdaLiftingTransformerPass.pass(e);
     e = HirDependencyReorderingTransformerPass.pass(e);

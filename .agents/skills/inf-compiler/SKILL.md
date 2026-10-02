@@ -57,6 +57,9 @@ The more isolated and separated a feature can be made, so it does its limited jo
 If the feature is a new language feature that needs explaining, then create a new `*.md` file in `/docs` to document it.
 Be sure to use the `docs-writing` skill to write the documentation.
 
+Strongly prefer asking several questions that are more narrow and specific, rather than listing many overarching related decisions/options and asking for a simple "yes"/"no" for all of them.
+Rather than asking "should we do X and Y and Z", ask "should we do X like A or B?" and then "should we do Y like C or D?" and then "should we do Z like E or F?"
+
 ## Language references
 See `*.inf` files in `src/test/resources/inf` for examples of the Inf language.
 * Examples of **valid** Inf code in `src/test/resources/inf/valid*`,

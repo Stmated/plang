@@ -278,15 +278,11 @@ public interface HirTransformer {
   }
 
   default Hir.Expression transformTuple(final Hir.Tuple expr) {
-    expr.children(batch(expr.children(), Hir.TupleKeyValue.class));
+    expr.children(batch(expr.children(), Hir.TupleEntry.class));
     return expr;
   }
 
-  default Hir.Expression transformTupleKeyValue(final Hir.TupleKeyValue expr) {
-    if (expr.key() != null) {
-      expr.key(expect(expr.key().transform(this), Hir.Identifier.class));
-    }
-
+  default Hir.Expression transformTupleEntry(final Hir.TupleEntry expr) {
     expr.value(expr.value().transform(this));
     return expr;
   }

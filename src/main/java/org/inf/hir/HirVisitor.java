@@ -200,11 +200,7 @@ public interface HirVisitor {
     }
   }
 
-  default void visitTupleKeyValue(Hir.TupleKeyValue expr) {
-    if (expr.key() != null) {
-      visitChild(expr.key());
-    }
-
+  default void visitTupleEntry(Hir.TupleEntry expr) {
     visitChild(expr.value());
   }
 

@@ -203,12 +203,13 @@ public final class ToStringTreeHirVisitor {
 
     @Override
     public void visitTuple(final Hir.Tuple expr) {
-      result = node("Tuple", type("ty", expr.ty()), children("children", expr.children()));
+      result = node("Tuple", type("ty", expr.ty()), type("valueTy", expr.valueTy()), children("children", expr.children()));
     }
 
     @Override
-    public void visitTupleKeyValue(final Hir.TupleKeyValue expr) {
-      result = node("TupleKeyValue", type("ty", expr.ty()), child("key", expr.key()), child("value", expr.value()));
+    public void visitTupleEntry(final Hir.TupleEntry expr) {
+      result = node("TupleEntry", atom("label", expr.label() == null ? "null" : quote(expr.label().name())),
+        type("ty", expr.ty()), type("valueTy", expr.valueTy()), child("value", expr.value()));
     }
 
     @Override

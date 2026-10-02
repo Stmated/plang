@@ -256,16 +256,16 @@ class ToStringTreeHirVisitorTest {
       new Hir.Loop(new Hir.Block(new Hir.LoopBreak(value), Ty.DEADEND)),
       new Hir.LoopContinue(),
       new Hir.NewByBlock(identifier, identifier, new Hir.Assignment[] { assignment }, Ty.VOID, Ty.INTEGER),
-      new Hir.NewByCtor(identifier, null, new Hir.Tuple(new Hir.TupleKeyValue[0], null), null, null),
+      new Hir.NewByCtor(identifier, null, new Hir.Tuple(new Hir.TupleEntry[0], null), null, null),
       new Hir.Not(value, Ty.BOOLEAN, Ty.BOOLEAN),
       new Hir.Path(new Hir.Expression[] { identifier, name }, null, Ty.INTEGER),
       new Hir.Range(value, new Hir.Literal("9", Ty.INTEGER)),
       new Hir.DeadEnd(new Hir.Return(value)),
       new Hir.Struct(new Hir.Dec[] { declaration }, null),
       new Hir.Trait(new Hir.Expression[] { declaration }, null),
-      new Hir.Tuple(new Hir.TupleKeyValue[] {
-        new Hir.TupleKeyValue(identifier, value, Ty.INTEGER),
-        new Hir.TupleKeyValue(null, value, null)
+      new Hir.Tuple(new Hir.TupleEntry[] {
+        new Hir.TupleEntry(name, value),
+        new Hir.TupleEntry(null, value)
       }, null)
     };
 

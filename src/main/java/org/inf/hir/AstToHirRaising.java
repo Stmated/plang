@@ -469,26 +469,25 @@ public class AstToHirRaising {
 
       // A function call. Might perhaps be other things as well. Will need to add some abstraction in that case.
       final var target = raise(ast.target());
-      final var hirParen = lower_paren(paren);
-
-      // TODO: This could be a HirTuple, but it is badly handled right now, and no support for mixing positional and named arguments
-      final var hirArgumentExpressions = switch (hirParen) {
-        case final Hir.Expressions hir -> hir.children();
-        case final Hir.Tuple hir -> hir.children();
-        default -> new Hir.Expression[]{hirParen};
-        //throw new UnexpectedExpressionException(hirParen);
+      final var contents = paren_contents(paren);
+      final var astArguments = switch (contents) {
+        case final Ast.Expressions expressions -> expressions.children();
+        case null -> new Ast.Expression[0];
+        default -> new Ast.Expression[]{contents};
       };
-
-      final var hirArguments = new Hir.Argument[hirArgumentExpressions.length];
-      for (var i = 0; i < hirArgumentExpressions.length; i++) {
-
-        hirArguments[i] = switch (hirArgumentExpressions[i]) {
-          case final Hir.TupleKeyValue kv -> new Hir.Argument(kv.key().lexeme(), kv.value());
-          default -> new Hir.Argument(null, hirArgumentExpressions[i]);
-        };
+      final var arguments = new ArrayList<Hir.Argument>();
+      for (final var argument : astArguments) {
+        if (argument instanceof final Ast.Labeling labeling) {
+          arguments.add(new Hir.Argument(asLexeme(labeling.lhs()), raise(labeling.rhs())));
+        } else {
+          final var value = raise(argument);
+          if (value != null) {
+            arguments.add(new Hir.Argument(null, value));
+          }
+        }
       }
 
-      return new Hir.Call(target, hirArguments, false, null, null);
+      return new Hir.Call(target, arguments.toArray(new Hir.Argument[0]), false, null, null);
     }
 
     throw new IllegalArgumentException("Unknown postfix expression");
@@ -647,7 +646,6 @@ public class AstToHirRaising {
   }
 
   /// Remove only this group's separators; nested groups resolve their own commas when raised.
-  /// Preserve legacy empty/singleton behavior until tuple raising consumes the distinction.
   private Ast.Expression paren_contents(final Ast.Paren paren) {
     return switch (paren.expression()) {
       case Ast.Expressions expressions -> Ast.Expressions.from(
@@ -661,6 +659,25 @@ public class AstToHirRaising {
 
   private Hir.Expression lower_paren(final Ast.Paren astParen) {
 
+    if (astParen.expression() instanceof final Ast.Expressions expressions
+      && Arrays.stream(expressions.children()).anyMatch(child -> child instanceof Ast.Comma)) {
+      final var entries = new ArrayList<Hir.TupleEntry>();
+      for (final var child : expressions.children()) {
+        if (child instanceof Ast.Comma) {
+          continue;
+        }
+        if (child instanceof final Ast.Labeling labeling) {
+          entries.add(lower_labeling_to_tuple_entry(labeling));
+        } else {
+          final var value = raise(child);
+          if (value != null) {
+            entries.add(new Hir.TupleEntry(null, value));
+          }
+        }
+      }
+      return new Hir.Tuple(entries.toArray(new Hir.TupleEntry[0]), null);
+    }
+
     final var astExpr = paren_contents(astParen);
     if (astExpr == null) {
       return new Hir.Expressions(new Hir.Expression[0]);
@@ -668,7 +685,7 @@ public class AstToHirRaising {
 
     return switch (astExpr) {
       case final Ast.Expressions collection -> lower_paren_expression_collection(collection);
-      case final Ast.Labeling labeling -> lower_labeling_to_tuple_key_value(labeling);
+      case final Ast.Labeling labeling -> lower_labeling_to_tuple_entry(labeling);
       default -> raise(astExpr);
     };
   }
@@ -687,7 +704,7 @@ public class AstToHirRaising {
       final var child = switch (expression) {
         case final Ast.Labeling labeling -> {
           labeledExpressionCount++;
-          yield lower_labeling_to_tuple_key_value(labeling);
+          yield lower_labeling_to_tuple_entry(labeling);
         }
         default -> {
           unlabeledExpressionCount++;
@@ -712,7 +729,7 @@ public class AstToHirRaising {
 
       // This is a tuple. There are probably smarted ways of doing this.
       return new Hir.Tuple(
-        java.util.Arrays.copyOf(children_lowered, children_lowered.length, Hir.TupleKeyValue[].class),
+        java.util.Arrays.copyOf(children_lowered, children_lowered.length, Hir.TupleEntry[].class),
         null
       );
 
@@ -721,20 +738,12 @@ public class AstToHirRaising {
     }
   }
 
-  private Hir.TupleKeyValue lower_labeling_to_tuple_key_value(final Ast.Labeling astLabeling) {
+  private Hir.TupleEntry lower_labeling_to_tuple_entry(final Ast.Labeling astLabeling) {
 
-    return new Hir.TupleKeyValue(
-      lower_expression_to_identifier(astLabeling.lhs()),
-      raise(astLabeling.rhs()),
-      null
+    return new Hir.TupleEntry(
+      asLexeme(astLabeling.lhs()),
+      raise(astLabeling.rhs())
     );
-  }
-
-  private Hir.Identifier lower_expression_to_identifier(final Ast.Expression expression) {
-    if (expression instanceof Ast.Lexeme lexeme) {
-      return new Hir.Identifier(lower_lexeme(lexeme), null);
-    }
-    throw new IllegalArgumentException("Argument label must be a name: " + expression);
   }
 
   public Hir.Conditional lower_conditional(final Ast.Conditional astConditional) {

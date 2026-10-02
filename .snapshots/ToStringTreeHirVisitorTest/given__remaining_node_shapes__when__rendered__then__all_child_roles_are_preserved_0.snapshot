@@ -113,6 +113,7 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
           (arguments
             (Tuple
               (ty null)
+              (valueTy null)
               (children))))
         (Not
           (ty (boolean))
@@ -182,23 +183,20 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
                   (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
         (Tuple
           (ty null)
+          (valueTy null)
           (children
-            (TupleKeyValue
+            (TupleEntry
+              (label "name")
               (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-              (key
-                (Identifier
-                  (lexeme
-                    (Lexeme
-                      (name "name")
-                      (ty null)))
-                  (target null)))
+              (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
               (value
                 (Literal
                   (content "7")
                   (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
-            (TupleKeyValue
-              (ty null)
-              (key null)
+            (TupleEntry
+              (label null)
+              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
               (value
                 (Literal
                   (content "7")
