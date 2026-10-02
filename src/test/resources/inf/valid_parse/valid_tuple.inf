@@ -14,3 +14,10 @@ val fn3 = (t: (uint8, uint8)): uint16 => {
 };
 
 fn3((1, 2));
+
+val fn4 = (t: (p1: uint8, p2: uint8)): uint16 => {
+    return t.p1 + t.p2;
+};
+
+fn4((1, 2));
+fn4((p1 = 1, p2 = 2)); // Same

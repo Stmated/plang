@@ -17,6 +17,7 @@ import org.inf.hir.Hir.Call;
 import org.inf.hir.Hir.Function;
 import org.inf.hir.Hir.Program;
 import org.inf.ast.util.SnapshotTestUtils;
+import org.inf.ast.util.ToStringTreeAstVisitor;
 import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.util.MachineTarget;
@@ -31,6 +32,50 @@ import org.junit.jupiter.params.provider.CsvSource;
 @EnableSnapshotTests
 @Execution(ExecutionMode.SAME_THREAD)
 class AstToHirRaisingTest {
+
+  @ParameterizedTest
+  @CsvSource(value = {
+    "(1,) | (1)",
+    "(1, 2,) | (1; 2)",
+    "((1,),) | 1",
+    "((1, 2), (3,)) | ((1; 2); 3)",
+    "f((1, 2)) | f(1, 2)",
+    "f(1,) | f(1)",
+    "f((1,),) | f(1)",
+    "(a: 1,) | (a: 1)",
+    "(a: 1, b: 2,) | (a: 1, b: 2)",
+    "f(a: 1, b: 2,) | f(a: 1, b: 2)",
+    "(a: int,) => a | (a: int) => a",
+    "(a: int, b: bool,) => a | (a: int, b: bool) => a",
+    "(a: int, ...rest,) => a | (a: int, ...rest) => a",
+    "(a: int, ...,) => a | (a: int, ...) => a",
+    "() => 1 | () => 1",
+    "f() | f()",
+    "for (var i = (0,); i < 3; i += (1,)) { f(i,) } | for (var i = 0; i < 3; i += 1) { f(i) }"
+  }, delimiter = '|')
+  void given__parenthesized_comma_nodes__when__raised__then__legacy_hir_behavior_is_preserved(
+    final String code, final String equivalent
+  ) {
+    final var printer = new ToStringTreeHirVisitor();
+    final var ast = Inf.codeToAst(code);
+    final var astPrinter = new ToStringTreeAstVisitor();
+    final var before = astPrinter.visit(ast);
+    final var hir = AstToHirRaising.lower_program(ast, new MachineTarget(64));
+
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(printer.render(Inf.codeToHir(equivalent)), printer.render(hir)),
+      () -> Assertions.assertEquals(before, astPrinter.visit(ast))
+    );
+  }
+
+  @Test
+  void given__comma_outside_parentheses__when__raised__then__rejected() {
+    final var raw = Inf.codeToRawAst("1, 2");
+    Assertions.assertThrows(
+      IllegalArgumentException.class,
+      () -> AstToHirRaising.lower_program(raw, new MachineTarget(64))
+    );
+  }
 
   @ParameterizedTest
   @CsvSource(value = {

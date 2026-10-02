@@ -106,4 +106,58 @@ test-method: testAllFiles
             (Literal "1")
             (Comma)
             (Literal "2")))))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "fn4")
+        Immutable
+        false)
+      (Callable
+        (Labeling
+          (Paren
+            (Labeling
+              (Lexeme "t")
+              (Paren
+                (Expressions
+                  (Labeling
+                    (Lexeme "p1")
+                    (Lexeme "uint8"))
+                  (Comma)
+                  (Labeling
+                    (Lexeme "p2")
+                    (Lexeme "uint8"))))))
+          (Lexeme "uint16"))
+        (Block
+          (Expressions
+            (Return
+              (BinaryOperation ADD
+                (DotAccess
+                  (Lexeme "t")
+                  (Lexeme "p1"))
+                (DotAccess
+                  (Lexeme "t")
+                  (Lexeme "p2"))))
+            (NoOp)))))
+    (NoOp)
+    (PostfixExpression
+      (Lexeme "fn4")
+      (Paren
+        (Paren
+          (Expressions
+            (Literal "1")
+            (Comma)
+            (Literal "2")))))
+    (NoOp)
+    (PostfixExpression
+      (Lexeme "fn4")
+      (Paren
+        (Paren
+          (Expressions
+            (Assignment
+              (Lexeme "p1")
+              (Literal "1"))
+            (Comma)
+            (Assignment
+              (Lexeme "p2")
+              (Literal "2"))))))
     (NoOp)))

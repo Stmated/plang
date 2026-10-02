@@ -10,6 +10,7 @@ import org.inf.ty.Ty;
 import org.inf.ty.util.MachineTarget;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -130,7 +131,7 @@ public class AstToHirRaising {
       case final Ast.Struct ast -> lower_struct(ast);
       case final Ast.New ast -> lower_new(ast);
       case final Ast.DotAccess ast -> lower_dot_access(ast);
-      case Ast.Comma _ -> throw new IllegalArgumentException("Normalize the AST before raising comma-separated expressions to HIR");
+      case Ast.Comma _ -> throw new IllegalArgumentException("Unexpected comma outside a parenthesized list");
       case Ast.Comment _ -> null;
       // TODO: Important that a NoOp means "nothing" if last expression of block.
       //        Since everything is an expression, if "x" is last expression, then give back "x"
@@ -356,7 +357,8 @@ public class AstToHirRaising {
       }
       case final Ast.Paren paren -> {
 
-        final var signature = (paren.expression() == null) ? null : find_and_lower_parameters_inner(paren.expression());
+        final var contents = paren_contents(paren);
+        final var signature = (contents == null) ? null : find_and_lower_parameters_inner(contents);
         final var parameters = (signature == null) ? new Hir.Parameter[0] : signature.parameters();
         final var vararg = signature != null && signature.vararg();
 
@@ -644,9 +646,22 @@ public class AstToHirRaising {
     return new Hir.Expressions(loopExpressions, null, true);
   }
 
+  /// Remove only this group's separators; nested groups resolve their own commas when raised.
+  /// Preserve legacy empty/singleton behavior until tuple raising consumes the distinction.
+  private Ast.Expression paren_contents(final Ast.Paren paren) {
+    return switch (paren.expression()) {
+      case Ast.Expressions expressions -> Ast.Expressions.from(
+        Arrays.stream(expressions.children()).filter(child -> !(child instanceof Ast.Comma)).toList()
+      );
+      case Ast.Comma _ -> null;
+      case null -> null;
+      default -> paren.expression();
+    };
+  }
+
   private Hir.Expression lower_paren(final Ast.Paren astParen) {
 
-    final var astExpr = astParen.expression();
+    final var astExpr = paren_contents(astParen);
     if (astExpr == null) {
       return new Hir.Expressions(new Hir.Expression[0]);
     }

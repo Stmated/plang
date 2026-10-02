@@ -70,11 +70,79 @@ public class AstExpressionGroupingTransformerTest {
 
       Arguments.of(
         "outer((inner x), y)",
-        "(PostfixExpression (Lexeme \"outer\") (Paren (Expressions (Paren (Juxtaposition (Lexeme \"inner\") (Lexeme \"x\"))) (Lexeme \"y\"))))"),
+        "(PostfixExpression (Lexeme \"outer\") (Paren (Expressions (Paren (Juxtaposition (Lexeme \"inner\") (Lexeme \"x\"))) (Comma) (Lexeme \"y\"))))"),
 
       Arguments.of(
         "outer(x, y)",
-        "(PostfixExpression (Lexeme \"outer\") (Paren (Expressions (Lexeme \"x\") (Lexeme \"y\"))))"),
+        "(PostfixExpression (Lexeme \"outer\") (Paren (Expressions (Lexeme \"x\") (Comma) (Lexeme \"y\"))))"),
+
+      Arguments.of(
+        "(x)",
+        "(Paren (Lexeme \"x\"))"),
+
+      Arguments.of(
+        "(x,)",
+        "(Paren (Expressions (Lexeme \"x\") (Comma)))"),
+
+      Arguments.of(
+        "(x, y)",
+        "(Paren (Expressions (Lexeme \"x\") (Comma) (Lexeme \"y\")))"),
+
+      Arguments.of(
+        "(x, y,)",
+        "(Paren (Expressions (Lexeme \"x\") (Comma) (Lexeme \"y\") (Comma)))"),
+
+      Arguments.of(
+        "((x,))",
+        "(Paren (Paren (Expressions (Lexeme \"x\") (Comma))))"),
+
+      Arguments.of(
+        "((x,),)",
+        "(Paren (Expressions (Paren (Expressions (Lexeme \"x\") (Comma))) (Comma)))"),
+
+      Arguments.of(
+        "((x, y), z)",
+        "(Paren (Expressions (Paren (Expressions (Lexeme \"x\") (Comma) (Lexeme \"y\"))) (Comma) (Lexeme \"z\")))"),
+
+      Arguments.of(
+        "((x, y))",
+        "(Paren (Paren (Expressions (Lexeme \"x\") (Comma) (Lexeme \"y\"))))"),
+
+      Arguments.of(
+        "outer((x, y))",
+        "(PostfixExpression (Lexeme \"outer\") (Paren (Paren (Expressions (Lexeme \"x\") (Comma) (Lexeme \"y\")))))"),
+
+      Arguments.of(
+        "outer(x,)",
+        "(PostfixExpression (Lexeme \"outer\") (Paren (Expressions (Lexeme \"x\") (Comma))))"),
+
+      Arguments.of(
+        "(x, inner y, z)",
+        "(Paren (Expressions (Lexeme \"x\") (Comma) (Juxtaposition (Lexeme \"inner\") (Lexeme \"y\") (Lexeme \"z\"))))"),
+
+      Arguments.of(
+        "((inner x, y),)",
+        "(Paren (Expressions (Paren (Juxtaposition (Lexeme \"inner\") (Lexeme \"x\") (Lexeme \"y\"))) (Comma)))"),
+
+      Arguments.of(
+        "([x, y])",
+        "(Paren (Bracket (Lexeme \"x\") (Lexeme \"y\")))"),
+
+      Arguments.of(
+        "(x; y)",
+        "(Paren (Expressions (Lexeme \"x\") (NoOp) (Lexeme \"y\")))"),
+
+      Arguments.of(
+        "(f x, y; g z)",
+        "(Paren (Expressions (Juxtaposition (Lexeme \"f\") (Lexeme \"x\") (Lexeme \"y\")) (NoOp) (Juxtaposition (Lexeme \"g\") (Lexeme \"z\"))))"),
+
+      Arguments.of(
+        "(a: int, b: bool,) => a",
+        "(Callable (Paren (Expressions (Labeling (Lexeme \"a\") (Lexeme \"int\")) (Comma) (Labeling (Lexeme \"b\") (Lexeme \"bool\")) (Comma))) (Lexeme \"a\"))"),
+
+      Arguments.of(
+        "(a: (int, bool)) => a",
+        "(Callable (Paren (Labeling (Lexeme \"a\") (Paren (Expressions (Lexeme \"int\") (Comma) (Lexeme \"bool\"))))) (Lexeme \"a\"))"),
 
       Arguments.of(
         "f[x]",
