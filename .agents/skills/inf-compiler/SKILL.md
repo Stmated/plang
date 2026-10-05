@@ -41,6 +41,8 @@ If a conditional is highly complex, for example considering 3 or more boolean al
 * Refactor the conditional into a separate function with a descriptive name, and call that function in the conditional.
   * Only do this if the separate function would not need lots of arguments to be passed in.
 
+In the project the word `Ty` is used for its internal representation of a type, to not clash with the Java `Type` class.
+
 ## Code style / formatting / idiomaticity
 
 Avoid cloning arrays or lists, instead use `Collections.unmodifiableList` or `Collections.unmodifiableSet` to return immutable views of mutable collections.

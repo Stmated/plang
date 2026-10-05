@@ -23,6 +23,7 @@ import org.inf.ast.util.ToStringTreeAstVisitor;
 import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.util.MachineTarget;
+import org.inf.util.ArrayUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -127,8 +128,7 @@ class AstToHirRaisingTest {
     final var call = Assertions.assertInstanceOf(Call.class, returned(code));
     Assertions.assertAll(
       () -> Assertions.assertEquals(arity, call.arguments().length),
-      () -> Assertions.assertEquals(tuples, java.util.Arrays.stream(call.arguments())
-        .filter(argument -> argument.value() instanceof Hir.Tuple).count())
+      () -> Assertions.assertEquals(tuples, ArrayUtils.count(call.arguments(), it -> it.value() instanceof Hir.Tuple))
     );
   }
 

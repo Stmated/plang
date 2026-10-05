@@ -32,4 +32,15 @@ public class ArrayUtils {
     }
     return result;
   }
+
+  public static <T> int count(T[] array, Predicate<T> predicate) {
+    var count = 0;
+    for (T element : array) {
+      if (predicate.test(element)) {
+        count++;
+      }
+    }
+
+    return count;
+  }
 }
