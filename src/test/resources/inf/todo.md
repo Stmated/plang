@@ -7,6 +7,97 @@
 ## Must fix to get things working again!
 
 ## Next
+
+### Tuple 1: Preserve grouping and tuple boundaries (done)
+* First isolated item: retain group-owned `Ast.Comma` nodes through implicit-call grouping, including a trailing comma. No `Paren` metadata, new tuple AST hierarchy, or runtime changes.
+* Agreed syntax: `(x)` groups, `(x,)` is a singleton tuple, `(x, y)` is a pair. Nested parentheses must preserve nested tuples. Keep existing `()` behavior; first-class empty tuples are deferred.
+* Only commas belonging to the current group mark its tuple shape. Preserve existing implicit-call comma ownership, function parameter lists, and semicolon-separated sequences/loop headers.
+* Done when AST grouping tests distinguish these forms without changing existing call grouping. Keep existing HIR behavior until Tuple 2 consumes the distinction.
+
+### Tuple 2: Generalize tuple entries and type positional tuples (done)
+* Depends on Tuple 1. `Hir.Tuple` contains ordered `Hir.TupleEntry` entries with optional labels. Tuple entries and call arguments have separate responsibilities; calls retain `Hir.Argument`. Labels are metadata, not variable references.
+* Reuse/generalize `TyStruct` and `TyField` for aggregate layouts with unnamed slots. Preserve existing named struct behavior; sharing a layout representation does not decide future tuple/struct source compatibility.
+* Raise positional tuple values separately from `Hir.Expressions`. Infer heterogeneous/nested slot types and resolve tuple annotations such as `(int, bool)` in bindings, parameters, and returns.
+* Preserve flow typing: a non-returning element makes construction non-returning. Reject invalid element types and incompatible shapes explicitly; do not reinterpret an incompatible aggregate pointer.
+* Agreed compatibility: matching recursive shapes and slot types, ignoring only numeric explicit-width metadata. No width/signedness conversions. Reject normally completing `void` slots; statically check later elements after a non-returning element without including them in executed-flow analysis.
+* Extract only the outer argument list for a call: `f(x, y)` has two arguments; `f((x, y))` has one tuple argument. Keep `Hir.Argument[]` on calls for now.
+* Done when HIR/THIR tests cover singleton/nested tuples, annotations, and call boundaries. Runtime tuple lowering remains unsupported until Tuple 3.
+
+### Tuple 3: Construct positional tuples and read elements
+* Depends on Tuple 2. Agreed semantics: assignment/passing shares the tuple object, like existing structs/arrays; it does not copy slots.
+* Reuse `Mir.NewStruct`, field places, and LLVM aggregate allocation/layout. Generalize names/helpers only where required; no parallel tuple instruction family or allocator redesign.
+* Support construction and reads such as `val t = (10, true); t[0]`. Generalize existing access handling for tuple slots, with literal integer indices as the first slice; diagnose negative/out-of-range/non-integer indices and defer computed indices.
+* Evaluate elements left-to-right exactly once, including nested tuples and non-returning elements. Do not evaluate later elements after control flow exits.
+* Done when MIR verification and LLVM execution cover singleton/heterogeneous/nested tuples and scalar results from element reads. Tuple element writes remain deferred.
+
+### Tuple 4: Store, pass, and return tuple references
+* Depends on Tuple 3. Cover tuple bindings/reassignment, tuples stored in existing aggregates, and tuple-valued function parameters and explicit/implicit returns.
+* Preserve the shared object across these boundaries. Exercise functions returning newly constructed tuples to ensure storage survives the callee.
+* Start with matching slot types and shapes. Verify ordinary and parenthesis-free calls pass a tuple as one argument, including lifted functions; no spreading or call-representation rewrite.
+* Done when execution tests cover these compositions, nested element reads, evaluation order, and rejection of arity/type mismatches. Observe returned tuples inside Inf and return scalars to the test harness; host tuple marshalling is separate.
+
+### Tuple 5: Contextual element typing and conversions
+* Depends on Tuple 4; not a prerequisite for calling functions with already-compatible positional tuples.
+* Separate literal construction under an expected tuple type from conversion of an existing tuple object. This is needed for examples returning `(1, 2)` as `(uint8, uint8)`.
+* Before implementation, decide which element conversions are implicit and whether conversion of an existing shared tuple may allocate a new object. Never implement different slot layouts with a pointer cast.
+* Keep this to tuple contexts in bindings, arguments, and returns; no general type-inference rewrite. Cover nested conversions, rejected conversions, and evaluation exactly once.
+
+### Tuple 6: Named and mixed tuple syntax and access
+* Depends on Tuple 4. Extend the same entries/layout, not a separate named-tuple node family.
+* Before implementation, confirm value labels (`p1 = 1`) versus type labels (`p1: uint8`), singleton named tuples, mixed-entry rules, and duplicate labels.
+* Scope this item to construction, inferred/declared shapes that already match, and named/positional reads. A tuple label must not assign or resolve a surrounding variable.
+* Done when raising and execution cover named entries without changing ordinary assignment, struct initialization, or existing named calls.
+
+### Tuple 7: Compatibility between positional and named tuples
+* Depends on Tuple 6 and, if element conversions are needed, Tuple 5.
+* Preserve the requested examples `fn4((1, 2))` and `fn4((p1 = 1, p2 = 2))` for a parameter typed `(p1: uint8, p2: uint8)`.
+* Before implementation, decide label identity, positional-to-named matching, named-field reordering, mixed matching, and tuple/struct compatibility. Account for shared references when a conversion changes layout.
+* Keep these rules separate from function argument spreading. Cover missing/extra/duplicate labels and source-order evaluation independently of destination order.
+
+### Tuple 8: Unify the call argument container
+* Depends on Tuple 4; coordinate with Tuple 6 for labels. Explicitly deferred from the initial tuple work.
+* Replace `Hir.Argument[]` on calls with the shared tuple container, preserving existing binding/vararg behavior and closure-capture insertion.
+* This is representation unification, not implicit unpacking: `f(t)` still has one argument. Do not allocate a runtime tuple merely to lower an ordinary argument list.
+* Keep spreading in the separate tuple-call feature below. Cover ordinary, named, implicit, and lifted calls before changing their semantics.
+
+### First-class tuple values and types (prerequisite for tuple calls)
+* Split into the isolated items above; implement one item per task. Items 1-4 provide the initial positional tuple feature. Items 5-8 are separate follow-ups, not one combined implementation.
+* Agreed: positional tuples first, comma-based singleton syntax, shared aggregate references, and call-container unification later. Named/mixed tuples use the same building blocks.
+* Language goal: as few constructs as possible, with generic nodes expressing advanced concepts; a function call can ultimately be viewed as a function reference plus an argument tuple.
+* Deferred decisions/work: first-class empty tuples and their relation to `void`, tuple element mutation, computed indices, destructuring, tuple operators, and value expressions used as types (`(1, 2)` in `fn2`). None is required for the initial positional feature.
+* AST/HIR preserve comma-based boundaries and THIR types positional tuples. Runtime tuple lowering and named tuple typing remain unsupported. `valid_parse/valid_tuple.inf` is syntax coverage, not execution coverage.
+* Reuse the existing AST grouping, HIR/THIR raising, MIR verifier/lowering, and LLVM execution tests for each item. No interpreter/comptime work, ownership system, general UFC work, or new testing framework.
+
+### Better S-expression toString-ifier
+One which instead uses reflection, so it does not need big and unruly visitors with lots of manual adding of fields.
+
+### Calling functions with tuples (and structs) (possibly unpacking, exploding)
+* Positional tuple calls depend on Tuple 1-4 above; named tuple expansion additionally needs the named-tuple items. Do not make every deferred tuple feature a prerequisite. Investigation stopped before implementation planning beyond the findings below.
+* Current calls use `Hir.Argument[]`, separately from `Hir.TupleEntry[]`. Explicit calls extract only their outer argument list, preserving a nested tuple as one argument. Tuple spreading remains unsupported.
+* Recommendation, not yet decided: explicit, shallow spread (`f(...args)` / `f ...args`). Keep `f(args)` as one argument; automatic unpacking makes tuple-taking functions ambiguous and must not change grouping based on a signature. Manual element arguments remain an alternative once tuple access works.
+* `Ast.Spread` and the `...` token already exist, but ordinary expression raising does not support spread and implicit-call grouping rejects it as an argument start. Define operand boundaries and comma ownership before extending both call forms; preserve parameter-vararg syntax.
+* Struct types, field access, and named-argument matching already exist. MIR call lowering matches labels against parameter names and rejects unknown, duplicate, missing, and excess arguments. Complete optional/default-argument support is not a prerequisite.
+* On resuming, define positional versus named tuple expansion, struct fields matched by name, mixed explicit/spread arguments, collisions, extra fields, and vararg interaction. Start with statically known shapes, not runtime-length array expansion.
+* Preserve source evaluation order, evaluate each spread operand once, and specify when its fields are read relative to later arguments. Reordering named arguments into parameter order must not reorder side effects.
+* `service.call ...args` fits existing member-call syntax. `service call ...args` is not equivalent: adjacency nests calls to the right. Treat that spelling as a separate syntax/UFC decision, not merely omitted parentheses.
+* The "arguments" to a function call is just a tuple (or *should* be, at least).
+  * So it should be possible to call a function with a tuple, and have it unpacked into the function's parameters.
+  * Either automatically unpacked, or with a special syntax like `const result = service.call(...args)` where `args` is a tuple.
+    * Help me decide what is most viable. But I do want the syntax to feel as clean/hackable as possible, to make it easy to write.
+  * A struct could be seen as a tuple of named values, so it should be possible to call a function with a struct, and have it unpacked into the function's parameters.
+    * Same restrictions should apply as for the tuples, whatever is decided.
+    * The argument matching should be based on the names and not position.
+  * I need to know of caveats and problems and considerations to make this a good idea/feature
+  * Of course a syntax like `const result = service call ...args` should work, since parenthesis are optional.
+  * If you have alternative ideas of how and when to destructure manually or automatically, then tell me.
+
+### Optional arguments, default values for parameters, named arguments
+
+### Partial functions, for currying/composition
+
+### Allocators, to be able to specify stack vs heap, and if something is by-reference or by-value
+
+
 ### Universal function calls
 * Identify source forms that could be universal function calls.
 * Preserve potential call sites in THIR.
@@ -14,8 +105,23 @@
 * Define the lookup order for potential calls.
 * Resolve unambiguous universal function calls.
 * Retain unresolved calls until later resolution passes.
+* Need a way to allow the global export of a function for full UFC.
+  * For example `person::eats(cake)` where `eats` is a function in Person struct, but if it is exported/visible, one could call it with `eats(person, cake)`
+  * This would clutter up the global namespace, and make IDE autocomplete a hassle if ALL functions could be called this way.
+    * Instead if it is not exported/visible, then it is only callable as `Person::eats(person, cake)` or `person.eats(cake)`.
+  * So need a way to specify for a function that it is visible.
+  * It could be as "ugly" as simply not supporting it in the syntax for the function declaration, and instead forcing an alias as `const eats = Person::eats` in the file you need it available.
+    * The above alias is different from `const eats = person.eats` which is a bound method reference, and the former is a function that takes a Person as first argument (since it is a static reference to the function inside the struct).
 * Report calls needing disambiguation syntax.
 * Test resolved, unresolved, and ambiguous calls.
+* Make sure it is somewhat expected that a function inside a struct is not considered "in an object" but rather "is a function with the first argument being an instance of the struct".
+
+```
+Investigate and prepare to implement `Universal function calls`.
+Ask me any clarifying questions before starting implementation.
+If you have warnings or problems with the idea, then tell me.
+I am well aware that the feature can make some syntax ambiguous
+```
 
 ### Type usage
 * Model copying, moving, referencing, and child mutation metadata for types.
@@ -91,6 +197,9 @@
   - Universal Function Call Syntax
   - Prefix, infix and postfix function call syntax (with all operators being a function (which in turn are probably inlined to native code))
   - Make "var" and "val" optional, and make "val" default
+
+* Investigate if it works with a different syntax between "assign" and "label" for things like tuple/struct, etc.
+  * Currently there is so disambiguity between `x = 10` and `x: int` and `x: 10` between structs and tuples and assignments and type labels.
 
 * Line and columns saved to the tokens/nodes, for syntax debugging
 
