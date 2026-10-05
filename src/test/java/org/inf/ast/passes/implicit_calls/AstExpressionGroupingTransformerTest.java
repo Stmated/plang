@@ -149,6 +149,22 @@ public class AstExpressionGroupingTransformerTest {
         "(PostfixExpression (Lexeme \"f\") (Bracket (Lexeme \"x\")))"),
 
       Arguments.of(
+        "t[0][1]",
+        "(PostfixExpression (PostfixExpression (Lexeme \"t\") (Bracket (Literal \"0\"))) (Bracket (Literal \"1\")))"),
+
+      Arguments.of(
+        "t[0][1][2]",
+        "(PostfixExpression (PostfixExpression (PostfixExpression (Lexeme \"t\") (Bracket (Literal \"0\"))) (Bracket (Literal \"1\"))) (Bracket (Literal \"2\")))"),
+
+      Arguments.of(
+        "f t[0][1]",
+        "(Juxtaposition (Lexeme \"f\") (PostfixExpression (PostfixExpression (Lexeme \"t\") (Bracket (Literal \"0\"))) (Bracket (Literal \"1\"))))"),
+
+      Arguments.of(
+        "t[0][1] + 2",
+        "(BinaryOperation ADD (PostfixExpression (PostfixExpression (Lexeme \"t\") (Bracket (Literal \"0\"))) (Bracket (Literal \"1\"))) (Literal \"2\"))"),
+
+      Arguments.of(
         "f()",
         "(PostfixExpression (Lexeme \"f\") (Paren))"),
 

@@ -478,8 +478,7 @@ public class TokenToAstRaising {
         final var rhs = this.parseParen();
         return new Ast.PostfixExpression(lhs, rhs);
       } else if (t == TokenType.OPEN_BRACKET) {
-        final var rhs = this.parseBracket();
-        return new Ast.PostfixExpression(lhs, rhs);
+        return parseBracketAccesses(lhs);
       } else if (t == TokenType.QUESTION_MARK) {
         // TODO: Perhaps remove? Or not call it "Bubble" and let it be something more generic.
         //        Because likely `?` will also be used for null-safe member navigation.
@@ -490,6 +489,18 @@ public class TokenToAstRaising {
     }
 
     return lhs;
+  }
+
+  private Ast.Expression parseBracketAccesses(Ast.Expression target) {
+    Token token;
+    do {
+      target = new Ast.PostfixExpression(target, parseBracket());
+      token = next();
+    } while (token != null && token.type() == TokenType.OPEN_BRACKET);
+    if (token != null) {
+      queuedTokens.push(token);
+    }
+    return target;
   }
 
   private Ast.Expression parseExpression() {

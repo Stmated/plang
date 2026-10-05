@@ -10,8 +10,8 @@ import org.inf.mir.MirTypes;
 import org.inf.mir.model.MirFunction;
 import org.inf.mir.model.MirNode;
 import org.inf.ty.*;
+import org.inf.util.IntegerLiterals;
 
-import java.math.BigInteger;
 import java.util.*;
 
 /** Serializes already evaluated MIR values; operands never trigger instruction lowering. */
@@ -115,11 +115,7 @@ final class LLVMFunctionLowering {
     return switch (constant.ty()) {
       case TyValueBoolean _ -> LLVM.LLVMConstInt(types.resolve(Ty.BOOLEAN), Boolean.parseBoolean(content) ? 1 : 0, 0);
       case TyValueNumberInteger integer -> {
-        var digits = content.replace("_", "").replaceFirst("(?i)([iu]\\d+|l)$", "");
-        if (digits.matches("(?i)0[xob].*")) {
-          digits = digits.substring(2);
-        }
-        final var number = new BigInteger(digits, integer.radix());
+        final var number = IntegerLiterals.parse(content, integer.radix());
         yield LLVM.LLVMConstIntOfString(types.resolve(integer), number.toString(), (byte) 10);
       }
       case TyValueNumberPrecisioned real ->

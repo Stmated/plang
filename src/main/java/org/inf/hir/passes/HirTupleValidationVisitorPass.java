@@ -102,9 +102,23 @@ public final class HirTupleValidationVisitorPass {
     @Override
     public void visitAssignment(Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
+      requireWritable(expression.lhs());
       // Constructor field names acquire their types from the aggregate, not identifier resolution.
       if (!(expression.lhs() instanceof Hir.Lexeme)) {
         check(expression.rhs().ty(), expression.lhs().valueTy(), "assignment");
+      }
+    }
+
+    @Override
+    public void visitCompoundAssignment(Hir.CompoundAssignment expression) {
+      HirVisitor.super.visitCompoundAssignment(expression);
+      requireWritable(expression.target());
+    }
+
+    private static void requireWritable(Hir.Expression expression) {
+      if (expression instanceof Hir.ArrayAccess access
+        && access.target().valueTy() instanceof TyStruct tuple && tuple.hasUnnamedFields()) {
+        throw new IllegalArgumentException("Tuple element writes are not supported yet");
       }
     }
 

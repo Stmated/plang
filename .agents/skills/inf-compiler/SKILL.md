@@ -56,6 +56,10 @@ For an enum, rather than having a helper method like `enum.isXorY()`, prefer add
 Prefer modern Java comments in Markdown format, inside `///` comments.
 Also prefer backtick code sections over `{@code some.code()}`.
 
+Prefer using `String.formatted()` rather than String concatenation using `"Hello, " + name`.
+
+Prefer using lombok annotations to decrease boilerplate, such as `@Data`, `@Value` or `@UtilityClass`.
+
 ## Traversing AST, HIR, and MIR nodes
 Never use custom logic for traversing AST, HIR or MIR nodes, always use the existing visitor pattern. `XyzVisitor` interface and node `#visit` method.
 

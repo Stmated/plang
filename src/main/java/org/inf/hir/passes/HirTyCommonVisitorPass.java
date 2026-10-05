@@ -7,6 +7,7 @@ import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.exceptions.UnexpectedExpressionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirJavaUtil;
+import org.inf.hir.HirTupleAccess;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.*;
 import org.inf.ty.util.Tys;
@@ -365,6 +366,7 @@ public class HirTyCommonVisitorPass {
       final var ty = switch (targetTy) {
         // The below should not return array type if is range, it should return a slice, which is different.
         case TyValueArray arrayTy -> isRange ? arrayTy : arrayTy.elementType();
+        case TyStruct tuple when tuple.hasUnnamedFields() -> tuple.fields()[HirTupleAccess.index(tuple, expr.accessor())].ty();
         default -> throw new UnexpectedExpressionException(expr.target());
       };
 

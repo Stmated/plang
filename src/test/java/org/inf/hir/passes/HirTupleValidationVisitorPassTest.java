@@ -14,6 +14,19 @@ import java.util.IdentityHashMap;
 
 class HirTupleValidationVisitorPassTest {
 
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "var t = (1, true); t[0] = 2",
+    "var t = (1, true); t[0] += 2",
+    "var t = ((1,), true); t[0][0] = 2",
+    "var t = ((1,), true); t[0] = (2,)",
+    "val f = () => (1, { return true; }, { var t = (1,); t[0] = 2; 3 }); f()"
+  })
+  void given__tuple_slot_write__when__typed__then__explicitly_rejected(String code) {
+    final var error = Assertions.assertThrows(IllegalArgumentException.class, () -> Inf.codeToThir(code));
+    Assertions.assertEquals("Tuple element writes are not supported yet", error.getMessage());
+  }
+
   private static Hir.Expression infer(String code) {
     final var hir = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), new MachineTarget(64));
     HirIdentifierResolverVisitorPass.pass(hir, Hir.Identifier::target);

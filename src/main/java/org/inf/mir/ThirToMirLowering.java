@@ -4,6 +4,7 @@ import org.inf.exceptions.NotImplementedException;
 import org.inf.exceptions.UnreachableCodeException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
+import org.inf.hir.HirTupleAccess;
 import org.inf.hir.HirVisitor;
 import org.inf.mir.model.*;
 import org.inf.thir.raising.ThirRaiseResult;
@@ -191,7 +192,7 @@ public final class ThirToMirLowering {
       case Hir.Struct _ -> UNIT;
       case Hir.TyExpr _ -> UNIT;
       case Hir.NewByCtor _ -> throw new NotImplementedException("Constructor calls are not yet normalized by THIR");
-      case Hir.Tuple _ -> throw new NotImplementedException("Runtime tuple construction is not supported yet");
+      case Hir.Tuple tuple -> tuple(tuple);
       default -> throw new NotImplementedException("Unsupported typed expression: " + expression.getClass().getSimpleName());
     };
   }
@@ -299,11 +300,16 @@ public final class ThirToMirLowering {
         if (target instanceof Diverges) {
           yield null;
         }
+        final var operand = ((Continues) target).value();
+        if (MirTypes.pointee(operand.ty()) instanceof TyStruct tuple && tuple.hasUnnamedFields()) {
+          final var index = HirTupleAccess.index(tuple, access.accessor());
+          yield new Mir.Field(operand, index, MirTypes.valueType(tuple.fields()[index].ty()));
+        }
         final var index = lower(access.accessor());
         if (index instanceof Diverges) {
           yield null;
         }
-        yield new Mir.Element(((Continues) target).value(), ((Continues) index).value(), MirTypes.valueType(access.ty()));
+        yield new Mir.Element(operand, ((Continues) index).value(), MirTypes.valueType(access.ty()));
       }
       default -> throw new IllegalArgumentException("Not an assignable place: " + expression);
     };
@@ -588,6 +594,20 @@ public final class ThirToMirLowering {
   private Flow arrayAccess(Hir.ArrayAccess access) {
     final var place = place(access);
     return current == null ? Diverges.INSTANCE : new Continues(load(place));
+  }
+
+  private Flow tuple(Hir.Tuple tuple) {
+    final var fields = new ArrayList<Mir.Operand>();
+    for (final var entry : tuple.children()) {
+      final var flow = lower(entry.value());
+      if (flow instanceof Diverges) {
+        return flow;
+      }
+      fields.add(((Continues) flow).value());
+    }
+    final var result = function.newValue(MirTypes.valueType(tuple.ty()));
+    emit(new Mir.NewStruct(result, fields));
+    return new Continues(result);
   }
 
   private Flow instance(Hir.NewByBlock instance) {

@@ -37,8 +37,6 @@ val identity = (value: (int, bool)): (int, bool) => value;
 identity(t);
 ```
 
-These examples type-check; runtime tuple construction is not implemented yet.
-
 Compatibility requires the same recursive shape and slot types. Whether a
 numeric width was explicit is ignored, but its width and signedness must match.
 For example, `(1, true)` matches `(int, bool)`, but `(1, 2)` does not match
@@ -49,5 +47,29 @@ returns or otherwise never completes makes the whole construction non-returning.
 Later elements remain statically checked, but do not contribute executed returns.
 A block that performs side effects and finishes with a value is a valid element.
 
+## Construction and reads
+
+Positional tuples can be constructed and read at runtime:
+
+```inf
+val t = (10, true);
+t[0]; // 10
+val nested = ((10, true),);
+nested[0][1]; // true
+```
+
+Indices are zero-based integer literals, including existing radix and width
+spellings such as `0x1` and `1u8`. Negative, out-of-range, and non-integer indices
+are errors. Computed indices such as `t[i]` and `t[0 + 1]` are deferred.
+
+Elements execute left-to-right exactly once. A non-returning element skips the
+remaining elements; a partially returning element still permits construction
+on paths that continue.
+
+Assignment shares the tuple object rather than copying its slots, like structs
+and arrays. Tuple slot writes (`t[0] = x`, `t[0] += x`) are rejected for now.
+An array or struct contained in a slot retains its existing mutation behavior.
+
 Tuple entries have optional labels as metadata, separately from call arguments.
-Named/mixed tuple typing, element access, and runtime lowering remain unsupported.
+Named/mixed tuples remain unsupported. Broader runtime coverage for tuple
+reassignment, storage in aggregates, parameters, and returns is tracked separately.

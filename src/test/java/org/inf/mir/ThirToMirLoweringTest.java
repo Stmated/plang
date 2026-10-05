@@ -14,15 +14,66 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class ThirToMirLoweringTest {
 
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "(1,) | 1",
+    "(1, true) | 1",
+    "((1, true), (2,)) | 3"
+  })
+  void given__typed_tuple_value__when__lowered__then__uses_existing_aggregate_instructions(String code, int allocations) {
+    final var module = Inf.codeToMir(code);
+    assertEquals(allocations, instructions(module).stream().filter(Mir.NewStruct.class::isInstance).count());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "(1,)[0]",
+    "(1, true)[1]",
+    "((1, true),)[0][1]"
+  })
+  void given__tuple_read__when__lowered__then__uses_field_places(String code) {
+    final var module = Inf.codeToMir(code);
+    final var loads = instructions(module).stream().filter(Mir.Load.class::isInstance).map(Mir.Load.class::cast).toList();
+    assertAll(
+      () -> assertFalse(loads.isEmpty()),
+      () -> assertTrue(loads.stream().allMatch(load -> load.place() instanceof Mir.Field))
+    );
+  }
+
   @Test
-  void given__typed_tuple_value__when__lowered__then__runtime_support_is_explicitly_deferred() {
-    final var error = assertThrows(org.inf.exceptions.NotImplementedException.class, () -> Inf.codeToMir("(1, true)"));
-    assertEquals("Runtime tuple construction is not supported yet", error.getMessage());
+  void given__tuple_alias__when__lowered__then__stores_same_reference_without_copying_slots() {
+    final var module = Inf.codeToMir("val t = (1, true); val alias = t; alias[0]");
+    final var instructions = instructions(module);
+    final var allocation = instructions.stream().filter(Mir.NewStruct.class::isInstance).map(Mir.NewStruct.class::cast).findFirst().orElseThrow();
+    final var stores = instructions.stream().filter(Mir.Store.class::isInstance).map(Mir.Store.class::cast).toList();
+    final var aliasLoad = instructions.stream().filter(Mir.Load.class::isInstance).map(Mir.Load.class::cast)
+      .filter(load -> load.place() == stores.getFirst().place()).findFirst().orElseThrow();
+    assertAll(
+      () -> assertEquals(1, instructions.stream().filter(Mir.NewStruct.class::isInstance).count()),
+      () -> assertSame(allocation.result(), stores.getFirst().value()),
+      () -> assertSame(aliasLoad.result(), stores.getLast().value())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val f = () => (1, { return 7; }, 1 / 0); f()",
+    "val f = () => ((1, { return 7; }), 1 / 0); f()"
+  })
+  void given__nonreturning_tuple_element__when__lowered__then__no_allocation_or_later_evaluation(String code) {
+    final var module = Inf.codeToMir(code);
+    final var instructions = module.functions().stream().flatMap(function -> function.blocks().stream())
+      .flatMap(block -> block.instructions().stream()).toList();
+    assertAll(
+      () -> assertEquals(7, run(code)),
+      () -> assertTrue(instructions.stream().noneMatch(instruction -> instruction instanceof Mir.NewStruct || instruction instanceof Mir.Binary))
+    );
   }
 
   private Object run(String code) {
@@ -240,6 +291,28 @@ class ThirToMirLoweringTest {
     final var module = ThirToMirLowering.lower(thir);
     assertEquals(7, new InterpreterCodeExecutor().execute(module.initNode()));
     assertEquals(1, module.script().blocks().stream().filter(block -> block.terminator() instanceof Mir.Branch).count());
+  }
+
+  @Test
+  void given__loop_transfer_in_tuple__when__lowered__then__no_allocation_or_later_evaluation() {
+    final var tuple = new Hir.Tuple(new Hir.TupleEntry[]{
+      new Hir.TupleEntry(null, new Hir.Literal("1", Ty.INTEGER)),
+      new Hir.TupleEntry(null, new Hir.Conditional(
+        new Hir.Literal("true", Ty.BOOLEAN), new Hir.LoopBreak(null), new Hir.LoopContinue(), Ty.DEADEND, null
+      )),
+      new Hir.TupleEntry(null, new Hir.BinaryOperation(
+        new Hir.Literal("1", Ty.INTEGER), Hir.BinaryOperationKind.DIVIDE, new Hir.Literal("0", Ty.INTEGER)
+      ))
+    }, null);
+    final var root = new Hir.Program(new Hir.Expressions(new Hir.Expression[]{
+      new Hir.Loop(tuple, Ty.VOID, null), new Hir.Return(new Hir.Literal("7", Ty.INTEGER))
+    }, Ty.INTEGER));
+    final var thir = new HirToThirRaising(new MachineTarget(64)).raise(root);
+    final var module = ThirToMirLowering.lower(thir);
+    assertAll(
+      () -> assertEquals(7, new InterpreterCodeExecutor().execute(module.initNode())),
+      () -> assertTrue(instructions(module).stream().noneMatch(instruction -> instruction instanceof Mir.NewStruct || instruction instanceof Mir.Binary))
+    );
   }
 
   @Test

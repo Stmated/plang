@@ -33,6 +33,21 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class TokenToAstRaisingTest {
 
   @Test
+  void given__consecutive_brackets__when__parsed__then__nested_postfix_access() {
+    final var expressions = toExpressions(Inf.codeToRawAst("t[0][1]"));
+    assertEquals(1, expressions.length);
+    final var outer = assertType(Ast.PostfixExpression.class, expressions[0]);
+    final var inner = assertType(Ast.PostfixExpression.class, outer.target());
+    final var first = assertType(Ast.Bracket.class, inner.suffix());
+    final var second = assertType(Ast.Bracket.class, outer.suffix());
+    Assertions.assertAll(
+      () -> assertEquals("t", assertType(Ast.Lexeme.class, inner.target()).name()),
+      () -> assertEquals("0", assertType(Ast.Literal.class, first.children()[0]).content()),
+      () -> assertEquals("1", assertType(Ast.Literal.class, second.children()[0]).content())
+    );
+  }
+
+  @Test
   void given__undelimited_conditional_call__when__parsed__then__rejected() {
     assertThrows(RuntimeException.class, () -> Inf.codeToRawAst("if p f x else g y"));
   }
