@@ -20,6 +20,7 @@ public class HirToThirRaising {
 
   public ThirRaiseResult raise(Hir.Expression e) {
 
+    HirTupleSyntaxValidationVisitorPass.pass(e);
     e = HirTyIdentifierToTyTransformerPass.pass(e, machineTarget);
     HirIdentifierResolverVisitorPass.pass(e, Hir.Identifier::target);
     HirTupleContextualTypingVisitorPass.pass(e);

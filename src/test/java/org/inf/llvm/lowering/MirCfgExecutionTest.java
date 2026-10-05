@@ -15,6 +15,218 @@ class MirCfgExecutionTest {
 
   @ParameterizedTest
   @ValueSource(ints = {0, 2})
+  void given__named_and_mixed_tuples__when__executed__then__both_read_forms_preserve_slot_order(final int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(20, Inf.codeToResult("val t = (a = 10,); t.a + t[0]", options).resultValue()),
+      () -> assertEquals(40, Inf.codeToResult("""
+        val t: (a: int, bool, b: int) = (a = 10, true, b = 20);
+        if (t[1]) then t.a + t[0] + t.b else 0
+        """, options).resultValue()),
+      () -> assertEquals(30, Inf.codeToResult("""
+        val t = (10, a = (inner = 20,), false);
+        t[0] + t.a.inner
+        """, options).resultValue()),
+      () -> assertEquals(20, Inf.codeToResult("""
+        val t = (outer = (inner = 10,),);
+        t.outer[0] + t[0].inner
+        """, options).resultValue()),
+      () -> assertEquals(256, Inf.codeToResult("""
+        val t: (a: uint8, b: uint16) = (a = 255, b = 1u8);
+        t.a + t[1]
+        """, options).resultValue()),
+      () -> assertEquals(109, Inf.codeToResult("""
+        var a = 99;
+        val t = (a = 10,);
+        a + t.a
+        """, options).resultValue()),
+      () -> assertEquals(20, Inf.codeToResult("""
+        var foo = 0;
+        val t = (a = { foo = 10; foo; },);
+        foo + t.a
+        """, options).resultValue()),
+      () -> assertEquals(2, Inf.codeToResult("var a = 1; (a = 2); a", options).resultValue()),
+      () -> assertEquals(3, Inf.codeToResult("val t = (int = 1, bool = 2); t.int + t.bool", options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void given__named_tuple_function_boundaries__when__executed__then__calls_returns_and_captures_stay_separate(final int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(9, Inf.codeToResult("""
+        val make = (x: int): (a: int, b: bool) => (a = x, b = true);
+        val read = (t: (a: int, b: bool)) => if (t.b) then t.a else 0;
+        val t = make(3);
+        val first = read t;
+        first + read(t: make(6))
+        """, options).resultValue()),
+      () -> assertEquals(9, Inf.codeToResult("""
+        val make = (flag: bool): (a: uint8,) => {
+          if (flag) { return (a = 3,); };
+          (a = 6,)
+        };
+        val first = make(true);
+        val second = make(false);
+        first.a + second[0]
+        """, options).resultValue()),
+      () -> assertEquals(17, Inf.codeToResult("""
+        val captured = [0];
+        val outer = (): (captured: int, b: int) => {
+          val identity = (t: (captured: int, b: int)): (captured: int, b: int) => { captured[0] += 1; t };
+          identity((captured = 3, b = 4))
+        };
+        val t = outer();
+        captured[0] * 10 + t.captured + t.b
+        """, options).resultValue()),
+      () -> assertEquals(15, Inf.codeToResult("""
+        val f = (x: int, t: (a: int,)) => x + t.a;
+        f(t: (a = 10,), x: 5)
+        """, options).resultValue()),
+      () -> assertEquals(3, Inf.codeToResult("""
+        val f = (a: int, b: int) => a + b;
+        f(b: 2, a: 1)
+        """, options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void given__named_tuple_storage__when__executed__then__nested_references_and_reassignment_are_preserved(final int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(13, Inf.codeToResult("""
+        var t = (a = 10,);
+        val original = t;
+        t = (a = 3,);
+        original.a + t[0]
+        """, options).resultValue()),
+      () -> assertEquals(30, Inf.codeToResult("""
+        val S = struct { val tuple: (a: int,); };
+        val s = new heap S { tuple = (a = 10,); };
+        val values = [s.tuple, (a = 20,)];
+        s.tuple = values[1];
+        values[0].a + s.tuple.a
+        """, options).resultValue()),
+      () -> assertEquals(9, Inf.codeToResult("""
+        val t = (values = [1],);
+        val alias = t;
+        alias.values[0] = 9;
+        t[0][0]
+        """, options).resultValue()),
+      () -> assertEquals(9, Inf.codeToResult("""
+        val S = struct { val a: int; };
+        val s = new heap S { a = 1; };
+        val t = (object = s,);
+        t.object.a = 9;
+        s.a
+        """, options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void given__exact_layout_tuple_and_struct__when__interchanged__then__the_same_object_is_shared(final int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(18, Inf.codeToResult("""
+        val S = struct { val a: int; val b: bool; };
+        val tuple = (a = 1, b = true);
+        val s: S = tuple;
+        s.a = 9;
+        val again: (a: int, b: bool) = s;
+        tuple.a + again[0]
+        """, options).resultValue()),
+      () -> assertEquals(18, Inf.codeToResult("""
+        val S = struct { val a: int; };
+        val s = new heap S { a = 1; };
+        val t: (a: int,) = s;
+        s.a = 9;
+        t.a + t[0]
+        """, options).resultValue()),
+      () -> assertEquals(12, Inf.codeToResult("""
+        val S = struct { val a: int; };
+        val asStruct = (t: (a: int,)): S => t;
+        val asTuple = (s: S): (a: int,) => { return s; };
+        val read = (s: S) => s.a;
+        val s = asStruct((a = 3,));
+        val t = asTuple(s);
+        read(t) + read((a = 4,)) + t.a + asTuple((a = 2,)).a
+        """, options).resultValue()),
+      () -> assertEquals(9, Inf.codeToResult("""
+        val Inner = struct { val a: int; };
+        val Outer = struct { val inner: Inner; };
+        val t = (inner = (a = 1,),);
+        val s: Outer = t;
+        s.inner.a = 9;
+        t.inner.a
+        """, options).resultValue()),
+      () -> assertEquals(7, Inf.codeToResult("""
+        val S = struct { val a: int; };
+        val s = new heap S { a = 1; };
+        val t = (a = 2,);
+        val values = [s, t];
+        values[1].a = 7;
+        t.a
+        """, options).resultValue()),
+      () -> assertEquals(3, Inf.codeToResult("""
+        val S = struct { val a: int; };
+        val make = (flag: bool) => {
+          if (flag) { return (a = 1,); };
+          new heap S { a = 2; }
+        };
+        val first = make(true);
+        val second = make(false);
+        first.a + second.a
+        """, options).resultValue()),
+      () -> assertEquals(2, Inf.codeToResult("""
+        val S = struct { val a: int; };
+        val counter = [0];
+        val make = (x: int) => {
+          counter[0] += 1;
+          if (x == 1) { return (a = 1,); };
+          if (x == 2) { return new heap S { a = 2; }; };
+        };
+        make(1);
+        make(2);
+        counter[0]
+        """, options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void given__named_tuple_flow__when__executed__then__source_order_and_early_exit_are_preserved(final int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(1233, Inf.codeToResult("""
+        val counter = [0];
+        val bump = () => { counter[0] += 1; counter[0] };
+        val t = (b = bump(), bump(), a = bump());
+        (t.b * 100 + t[1] * 10 + t.a) * 10 + counter[0]
+        """, options).resultValue()),
+      () -> assertEquals(17, Inf.codeToResult("""
+        val counter = [0];
+        val make = () => (a = { counter[0] += 1; 1 }, { return 7; }, b = { counter[0] += 100; 3 });
+        val result = make();
+        counter[0] * 10 + result
+        """, options).resultValue()),
+      () -> assertEquals(12, Inf.codeToResult("""
+        val counter = [0];
+        val make = (flag: bool): (a: int, b: int) => {
+          val t = (a = { if (flag) { return (a = 1, b = 2); }; 3 }, b = { counter[0] += 1; 4 });
+          t
+        };
+        val first = make(true);
+        val second = make(false);
+        counter[0] + first.a + first.b + second.a + second.b + 1
+        """, options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
   void given__contextual_tuple_literals__when__executed__then__bindings_calls_and_returns_use_expected_layout(int optimization) {
     final var options = InfRunOptions.builder().optLevel(optimization).build();
     assertAll(

@@ -16,6 +16,13 @@ class HirTupleValidationVisitorPassTest {
 
   @ParameterizedTest
   @ValueSource(strings = {
+    "var t = (a = 1,); t.a = 2",
+    "var t = (a = 1,); t.a += 2",
+    "var t = (a = 1,); t[0] = 2",
+    "var t = (a = 1,); t[0] += 2",
+    "var t = (nested = (a = 1,),); t.nested.a = 2",
+    "var t = ((a = 1,),); t[0].a += 2",
+    "val S = struct { val t: (a: int,); }; val s = new heap S { t = (a = 1,); }; s.t.a = 2",
     "var t = (1, true); t[0] = 2",
     "var t = (1, true); t[0] += 2",
     "var t = ((1,), true); t[0][0] = 2",
@@ -27,6 +34,56 @@ class HirTupleValidationVisitorPassTest {
   void given__tuple_slot_write__when__typed__then__explicitly_rejected(String code) {
     final var error = Assertions.assertThrows(IllegalArgumentException.class, () -> Inf.codeToThir(code));
     Assertions.assertEquals("Tuple element writes are not supported yet", error.getMessage());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "(a = 1, a = 2)",
+    "(a = 1, true, a = 2)",
+    "val f = () => (a = { return 1; }, a = 2); f()",
+    "val t: (a: int, a: int) = (a = 1, a = 2)"
+  })
+  void given__duplicate_tuple_labels__when__typed__then__rejected_even_after_exit(final String code) {
+    final var error = Assertions.assertThrows(IllegalArgumentException.class, () -> Inf.codeToThir(code));
+    Assertions.assertEquals("Duplicate tuple label: a", error.getMessage());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val t: (a: int,) = (b = 1,)",
+    "val t: (a: int, b: int) = (b = 1, a = 2)",
+    "val t: (a: int,) = (1,)",
+    "val t: (int,) = (a = 1,)",
+    "val t: (label: int, bool) = (1, true)",
+    "val t: (a: int, bool) = (1, b = true)",
+    "val f = (t: (a: int,)) => t.a; f((b = 1,))",
+    "val f = (): (a: int,) => { return (b = 1,); }",
+    "val original = (a = 1u8,); val t: (a: uint16,) = original",
+    "val t: (a: uint8,) = (a = 256,)",
+    "val S = struct { val a: int; }; val s: S = (b = 1,)",
+    "val S = struct { val a: int; }; val s = new heap S { a = 1; }; val t: (a: bool,) = s",
+    "val S = struct { val b: int; val a: int; }; val s: S = (a = 1, b = 2)",
+    "val S = struct { val a: uint8; }; val s: S = (a = 1i32,)"
+  })
+  void given__incompatible_named_shape__when__typed__then__no_reordering_or_layout_conversion(final String code) {
+    Assertions.assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToThir(code));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "var foo = 0; (a = (foo = 10),)",
+    "(a = missing,)",
+    "val t = (a = 1,); t.missing",
+    "val t = (a = 1,); t[1]",
+    "val t = (a = 1,); t[-1]",
+    "val t = (a = 1,); t[true]",
+    "val t = (a = 1,); val index = 0; t[index]",
+    "val t: (a: 1,) = (a = 1,)",
+    "val f = () => (a = { return 1; }, b = ()); f()",
+    "val f = () => (a = { return 1; }, b = missing); f()"
+  })
+  void given__invalid_named_value_or_access__when__typed__then__explicitly_rejected(final String code) {
+    Assertions.assertThrows(IllegalArgumentException.class, () -> Inf.codeToThir(code));
   }
 
   private static Hir.Expression infer(String code) {
@@ -149,8 +206,7 @@ class HirTupleValidationVisitorPassTest {
     "[(1, true); (1, true); 1]",
     "(label: 1)",
     "(label: 1,)",
-    "(label: 1, 2)",
-    "val t: (label: int, bool) = (1, true)"
+    "(label: 1, 2)"
   })
   void given__invalid_tuple_elements_or_annotations__when__typed__then__rejected(String code) {
     Assertions.assertThrows(IllegalArgumentException.class, () -> Inf.codeToThir(code));

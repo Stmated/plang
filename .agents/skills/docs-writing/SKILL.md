@@ -16,6 +16,8 @@ They are reading the documentation to understand the purpose and overview of the
 
 Avoid writing sentences like "Do this and that" instead separate paragraphs to "Do this. Do that."
 
+Do not adhere to max line length. Better to write a bit longer lines than to have an unreadable document.
+
 ## Explain reasoning and relevance
 Do not assume that things can be logically deduced from "what is expected" and "what is obvious",
 instead state the purpose of one item and the relevance to a next item, or for the next item and its relevance to the previous.

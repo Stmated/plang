@@ -21,12 +21,22 @@ class TupleTypesTest {
       Arguments.of(Ty.INTEGER, false),
       Arguments.of(tuple(Ty.INTEGER), true),
       Arguments.of(new TyStruct(new TyField[]{new TyField("x", Ty.INTEGER)}), false),
+      Arguments.of(new TyStruct(new TyField[]{new TyField("x", Ty.INTEGER)}, true), true),
       Arguments.of(new TyStruct(new TyField[]{new TyField("x", tuple(Ty.INTEGER))}), true),
       Arguments.of(new TyValueArray(tuple(Ty.INTEGER), 2), true),
       Arguments.of(new TyPointer<>(tuple(Ty.INTEGER)), true),
       Arguments.of(new TyFn(new TyParam[0], false, tuple(Ty.INTEGER)), true),
       Arguments.of(new TyUnion(new Ty[]{Ty.INTEGER, tuple(Ty.INTEGER)}), true),
       Arguments.of(null, false)
+    );
+  }
+
+  @Test
+  void given__fully_named_tuple__when__formatted__then__singleton_comma_is_preserved() {
+    final var type = new TyStruct(new TyField[]{new TyField("x", Ty.INTEGER)}, true);
+    Assertions.assertAll(
+      () -> Assertions.assertFalse(type.hasUnnamedFields()),
+      () -> Assertions.assertEquals("(x: %s,)".formatted(Ty.INTEGER), type.toString())
     );
   }
 

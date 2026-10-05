@@ -10,7 +10,7 @@ public final class TypeComparison {
   private TypeComparison() {
   }
 
-  /// Ignores numeric width explicitness and function parameter names.
+  /// Ignores numeric width explicitness, function parameter names, and aggregate source syntax.
   /// Aggregate labels, slot order, numeric flags, and all other value-type properties must match.
   public static boolean sameValueType(Ty actual, Ty expected) {
     if (actual == expected) {

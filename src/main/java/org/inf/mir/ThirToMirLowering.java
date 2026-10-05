@@ -310,7 +310,7 @@ public final class ThirToMirLowering {
           yield null;
         }
         final var operand = ((Continues) target).value();
-        if (MirTypes.pointee(operand.ty()) instanceof TyStruct tuple && tuple.hasUnnamedFields()) {
+        if (MirTypes.pointee(operand.ty()) instanceof TyStruct tuple && tuple.tuple()) {
           final var index = HirTupleAccess.index(tuple, access.accessor());
           yield new Mir.Field(operand, index, MirTypes.valueType(tuple.fields()[index].ty()));
         }
@@ -648,8 +648,9 @@ public final class ThirToMirLowering {
     final var result = function.newValue(expected);
     if (expected instanceof TyUnion union && !(operand.ty() instanceof TyUnion)) {
       for (var i = 0; i < union.types().length; i++) {
-        if (union.types()[i].equals(operand.ty())) {
-          emit(new Mir.UnionVariant(result, i, operand));
+        final var variant = union.types()[i];
+        if (variant.equals(operand.ty()) || TypeComparison.sameValueType(variant, operand.ty())) {
+          emit(new Mir.UnionVariant(result, i, convert(operand, variant)));
           return result;
         }
       }

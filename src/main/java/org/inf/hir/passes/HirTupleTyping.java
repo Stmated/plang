@@ -7,6 +7,8 @@ import org.inf.ty.TyField;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.TupleTypes;
 
+import java.util.HashSet;
+
 @UtilityClass
 final class HirTupleTyping {
 
@@ -16,11 +18,13 @@ final class HirTupleTyping {
       throw new IllegalArgumentException("Empty tuple types and values are not supported");
     }
     final var fields = new TyField[entries.length];
+    final var labels = new HashSet<String>();
     var diverges = false;
     for (var i = 0; i < entries.length; i++) {
       final var entry = entries[i];
-      if (entry.label() != null) {
-        throw new IllegalArgumentException("Named and mixed tuples are not supported yet");
+      final var name = entry.label() == null ? null : entry.label().name();
+      if (name != null && !labels.add(name)) {
+        throw new IllegalArgumentException("Duplicate tuple label: " + name);
       }
       final var value = entry.value();
       final var type = value.ty();
@@ -28,11 +32,11 @@ final class HirTupleTyping {
         diverges = true;
       } else {
         TupleTypes.requireElementType(type);
-        fields[i] = new TyField(null, type);
+        fields[i] = new TyField(name, type);
       }
     }
     // A diverging construction has no aggregate value or layout, even if some entries have values.
-    final var type = diverges ? Ty.DEADEND : new TyStruct(fields).intern();
+    final var type = diverges ? Ty.DEADEND : new TyStruct(fields, true).intern();
     tuple.ty(type);
     tuple.valueTy(type);
   }

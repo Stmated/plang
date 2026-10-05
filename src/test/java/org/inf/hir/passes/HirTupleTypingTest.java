@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,6 +22,44 @@ import java.util.List;
 import java.util.stream.Stream;
 
 class HirTupleTypingTest {
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "(a = 1, true, b = 2)",
+    "val t: (a: int, bool, b: int) = (a = 1, true, b = 2); t",
+    "var t = (a = 1, true, b = 2); t = (a = 3, false, b = 4); t",
+    "val f = (t: (a: int, bool, b: int)): (a: int, bool, b: int) => t; f((a = 1, true, b = 2))",
+    "val f = (): (a: int, bool, b: int) => { return (a = 1, true, b = 2); }; f()"
+  })
+  void given__named_and_mixed_tuple__when__typed__then__labels_and_source_order_are_preserved(final String code) {
+    final var type = Assertions.assertInstanceOf(TyStruct.class, Inf.codeToThir(code).root().ty());
+    final var expected = new TyStruct(new TyField[]{
+      new TyField("a", Ty.INTEGER),
+      new TyField(null, Ty.BOOLEAN),
+      new TyField("b", Ty.INTEGER)
+    }, true);
+    Assertions.assertAll(
+      () -> Assertions.assertTrue(type.tuple()),
+      () -> Assertions.assertTrue(TypeComparison.sameValueType(type, expected))
+    );
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "val t = (a = 1, true, b = 2); t.a | int",
+    "val t = (a = 1, true, b = 2); t[1] | bool",
+    "val t = (a = 1, true, b = 2); t.b | int",
+    "val t = (a = 1, true, b = 2); t[2] | int",
+    "val t = (outer = (inner = 2,),); t.outer.inner | int",
+    "val t = (outer = (inner = 2,),); t[0][0] | int",
+    "val t: (a: uint8,) = (a = 255,); t.a | uint8",
+    "val t: (a: uint16,) = (a = 255u8,); t[0] | uint16"
+  })
+  void given__tuple_read__when__typed__then__named_and_positional_access_resolve_slots(final String code, final String type) {
+    Assertions.assertTrue(TypeComparison.sameValueType(
+      Inf.codeToThir(code).root().ty(), Tys.fromString(type, new MachineTarget(64))
+    ));
+  }
 
   private static TyStruct tuple(Ty... elements) {
     return new TyStruct(Arrays.stream(elements).map(type -> new TyField(null, type)).toArray(TyField[]::new));

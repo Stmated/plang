@@ -670,6 +670,8 @@ public class AstToHirRaising {
         }
         if (child instanceof final Ast.Labeling labeling) {
           entries.add(lower_labeling_to_tuple_entry(labeling));
+        } else if (child instanceof Ast.Assignment assignment && assignment.lhs() instanceof Ast.Lexeme label) {
+          entries.add(new Hir.TupleEntry(lower_lexeme(label), raise(assignment.rhs()), false));
         } else {
           final var value = raise(child);
           if (value != null) {
@@ -694,9 +696,6 @@ public class AstToHirRaising {
 
   private Hir.Expression lower_paren_expression_collection(final Ast.Expressions astExpressions) {
 
-    var labeledExpressionCount = 0;
-    var unlabeledExpressionCount = 0;
-
     final var children = astExpressions.children();
     var children_lowered = new Hir.Expression[children.length];
 
@@ -704,14 +703,8 @@ public class AstToHirRaising {
     for (final var expression : children) {
 
       final var child = switch (expression) {
-        case final Ast.Labeling labeling -> {
-          labeledExpressionCount++;
-          yield lower_labeling_to_tuple_entry(labeling);
-        }
-        default -> {
-          unlabeledExpressionCount++;
-          yield raise(expression);
-        }
+        case final Ast.Labeling labeling -> lower_labeling_to_tuple_entry(labeling);
+        default -> raise(expression);
       };
 
       if (child != null) {
@@ -727,17 +720,7 @@ public class AstToHirRaising {
       children_lowered = shrunk;
     }
 
-    if (labeledExpressionCount > 0 && unlabeledExpressionCount == 0) {
-
-      // This is a tuple. There are probably smarted ways of doing this.
-      return new Hir.Tuple(
-        java.util.Arrays.copyOf(children_lowered, children_lowered.length, Hir.TupleEntry[].class),
-        null
-      );
-
-    } else {
-      return new Hir.Expressions(children_lowered);
-    }
+    return new Hir.Expressions(children_lowered);
   }
 
   private Hir.TupleEntry lower_labeling_to_tuple_entry(final Ast.Labeling astLabeling) {

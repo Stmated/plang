@@ -55,14 +55,6 @@ public class HirTyCommonVisitorPass {
     }
 
     @Override
-    public void visitTupleEntry(Hir.TupleEntry expr) {
-      HirVisitor.super.visitTupleEntry(expr);
-      if (expr.label() != null) {
-        throw new IllegalArgumentException("Named and mixed tuples are not supported yet");
-      }
-    }
-
-    @Override
     public void visitParameter(Hir.Parameter expr) {
       HirVisitor.super.visitParameter(expr);
       expr.ty(expr.valueType().ty());
@@ -382,7 +374,7 @@ public class HirTyCommonVisitorPass {
       final var ty = switch (targetTy) {
         // The below should not return array type if is range, it should return a slice, which is different.
         case TyValueArray arrayTy -> isRange ? arrayTy : arrayTy.elementType();
-        case TyStruct tuple when tuple.hasUnnamedFields() -> tuple.fields()[HirTupleAccess.index(tuple, expr.accessor())].ty();
+        case TyStruct tuple when tuple.tuple() -> tuple.fields()[HirTupleAccess.index(tuple, expr.accessor())].ty();
         default -> throw new UnexpectedExpressionException(expr.target());
       };
 

@@ -1044,6 +1044,11 @@ public class Hir {
     final Lexeme label;
     @Nonnull
     Hir.Expression value;
+    final boolean typeLabel;
+
+    public TupleEntry(final Lexeme label, final Hir.Expression value) {
+      this(label, value, label != null);
+    }
 
     @Override
     public Ty ty() {
@@ -1057,7 +1062,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return "%s%s".formatted(label == null ? "" : ("%s:".formatted(label)), value);
+      return "%s%s".formatted(label == null ? "" : ("%s%s".formatted(label, typeLabel ? ":" : "=")), value);
     }
 
     @Override

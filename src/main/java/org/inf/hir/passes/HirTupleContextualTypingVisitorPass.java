@@ -16,6 +16,7 @@ import org.inf.util.IntegerLiterals;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.Objects;
 
 /// Rewrites fresh tuple elements before enclosing expression types are resolved.
 @UtilityClass
@@ -49,7 +50,7 @@ public class HirTupleContextualTypingVisitorPass {
     }
 
     private static TyStruct tupleType(Ty type) {
-      return type instanceof TyStruct struct && struct.hasUnnamedFields() ? struct : null;
+      return type instanceof TyStruct struct && struct.tuple() ? struct : null;
     }
 
     @Override
@@ -133,7 +134,7 @@ public class HirTupleContextualTypingVisitorPass {
       final var outerTuple = tupleType;
       final var outerIndex = tupleIndex;
       try {
-        tupleType = expected != null && expression.children().length == expected.fields().length ? expected : null;
+        tupleType = matchesLabels(expression, expected) ? expected : null;
         tupleIndex = 0;
         HirVisitor.super.visitTuple(expression);
       } finally {
@@ -144,9 +145,6 @@ public class HirTupleContextualTypingVisitorPass {
 
     @Override
     public void visitTupleEntry(Hir.TupleEntry expression) {
-      if (expression.label() != null) {
-        throw new IllegalArgumentException("Named and mixed tuples are not supported yet");
-      }
       final var expected = tupleType == null ? null : tupleType.fields()[tupleIndex++].ty();
       visitExpected(expression.value(), expected);
       if (expected != null) {
@@ -156,6 +154,19 @@ public class HirTupleContextualTypingVisitorPass {
           expression.value(new Hir.Convert(expression.value(), expected));
         }
       }
+    }
+
+    private static boolean matchesLabels(final Hir.Tuple tuple, final TyStruct expected) {
+      if (expected == null || tuple.children().length != expected.fields().length) {
+        return false;
+      }
+      for (var i = 0; i < tuple.children().length; i++) {
+        final var label = tuple.children()[i].label();
+        if (!Objects.equals(label == null ? null : label.name(), expected.fields()[i].name())) {
+          return false;
+        }
+      }
+      return true;
     }
 
     @Override

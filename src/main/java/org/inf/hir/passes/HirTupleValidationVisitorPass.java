@@ -105,7 +105,7 @@ public final class HirTupleValidationVisitorPass {
               visitArrayElementType(array.elementType());
             }
             case Hir.Identifier identifier ->
-              valid &= identifier.ty() instanceof TyStruct struct && !struct.hasUnnamedFields();
+              valid &= identifier.ty() instanceof TyStruct struct && !struct.tuple();
             default -> valid = false;
           }
         }
@@ -132,7 +132,11 @@ public final class HirTupleValidationVisitorPass {
 
     private static void requireWritable(Hir.Expression expression) {
       if (expression instanceof Hir.ArrayAccess access
-        && access.target().valueTy() instanceof TyStruct tuple && tuple.hasUnnamedFields()) {
+        && access.target().valueTy() instanceof TyStruct tuple && tuple.tuple()) {
+        throw new IllegalArgumentException("Tuple element writes are not supported yet");
+      }
+      if (expression instanceof Hir.Path path && path.elements().length >= 2
+        && path.elements()[path.elements().length - 2].valueTy() instanceof TyStruct tuple && tuple.tuple()) {
         throw new IllegalArgumentException("Tuple element writes are not supported yet");
       }
     }

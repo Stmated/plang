@@ -25,6 +25,29 @@ import static org.junit.jupiter.api.Assertions.*;
 class ThirToMirLoweringTest {
 
   @Test
+  void given__named_tuple_and_struct_views__when__lowered__then__compatibility_does_not_allocate_copies() {
+    final var module = Inf.codeToMir("""
+      val S = struct { val a: int; val b: bool; };
+      val original = (a = 1, b = true);
+      val instance: S = original;
+      val tuple: (a: int, b: bool) = instance;
+      tuple.a + tuple[0]
+      """);
+    final var instructions = instructions(module);
+    final var allocation = assertInstanceOf(Mir.NewStruct.class, instructions.stream()
+      .filter(Mir.NewStruct.class::isInstance).findFirst().orElseThrow());
+    final var type = assertInstanceOf(TyStruct.class, MirTypes.pointee(allocation.result().ty()));
+    assertAll(
+      () -> assertTrue(type.tuple()),
+      () -> assertEquals("a", type.fields()[0].name()),
+      () -> assertEquals("b", type.fields()[1].name()),
+      () -> assertEquals(1, instructions.stream().filter(Mir.NewStruct.class::isInstance).count()),
+      () -> assertTrue(instructions.stream().filter(Mir.Convert.class::isInstance).map(Mir.Convert.class::cast)
+        .allMatch(convert -> TypeComparison.sameValueType(convert.value().ty(), convert.result().ty())))
+    );
+  }
+
+  @Test
   void given__tuple_stored_in_aggregates__when__lowered__then__storage_does_not_allocate_tuple_copies() {
     final var module = Inf.codeToMir("""
       val t = (1, true);
@@ -99,6 +122,9 @@ class ThirToMirLoweringTest {
   @ParameterizedTest
   @CsvSource(delimiter = '|', value = {
     "(1,) | 1",
+    "(a = 1,) | 1",
+    "(a = 1, true) | 1",
+    "(a = (b = 1,), true) | 2",
     "(1, true) | 1",
     "((1, true), (2,)) | 3"
   })
@@ -110,6 +136,9 @@ class ThirToMirLoweringTest {
   @ParameterizedTest
   @ValueSource(strings = {
     "(1,)[0]",
+    "(a = 1,)[0]",
+    "(a = 1,).a",
+    "(a = (b = 1,),).a.b",
     "(1, true)[1]",
     "((1, true),)[0][1]"
   })

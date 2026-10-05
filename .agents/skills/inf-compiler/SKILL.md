@@ -63,6 +63,8 @@ Prefer using `String.formatted()` rather than String concatenation using `"Hello
 
 Prefer using lombok annotations to decrease boilerplate, such as `@Data`, `@Value` or `@UtilityClass`.
 
+Prefer adding `final` to parameters, fields and local variables where possible. 
+
 Never nest multiple ternary expressions, instead convert to explicit if-conditions.
 
 ## Traversing AST, HIR, and MIR nodes

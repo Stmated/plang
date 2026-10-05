@@ -41,7 +41,9 @@ Existing tuple objects require the same recursive shape and slot types. Whether 
 numeric width was explicit is ignored, but its width and signedness must match.
 Fresh constructions support [contextual integer typing and widening](tuple-contextual-typing.md)
 in bindings, arguments, and returns: `(1, 2)` can satisfy `(uint8, uint8)`.
-Conversion of existing tuples and tuple/struct compatibility remain unsupported.
+Conversions that change an existing tuple's layout remain unsupported.
+Tuples and structs with exactly matching ordered fields are
+[structurally compatible](named-tuples.md#types-and-references).
 
 A normally completing `void` expression cannot occupy a slot. An element that
 returns or otherwise never completes makes the whole construction non-returning.
@@ -97,4 +99,4 @@ values[0][1]; // true
 Returning tuple to the Java host remains unsupported; return a scalar instead.
 
 Tuple entries have optional labels as metadata, separately from call arguments.
-Named/mixed tuples remain unsupported.
+See [named and mixed tuples](named-tuples.md) for label syntax and reads.

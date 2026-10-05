@@ -12,6 +12,7 @@ import org.inf.ast.Ast.Expression;
 import org.inf.ast.Ast.Literal;
 import org.inf.ast.Ast.Return;
 import org.inf.hir.AstToHirRaising;
+import org.inf.exceptions.UnexpectedExpressionException;
 import org.inf.hir.Hir;
 import org.inf.hir.Hir.Call;
 import org.inf.hir.Hir.Function;
@@ -37,6 +38,45 @@ import java.util.ArrayList;
 @EnableSnapshotTests
 @Execution(ExecutionMode.SAME_THREAD)
 class AstToHirRaisingTest {
+
+  @Test
+  void given__typed_tuple_value_entry__when__raised__then__deferred_syntax_is_rejected() {
+    Assertions.assertThrows(UnexpectedExpressionException.class, () -> Inf.codeToHir("(a: uint8 = 20,)"));
+  }
+
+  @Test
+  void given__named_and_mixed_tuple__when__raised__then__labels_are_metadata_not_assignments() {
+    final var tuple = Assertions.assertInstanceOf(Hir.Tuple.class, returned("(a = 1, true, b = (2,))"));
+    final var nested = Assertions.assertInstanceOf(Hir.Tuple.class, tuple.children()[2].value());
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(3, tuple.children().length),
+      () -> Assertions.assertEquals("a", tuple.children()[0].label().name()),
+      () -> Assertions.assertFalse(tuple.children()[0].typeLabel()),
+      () -> Assertions.assertInstanceOf(Hir.Literal.class, tuple.children()[0].value()),
+      () -> Assertions.assertNull(tuple.children()[1].label()),
+      () -> Assertions.assertEquals("b", tuple.children()[2].label().name()),
+      () -> Assertions.assertEquals(1, nested.children().length),
+      () -> Assertions.assertInstanceOf(Hir.Assignment.class, returned("(a = 1)"))
+    );
+  }
+
+  @ParameterizedTest
+  @CsvSource(value = {
+    "f(a: 1) | 0",
+    "f((a = 1,)) | 1",
+    "f(t: (a = 1,)) | 1",
+    "f((a = 1, true)) | 1",
+    "f((a = 1)) | 0"
+  }, delimiter = '|')
+  void given__named_tuple_call_boundary__when__raised__then__outer_arguments_remain_separate(
+    final String code, final int tuples
+  ) {
+    final var call = Assertions.assertInstanceOf(Call.class, returned(code));
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(1, call.arguments().length),
+      () -> Assertions.assertEquals(tuples, ArrayUtils.count(call.arguments(), it -> it.value() instanceof Hir.Tuple))
+    );
+  }
 
   @ParameterizedTest
   @CsvSource(value = {

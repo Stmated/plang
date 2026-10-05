@@ -59,6 +59,10 @@ class TypeComparisonTest {
     final var explicitInt = Ty.INTEGER.toBuilder().width(new BitWidth(32, true)).build();
     return Stream.of(
       Arguments.of(tuple(Ty.INTEGER), tuple(explicitInt), true),
+      Arguments.of(new TyStruct(new TyField[]{new TyField("x", Ty.INTEGER)}, true),
+        new TyStruct(new TyField[]{new TyField("x", explicitInt)}), true),
+      Arguments.of(new TyStruct(new TyField[]{new TyField("x", Ty.INTEGER)}, true),
+        new TyStruct(new TyField[]{new TyField("x", Ty.LONG)}), false),
       Arguments.of(tuple(tuple(Ty.INTEGER), Ty.BOOLEAN), tuple(tuple(explicitInt), Ty.BOOLEAN), true),
       Arguments.of(tuple(Ty.INTEGER), tuple(Ty.LONG), false),
       Arguments.of(tuple(Ty.INTEGER), tuple(Ty.UINTEGER), false),

@@ -11,7 +11,7 @@ public final class TupleTypes {
 
   public static boolean containsTuple(Ty ty) {
     return switch (ty) {
-      case TyStruct struct -> struct.hasUnnamedFields()
+      case TyStruct struct -> struct.tuple()
         || Arrays.stream(struct.fields()).anyMatch(field -> containsTuple(field.ty()));
       case TyValueArray array -> containsTuple(array.elementType());
       case TyPointer<?> pointer -> containsTuple(pointer.inner());

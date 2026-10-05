@@ -52,4 +52,6 @@ Struct-field initializers and array-element contexts retain exact-match rules.
 
 Elements execute left-to-right exactly once. Exiting an element skips later
 elements and the unfinished tuple's allocation; later source elements remain statically checked.
-Tuple spreading, named tuples, and general contextual inference are not added.
+For [named and mixed tuples](named-tuples.md), context applies only when labels
+and source order match the expected tuple shape. Tuple spreading and general
+contextual inference remain unsupported.
