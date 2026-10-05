@@ -67,6 +67,9 @@ Prefer adding `final` to parameters, fields and local variables where possible.
 
 Never nest multiple ternary expressions, instead convert to explicit if-conditions.
 
+See `ArrayUtils` for useful array-methods.
+Rather than `Arrays.stream(items).noneMatch(it -> isTrue(it))` do `ArrayUtils.none(items, TheClass::isTrue)`
+
 ## Traversing AST, HIR, and MIR nodes
 Never use custom logic for traversing AST, HIR or MIR nodes, always use the existing visitor pattern. `XyzVisitor` interface and node `#visit` method.
 

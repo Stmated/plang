@@ -78,8 +78,10 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
                       (ty null)))
                   (target (reference "f"))))
               (arguments
-                (Argument
+                (TupleEntry
                   (label null)
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+                  (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
                   (value
                     (Literal
                       (content "2")

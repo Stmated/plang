@@ -20,7 +20,7 @@ Both named singleton values and types require a trailing comma: `(a = 10,)`
 and `(a: int,)`. `(a = 10)` remains an ordinary grouped assignment.
 Duplicate labels are errors, including in unreachable entries.
 
-Only direct entries of comma-marked tuples interpret `=` as a label.
+Direct entries of comma-marked tuples and direct [call arguments](call-arguments.md) interpret `=` as a label.
 Assignments still return `void`, so `(a = (foo = 10),)` is not a valid tuple
 value. Use a block when an entry needs an assignment followed by a value:
 
@@ -62,4 +62,4 @@ literals. Writes through tuple-typed slots are deferred, both `t.a = x` and
 arrays/structs retain their existing mutation behavior.
 
 Calls keep their existing boundaries: `f((a = 10,))` passes one tuple;
-`f(a: 10)` remains a named call argument. Tuples are not implicitly spread.
+`f(a = 10)` is a named call argument. The previous `f(a: 10)` spelling is rejected. Tuples are not implicitly spread.

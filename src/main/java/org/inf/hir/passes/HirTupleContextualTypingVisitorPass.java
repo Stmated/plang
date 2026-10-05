@@ -4,6 +4,7 @@ import lombok.experimental.UtilityClass;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
+import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
@@ -82,27 +83,21 @@ public class HirTupleContextualTypingVisitorPass {
     @Override
     public void visitCall(Hir.Call expression) {
       visitChild(expression.target());
+      final var arguments = HirCallArguments.entries(expression.arguments());
       if (!(expression.target().valueTy() instanceof TyFn function)
         || Arrays.stream(function.parameters()).noneMatch(parameter -> tupleType(parameter.ty()) != null)) {
-        for (final var argument : expression.arguments()) {
-          visitChild(argument);
-        }
+        visitCallArguments(expression.arguments());
         return;
       }
       final var parameters = function.parameters();
       final var binding = new HirArgumentBinding(
-        ArrayUtils.mapToStrings(parameters, TyParam::name), function.vararg(), expression.arguments().length
+        ArrayUtils.mapToStrings(parameters, TyParam::name), function.vararg(), arguments.size()
       );
-      for (final var argument : expression.arguments()) {
+      for (final var argument : arguments) {
         final var index = binding.bind(argument.label() == null ? null : argument.label().name());
-        visitExpected(argument, index < parameters.length ? tupleType(parameters[index].ty()) : null);
+        visitExpected(argument.value(), index < parameters.length ? tupleType(parameters[index].ty()) : null);
       }
       binding.requireComplete();
-    }
-
-    @Override
-    public void visitArgument(Hir.Argument expression) {
-      visitExpected(expression.value(), expectedType);
     }
 
     @Override

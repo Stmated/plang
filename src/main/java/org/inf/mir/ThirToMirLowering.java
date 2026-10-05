@@ -4,6 +4,7 @@ import org.inf.exceptions.NotImplementedException;
 import org.inf.exceptions.UnreachableCodeException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
+import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirTupleAccess;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
@@ -183,7 +184,6 @@ public final class ThirToMirLowering {
       case Hir.Function defined -> new Continues(functionReference(defined.signature()));
       case Hir.FunctionSignature signature -> new Continues(functionReference(signature));
       case Hir.Call call -> call(call);
-      case Hir.Argument argument -> lower(argument.value());
       case Hir.BinaryOperation binary -> binary(binary);
       case Hir.Convert conversion -> conversion(conversion);
       case Hir.Not not -> not(not);
@@ -538,12 +538,13 @@ public final class ThirToMirLowering {
     final var signature = new MirFnSignature(Arrays.stream(type.parameters())
       .map(p -> new MirFnParameter(p.name(), p.ty())).toArray(MirFnParameter[]::new), type.vararg(), type.returnTy());
     final var parameters = signature.parameters();
-    final var arguments = new Mir.Operand[Math.max(parameters.length, call.arguments().length)];
+    final var entries = HirCallArguments.entries(call.arguments());
+    final var arguments = new Mir.Operand[Math.max(parameters.length, entries.size())];
     final var binding = new HirArgumentBinding(
       Arrays.stream(parameters).map(MirFnParameter::name).toArray(String[]::new),
-      signature.vararg(), call.arguments().length
+      signature.vararg(), entries.size()
     );
-    for (final var argument : call.arguments()) {
+    for (final var argument : entries) {
       final var flow = lower(argument.value());
       if (flow instanceof Diverges) {
         return flow;

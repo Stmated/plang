@@ -25,6 +25,40 @@ import static org.junit.jupiter.api.Assertions.*;
 class ThirToMirLoweringTest {
 
   @Test
+  void given__named_fixed_argument_and_varargs__when__lowered__then__vararg_promotions_are_preserved() {
+    final var module = Inf.codeToMir("""
+      val external = (a: int, ...): int;
+      external(a = 1, 255u8, true, 1.0f)
+      """);
+    final var call = instructions(module).stream().filter(Mir.Call.class::isInstance)
+      .map(Mir.Call.class::cast).findFirst().orElseThrow();
+    assertAll(
+      () -> assertTrue(call.signature().vararg()),
+      () -> assertEquals(4, call.arguments().size()),
+      () -> assertEquals(call.signature().parameters()[0].ty(), call.arguments().get(0).ty()),
+      () -> assertEquals(Ty.INTEGER, call.arguments().get(1).ty()),
+      () -> assertEquals(Ty.INTEGER, call.arguments().get(2).ty()),
+      () -> assertEquals(Ty.DOUBLE, call.arguments().get(3).ty()),
+      () -> assertEquals(0, instructions(module).stream().filter(Mir.NewStruct.class::isInstance).count())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val f = () => 7; f()",
+    "val f = (a: int) => a; f(a = 7)",
+    "val f = (a: int) => a; f a = 7",
+    "val f = (a: int, b: int) => a + b; f(b = 2, a = 5)",
+    "val f = (a: int, b: int) => a + b; f b = 2, a = 5",
+    "val outer = (captured: int) => { val f = (a: int) => a + captured; f(a = 2) }; outer(5)"
+  })
+  void given__ordinary_argument_lists__when__lowered__then__no_runtime_tuple_is_allocated(final String code) {
+    final var module = Inf.codeToMir(code);
+    assertEquals(0, module.functions().stream().flatMap(function -> function.blocks().stream())
+      .flatMap(block -> block.instructions().stream()).filter(Mir.NewStruct.class::isInstance).count());
+  }
+
+  @Test
   void given__reordered_fresh_tuple__when__lowered__then__one_allocation_receives_destination_order() {
     final var module = Inf.codeToMir("""
       val t: (a: uint8, bool, b: uint16) = (true, b = 255u8, a = 1);
@@ -381,7 +415,7 @@ class ThirToMirLoweringTest {
       val bump = (a: [;int;2]) => { a[0] += 1; return a[0]; };
       val pair = (a: int, b: int) => a * 10 + b;
       val values = [0, 0];
-      pair(b: bump(values), a: bump(values))
+      pair(b = bump(values), a = bump(values))
       """;
     assertEquals(21, run(code));
   }

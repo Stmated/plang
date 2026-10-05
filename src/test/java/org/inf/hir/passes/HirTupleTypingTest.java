@@ -91,7 +91,7 @@ class HirTupleTypingTest {
     "val f = (t: (int, bool)): (int, bool) => { return t; }; f((1, true))",
     "val f = (t: (int, bool)): (int, bool) => (1, true); val t = (1, true); f t",
     "var t: (int, bool) = (1, true); t = (2, false); t",
-    "val f = (t: (int, bool)): (int, bool) => t; f(t: (1, true))"
+    "val f = (t: (int, bool)): (int, bool) => t; f(t = (1, true))"
   })
   void given__matching_annotations__when__typed__then__same_layout_metadata_is_accepted(String code) {
     final var intType = Tys.fromString("int", new MachineTarget(64));

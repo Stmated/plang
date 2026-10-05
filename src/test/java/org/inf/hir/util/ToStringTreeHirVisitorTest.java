@@ -5,6 +5,7 @@ import de.skuzzle.test.snapshots.junit5.EnableSnapshotTests;
 import org.inf.Inf;
 import org.inf.ast.util.SnapshotTestUtils;
 import org.inf.hir.Hir;
+import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.*;
 import org.junit.jupiter.api.Test;
@@ -94,8 +95,8 @@ class ToStringTreeHirVisitorTest {
           (ty null)
           (children))""", printer.render(new Hir.Expressions(new Hir.Expression[0]))),
       () -> assertNotEquals(printer.render(new Hir.Literal(null, null)), printer.render(new Hir.Literal("", null))),
-      () -> assertNotEquals(printer.render(new Hir.Call(new Hir.Lexeme("f"), null)),
-        printer.render(new Hir.Call(new Hir.Lexeme("f"), new Hir.Argument[0]))),
+      () -> assertEquals(printer.render(new Hir.Call(new Hir.Lexeme("f"), null)),
+        printer.render(new Hir.Call(new Hir.Lexeme("f"), HirCallArguments.of(new Hir.TupleEntry[0])))),
       () -> assertNotEquals(printer.render(new Hir.Conditional(new Hir.Lexeme("p"), new Hir.Lexeme("yes"), null)),
         printer.render(new Hir.Conditional(new Hir.Lexeme("p"), new Hir.Lexeme("yes"), new Hir.Expressions(new Hir.Expression[0]))))
     );
@@ -109,10 +110,10 @@ class ToStringTreeHirVisitorTest {
   void given__call_flags_and_labels__when__rendered__then__preserved(
     final boolean partial, final TestInfo testInfo, final Snapshot snapshot
   ) {
-    final var call = new Hir.Call(new Hir.Identifier(new Hir.Lexeme("f"), null), new Hir.Argument[] {
-      new Hir.Argument(new Hir.Lexeme("label"), new Hir.Literal("1", Ty.INTEGER)),
-      new Hir.Argument(null, new Hir.Literal("2", Ty.INTEGER))
-    }, partial, null, null);
+    final var call = new Hir.Call(new Hir.Identifier(new Hir.Lexeme("f"), null), HirCallArguments.of(new Hir.TupleEntry[] {
+      new Hir.TupleEntry(new Hir.Lexeme("label"), new Hir.Literal("1", Ty.INTEGER), false),
+      new Hir.TupleEntry(null, new Hir.Literal("2", Ty.INTEGER), false)
+    }), partial, null, null);
 
     SnapshotTestUtils.assertMatches(testInfo, snapshot, Boolean.toString(partial), printer.render(call));
     assertNotEquals(printer.render(call), printer.render(new Hir.Call(call.target(), call.arguments(), !partial, null, null)));
@@ -180,7 +181,7 @@ class ToStringTreeHirVisitorTest {
 
   @ParameterizedTest
   @CsvSource(value = {
-    "nested_calls | f(g(1), label: 2)",
+    "nested_calls | f(g(1), label = 2)",
     "conditional | if (true) { 1; 2; } else 3",
     "array | val a = [1, 2]; a[0]",
     "function | val f = (x: int) => x + 1; f(2)",

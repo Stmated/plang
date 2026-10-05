@@ -89,35 +89,6 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
-  public static class Argument implements Expression {
-
-    final Lexeme label;
-    @Nonnull
-    Hir.Expression value;
-
-    @Override
-    public Ty ty() {
-      return value.ty();
-    }
-
-    @Override
-    public String toString() {
-      return "%s%s".formatted(label == null ? "" : ("%s:".formatted(label)), value);
-    }
-
-    @Override
-    public void visit(final HirVisitor visitor) {
-      visitor.visitArgument(this);
-    }
-
-    @Override
-    public Expression transform(final HirTransformer transformer) {
-      return transformer.transformArgument(this);
-    }
-  }
-
-  @Data
-  @AllArgsConstructor
   public static class Array implements Expression {
 
     Expression[] elements;
@@ -361,19 +332,20 @@ public class Hir {
   public static class Call implements Expression {
 
     Expression target;
-    Argument[] arguments;
+    /// Null, a single TupleEntry, or a Tuple containing multiple call entries.
+    Expression arguments;
     boolean partial;
     Ty ty;
     Ty valueTy;
 
-    public Call(Expression target, Argument[] arguments) {
+    public Call(final Expression target, final Expression arguments) {
       this.target = target;
       this.arguments = arguments;
     }
 
     @Override
     public String toString() {
-      final var argumentStrings = String.join(", ", Arrays.stream(arguments).map(Argument::toString).toList());
+      final var argumentStrings = String.join(", ", HirCallArguments.entries(arguments).stream().map(TupleEntry::toString).toList());
       return "%s%s(%s)".formatted(target, partial ? "~" : "", argumentStrings);
     }
 

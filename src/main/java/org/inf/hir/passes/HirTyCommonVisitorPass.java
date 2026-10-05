@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.exceptions.UnexpectedExpressionException;
 import org.inf.hir.Hir;
+import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirJavaUtil;
 import org.inf.hir.HirTupleAccess;
 import org.inf.hir.HirVisitor;
@@ -340,7 +341,7 @@ public class HirTyCommonVisitorPass {
         expr.valueTy(ty);
       }
 
-      if (expr.target().ty() == Ty.DEADEND || Tys.isDeadEnd(expr.arguments())) {
+      if (expr.target().ty() == Ty.DEADEND || HirCallArguments.entries(expr.arguments()).stream().anyMatch(it -> it.ty() == Ty.DEADEND)) {
         expr.ty(Ty.DEADEND);
       } else {
         expr.ty(expr.valueTy());
@@ -495,7 +496,8 @@ public class HirTyCommonVisitorPass {
 
             HirVisitor.super.visitCall(call);
             call.valueTy(pointer);
-            call.ty(Tys.isDeadEnd(call.arguments()) || call.target().ty() == Ty.DEADEND ? Ty.DEADEND : pointer);
+            call.ty(HirCallArguments.entries(call.arguments()).stream().anyMatch(it -> it.ty() == Ty.DEADEND)
+              || call.target().ty() == Ty.DEADEND ? Ty.DEADEND : pointer);
           }
           default -> throw new UnexpectedExpressionException(current);
         }

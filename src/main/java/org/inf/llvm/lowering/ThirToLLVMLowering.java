@@ -41,7 +41,6 @@ public class ThirToLLVMLowering {
       case Hir.Literal hir -> lower_literal(hir);
       case Hir.Return hir -> lower_return(hir);
       case Hir.BinaryOperation hir -> lower_binary_operation(hir);
-      case Hir.Argument hir -> lower_argument(hir);
       case Hir.Call hir -> lower_call(hir);
       case Hir.Conditional hir -> lower_conditional(hir);
       case Hir.Block hir -> lower_block(hir);
@@ -135,10 +134,6 @@ public class ThirToLLVMLowering {
   }
 
   private LoweringResult lower_call(Hir.Call hir) {
-    return null;
-  }
-
-  private LoweringResult lower_argument(Hir.Argument hir) {
     return null;
   }
 

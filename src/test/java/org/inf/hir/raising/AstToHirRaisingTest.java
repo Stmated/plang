@@ -17,6 +17,7 @@ import org.inf.hir.Hir;
 import org.inf.hir.Hir.Call;
 import org.inf.hir.Hir.Function;
 import org.inf.hir.Hir.Program;
+import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirTransformer;
 import org.inf.hir.HirVisitor;
 import org.inf.ast.util.SnapshotTestUtils;
@@ -24,7 +25,6 @@ import org.inf.ast.util.ToStringTreeAstVisitor;
 import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.util.MachineTarget;
-import org.inf.util.ArrayUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -62,9 +62,9 @@ class AstToHirRaisingTest {
 
   @ParameterizedTest
   @CsvSource(value = {
-    "f(a: 1) | 0",
+    "f(a = 1) | 0",
     "f((a = 1,)) | 1",
-    "f(t: (a = 1,)) | 1",
+    "f(t = (a = 1,)) | 1",
     "f((a = 1, true)) | 1",
     "f((a = 1)) | 0"
   }, delimiter = '|')
@@ -72,9 +72,10 @@ class AstToHirRaisingTest {
     final String code, final int tuples
   ) {
     final var call = Assertions.assertInstanceOf(Call.class, returned(code));
+    final var arguments = HirCallArguments.entries(call.arguments());
     Assertions.assertAll(
-      () -> Assertions.assertEquals(1, call.arguments().length),
-      () -> Assertions.assertEquals(tuples, ArrayUtils.count(call.arguments(), it -> it.value() instanceof Hir.Tuple))
+      () -> Assertions.assertEquals(1, arguments.size()),
+      () -> Assertions.assertEquals(tuples, arguments.stream().filter(it -> it.value() instanceof Hir.Tuple).count())
     );
   }
 
@@ -83,8 +84,8 @@ class AstToHirRaisingTest {
     "f(1,) | f(1)",
     "f((1,),) | f((1,))",
     "(a: 1, b: 2,) | (a: 1, b: 2)",
-    "f(a: 1, b: 2,) | f(a: 1, b: 2)",
-    "f(a: 1) | f(a: 1)",
+    "f(a = 1, b = 2,) | f(a = 1, b = 2)",
+    "f(a = 1) | f(a = 1)",
     "f(1; 2) | f(1, 2)",
     "(1) | 1",
     "(a: int,) => a | (a: int) => a",
@@ -166,21 +167,23 @@ class AstToHirRaisingTest {
     final String code, final int arity, final int tuples
   ) {
     final var call = Assertions.assertInstanceOf(Call.class, returned(code));
+    final var arguments = HirCallArguments.entries(call.arguments());
     Assertions.assertAll(
-      () -> Assertions.assertEquals(arity, call.arguments().length),
-      () -> Assertions.assertEquals(tuples, ArrayUtils.count(call.arguments(), it -> it.value() instanceof Hir.Tuple))
+      () -> Assertions.assertEquals(arity, arguments.size()),
+      () -> Assertions.assertEquals(tuples, arguments.stream().filter(it -> it.value() instanceof Hir.Tuple).count())
     );
   }
 
   @Test
   void given__named_call__when__raised__then__labels_are_argument_metadata() {
-    final var call = Assertions.assertInstanceOf(Call.class, returned("f(a: 1, b: 2)"));
+    final var call = Assertions.assertInstanceOf(Call.class, returned("f(a = 1, b = 2)"));
+    final var arguments = HirCallArguments.entries(call.arguments());
     Assertions.assertAll(
-      () -> Assertions.assertEquals(2, call.arguments().length),
-      () -> Assertions.assertEquals("a", call.arguments()[0].label().name()),
-      () -> Assertions.assertEquals("b", call.arguments()[1].label().name()),
-      () -> Assertions.assertInstanceOf(Hir.Literal.class, call.arguments()[0].value()),
-      () -> Assertions.assertInstanceOf(Hir.Literal.class, call.arguments()[1].value())
+      () -> Assertions.assertEquals(2, arguments.size()),
+      () -> Assertions.assertEquals("a", arguments.get(0).label().name()),
+      () -> Assertions.assertEquals("b", arguments.get(1).label().name()),
+      () -> Assertions.assertInstanceOf(Hir.Literal.class, arguments.get(0).value()),
+      () -> Assertions.assertInstanceOf(Hir.Literal.class, arguments.get(1).value())
     );
   }
 

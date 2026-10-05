@@ -10,129 +10,6 @@
 
 ## Next
 
-### Tuple 1: Preserve grouping and tuple boundaries (done)
-
-* First isolated item: retain group-owned `Ast.Comma` nodes through implicit-call grouping, including a trailing comma. No `Paren` metadata, new tuple AST
-  hierarchy, or runtime changes.
-* Agreed syntax: `(x)` groups, `(x,)` is a singleton tuple, `(x, y)` is a pair. Nested parentheses must preserve nested tuples. Keep existing `()` behavior;
-  first-class empty tuples are deferred.
-* Only commas belonging to the current group mark its tuple shape. Preserve existing implicit-call comma ownership, function parameter lists, and
-  semicolon-separated sequences/loop headers.
-* Done when AST grouping tests distinguish these forms without changing existing call grouping. Keep existing HIR behavior until Tuple 2 consumes the
-  distinction.
-
-### Tuple 2: Generalize tuple entries and type positional tuples (done)
-
-* Depends on Tuple 1. `Hir.Tuple` contains ordered `Hir.TupleEntry` entries with optional labels. Tuple entries and call arguments have separate
-  responsibilities; calls retain `Hir.Argument`. Labels are metadata, not variable references.
-* Reuse/generalize `TyStruct` and `TyField` for aggregate layouts with unnamed slots. Preserve existing named struct behavior; sharing a layout representation
-  does not decide future tuple/struct source compatibility.
-* Raise positional tuple values separately from `Hir.Expressions`. Infer heterogeneous/nested slot types and resolve tuple annotations such as `(int, bool)` in
-  bindings, parameters, and returns.
-* Preserve flow typing: a non-returning element makes construction non-returning. Reject invalid element types and incompatible shapes explicitly; do not
-  reinterpret an incompatible aggregate pointer.
-* Agreed compatibility: matching recursive shapes and slot types, ignoring only numeric explicit-width metadata. No width/signedness conversions. Reject
-  normally completing `void` slots; statically check later elements after a non-returning element without including them in executed-flow analysis.
-* Extract only the outer argument list for a call: `f(x, y)` has two arguments; `f((x, y))` has one tuple argument. Keep `Hir.Argument[]` on calls for now.
-* Done when HIR/THIR tests cover singleton/nested tuples, annotations, and call boundaries. Runtime tuple lowering remains unsupported until Tuple 3.
-
-### Tuple 3: Construct positional tuples and read elements (done)
-
-* Depends on Tuple 2. Agreed semantics: assignment/passing shares the tuple object, like existing structs/arrays; it does not copy slots.
-* Reuse `Mir.NewStruct`, field places, and LLVM aggregate allocation/layout. Generalize names/helpers only where required; no parallel tuple instruction family
-  or allocator redesign.
-* Support construction and reads such as `val t = (10, true); t[0]`. Generalize existing access handling for tuple slots, with literal integer indices as the
-  first slice; diagnose negative/out-of-range/non-integer indices and defer computed indices.
-* Implemented consecutive bracket reads (`t[0][1]`) and all existing integer literal index spellings. Direct and compound tuple-slot writes are explicitly
-  rejected.
-* Evaluate elements left-to-right exactly once, including nested tuples and non-returning elements. Do not evaluate later elements after control flow exits.
-* Done when MIR verification and LLVM execution cover singleton/heterogeneous/nested tuples and scalar results from element reads. Tuple element writes remain
-  deferred.
-
-### Tuple 4: Store, pass, and return tuple references (done)
-
-* Depends on Tuple 3. Cover tuple bindings/reassignment, tuples stored in existing aggregates, and tuple-valued function parameters and explicit/implicit
-  returns.
-* Preserve the shared object across these boundaries. Exercise functions returning newly constructed tuples to ensure storage survives the callee.
-* Start with matching slot types and shapes. Verify ordinary and parenthesis-free calls pass a tuple as one argument, including lifted functions; no spreading
-  or call-representation rewrite.
-* Implemented direct indexing of tuple-valued struct fields, array types inside tuple annotations, and consistent lifted-function binding types. Return
-  annotations do not become runtime captures.
-* Done when execution tests cover these compositions, nested element reads, evaluation order, and rejection of arity/type mismatches. Observe returned tuples
-  inside Inf and return scalars to the test harness; host tuple marshalling is separate.
-
-### Tuple 5: Contextual element typing and conversions (done)
-
-* Depends on Tuple 4; not a prerequisite for calling functions with already-compatible positional tuples.
-* Separate literal construction under an expected tuple type from conversion of an existing tuple object. This is needed for examples returning `(1, 2)` as
-  `(uint8, uint8)`.
-* Agreed: unsuffixed integer literals adopt an expected integer slot type only when their value fits. Explicitly typed literals retain their source type; other
-  integer elements allow only lossless widening. Other slot types remain exact-match.
-* Existing tuple objects, including nested references, must already match. No rebuilding, conversion allocations, or incompatible-layout pointer casts; explicit
-  fresh construction from element reads can widen.
-* Implemented tuple contexts in bindings/reassignment, arguments, and explicit/implicit returns, including final block expressions and conditional branches.
-  Struct-field and array-element contexts remain exact-match; no general type-inference rewrite.
-* Covered nested constructions, rejection of unsafe conversions, shared unchanged references, left-to-right exactly-once evaluation, and non-returning flow. See
-  `docs/tuple-contextual-typing.md`.
-
-### Tuple 6: Named and mixed tuple syntax and access (done)
-
-* Depends on Tuple 4. Extend the same entries/layout, not a separate named-tuple node family.
-* Agreed: value labels use `p1 = 1`; type labels use `p1: uint8`. Singleton values/types require a trailing comma. Mixed entries may appear in any source order;
-  duplicate labels are rejected.
-* Scope this item to construction, inferred/declared shapes that already match, and named/positional reads. A tuple label must not assign or resolve a
-  surrounding variable.
-* Implemented construction, matching recursive shapes, contextual typing for matching labels/order, and named/positional reads. Indices count all source-ordered
-  slots; tuple-slot writes remain deferred.
-* Exact-layout tuple/struct compatibility is included: matching ordered names/types share the same object without copying or reordering. Struct-typed views
-  retain existing mutation behavior.
-* Ordinary grouped assignments, struct initialization, and named calls are unchanged. Direct comma-delimited tuple entries alone interpret `=` as a label; typed
-  value entries and new nested-assignment syntax are deferred.
-* Raising, typing, MIR, and execution cover these rules. See `docs/named-tuples.md`.
-
-### Tuple 7: Compatibility between positional and named tuples (done)
-
-* Depends on Tuple 6 and, if element conversions are needed, Tuple 5.
-* Preserve the requested examples `fn4((1, 2))` and `fn4((p1 = 1, p2 = 2))` for a parameter typed `(p1: uint8, p2: uint8)`.
-* Agreed: fresh constructions match explicit labels first, then fill unclaimed destination slots with unlabeled entries in source order. Fully positional
-  constructions match by position; named entries may reorder. Unknown labels, including labels on a fully positional destination, are rejected.
-* Existing references retain exact ordered layouts and shared-object semantics; no reference renaming, reordering, widening, or copying. Nested exact-layout
-  references remain shared. Struct contexts and struct-field/array-element contexts are unchanged.
-* Implemented contextual destination layouts in existing bindings/reassignment, arguments, returns, nested constructions, blocks, and conditionals. Elements
-  evaluate exactly once in source order, independently of destination order; early exits skip later evaluation and unfinished allocation.
-* Typing, MIR verification, and LLVM execution cover matching, integer conversions, missing/extra/duplicate labels, sharing, and call boundaries. Function
-  argument spreading remains separate. See `docs/tuple-matching.md`.
-
-### Tuple 8: Unify the call argument container
-
-* Depends on Tuple 4; coordinate with Tuple 6 for labels. Explicitly deferred from the initial tuple work.
-* Replace `Hir.Argument[]` on calls with the shared tuple container, preserving existing binding/vararg behavior and closure-capture insertion.
-* This is representation unification, not implicit unpacking: `f(t)` still has one argument. Do not allocate a runtime tuple merely to lower an ordinary
-  argument list.
-* Keep spreading in the separate tuple-call feature below. Cover ordinary, named, implicit, and lifted calls before changing their semantics.
-
-### First-class tuple values and types (prerequisite for tuple calls)
-
-* Split into the isolated items above; implement one item per task. Items 1-4 provide the initial positional tuple feature. Items 5-8 are separate follow-ups,
-  not one combined implementation.
-* Agreed: positional tuples first, comma-based singleton syntax, shared aggregate references, and call-container unification later. Named/mixed tuples use the
-  same building blocks.
-* Language goal: as few constructs as possible, with generic nodes expressing advanced concepts; a function call can ultimately be viewed as a function
-  reference plus an argument tuple.
-* Deferred decisions/work: first-class empty tuples and their relation to `void`, tuple element mutation, computed indices, destructuring, tuple operators, and
-  value expressions used as types (`(1, 2)` in `fn2`). None is required for the initial positional feature.
-* AST/HIR preserve comma-based boundaries and THIR types positional, named, and mixed tuples. MIR/LLVM support construction, named/literal-index reads,
-  aggregate storage, and shared references across bindings and function calls/returns. `valid_parse/valid_tuple.inf` remains syntax coverage for later
-  compatibility goals, not execution coverage.
-* Reuse the existing AST grouping, HIR/THIR raising, MIR verifier/lowering, and LLVM execution tests for each item. No interpreter/comptime work, ownership
-  system, general UFC work, or new testing framework.
-
-### Unification of "named arguments"
-* Function calls should also use `=` for named arguments, so that it is `fn(a = 10)` and not `fn(1: 10)`.
-  * To be able to assign a value inside a nested expression, it must be done using new `:=` syntax like `fn(a = foo := 10)`
-    * The main difference to `=` is that `=` returns `void` but `:=` returns RHS value.
-* Give feedback on viability of this change, if it is a good idea or not.
-
 ### Better S-expression toString-ifier
 
 One which instead uses reflection, so it does not need big and unruly visitors with lots of manual adding of fields.
@@ -141,7 +18,7 @@ One which instead uses reflection, so it does not need big and unruly visitors w
 
 * Positional tuple calls depend on Tuple 1-4 above; named tuple expansion additionally needs the named-tuple items. Do not make every deferred tuple feature a
   prerequisite. Investigation stopped before implementation planning beyond the findings below.
-* Current calls use `Hir.Argument[]`, separately from `Hir.TupleEntry[]`. Explicit calls extract only their outer argument list, preserving a nested tuple as
+* Current calls share compact `Hir.TupleEntry`/`Hir.Tuple` containers with tuple values. Explicit calls extract only their outer argument list, preserving a nested tuple as
   one argument. Tuple spreading remains unsupported.
 * Recommendation, not yet decided: explicit, shallow spread (`f(...args)` / `f ...args`). Keep `f(args)` as one argument; automatic unpacking makes tuple-taking
   functions ambiguous and must not change grouping based on a signature. Manual element arguments remain an alternative once tuple access works.
@@ -171,6 +48,19 @@ One which instead uses reflection, so it does not need big and unruly visitors w
 * A tuple should in essence just be a short-form of a struct declaration
 * They should be convertable to and from each other if they exactly match
 * It should be possible to "explode"/"unpack" a struct as well to a function call and other locations, just like with a tuple
+
+### Unification of Array and Tuple
+* An array of unbounded size and a tuple with only positional rest parameters should be equivalent
+* Difference then being that a Tuple type should be able to be defined as `(bool, uint8...)`
+* Investigate possibility/feasibility of supporting something like `(bool..., uint8..., bool)`
+  * Which means it can be any number of booleans, then any number of uint8, then one last bool
+  * This feature is absolutely not required and should only be supported if it can be "easily" done and would be considered idiomatic to the rest of the language
+
+### Unification of "named arguments"
+* Function calls now use `=` for named arguments: `fn(a = 10)`. The old `:` spelling is rejected (Tuple 8).
+    * To be able to assign a value inside a nested expression, it must be done using new `:=` syntax like `fn(a = foo := 10)`
+        * The main difference to `=` is that `=` returns `void` but `:=` returns RHS value.
+* Give feedback on viability of this change, if it is a good idea or not.
 
 ### Optional arguments, default values for parameters, named arguments
 

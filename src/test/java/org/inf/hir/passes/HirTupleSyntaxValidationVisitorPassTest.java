@@ -17,7 +17,7 @@ class HirTupleSyntaxValidationVisitorPassTest {
     "val f = (t: (a: int,)): (a: int,) => t; f((a = 1,))",
     "val S = struct { val t: (a: int,); }; new heap S { t = (a = 1,); }",
     "[(a = 1,); (a: int,); 1]",
-    "val f = (a: int) => a; f(a: 1)",
+    "val f = (a: int) => a; f(a = 1)",
     "var a = 1; (a = 2); a",
     "(a = { var x = 1; x = 2; x },)",
     "val t = ({ val x: (a: int,) = (a = 1,); x },)"

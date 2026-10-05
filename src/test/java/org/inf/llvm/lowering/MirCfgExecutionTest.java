@@ -15,6 +15,50 @@ class MirCfgExecutionTest {
 
   @ParameterizedTest
   @ValueSource(ints = {0, 2})
+  void given__compact_named_call_lists__when__executed__then__binding_and_capture_evaluation_are_preserved(final int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(22, Inf.codeToResult("""
+        var a = 100;
+        val pair = (a: int, b: int) => a * 10 + b;
+        pair(b = 2, a = 1) + a / 10
+        """, options).resultValue()),
+      () -> assertEquals(21, Inf.codeToResult("""
+        val pair = (a: int, b: int) => a * 10 + b;
+        pair b = 1, a = 2
+        """, options).resultValue()),
+      () -> assertEquals(12, Inf.codeToResult("""
+        val pair = (a: int, b: int) => a * 10 + b;
+        pair(b = 2, 1)
+        """, options).resultValue()),
+      () -> assertEquals(13, Inf.codeToResult("""
+        var a = 0;
+        val identity = (a: int) => a;
+        identity(a = { a = 1; a + 1; }) + a * 10 + 1
+        """, options).resultValue()),
+      () -> assertEquals(22, Inf.codeToResult("""
+        val captured = [0];
+        val outer = () => {
+          val bump = () => { captured[0] += 1; captured[0] };
+          val pair = (a: int, b: int) => a * 10 + b + captured[0];
+          pair(b = bump(), a = bump())
+        };
+        outer() - 1
+        """, options).resultValue()),
+      () -> assertEquals(10, Inf.codeToResult("""
+        val f = (t: (int, bool)) => if (t[1]) then t[0] else 0;
+        f(t = (10, true))
+        """, options).resultValue()),
+      () -> assertEquals(7, Inf.codeToResult("""
+        val f = (a: int, b: int) => a + b;
+        val outer = () => f(a = { return 7; }, b = 100);
+        outer()
+        """, options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
   void given__fresh_tuple_matching__when__executed__then__calls_and_bindings_use_destination_slots(final int optimization) {
     final var options = InfRunOptions.builder().optLevel(optimization).build();
     assertAll(
@@ -94,7 +138,7 @@ class MirCfgExecutionTest {
         val counter = [0];
         val bump = () => { counter[0] += 1; counter[0] };
         val read = (x: int, t: (a: int, b: int)) => x * 100 + t.a * 10 + t.b;
-        val result = read(t: (b = bump(), a = bump()), x: bump());
+        val result = read(t = (b = bump(), a = bump()), x = bump());
         result + counter[0] * 300
         """, options).resultValue()),
       () -> assertEquals(112, Inf.codeToResult("""
@@ -174,7 +218,7 @@ class MirCfgExecutionTest {
         val read = (t: (a: int, b: bool)) => if (t.b) then t.a else 0;
         val t = make(3);
         val first = read t;
-        first + read(t: make(6))
+        first + read(t = make(6))
         """, options).resultValue()),
       () -> assertEquals(9, Inf.codeToResult("""
         val make = (flag: bool): (a: uint8,) => {
@@ -196,11 +240,11 @@ class MirCfgExecutionTest {
         """, options).resultValue()),
       () -> assertEquals(15, Inf.codeToResult("""
         val f = (x: int, t: (a: int,)) => x + t.a;
-        f(t: (a = 10,), x: 5)
+        f(t = (a = 10,), x = 5)
         """, options).resultValue()),
       () -> assertEquals(3, Inf.codeToResult("""
         val f = (a: int, b: int) => a + b;
-        f(b: 2, a: 1)
+        f(b = 2, a = 1)
         """, options).resultValue())
     );
   }
@@ -353,7 +397,7 @@ class MirCfgExecutionTest {
       () -> assertEquals(10, Inf.codeToResult("""
         val read = (t: (uint8, uint8)) => t[0] + t[1];
         val first = read((1, 2));
-        val second = read(t: { (3, 4) });
+        val second = read(t = { (3, 4) });
         first + second
         """, options).resultValue()),
       () -> assertEquals(6, Inf.codeToResult("""
@@ -444,7 +488,7 @@ class MirCfgExecutionTest {
         val counter = [0];
         val bump = (): uint8 => { counter[0] += 1; counter[0] };
         val read = (t: (uint16, (int16, uint8)), x: int) => t[0] * 1000 + t[1][0] * 100 + t[1][1] * 10 + x;
-        val result = read(x: bump(), t: (bump(), (bump(), bump())));
+        val result = read(x = bump(), t = (bump(), (bump(), bump())));
         result * 10 + counter[0]
         """, options).resultValue()),
       () -> assertEquals(120, Inf.codeToResult("""
@@ -589,7 +633,7 @@ class MirCfgExecutionTest {
         """, options).resultValue()),
       () -> assertEquals(10, Inf.codeToResult("""
         val read = (t: (int, bool)) => t[0];
-        read(t: (10, true))
+        read(t = (10, true))
         """, options).resultValue()),
       () -> assertEquals(7, Inf.codeToResult("""
         val change = (t: ([;int;1],)): ([;int;1],) => { t[0][0] = 7; return t; };
@@ -679,7 +723,7 @@ class MirCfgExecutionTest {
         val bump = () => { counter[0] += 1; return counter[0]; };
         val make = () => (bump(), (bump(), true));
         val read = (t: (int, (int, bool)), x: int) => t[0] * 10000 + t[1][0] * 1000 + x * 100;
-        val result = read(x: bump(), t: make());
+        val result = read(x = bump(), t = make());
         result + bump() * 10 + counter[0]
         """, options).resultValue()),
       () -> assertEquals(17, Inf.codeToResult("""

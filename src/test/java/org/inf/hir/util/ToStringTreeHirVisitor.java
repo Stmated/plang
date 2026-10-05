@@ -54,11 +54,6 @@ public final class ToStringTreeHirVisitor {
     }
 
     @Override
-    public void visitArgument(final Hir.Argument expr) {
-      result = node("Argument", child("label", expr.label()), child("value", expr.value()));
-    }
-
-    @Override
     public void visitArray(final Hir.Array expr) {
       result = node("Array", type("ty", expr.ty()), type("valueTy", expr.valueTy()),
         child("elementType", expr.elementType()), child("length", expr.length()),
@@ -232,7 +227,7 @@ public final class ToStringTreeHirVisitor {
     @Override
     public void visitCall(final Hir.Call expr) {
       result = node("Call", atom("partial", expr.partial()), type("ty", expr.ty()),
-        type("valueTy", expr.valueTy()), child("target", expr.target()), children("arguments", expr.arguments()));
+        type("valueTy", expr.valueTy()), child("target", expr.target()), child("arguments", expr.arguments()));
     }
 
     @Override

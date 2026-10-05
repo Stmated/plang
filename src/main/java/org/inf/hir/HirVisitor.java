@@ -13,10 +13,6 @@ public interface HirVisitor {
     }
   }
 
-  default void visitArgument(Hir.Argument expr) {
-    visitChild(expr.value());
-  }
-
   default void visitArray(Hir.Array expr) {
     visitArrayElementType(expr.elementType());
 
@@ -235,9 +231,18 @@ public interface HirVisitor {
 
   default void visitCall(Hir.Call expr) {
     visitChild(expr.target());
-    for (final var argument : expr.arguments()) {
-      visitChild(argument);
+    visitCallArguments(expr.arguments());
+  }
+
+  /// Traverse the call list without treating its container as a tuple value.
+  default void visitCallArguments(Hir.Expression expr) {
+    for (final var argument : HirCallArguments.entries(expr)) {
+      visitCallArgument(argument);
     }
+  }
+
+  default void visitCallArgument(Hir.TupleEntry expr) {
+    visitChild(expr.value());
   }
 
   default void visitLexeme(Hir.Lexeme lexeme) {

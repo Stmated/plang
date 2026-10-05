@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
+import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirTransformer;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.TyFn;
@@ -111,8 +112,9 @@ public class HirLambdaLiftingTransformerPass {
 
       if (replacedWith != null) {
 
-        final var newArguments = new Hir.Argument[expr.arguments().length + replacedWith.captures().size()];
-        System.arraycopy(expr.arguments(), 0, newArguments, 0, expr.arguments().length);
+        final var arguments = HirCallArguments.entries(expr.arguments());
+        final var newArguments = new Hir.TupleEntry[arguments.size() + replacedWith.captures().size()];
+        arguments.toArray(newArguments);
 
         for (var i = 0; i < replacedWith.captures().size(); i++) {
 
@@ -126,14 +128,15 @@ public class HirLambdaLiftingTransformerPass {
               break;
             }
           }
-          newArguments[expr.arguments().length + i] = new Hir.Argument(
+          newArguments[arguments.size() + i] = new Hir.TupleEntry(
             parameter.lexeme(),
-            new Hir.Identifier(parameter.lexeme(), declaration)
+            new Hir.Identifier(parameter.lexeme(), declaration),
+            false
           );
         }
 
         final var replacement = new Hir.Call(
-          replacedWith.toIdentifier(), newArguments, expr.partial(), expr.ty(), null
+          replacedWith.toIdentifier(), HirCallArguments.of(newArguments), expr.partial(), expr.ty(), null
         );
         rewritten.add(replacement);
         return replacement;
@@ -390,9 +393,7 @@ public class HirLambdaLiftingTransformerPass {
           }
           for (var i = 1; i < path.elements().length; i++) {
             if (path.elements()[i] instanceof Hir.Call call) {
-              for (final var argument : call.arguments()) {
-                argument.visit(this);
-              }
+              visitCallArguments(call.arguments());
             }
           }
         }

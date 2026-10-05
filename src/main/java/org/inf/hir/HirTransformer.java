@@ -1,5 +1,7 @@
 package org.inf.hir;
 
+import org.inf.exceptions.UnexpectedExpressionException;
+
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 
@@ -52,11 +54,6 @@ public interface HirTransformer {
 
   default Hir.Expression transformExpressions(final Hir.Expressions expr) {
     expr.children(batch(expr.children(), Hir.Expression.class));
-    return expr;
-  }
-
-  default Hir.Expression transformArgument(final Hir.Argument expr) {
-    expr.value(expr.value().transform(this));
     return expr;
   }
 
@@ -312,7 +309,27 @@ public interface HirTransformer {
 
   default Hir.Expression transformCall(final Hir.Call expr) {
     expr.target(expr.target().transform(this));
-    expr.arguments(batch(expr.arguments(), Hir.Argument.class));
+    expr.arguments(transformCallArguments(expr.arguments()));
+    return expr;
+  }
+
+  default Hir.Expression transformCallArguments(final Hir.Expression expr) {
+    return switch (expr) {
+      case null -> null;
+      case final Hir.TupleEntry entry -> transformCallArgument(entry);
+      case final Hir.Tuple tuple -> {
+        final var entries = tuple.children();
+        for (var i = 0; i < entries.length; i++) {
+          entries[i] = transformCallArgument(entries[i]);
+        }
+        yield tuple;
+      }
+      default -> throw new UnexpectedExpressionException(expr);
+    };
+  }
+
+  default Hir.TupleEntry transformCallArgument(final Hir.TupleEntry expr) {
+    expr.value(expr.value().transform(this));
     return expr;
   }
 
