@@ -70,6 +70,28 @@ Assignment shares the tuple object rather than copying its slots, like structs
 and arrays. Tuple slot writes (`t[0] = x`, `t[0] += x`) are rejected for now.
 An array or struct contained in a slot retains its existing mutation behavior.
 
+## Storage and function boundaries
+
+Bindings, reassignment, array elements, struct fields, parameters, and returns share the tuple reference. 
+Reassignment replaces that reference; aliases still refer to the original tuple. 
+These boundaries require matching shapes and slot types, without numeric conversions.
+
+```inf
+val make = (x: int): (int, bool) => (x, true);
+val identity = (t: (int, bool)): (int, bool) => { return t; };
+var t = make(10);
+val original = identity t;
+t = make(20);
+original[0]; // 10
+
+val S = struct { val pair: (int, bool); };
+val instance = new heap S { pair = t; };
+val values = [instance.pair];
+instance.pair[0]; // 20
+values[0][1]; // true
+```
+
+Returning tuple to the Java host remains unsupported; return a scalar instead.
+
 Tuple entries have optional labels as metadata, separately from call arguments.
-Named/mixed tuples remain unsupported. Broader runtime coverage for tuple
-reassignment, storage in aggregates, parameters, and returns is tracked separately.
+Named/mixed tuples remain unsupported.

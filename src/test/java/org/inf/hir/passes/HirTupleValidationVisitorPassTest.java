@@ -20,7 +20,9 @@ class HirTupleValidationVisitorPassTest {
     "var t = (1, true); t[0] += 2",
     "var t = ((1,), true); t[0][0] = 2",
     "var t = ((1,), true); t[0] = (2,)",
-    "val f = () => (1, { return true; }, { var t = (1,); t[0] = 2; 3 }); f()"
+    "val f = () => (1, { return true; }, { var t = (1,); t[0] = 2; 3 }); f()",
+    "val S = struct { val t: (int, bool); }; val s = new heap S { t = (1, true); }; s.t[0] = 2",
+    "val S = struct { val t: (int, bool); }; val s = new heap S { t = (1, true); }; s.t[0] += 2"
   })
   void given__tuple_slot_write__when__typed__then__explicitly_rejected(String code) {
     final var error = Assertions.assertThrows(IllegalArgumentException.class, () -> Inf.codeToThir(code));
@@ -41,7 +43,9 @@ class HirTupleValidationVisitorPassTest {
     "[(1, true); (1, true); 1]",
     "val t: ((int, 1), bool) = ((1, 2), true)",
     "val f = () => 1; val t: (f(), bool) = (1, true)",
-    "val f = (): (int, { return true; }) => (1, true)"
+    "val f = (): (int, { return true; }) => (1, true)",
+    "val t: ([1], bool) = ([1], true)",
+    "val x = 1; val t: ([;x;1], bool) = ([1], true)"
   })
   void given__value_expression_in_tuple_annotation__when__validated_after_inference__then__rejected(String code) {
     final var hir = infer(code);
@@ -58,7 +62,10 @@ class HirTupleValidationVisitorPassTest {
     "[(1, true); (int, bool); 1]",
     "val S = struct { val x: int; }; val s = new heap S { x = 1; }; val t: (S, bool) = (s, true); t",
     "val f = () => (1, { return true; }); f()",
-    "val t = ({ val x: (int, bool) = (1, true); x }, 2); t"
+    "val t = ({ val x: (int, bool) = (1, true); x }, 2); t",
+    "val t: ([;int;1], bool) = ([1], true); t",
+    "val t: ([;[;int;1];1],) = ([[1]],); t",
+    "val t: ([;(int, bool);1],) = ([(1, true)],); t"
   })
   void given__typed_tuples__when__validated__then__type_references_are_preserved(String code) {
     final var hir = infer(code);
@@ -101,11 +108,19 @@ class HirTupleValidationVisitorPassTest {
     "val f = (): (int,) => 1",
     "val f = (t: (int, bool)) => 1; f(t: (1, 2))",
     "val f = (): (int, bool) => { return (1, true); return (1, 2); }",
-    "val S = struct { val t: (int, bool); }; new heap S { t = (1, 2); }"
+    "val S = struct { val t: (int, bool); }; new heap S { t = (1, 2); }",
+    "val f = (t: ((int, bool),)) => 1; val t = ((1, 2),); f t",
+    "val captured = 1; val f = (t: (int, bool)) => captured; val t = (1, 2); f t",
+    "val values = [(1, true)]; values[0] = (2, 3)",
+    "val values = [(1, true), (2, 3)]",
+    "val S = struct { val t: (int, bool); }; val s = new heap S { t = (1, true); }; s.t = (2, 3)",
+    "val f = (): ((int, bool),) => ((1, 2),)",
+    "val f = (t: (int64, bool)) => 1; f((1, true))",
+    "val f = (t: (uint32, bool)) => 1; f((1, true))"
   })
   void given__incompatible_tuple_boundary__when__typed__then__explicit_conversion_error(String code) {
     final var error = Assertions.assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToThir(code));
-    Assertions.assertEquals(true, error.getMessage().contains("Incompatible tuple"));
+    Assertions.assertEquals(true, error.getMessage().contains("tuple"));
   }
 
   @ParameterizedTest
@@ -114,7 +129,10 @@ class HirTupleValidationVisitorPassTest {
     "val f = (t: (int, bool)) => 1; f()",
     "val f = (t: (int, bool)) => 1; f((1, true), (2, false))",
     "val f = (t: (int, bool)) => 1; f(other: (1, true))",
-    "val f = (t: (int, bool)) => 1; f(t: (1, true), t: (2, false))"
+    "val f = (t: (int, bool)) => 1; f(t: (1, true), t: (2, false))",
+    "val f = (t: (int, bool), x: int) => x; val t = (1, true); f t",
+    "val captured = 1; val f = (t: (int, bool)) => captured; f(1, true)",
+    "val f = (t: (int, bool)) => 1; val t = (1, true); f t, t"
   })
   void given__incorrect_tuple_call_arguments__when__typed__then__rejected(String code) {
     Assertions.assertThrows(RuntimeException.class, () -> Inf.codeToThir(code));

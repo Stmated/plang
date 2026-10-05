@@ -31,10 +31,11 @@
 * Evaluate elements left-to-right exactly once, including nested tuples and non-returning elements. Do not evaluate later elements after control flow exits.
 * Done when MIR verification and LLVM execution cover singleton/heterogeneous/nested tuples and scalar results from element reads. Tuple element writes remain deferred.
 
-### Tuple 4: Store, pass, and return tuple references
+### Tuple 4: Store, pass, and return tuple references (done)
 * Depends on Tuple 3. Cover tuple bindings/reassignment, tuples stored in existing aggregates, and tuple-valued function parameters and explicit/implicit returns.
 * Preserve the shared object across these boundaries. Exercise functions returning newly constructed tuples to ensure storage survives the callee.
 * Start with matching slot types and shapes. Verify ordinary and parenthesis-free calls pass a tuple as one argument, including lifted functions; no spreading or call-representation rewrite.
+* Implemented direct indexing of tuple-valued struct fields, array types inside tuple annotations, and consistent lifted-function binding types. Return annotations do not become runtime captures.
 * Done when execution tests cover these compositions, nested element reads, evaluation order, and rejection of arity/type mismatches. Observe returned tuples inside Inf and return scalars to the test harness; host tuple marshalling is separate.
 
 ### Tuple 5: Contextual element typing and conversions
@@ -66,7 +67,7 @@
 * Agreed: positional tuples first, comma-based singleton syntax, shared aggregate references, and call-container unification later. Named/mixed tuples use the same building blocks.
 * Language goal: as few constructs as possible, with generic nodes expressing advanced concepts; a function call can ultimately be viewed as a function reference plus an argument tuple.
 * Deferred decisions/work: first-class empty tuples and their relation to `void`, tuple element mutation, computed indices, destructuring, tuple operators, and value expressions used as types (`(1, 2)` in `fn2`). None is required for the initial positional feature.
-* AST/HIR preserve comma-based boundaries and THIR types positional tuples. MIR/LLVM support positional construction and literal-index reads; named tuple typing remains unsupported. `valid_parse/valid_tuple.inf` is syntax coverage, not execution coverage.
+* AST/HIR preserve comma-based boundaries and THIR types positional tuples. MIR/LLVM support positional construction, literal-index reads, aggregate storage, and shared references across bindings and function calls/returns; named tuple typing remains unsupported. `valid_parse/valid_tuple.inf` is syntax coverage, not execution coverage.
 * Reuse the existing AST grouping, HIR/THIR raising, MIR verifier/lowering, and LLVM execution tests for each item. No interpreter/comptime work, ownership system, general UFC work, or new testing framework.
 
 ### Better S-expression toString-ifier

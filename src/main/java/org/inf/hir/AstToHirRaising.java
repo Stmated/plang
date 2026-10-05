@@ -4,6 +4,7 @@ import org.inf.ast.Ast;
 import org.inf.ast.AstVisitor;
 import org.inf.exceptions.NotImplementedException;
 import org.inf.exceptions.UnexpectedExpressionException;
+import org.inf.hir.passes.HirIndexedPathTransformerPass;
 import org.inf.hir.passes.HirLexemeToIdentifierTransformerPass;
 import org.inf.hir.passes.HirSimplifyTransformerPass;
 import org.inf.ty.Ty;
@@ -35,7 +36,8 @@ public class AstToHirRaising {
     final var implicitlyReturned = raising.implicit_return(raised, true);
 
     final var program = new Hir.Program(implicitlyReturned);
-    final var identifiersResolved = HirLexemeToIdentifierTransformerPass.pass(program);
+    final var indexedPaths = HirIndexedPathTransformerPass.pass(program);
+    final var identifiersResolved = HirLexemeToIdentifierTransformerPass.pass(indexedPaths);
     final var simplified = HirSimplifyTransformerPass.pass(identifiersResolved);
 
     return simplified;

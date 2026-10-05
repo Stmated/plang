@@ -19,6 +19,39 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class HirLambdaLiftingIdentityTest {
 
+  @Test
+  void given__lifted_tuple_function__when__bound__then__binding_and_calls_use_the_lifted_signature() {
+    final var root = Inf.codeToThir("""
+      val captured = (7,);
+      val read = (value: (int, bool)) => value[0] + captured[0];
+      val argument = (1, true);
+      val ordinary = read(argument);
+      read argument
+      """).root();
+    final var lifted = functions(root).getFirst();
+    assertLocalBindings(lifted);
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitAssignment(Hir.Assignment assignment) {
+        if (assignment.lhs() instanceof Hir.Dec declaration && declaration.lexeme().name().equals("read")) {
+          assertEquals(lifted.ty(), declaration.valueTy());
+        }
+        HirVisitor.super.visitAssignment(assignment);
+      }
+
+      @Override
+      public void visitCall(Hir.Call call) {
+        assertAll(
+          () -> assertEquals(lifted.ty(), call.target().valueTy()),
+          () -> assertEquals(2, call.arguments().length),
+          () -> assertEquals("argument", assertInstanceOf(Hir.Identifier.class, call.arguments()[0].value()).lexeme().name()),
+          () -> assertEquals("captured", assertInstanceOf(Hir.Identifier.class, call.arguments()[1].value()).lexeme().name())
+        );
+        HirVisitor.super.visitCall(call);
+      }
+    });
+  }
+
   private List<Hir.Function> functions(Hir.Expression expression) {
     final var result = new ArrayList<Hir.Function>();
     expression.visit(new HirVisitor() {
@@ -153,11 +186,14 @@ class HirLambdaLiftingIdentityTest {
     }
   }
 
-  @Test
-  void constructorTypeAliasDoesNotBecomeRuntimeCapture() {
-    final var root = Inf.codeToThir(
-      "val S = struct { val a: int; }; val make = () => new heap S { a = 1; }; make()"
-    ).root();
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val S = struct { val a: int; }; val make = () => new heap S { a = 1; }; make()",
+    "val S = struct { val a: int; }; val make = (): S => new heap S { a = 1; }; make()",
+    "val S = struct { val a: int; }; val make = (): (S,) => (new heap S { a = 1; },); make()"
+  })
+  void given__struct_type_in_constructor_or_return__when__lifted__then__type_alias_is_not_a_runtime_capture(String code) {
+    final var root = Inf.codeToThir(code).root();
     final var constructors = functions(root);
 
     assertEquals(1, constructors.size());

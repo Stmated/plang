@@ -3,6 +3,9 @@ name: inf-compiler
 description: Use this skill for changes to the Inf compiler written in Java.
 ---
 
+# General
+* NEVER install external tools like Maven, if you cannot execute the code something is wrong with your tool investigation.
+
 # Inf Compiler
 
 * Make the smallest change that addresses the task.

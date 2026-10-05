@@ -92,11 +92,26 @@ public final class HirTupleValidationVisitorPass {
     }
 
     private static boolean isTypeExpression(Hir.Expression expression) {
-      return switch (expression) {
-        case Hir.TyExpr _, Hir.Tuple _ -> true;
-        case Hir.Identifier identifier -> identifier.ty() instanceof TyStruct struct && !struct.hasUnnamedFields();
-        default -> false;
+      final var visitor = new HirVisitor() {
+        private boolean valid = true;
+
+        @Override
+        public void visitChild(Hir.Expression child) {
+          switch (child) {
+            case Hir.TyExpr _, Hir.Tuple _ -> {
+            }
+            case Hir.Array array -> {
+              valid &= array.elements().length == 0;
+              visitArrayElementType(array.elementType());
+            }
+            case Hir.Identifier identifier ->
+              valid &= identifier.ty() instanceof TyStruct struct && !struct.hasUnnamedFields();
+            default -> valid = false;
+          }
+        }
       };
+      visitor.visitChild(expression);
+      return visitor.valid;
     }
 
     @Override

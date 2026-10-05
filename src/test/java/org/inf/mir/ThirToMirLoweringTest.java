@@ -7,6 +7,8 @@ import org.inf.hir.Hir;
 import org.inf.mir.model.MirNode;
 import org.inf.thir.raising.HirToThirRaising;
 import org.inf.ty.Ty;
+import org.inf.ty.TyPointer;
+import org.inf.ty.TyStruct;
 import org.inf.ty.TyUnion;
 import org.inf.ty.util.MachineTarget;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,50 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ThirToMirLoweringTest {
+
+  @Test
+  void given__tuple_stored_in_aggregates__when__lowered__then__storage_does_not_allocate_tuple_copies() {
+    final var module = Inf.codeToMir("""
+      val t = (1, true);
+      val S = struct { val value: (int, bool); };
+      val instance = new heap S { value = t; };
+      val values = [instance.value];
+      values[0][0]
+      """);
+    final var allocations = instructions(module).stream().filter(Mir.NewStruct.class::isInstance)
+      .map(Mir.NewStruct.class::cast).toList();
+    assertAll(
+      () -> assertEquals(2, allocations.size()),
+      () -> assertEquals(1, allocations.stream().filter(allocation ->
+        MirTypes.pointee(allocation.result().ty()) instanceof TyStruct tuple && tuple.hasUnnamedFields()).count()),
+      () -> assertEquals(1, instructions(module).stream().filter(Mir.NewArray.class::isInstance).count())
+    );
+  }
+
+  @Test
+  void given__tuple_parameter_and_return__when__lowered__then__only_the_original_tuple_is_allocated() {
+    final var module = Inf.codeToMir("""
+      val identity = (value: (int, bool)): (int, bool) => value;
+      var first: (int, bool) = (10, true);
+      val second = identity(first);
+      first = second;
+      first[0]
+      """);
+    final var function = module.functions().stream().filter(candidate -> candidate != module.script()).findFirst().orElseThrow();
+    final var call = instructions(module).stream().filter(Mir.Call.class::isInstance).map(Mir.Call.class::cast).findFirst().orElseThrow();
+    final var type = function.signature().returnType();
+    final var pointer = assertInstanceOf(TyPointer.class, type);
+    final var tuple = assertInstanceOf(TyStruct.class, pointer.inner());
+    assertAll(
+      () -> assertTrue(tuple.hasUnnamedFields()),
+      () -> assertEquals(type, function.signature().parameters()[0].ty()),
+      () -> assertEquals(type, call.result().ty()),
+      () -> assertEquals(1, call.arguments().size()),
+      () -> assertEquals(type, call.arguments().getFirst().ty()),
+      () -> assertEquals(1, module.functions().stream().flatMap(candidate -> candidate.blocks().stream())
+        .flatMap(block -> block.instructions().stream()).filter(Mir.NewStruct.class::isInstance).count())
+    );
+  }
 
   @ParameterizedTest
   @CsvSource(delimiter = '|', value = {

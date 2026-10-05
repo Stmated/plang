@@ -200,13 +200,10 @@ public class HirLambdaLiftingTransformerPass {
             if (entry.toIdentifier() == transformedRhs) {
               entry.fromAssignment(expr);
               entry.fromDec(ass_lhs_dec);
+              ass_lhs_dec.valueType(new Hir.TyExpr(transformedRhs.ty()));
               break;
             }
           }
-
-//          if (ass_lhs_dec.valueType().ty() != transformedRhs.ty()) {
-//            transformed_ass.lhs(new Hir.Dec(ass_lhs_dec.lexeme(), ass_lhs_dec.mutabilityKind(), new Hir.TyExpr(transformedRhs.ty())));
-//          }
         }
       }
 
@@ -356,6 +353,10 @@ public class HirLambdaLiftingTransformerPass {
         @Override
         public void visitParameter(Hir.Parameter parameter) {
           declarations.add(parameter);
+        }
+
+        @Override
+        public void visitFunctionSignatureReturnType(Hir.Expression expression) {
         }
 
         @Override
