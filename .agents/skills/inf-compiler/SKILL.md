@@ -18,8 +18,28 @@ Consider the compiler pipeline, including:
 * AST → HIR (High Intermediate Representation) raising,
 * HIR → THIR raising (typed HIR, a "pseudo-step" inside HIR raising)
 * THIR → MIR (Middle-level Intermediate Representation) lowering,
-* MIR -> LLVM lowering,
+* MIR → LLVM lowering,
 * Execution.
+
+## Coding Instructions
+It is important to put the changes in the correct compiler pipeline step.
+
+It is important to prefer implementing a new transformer/pass class to make an isolated change for a feature, rather than adding logic to a main lowerer/raiser class.
+The more isolated and separated a feature can be made, so it does its limited job in its own pass over a set of tree nodes, the better.
+
+If the feature is a new language feature that needs explaining, then create a new `*.md` file in `/docs` to document it.
+Be sure to use the `docs-writing` skill to write the documentation.
+
+Strongly prefer asking several questions that are more narrow and specific, rather than listing many overarching related decisions/options and asking for a simple "yes"/"no" for all of them.
+Rather than asking "should we do X and Y and Z", ask "should we do X like A or B?" and then "should we do Y like C or D?" and then "should we do Z like E or F?"
+
+When adding a new function, if the parameter name is not obvious with its intent, then add a comment describing its purpose.
+Do not add comments to all parameters, or add superfluous comments, but do it if it is not obvious what the parameter is for.
+
+If a conditional is highly complex, for example considering 3 or more boolean algebra conditions, then consider either:
+* Adding a very short comment inside the branch about what the current state means, or
+* Refactor the conditional into a separate function with a descriptive name, and call that function in the conditional.
+  * Only do this if the separate function would not need lots of arguments to be passed in.
 
 ## Code style / formatting / idiomaticity
 
@@ -47,18 +67,6 @@ HIR and THIR are the same tree node classes (for now),
 where the first is the High-Level Intermediate Representation, and second is Typed High-Level Intermediate Representation.
 
 The HIR will represent things as the logical structures of something, such as a predicate, loop, or lambda function.
-
-## Implementing a new feature
-It is important to put the changes in the correct compiler pipeline step.
-
-It is important to prefer implementing a new transformer/pass class to make an isolated change for a feature, rather than adding logic to a main lowerer/raiser class.
-The more isolated and separated a feature can be made, so it does its limited job in its own pass over a set of tree nodes, the better.
-
-If the feature is a new language feature that needs explaining, then create a new `*.md` file in `/docs` to document it.
-Be sure to use the `docs-writing` skill to write the documentation.
-
-Strongly prefer asking several questions that are more narrow and specific, rather than listing many overarching related decisions/options and asking for a simple "yes"/"no" for all of them.
-Rather than asking "should we do X and Y and Z", ask "should we do X like A or B?" and then "should we do Y like C or D?" and then "should we do Z like E or F?"
 
 ## Language references
 See `*.inf` files in `src/test/resources/inf` for examples of the Inf language.

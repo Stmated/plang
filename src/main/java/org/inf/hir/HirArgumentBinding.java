@@ -3,6 +3,7 @@ package org.inf.hir;
 import java.util.Objects;
 
 /// Shared argument placement for type checking and lowering; evaluation remains in source order.
+/// TODO This is not the greatest design, it feels a bit like a hack. Consider refactoring/rethiking.
 public final class HirArgumentBinding {
 
   private final String[] parameters;

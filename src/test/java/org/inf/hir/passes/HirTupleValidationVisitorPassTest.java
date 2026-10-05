@@ -2,11 +2,72 @@ package org.inf.hir.passes;
 
 import org.inf.Inf;
 import org.inf.exceptions.InvalidTypeConversionException;
+import org.inf.hir.Hir;
+import org.inf.hir.HirVisitor;
+import org.inf.ty.Ty;
+import org.inf.ty.util.MachineTarget;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.util.IdentityHashMap;
+
 class HirTupleValidationVisitorPassTest {
+
+  private static Hir.Expression infer(String code) {
+    final var hir = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), new MachineTarget(64));
+    HirIdentifierResolverVisitorPass.pass(hir, Hir.Identifier::target);
+    return HirTyCommonVisitorPass.pass(hir);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val t: (1, true) = (1, true)",
+    "val f = (t: (1, true)) => t",
+    "val f = (): (1, true) => (1, true)",
+    "[(1, true); (1, true); 1]",
+    "val t: ((int, 1), bool) = ((1, 2), true)",
+    "val f = () => 1; val t: (f(), bool) = (1, true)",
+    "val f = (): (int, { return true; }) => (1, true)"
+  })
+  void given__value_expression_in_tuple_annotation__when__validated_after_inference__then__rejected(String code) {
+    final var hir = infer(code);
+    final var error = Assertions.assertThrows(
+      IllegalArgumentException.class, () -> HirTupleValidationVisitorPass.pass(hir)
+    );
+    Assertions.assertEquals("Tuple annotations require types, not value expressions", error.getMessage());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val t: ((int, bool), int) = ((1, true), 2); t",
+    "val f = (t: (int, bool)): (int, bool) => (2, false); f((1, true))",
+    "[(1, true); (int, bool); 1]",
+    "val S = struct { val x: int; }; val s = new heap S { x = 1; }; val t: (S, bool) = (s, true); t",
+    "val f = () => (1, { return true; }); f()",
+    "val t = ({ val x: (int, bool) = (1, true); x }, 2); t"
+  })
+  void given__typed_tuples__when__validated__then__type_references_are_preserved(String code) {
+    final var hir = infer(code);
+    final var types = new IdentityHashMap<Hir.Tuple, Ty>();
+    final var valueTypes = new IdentityHashMap<Hir.Tuple, Ty>();
+    hir.visit(new HirVisitor() {
+      @Override
+      public void visitTuple(Hir.Tuple expression) {
+        types.put(expression, expression.ty());
+        valueTypes.put(expression, expression.valueTy());
+        HirVisitor.super.visitTuple(expression);
+      }
+    });
+
+    HirTupleValidationVisitorPass.pass(hir);
+
+    Assertions.assertEquals(false, types.isEmpty());
+    types.forEach((tuple, type) -> Assertions.assertAll(
+      () -> Assertions.assertSame(type, tuple.ty()),
+      () -> Assertions.assertSame(valueTypes.get(tuple), tuple.valueTy())
+    ));
+  }
 
   @ParameterizedTest
   @ValueSource(strings = {

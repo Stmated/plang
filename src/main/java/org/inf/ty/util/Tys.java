@@ -17,7 +17,7 @@ public class Tys {
   private static final Map<Ty, Ty> tyInternMap = Collections.synchronizedMap(new HashMap<>());
 
   public static <T extends Ty> T intern(T ty) {
-    return (T) tyInternMap.computeIfAbsent(ty, it -> it);
+    return (T) tyInternMap.computeIfAbsent(ty, Function.identity());
   }
 
   public static TyResult<Ty> getCommonDenominator(Ty a, Ty b) {

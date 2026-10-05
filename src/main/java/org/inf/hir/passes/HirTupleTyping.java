@@ -11,7 +11,7 @@ final class HirTupleTyping {
   private HirTupleTyping() {
   }
 
-  static void resolve(Hir.Tuple tuple, boolean annotation) {
+  static void resolve(Hir.Tuple tuple) {
     final var entries = tuple.children();
     if (entries.length == 0) {
       throw new IllegalArgumentException("Empty tuple types and values are not supported");
@@ -24,12 +24,8 @@ final class HirTupleTyping {
         throw new IllegalArgumentException("Named and mixed tuples are not supported yet");
       }
       final var value = entry.value();
-      if (annotation && !(value instanceof Hir.TyExpr || value instanceof Hir.Tuple
-        || value instanceof Hir.Identifier && value.ty() instanceof TyStruct struct && !struct.hasUnnamedFields())) {
-        throw new IllegalArgumentException("Tuple annotations require types, not value expressions");
-      }
       final var type = value.ty();
-      if (!annotation && type == Ty.DEADEND) {
+      if (type == Ty.DEADEND) {
         diverges = true;
       } else {
         TupleTypes.requireElementType(type);

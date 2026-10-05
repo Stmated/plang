@@ -31,31 +31,10 @@ public class HirTyCommonVisitorPass {
   @RequiredArgsConstructor
   private static class Visitor implements HirVisitor {
 
-    private int typeModeCounter;
-
-    private void visitType(Hir.Expression expression) {
-      try {
-        typeModeCounter++;
-        expression.visit(this);
-      } finally {
-        typeModeCounter--;
-      }
-    }
-
-    @Override
-    public void visitDecType(Hir.Expression expr) {
-      visitType(expr);
-    }
-
-    @Override
-    public void visitParameterType(Hir.Expression expr) {
-      visitType(expr);
-    }
-
     @Override
     public void visitTuple(Hir.Tuple expr) {
       HirVisitor.super.visitTuple(expr);
-      HirTupleTyping.resolve(expr, typeModeCounter > 0);
+      HirTupleTyping.resolve(expr);
     }
 
     @Override
@@ -104,13 +83,7 @@ public class HirTyCommonVisitorPass {
 
     @Override
     public void visitArray(Hir.Array expr) {
-      visitType(expr.elementType());
-      if (expr.length() != null) {
-        visitChild(expr.length());
-      }
-      for (final var element : expr.elements()) {
-        visitChild(element);
-      }
+      HirVisitor.super.visitArray(expr);
 
       var arrayElementTy = expr.elementType().ty();
       for (final var element : expr.elements()) {
@@ -328,12 +301,7 @@ public class HirTyCommonVisitorPass {
 
     @Override
     public void visitFunctionSignature(Hir.FunctionSignature expr) {
-      for (final var parameter : expr.parameters()) {
-        visitChild(parameter);
-      }
-      if (expr.returnType() != null) {
-        visitType(expr.returnType());
-      }
+      HirVisitor.super.visitFunctionSignature(expr);
 
       if (expr.ty() == null) {
 

@@ -13,6 +13,7 @@ import org.inf.ty.util.TupleTypes;
 import org.inf.ty.util.TypeComparison;
 
 import java.util.Arrays;
+import org.inf.util.ArrayUtils;
 
 /// Check tuple boundaries after inference, including expressions that cannot execute.
 public final class HirTupleValidationVisitorPass {
@@ -24,6 +25,9 @@ public final class HirTupleValidationVisitorPass {
     expression.visit(new Visitor());
   }
 
+  /**
+   * TODO: This should likely be a more general check for all return types of functions, just just for tuples.
+   */
   private static void check(Ty actual, Ty expected, String context) {
     if (actual == Ty.DEADEND || !(TupleTypes.containsTuple(actual) || TupleTypes.containsTuple(expected))) {
       return;
@@ -31,8 +35,7 @@ public final class HirTupleValidationVisitorPass {
     if (TypeComparison.sameValueType(actual, expected)) {
       return;
     }
-    if (expected instanceof TyUnion union && !(actual instanceof TyUnion)
-      && Arrays.stream(union.types()).anyMatch(type -> TypeComparison.sameValueType(actual, type))) {
+    if (expected instanceof TyUnion union && !(actual instanceof TyUnion) && ArrayUtils.any(union.types(), t -> TypeComparison.sameValueType(actual, t))) {
       return;
     }
     throw new InvalidTypeConversionException("Incompatible tuple shape or slot type in " + context, actual, expected);
@@ -41,6 +44,60 @@ public final class HirTupleValidationVisitorPass {
   private static final class Visitor implements HirVisitor {
 
     private Ty returnType;
+
+    /// HIR uses the same tuple node for `(int, bool)` annotations and `(1, true)` values.
+    /// Only annotation entries must denote types; their enclosing type position supplies that distinction.
+    private boolean inAnnotation;
+
+    private void visitAnnotation(Hir.Expression expression) {
+      final var outerAnnotation = inAnnotation;
+      try {
+        inAnnotation = true;
+        visitChild(expression);
+      } finally {
+        inAnnotation = outerAnnotation;
+      }
+    }
+
+    @Override
+    public void visitDecType(Hir.Expression expression) {
+      visitAnnotation(expression);
+    }
+
+    @Override
+    public void visitParameterType(Hir.Expression expression) {
+      visitAnnotation(expression);
+    }
+
+    @Override
+    public void visitFunctionSignatureReturnType(Hir.Expression expression) {
+      visitAnnotation(expression);
+    }
+
+    @Override
+    public void visitArrayElementType(Hir.Expression expression) {
+      visitAnnotation(expression);
+    }
+
+    @Override
+    public void visitTupleEntry(Hir.TupleEntry expression) {
+      if (inAnnotation) {
+        final var value = expression.value();
+        if (!isTypeExpression(value)) {
+          throw new IllegalArgumentException("Tuple annotations require types, not value expressions");
+        }
+        TupleTypes.requireElementType(value.ty());
+      }
+      HirVisitor.super.visitTupleEntry(expression);
+    }
+
+    private static boolean isTypeExpression(Hir.Expression expression) {
+      return switch (expression) {
+        case Hir.TyExpr _, Hir.Tuple _ -> true;
+        case Hir.Identifier identifier -> identifier.ty() instanceof TyStruct struct && !struct.hasUnnamedFields();
+        default -> false;
+      };
+    }
 
     @Override
     public void visitAssignment(Hir.Assignment expression) {
@@ -76,13 +133,12 @@ public final class HirTupleValidationVisitorPass {
       if (!(expression.target().valueTy() instanceof TyFn function)) {
         return;
       }
-      if (!TupleTypes.containsTuple(function)
-        && Arrays.stream(expression.arguments()).noneMatch(argument -> TupleTypes.containsTuple(argument.ty()))) {
+      if (!TupleTypes.containsTuple(function) && ArrayUtils.none(expression.arguments(), it -> TupleTypes.containsTuple(it.ty()))) {
         return;
       }
       final var parameters = function.parameters();
       final var binding = new HirArgumentBinding(
-        Arrays.stream(parameters).map(TyParam::name).toArray(String[]::new),
+        ArrayUtils.mapToStrings(parameters, TyParam::name),
         function.vararg(), expression.arguments().length
       );
       for (final var argument : expression.arguments()) {

@@ -18,7 +18,7 @@ public interface HirVisitor {
   }
 
   default void visitArray(Hir.Array expr) {
-    visitChild(expr.elementType());
+    visitArrayElementType(expr.elementType());
 
     if (expr.length() != null) {
       visitChild(expr.length());
@@ -27,6 +27,10 @@ public interface HirVisitor {
     for (final var element : expr.elements()) {
       visitChild(element);
     }
+  }
+
+  default void visitArrayElementType(Hir.Expression expr) {
+    visitChild(expr);
   }
 
   default void visitArrayAccess(Hir.ArrayAccess expr) {
@@ -80,8 +84,12 @@ public interface HirVisitor {
     }
 
     if (expr.returnType() != null) {
-      visitChild(expr.returnType());
+      visitFunctionSignatureReturnType(expr.returnType());
     }
+  }
+
+  default void visitFunctionSignatureReturnType(Hir.Expression expr) {
+    visitChild(expr);
   }
 
   default void visitFunctionBody(Hir.Expression expr) {

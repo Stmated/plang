@@ -8,7 +8,6 @@ description: Use when writing Java test cases, including for the Inf compiler wr
 * Prefer parameterized tests when testing multiple inputs and outputs for the same method.
   * Always separate parameterized test case entries by newline, such as between different values sent in as @ValueSource.  
 * Prefer using `assertAll` if there are several assertions one after another that do not have dependencies on each other.
-* Prefer using `assertEquals` for comparing expected and actual values, rather than `assertTrue`
 
 ## Test naming
 Name test methods in `given-when-then` format, e.g. `given__X__when__Y__then__Z`.
