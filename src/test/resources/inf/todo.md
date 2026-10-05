@@ -6,6 +6,8 @@
 
 ## Must fix to get things working again!
 
+* Need a MIR -> S-Expression printer, and replace almost all test case with these comparisons instead!
+
 ## Next
 
 ### Tuple 1: Preserve grouping and tuple boundaries (done)
@@ -38,11 +40,13 @@
 * Implemented direct indexing of tuple-valued struct fields, array types inside tuple annotations, and consistent lifted-function binding types. Return annotations do not become runtime captures.
 * Done when execution tests cover these compositions, nested element reads, evaluation order, and rejection of arity/type mismatches. Observe returned tuples inside Inf and return scalars to the test harness; host tuple marshalling is separate.
 
-### Tuple 5: Contextual element typing and conversions
+### Tuple 5: Contextual element typing and conversions (done)
 * Depends on Tuple 4; not a prerequisite for calling functions with already-compatible positional tuples.
 * Separate literal construction under an expected tuple type from conversion of an existing tuple object. This is needed for examples returning `(1, 2)` as `(uint8, uint8)`.
-* Before implementation, decide which element conversions are implicit and whether conversion of an existing shared tuple may allocate a new object. Never implement different slot layouts with a pointer cast.
-* Keep this to tuple contexts in bindings, arguments, and returns; no general type-inference rewrite. Cover nested conversions, rejected conversions, and evaluation exactly once.
+* Agreed: unsuffixed integer literals adopt an expected integer slot type only when their value fits. Explicitly typed literals retain their source type; other integer elements allow only lossless widening. Other slot types remain exact-match.
+* Existing tuple objects, including nested references, must already match. No rebuilding, conversion allocations, or incompatible-layout pointer casts; explicit fresh construction from element reads can widen.
+* Implemented tuple contexts in bindings/reassignment, arguments, and explicit/implicit returns, including final block expressions and conditional branches. Struct-field and array-element contexts remain exact-match; no general type-inference rewrite.
+* Covered nested constructions, rejection of unsafe conversions, shared unchanged references, left-to-right exactly-once evaluation, and non-returning flow. See `docs/tuple-contextual-typing.md`.
 
 ### Tuple 6: Named and mixed tuple syntax and access
 * Depends on Tuple 4. Extend the same entries/layout, not a separate named-tuple node family.
@@ -189,6 +193,8 @@ I am well aware that the feature can make some syntax ambiguous
 * Needs investigation for how to best be represented, but likely as a modifier on the type of the expression, just like "val" and "var" are modifiers on the type of the expression.
 
 ## Other
+
+* Should `"val f = (t: (uint8, uint8)) => t; f({ (1, 2) })"` actually be valid? What does it actually MEAN/DO?
 
 * Redo the lexer and parser after the new ideas for the language:
   - Almost everything is a Tuple

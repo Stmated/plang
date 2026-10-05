@@ -10,7 +10,9 @@ import org.inf.ty.Ty;
 import org.inf.ty.TyPointer;
 import org.inf.ty.TyStruct;
 import org.inf.ty.TyUnion;
+import org.inf.ty.TyValueNumberInteger;
 import org.inf.ty.util.MachineTarget;
+import org.inf.ty.util.TypeComparison;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -38,6 +40,34 @@ class ThirToMirLoweringTest {
       () -> assertEquals(1, allocations.stream().filter(allocation ->
         MirTypes.pointee(allocation.result().ty()) instanceof TyStruct tuple && tuple.hasUnnamedFields()).count()),
       () -> assertEquals(1, instructions(module).stream().filter(Mir.NewArray.class::isInstance).count())
+    );
+  }
+
+  @Test
+  void given__contextual_tuple_widening__when__lowered__then__scalar_slots_are_converted_before_allocation() {
+    final var module = Inf.codeToMir("""
+      val x = 255u8;
+      val inner = ([1],);
+      val t: (int16, ([;int;1],)) = (x, inner);
+      t[0]
+      """);
+    final var instructions = instructions(module);
+    final var allocations = instructions.stream().filter(Mir.NewStruct.class::isInstance)
+      .map(Mir.NewStruct.class::cast).toList();
+    final var construction = allocations.getLast();
+    final var type = assertInstanceOf(TyStruct.class, MirTypes.pointee(construction.result().ty()));
+    final var conversion = instructions.stream().filter(Mir.Convert.class::isInstance)
+      .map(Mir.Convert.class::cast)
+      .filter(convert -> convert.result() == construction.fields().getFirst()).findFirst().orElseThrow();
+    assertAll(
+      () -> assertEquals(2, allocations.size()),
+      () -> assertEquals(type.fields()[0].ty(), conversion.result().ty()),
+      () -> assertTrue(instructions.indexOf(conversion) < instructions.indexOf(construction)),
+      () -> assertTrue(instructions.stream().filter(Mir.Convert.class::isInstance)
+        .map(Mir.Convert.class::cast).allMatch(convert ->
+          TypeComparison.sameValueType(convert.value().ty(), convert.result().ty())
+            || convert.value().ty() instanceof TyValueNumberInteger)),
+      () -> assertInstanceOf(Mir.Value.class, construction.fields().getLast())
     );
   }
 
@@ -128,6 +158,19 @@ class ThirToMirLoweringTest {
 
   private List<Mir.Instruction> instructions(MirLoweringResult module) {
     return module.script().blocks().stream().flatMap(block -> block.instructions().stream()).toList();
+  }
+
+  @Test
+  void given__conversion_operand_exits__when__lowered__then__conversion_is_not_emitted() {
+    final var hir = assertInstanceOf(Hir.Program.class, Inf.codeToHir("return 7"));
+    hir.expressions(new Hir.Convert(hir.expressions(), Ty.LONG));
+    final var typed = new HirToThirRaising(new MachineTarget(64)).raise(hir);
+    final var module = ThirToMirLowering.lower(typed);
+    assertAll(
+      () -> assertEquals(Ty.INTEGER, module.script().signature().returnType()),
+      () -> assertTrue(instructions(module).stream().noneMatch(Mir.Convert.class::isInstance)),
+      () -> assertInstanceOf(Mir.Return.class, module.initNode().terminator())
+    );
   }
 
   @Test

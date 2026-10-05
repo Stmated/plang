@@ -1,14 +1,13 @@
 package org.inf.ty.util;
 
+import lombok.experimental.UtilityClass;
 import org.inf.ty.*;
 
 import java.util.Arrays;
 
 /// Tuple detection and element validity, independent of type comparison and conversion.
+@UtilityClass
 public final class TupleTypes {
-
-  private TupleTypes() {
-  }
 
   public static boolean containsTuple(Ty ty) {
     return switch (ty) {

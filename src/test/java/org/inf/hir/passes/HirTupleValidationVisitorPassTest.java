@@ -94,8 +94,6 @@ class HirTupleValidationVisitorPassTest {
     "val t: (int, bool) = (1, 2)",
     "val t: (int,) = (1, true)",
     "val t: (int, bool) = ((1,), true)",
-    "val t: (uint8, uint8) = (1, 2)",
-    "val t: (int64, bool) = (1, true)",
     "val t: int = (1,)",
     "val t: (int,) = 1",
     "var t = (1, true); t = (false, 2)",
@@ -115,8 +113,8 @@ class HirTupleValidationVisitorPassTest {
     "val values = [(1, true), (2, 3)]",
     "val S = struct { val t: (int, bool); }; val s = new heap S { t = (1, true); }; s.t = (2, 3)",
     "val f = (): ((int, bool),) => ((1, 2),)",
-    "val f = (t: (int64, bool)) => 1; f((1, true))",
-    "val f = (t: (uint32, bool)) => 1; f((1, true))"
+    "val t: (uint8, uint8) = (256, 2)",
+    "val f = (t: (uint32, bool)) => 1; val x = 1; f((x, true))"
   })
   void given__incompatible_tuple_boundary__when__typed__then__explicit_conversion_error(String code) {
     final var error = Assertions.assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToThir(code));

@@ -37,10 +37,11 @@ val identity = (value: (int, bool)): (int, bool) => value;
 identity(t);
 ```
 
-Compatibility requires the same recursive shape and slot types. Whether a
+Existing tuple objects require the same recursive shape and slot types. Whether a
 numeric width was explicit is ignored, but its width and signedness must match.
-For example, `(1, true)` matches `(int, bool)`, but `(1, 2)` does not match
-`(uint8, uint8)`. Tuple conversions and tuple/struct compatibility are deferred.
+Fresh constructions support [contextual integer typing and widening](tuple-contextual-typing.md)
+in bindings, arguments, and returns: `(1, 2)` can satisfy `(uint8, uint8)`.
+Conversion of existing tuples and tuple/struct compatibility remain unsupported.
 
 A normally completing `void` expression cannot occupy a slot. An element that
 returns or otherwise never completes makes the whole construction non-returning.
@@ -74,7 +75,9 @@ An array or struct contained in a slot retains its existing mutation behavior.
 
 Bindings, reassignment, array elements, struct fields, parameters, and returns share the tuple reference. 
 Reassignment replaces that reference; aliases still refer to the original tuple. 
-These boundaries require matching shapes and slot types, without numeric conversions.
+Existing references require matching shapes and slot types. Fresh constructions can
+use contextual typing in variable bindings/reassignment, arguments, and returns;
+struct-field and array-element contexts still require exact matches.
 
 ```inf
 val make = (x: int): (int, bool) => (x, true);

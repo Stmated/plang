@@ -184,6 +184,7 @@ public final class ThirToMirLowering {
       case Hir.Call call -> call(call);
       case Hir.Argument argument -> lower(argument.value());
       case Hir.BinaryOperation binary -> binary(binary);
+      case Hir.Convert conversion -> conversion(conversion);
       case Hir.Not not -> not(not);
       case Hir.Array array -> array(array);
       case Hir.ArrayAccess access -> arrayAccess(access);
@@ -220,6 +221,14 @@ public final class ThirToMirLowering {
       terminate(new Mir.Return(convert(continued.value(), function.signature().returnType())));
     }
     return Diverges.INSTANCE;
+  }
+
+  private Flow conversion(Hir.Convert conversion) {
+    final var flow = lower(conversion.expression());
+    if (flow instanceof Continues continued) {
+      return new Continues(convert(continued.value(), MirTypes.valueType(conversion.targetTy())));
+    }
+    return flow;
   }
 
   private Flow declaration(Hir.Dec declaration) {

@@ -22,15 +22,31 @@ import java.util.Objects;
 @UtilityClass
 public class HirTyCommonVisitorPass {
 
+  private static final Visitor NODE_RESOLVER = new Visitor(false);
+
   public static <T extends Hir.Expression> T pass(T expr) {
 
-    final var visitor = new Visitor();
+    final var visitor = new Visitor(true);
     expr.visit(visitor);
     return expr;
   }
 
+  /// Resolves only this node; its children and referenced declarations must already have resolved types.
+  public static void resolveNode(Hir.Expression expression) {
+    expression.visit(NODE_RESOLVER);
+  }
+
   @RequiredArgsConstructor
   private static class Visitor implements HirVisitor {
+
+    private final boolean traverseChildren;
+
+    @Override
+    public void visitChild(Hir.Expression expression) {
+      if (traverseChildren) {
+        HirVisitor.super.visitChild(expression);
+      }
+    }
 
     @Override
     public void visitTuple(Hir.Tuple expr) {
@@ -445,7 +461,7 @@ public class HirTyCommonVisitorPass {
 
       final var elements = expr.elements();
 
-      elements[0].visit(this);
+      visitChild(elements[0]);
       var pointer = elements[0].valueTy();
 
       if ((Tys.isInferred(pointer) || pointer == Ty.DEADEND) && elements[0].ty() == Ty.DEADEND) {

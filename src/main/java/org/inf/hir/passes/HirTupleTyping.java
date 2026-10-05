@@ -1,15 +1,14 @@
 package org.inf.hir.passes;
 
+import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.TupleTypes;
 
+@UtilityClass
 final class HirTupleTyping {
-
-  private HirTupleTyping() {
-  }
 
   static void resolve(Hir.Tuple tuple) {
     final var entries = tuple.children();

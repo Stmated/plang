@@ -116,6 +116,11 @@ public interface HirTransformer {
     return expr;
   }
 
+  default Hir.Expression transformConvert(final Hir.Convert expr) {
+    expr.expression(expr.expression().transform(this));
+    return expr;
+  }
+
   default Hir.Expression transformBlock(final Hir.Block expr) {
     expr.children(expr.children().transform(this));
     return expr;

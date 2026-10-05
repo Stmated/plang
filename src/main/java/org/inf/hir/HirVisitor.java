@@ -61,6 +61,10 @@ public interface HirVisitor {
     visitChild(expr.rhs());
   }
 
+  default void visitConvert(Hir.Convert expr) {
+    visitChild(expr.expression());
+  }
+
   default void visitBlock(Hir.Block expr) {
     visitChild(expr.children());
   }

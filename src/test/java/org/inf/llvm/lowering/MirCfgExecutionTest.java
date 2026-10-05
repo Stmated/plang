@@ -14,8 +14,149 @@ import static org.junit.jupiter.api.Assertions.*;
 class MirCfgExecutionTest {
 
   @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void given__contextual_tuple_literals__when__executed__then__bindings_calls_and_returns_use_expected_layout(int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(2554, Inf.codeToResult("""
+        var t: (uint8, uint8) = (255, 2);
+        val original = t;
+        t = (3, 4);
+        original[0] * 10 + t[1]
+        """, options).resultValue()),
+      () -> assertEquals(10, Inf.codeToResult("""
+        val read = (t: (uint8, uint8)) => t[0] + t[1];
+        val first = read((1, 2));
+        val second = read(t: { (3, 4) });
+        first + second
+        """, options).resultValue()),
+      () -> assertEquals(6, Inf.codeToResult("""
+        val make = (): (uint8, uint8) => (1, 2);
+        val read = (t: (uint8, uint8)) => t[0] + t[1];
+        val t = make();
+        val implicit = read t;
+        implicit + read(make())
+        """, options).resultValue()),
+      () -> assertEquals(10, Inf.codeToResult("""
+        val make = (flag: bool): (uint8, uint8) => {
+          if (flag) { return (1, 2); };
+          (3, 4)
+        };
+        val first = make(true);
+        val second = make(false);
+        first[0] + first[1] + second[0] + second[1]
+        """, options).resultValue()),
+      () -> assertEquals(127, Inf.codeToResult("val t: (int8,) = (127,); t[0]", options).resultValue()),
+      () -> assertEquals(-128, Inf.codeToResult("val t: (int8,) = (-128,); t[0]", options).resultValue()),
+      () -> assertEquals(153, Inf.codeToResult("val t: (uint8,) = (0x99,); t[0]", options).resultValue()),
+      () -> assertEquals(255, Inf.codeToResult("val t: (uint8,) = (0b1111_1111,); t[0]", options).resultValue()),
+      () -> assertEquals(255, Inf.codeToResult("val t: (uint8,) = (25_5,); t[0]", options).resultValue()),
+      () -> assertEquals(Long.MAX_VALUE, Inf.codeToResult(
+        "val t: (int64,) = (9223372036854775807,); t[0]", options).resultValue()),
+      () -> assertEquals(Long.MIN_VALUE, Inf.codeToResult(
+        "val t: (int64,) = (-9223372036854775808,); t[0]", options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void given__contextual_tuple_elements__when__widened__then__signed_and_unsigned_values_are_preserved(int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(255, Inf.codeToResult("val x = 255u8; val t: (int16,) = (x,); t[0]", options).resultValue()),
+      () -> assertEquals(-128, Inf.codeToResult("val x = -128i8; val t: (int16,) = (x,); t[0]", options).resultValue()),
+      () -> assertEquals(255, Inf.codeToResult("val x = 255u8; val t: (uint16,) = (x,); t[0]", options).resultValue()),
+      () -> assertEquals(300L, Inf.codeToResult("val t: (int64,) = (100 + 200,); t[0]", options).resultValue()),
+      () -> assertEquals(255, Inf.codeToResult("""
+        val source = (255u8,);
+        val t: (int16,) = (source[0],);
+        t[0]
+        """, options).resultValue()),
+      () -> assertEquals(255, Inf.codeToResult("""
+        val captured = 255u8;
+        val make = (): (int16,) => (captured,);
+        val t = make();
+        t[0]
+        """, options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void given__nested_contextual_tuples__when__executed__then__fresh_layouts_and_shared_references_are_preserved(int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(258, Inf.codeToResult("""
+        val make = (): ((uint8, uint8), int16) => { return ((1, 2), 255u8); };
+        val read = (t: ((uint8, uint8), int16)) => t[0][0] + t[0][1] + t[1];
+        read(make())
+        """, options).resultValue()),
+      () -> assertEquals(9, Inf.codeToResult("""
+        val inner = ([1],);
+        val t: (int16, ([;int;1],)) = (255u8, inner);
+        t[1][0][0] = 9;
+        inner[0][0]
+        """, options).resultValue()),
+      () -> assertEquals(17, Inf.codeToResult("""
+        val captured = [0];
+        val outer = (): (uint8, uint8) => {
+          val inner = (t: (uint8, uint8)): (uint8, uint8) => { captured[0] += 1; t };
+          inner((3, 4))
+        };
+        val result = outer();
+        captured[0] * 10 + result[0] + result[1]
+        """, options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void given__contextual_tuple_flow__when__executed__then__effects_run_once_in_source_order(int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(23414, Inf.codeToResult("""
+        val counter = [0];
+        val bump = (): uint8 => { counter[0] += 1; counter[0] };
+        val read = (t: (uint16, (int16, uint8)), x: int) => t[0] * 1000 + t[1][0] * 100 + t[1][1] * 10 + x;
+        val result = read(x: bump(), t: (bump(), (bump(), bump())));
+        result * 10 + counter[0]
+        """, options).resultValue()),
+      () -> assertEquals(120, Inf.codeToResult("""
+        val counter = [0];
+        val make = (flag: bool): (uint8, uint8) => {
+          val t: (uint8, uint8) = if (flag) then { counter[0] += 1; (1, 2) }
+            else { counter[0] += 10; (3, 4) };
+          t
+        };
+        val first = make(true);
+        val second = make(false);
+        counter[0] * 10 + first[0] + first[1] + second[0] + second[1]
+        """, options).resultValue()),
+      () -> assertEquals(12, Inf.codeToResult("""
+        val counter = [0];
+        val make = (): (uint8, uint8) => (
+          { counter[0] += 1; 1 },
+          { return (2, 3); },
+          { counter[0] += 100; 4 }
+        );
+        val t = make();
+        counter[0] * 10 + t[0]
+        """, options).resultValue()),
+      () -> assertEquals(15, Inf.codeToResult("""
+        val counter = [0];
+        val make = (flag: bool): (uint8, uint8) => {
+          val t: (uint8, uint8) = ({ if (flag) { return (1, 2); }; 3 }, 4);
+          t
+        };
+        val first = make(true);
+        val second = make(false);
+        first[0] + first[1] + second[0] + second[1] + 5
+        """, options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
   @ValueSource(strings = {
-    "val read = (t: (int, bool)) => t[0]; read(1, true)",
     "val read = (t: (int, bool)) => t[0]; read((1, 2))",
     "val read = (t: ((int, bool),)) => t[0][0]; val t = ((1, 2),); read t",
     "val make = (): (int, bool) => (1, 2); val t = make(); t[0]",
@@ -27,6 +168,7 @@ class MirCfgExecutionTest {
 
   @ParameterizedTest
   @ValueSource(strings = {
+    "val read = (t: (int, bool)) => t[0]; read(1, true)",
     "val read = (t: (int, bool)) => t[0]; read((1, true), (2, false))",
     "val read = (t: (int, bool)) => t[0]; read()",
     "val read = (t: (int, bool), x: int) => x; val t = (1, true); read t",

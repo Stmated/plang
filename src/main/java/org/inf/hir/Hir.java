@@ -235,6 +235,36 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  public static class Convert implements Expression {
+
+    @Nonnull
+    Expression expression;
+    @Nonnull
+    final Ty targetTy;
+
+    @Override
+    public Ty ty() {
+      return expression.ty() == Ty.DEADEND ? Ty.DEADEND : targetTy;
+    }
+
+    @Override
+    public Ty valueTy() {
+      return targetTy;
+    }
+
+    @Override
+    public void visit(HirVisitor visitor) {
+      visitor.visitConvert(this);
+    }
+
+    @Override
+    public Expression transform(HirTransformer transformer) {
+      return transformer.transformConvert(this);
+    }
+  }
+
+  @Data
+  @AllArgsConstructor
   public static class BinaryOperation implements Expression {
 
     Expression lhs;

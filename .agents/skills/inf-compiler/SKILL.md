@@ -63,6 +63,8 @@ Prefer using `String.formatted()` rather than String concatenation using `"Hello
 
 Prefer using lombok annotations to decrease boilerplate, such as `@Data`, `@Value` or `@UtilityClass`.
 
+Never nest multiple ternary expressions, instead convert to explicit if-conditions.
+
 ## Traversing AST, HIR, and MIR nodes
 Never use custom logic for traversing AST, HIR or MIR nodes, always use the existing visitor pattern. `XyzVisitor` interface and node `#visit` method.
 

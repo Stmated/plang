@@ -5,6 +5,7 @@ import de.skuzzle.test.snapshots.junit5.EnableSnapshotTests;
 import org.inf.Inf;
 import org.inf.ast.util.SnapshotTestUtils;
 import org.inf.hir.Hir;
+import org.inf.hir.HirVisitor;
 import org.inf.ty.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -16,6 +17,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Duration;
+import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -24,6 +26,26 @@ import static org.junit.jupiter.api.Assertions.*;
 class ToStringTreeHirVisitorTest {
 
   private final ToStringTreeHirVisitor printer = new ToStringTreeHirVisitor();
+
+  @Test
+  void given__explicit_conversion__when__rendered__then__destination_and_operand_are_preserved() {
+    final var conversions = new ArrayList<Hir.Convert>();
+    Inf.codeToThir("val t: (int16,) = (255u8,); t").root().visit(new HirVisitor() {
+      @Override
+      public void visitConvert(Hir.Convert conversion) {
+        conversions.add(conversion);
+      }
+    });
+    assertEquals("""
+      (Convert
+        (ty (number INTEGER width=16 explicit=true signed=true radix=10 flags=[]))
+        (targetTy (number INTEGER width=16 explicit=true signed=true radix=10 flags=[]))
+        (expression
+          (Literal
+            (content "255u8")
+            (ty (number INTEGER width=8 explicit=true signed=false radix=10 flags=[])))))""",
+      printer.render(conversions.getFirst()));
+  }
 
   @Test
   void given__nested_expressions__when__rendered__then__exact_ordered_structure() {

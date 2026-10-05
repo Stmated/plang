@@ -89,6 +89,12 @@ public final class ToStringTreeHirVisitor {
     }
 
     @Override
+    public void visitConvert(final Hir.Convert expr) {
+      result = node("Convert", type("ty", expr.ty()), type("targetTy", expr.targetTy()),
+        child("expression", expr.expression()));
+    }
+
+    @Override
     public void visitBlock(final Hir.Block expr) {
       result = node("Block", type("ty", expr.ty()), child("children", expr.children()));
     }
