@@ -1015,6 +1015,12 @@ public class Hir {
     TupleEntry[] children;
     Ty ty;
     Ty valueTy;
+    /// Destination layout of a fresh contextual construction; children remain in source order.
+    TyStruct contextualType;
+
+    public Tuple(final TupleEntry[] children, final Ty ty, final Ty valueTy) {
+      this(children, ty, valueTy, null);
+    }
 
     public Tuple(final TupleEntry[] children, final Ty ty) {
       this(children, ty, ty);

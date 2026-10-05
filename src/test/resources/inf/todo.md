@@ -90,14 +90,18 @@
   value entries and new nested-assignment syntax are deferred.
 * Raising, typing, MIR, and execution cover these rules. See `docs/named-tuples.md`.
 
-### Tuple 7: Compatibility between positional and named tuples
+### Tuple 7: Compatibility between positional and named tuples (done)
 
 * Depends on Tuple 6 and, if element conversions are needed, Tuple 5.
 * Preserve the requested examples `fn4((1, 2))` and `fn4((p1 = 1, p2 = 2))` for a parameter typed `(p1: uint8, p2: uint8)`.
-* Before implementation, decide positional-to-named matching, named-field reordering, and mixed matching beyond Tuple 6's exact ordered labels. Exact-layout
-  tuple/struct compatibility already shares references; account for shared references if a conversion changes layout.
-* Keep these rules separate from function argument spreading. Cover missing/extra/duplicate labels and source-order evaluation independently of destination
-  order.
+* Agreed: fresh constructions match explicit labels first, then fill unclaimed destination slots with unlabeled entries in source order. Fully positional
+  constructions match by position; named entries may reorder. Unknown labels, including labels on a fully positional destination, are rejected.
+* Existing references retain exact ordered layouts and shared-object semantics; no reference renaming, reordering, widening, or copying. Nested exact-layout
+  references remain shared. Struct contexts and struct-field/array-element contexts are unchanged.
+* Implemented contextual destination layouts in existing bindings/reassignment, arguments, returns, nested constructions, blocks, and conditionals. Elements
+  evaluate exactly once in source order, independently of destination order; early exits skip later evaluation and unfinished allocation.
+* Typing, MIR verification, and LLVM execution cover matching, integer conversions, missing/extra/duplicate labels, sharing, and call boundaries. Function
+  argument spreading remains separate. See `docs/tuple-matching.md`.
 
 ### Tuple 8: Unify the call argument container
 
@@ -162,6 +166,11 @@ One which instead uses reflection, so it does not need big and unruly visitors w
     * I need to know of caveats and problems and considerations to make this a good idea/feature
     * Of course a syntax like `const result = service call ...args` should work, since parenthesis are optional.
     * If you have alternative ideas of how and when to destructure manually or automatically, then tell me.
+
+### Unification of "struct" and "tuple"
+* A tuple should in essence just be a short-form of a struct declaration
+* They should be convertable to and from each other if they exactly match
+* It should be possible to "explode"/"unpack" a struct as well to a function call and other locations, just like with a tuple
 
 ### Optional arguments, default values for parameters, named arguments
 

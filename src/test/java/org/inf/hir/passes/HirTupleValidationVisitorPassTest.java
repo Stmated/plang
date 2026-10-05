@@ -51,10 +51,11 @@ class HirTupleValidationVisitorPassTest {
   @ParameterizedTest
   @ValueSource(strings = {
     "val t: (a: int,) = (b = 1,)",
-    "val t: (a: int, b: int) = (b = 1, a = 2)",
-    "val t: (a: int,) = (1,)",
     "val t: (int,) = (a = 1,)",
-    "val t: (label: int, bool) = (1, true)",
+    "val t: (a: int, b: bool) = (a = 1,)",
+    "val t: (a: int, b: bool) = (a = 1, b = true, 3)",
+    "val t: (a: int, b: bool) = (b = true, a = false)",
+    "val f = (): (a: int, b: int) => ({ return (1, 2); }, missing = 3)",
     "val t: (a: int, bool) = (1, b = true)",
     "val f = (t: (a: int,)) => t.a; f((b = 1,))",
     "val f = (): (a: int,) => { return (b = 1,); }",
@@ -65,7 +66,7 @@ class HirTupleValidationVisitorPassTest {
     "val S = struct { val b: int; val a: int; }; val s: S = (a = 1, b = 2)",
     "val S = struct { val a: uint8; }; val s: S = (a = 1i32,)"
   })
-  void given__incompatible_named_shape__when__typed__then__no_reordering_or_layout_conversion(final String code) {
+  void given__incompatible_named_shape__when__typed__then__explicit_error(final String code) {
     Assertions.assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToThir(code));
   }
 

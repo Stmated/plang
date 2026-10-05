@@ -4,6 +4,7 @@ import lombok.experimental.UtilityClass;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
+import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
@@ -16,7 +17,6 @@ import org.inf.util.IntegerLiterals;
 
 import java.math.BigInteger;
 import java.util.Arrays;
-import java.util.Objects;
 
 /// Rewrites fresh tuple elements before enclosing expression types are resolved.
 @UtilityClass
@@ -31,6 +31,7 @@ public class HirTupleContextualTypingVisitorPass {
     private Ty expectedType;
     private Ty returnType;
     private TyStruct tupleType;
+    private int[] tupleSlots;
     private int tupleIndex;
 
     @Override
@@ -132,20 +133,25 @@ public class HirTupleContextualTypingVisitorPass {
     public void visitTuple(Hir.Tuple expression) {
       final var expected = tupleType(expectedType);
       final var outerTuple = tupleType;
+      final var outerSlots = tupleSlots;
       final var outerIndex = tupleIndex;
       try {
-        tupleType = matchesLabels(expression, expected) ? expected : null;
+        final var destination = expected == null ? expression.contextualType() : expected;
+        tupleSlots = destination == null ? null : HirTupleMatching.match(expression, destination);
+        tupleType = tupleSlots == null ? null : destination;
+        expression.contextualType(tupleType);
         tupleIndex = 0;
         HirVisitor.super.visitTuple(expression);
       } finally {
         tupleType = outerTuple;
+        tupleSlots = outerSlots;
         tupleIndex = outerIndex;
       }
     }
 
     @Override
     public void visitTupleEntry(Hir.TupleEntry expression) {
-      final var expected = tupleType == null ? null : tupleType.fields()[tupleIndex++].ty();
+      final var expected = tupleType == null ? null : tupleType.fields()[tupleSlots[tupleIndex++]].ty();
       visitExpected(expression.value(), expected);
       if (expected != null) {
         final var actual = expression.value().ty();
@@ -154,19 +160,6 @@ public class HirTupleContextualTypingVisitorPass {
           expression.value(new Hir.Convert(expression.value(), expected));
         }
       }
-    }
-
-    private static boolean matchesLabels(final Hir.Tuple tuple, final TyStruct expected) {
-      if (expected == null || tuple.children().length != expected.fields().length) {
-        return false;
-      }
-      for (var i = 0; i < tuple.children().length; i++) {
-        final var label = tuple.children()[i].label();
-        if (!Objects.equals(label == null ? null : label.name(), expected.fields()[i].name())) {
-          return false;
-        }
-      }
-      return true;
     }
 
     @Override

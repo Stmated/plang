@@ -34,10 +34,9 @@ the tuple: `val t: (a: uint8,) = (a = 20,)`.
 
 ## Types and references
 
-Matching requires the same field count, order, labels, and recursive slot
-types. Positional-to-named matching and field reordering are not supported.
-Existing [contextual tuple typing](tuple-contextual-typing.md) applies to fresh
-constructions when labels and order match the expected tuple shape.
+Existing references require the same field count, order, labels, and recursive slot types.
+[Fresh constructions](tuple-matching.md) match explicit labels first, then fill remaining slots positionally. Named entries may be reordered into the expected layout without reordering source evaluation.
+[Contextual tuple typing](tuple-contextual-typing.md) applies to each matched slot.
 
 Tuples and structs with exactly matching layouts are interchangeable, sharing
 the original object without copying or reallocating:

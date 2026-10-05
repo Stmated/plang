@@ -240,7 +240,7 @@ class ToStringTreeHirVisitorTest {
   @Test
   void given__recursive_type__when__rendered__then__bounded_without_identity_addresses() {
     final var fields = new TyField[1];
-    final var type = new TyStruct(fields);
+    final var type = new TyStruct(fields, false);
     fields[0] = new TyField("next", new TyPointer<>(type));
 
     assertEquals("""

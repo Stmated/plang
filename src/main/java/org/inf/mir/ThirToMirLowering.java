@@ -5,6 +5,7 @@ import org.inf.exceptions.UnreachableCodeException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
 import org.inf.hir.HirTupleAccess;
+import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
 import org.inf.mir.model.*;
 import org.inf.thir.raising.ThirRaiseResult;
@@ -606,16 +607,21 @@ public final class ThirToMirLowering {
   }
 
   private Flow tuple(Hir.Tuple tuple) {
-    final var fields = new ArrayList<Mir.Operand>();
-    for (final var entry : tuple.children()) {
+    final var entries = tuple.children();
+    final var fields = new Mir.Operand[entries.length];
+    final var slots = tuple.contextualType() == null
+      ? null
+      : HirTupleMatching.match(tuple, tuple.contextualType());
+    for (var i = 0; i < entries.length; i++) {
+      final var entry = entries[i];
       final var flow = lower(entry.value());
       if (flow instanceof Diverges) {
         return flow;
       }
-      fields.add(((Continues) flow).value());
+      fields[slots == null ? i : slots[i]] = ((Continues) flow).value();
     }
     final var result = function.newValue(MirTypes.valueType(tuple.ty()));
-    emit(new Mir.NewStruct(result, fields));
+    emit(new Mir.NewStruct(result, Arrays.asList(fields)));
     return new Continues(result);
   }
 

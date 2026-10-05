@@ -41,6 +41,7 @@ Existing tuple objects require the same recursive shape and slot types. Whether 
 numeric width was explicit is ignored, but its width and signedness must match.
 Fresh constructions support [contextual integer typing and widening](tuple-contextual-typing.md)
 in bindings, arguments, and returns: `(1, 2)` can satisfy `(uint8, uint8)`.
+They also support [positional-to-named and reordered matching](tuple-matching.md) under an expected tuple type.
 Conversions that change an existing tuple's layout remain unsupported.
 Tuples and structs with exactly matching ordered fields are
 [structurally compatible](named-tuples.md#types-and-references).

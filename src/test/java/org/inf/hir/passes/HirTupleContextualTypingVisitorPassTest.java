@@ -21,6 +21,74 @@ import java.util.ArrayList;
 
 class HirTupleContextualTypingVisitorPassTest {
 
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val t: (p1: uint8, p2: uint8) = (1, 2); t",
+    "val t: (p1: uint8, p2: uint8) = (p1 = 1, p2 = 2); t",
+    "val t: (p1: uint8, p2: uint8) = (p2 = 2, p1 = 1); t",
+    "val t: (p1: uint8, p2: uint8) = (2, p1 = 1); t",
+    "var t: (p1: uint8, p2: uint8) = (1, 2); t = (p2 = 4, 3); t",
+    "val fn4 = (t: (p1: uint8, p2: uint8)) => t; fn4((1, 2))",
+    "val fn4 = (t: (p1: uint8, p2: uint8)) => t; fn4((p1 = 1, p2 = 2))",
+    "val fn4 = (t: (p1: uint8, p2: uint8)) => t; fn4 ((p2 = 2, 1))",
+    "val fn4 = (x: int, t: (p1: uint8, p2: uint8)) => t; fn4(t: (2, p1 = 1), x: 3)",
+    "val f = (): (p1: uint8, p2: uint8) => (2, p1 = 1); f()",
+    "val f = (): (p1: uint8, p2: uint8) => { return (p2 = 2, p1 = 1); }; f()",
+    "val t: (p1: uint8, p2: uint8) = { (p2 = 2, 1) }; t",
+    "val t: (p1: uint8, p2: uint8) = if (true) then (1, 2) else { (2, p1 = 1) }; t"
+  })
+  void given__fresh_tuple_context__when__matched__then__destination_labels_and_integer_types_are_used(final String code) {
+    final var uint8 = Tys.fromString("uint8", new MachineTarget(64));
+    final var expected = new TyStruct(new TyField[]{
+      new TyField("p1", uint8),
+      new TyField("p2", uint8)
+    }, true);
+    Assertions.assertTrue(TypeComparison.sameValueType(Inf.codeToThir(code).root().ty(), expected));
+  }
+
+  @Test
+  void given__reordered_context__when__inference_is_repeated__then__source_entries_and_destination_layout_are_preserved() {
+    final var root = HirTyIdentifierToTyTransformerPass.pass(
+      Inf.codeToHir("val t: (a: uint8, bool, b: uint16) = (true, b = 255u8, a = 1); t"), new MachineTarget(64)
+    );
+    HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
+    HirTupleContextualTypingVisitorPass.pass(root);
+    final var expected = root.ty();
+    HirTyCommonVisitorPass.pass(root);
+    HirTupleValidationVisitorPass.pass(root);
+    HirTupleContextualTypingVisitorPass.pass(root);
+    HirTyCommonVisitorPass.pass(root);
+    HirTupleValidationVisitorPass.pass(root);
+    final var constructions = new ArrayList<Hir.Tuple>();
+    final var conversions = new ArrayList<Hir.Convert>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitTuple(final Hir.Tuple tuple) {
+        if (tuple.contextualType() != null) {
+          constructions.add(tuple);
+        }
+        HirVisitor.super.visitTuple(tuple);
+      }
+
+      @Override
+      public void visitConvert(final Hir.Convert conversion) {
+        conversions.add(conversion);
+        HirVisitor.super.visitConvert(conversion);
+      }
+    });
+    Assertions.assertEquals(1, constructions.size());
+    final var tuple = constructions.getFirst();
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(expected, root.ty()),
+      () -> Assertions.assertTrue(TypeComparison.sameValueType(tuple.ty(), tuple.contextualType())),
+      () -> Assertions.assertNull(tuple.children()[0].label()),
+      () -> Assertions.assertEquals("b", tuple.children()[1].label().name()),
+      () -> Assertions.assertEquals("a", tuple.children()[2].label().name()),
+      () -> Assertions.assertEquals(1, conversions.size()),
+      () -> Assertions.assertEquals(Tys.fromString("uint16", new MachineTarget(64)), conversions.getFirst().ty())
+    );
+  }
+
   @Test
   void given__standalone_tuple_pass__when__followed_by_common_inference__then__explicit_widening_is_preserved() {
     final var root = HirTyIdentifierToTyTransformerPass.pass(
@@ -131,6 +199,10 @@ class HirTupleContextualTypingVisitorPassTest {
 
   @ParameterizedTest
   @ValueSource(strings = {
+    "val t: (a: uint8, b: uint16) = (b = 256, a = 1i32)",
+    "val t: (a: uint8, b: uint16) = (1u16, a = 256)",
+    "val t: (a: uint8, bool) = (a = 1, 2)",
+    "val t: (a: uint8, b: uint16) = (b = 1u8, a = 1L)",
     "val t: (uint8,) = (256,)",
     "val t: (uint8,) = (-1,)",
     "val t: (uint8,) = (0x100,)",
@@ -173,6 +245,14 @@ class HirTupleContextualTypingVisitorPassTest {
 
   @ParameterizedTest
   @ValueSource(strings = {
+    "val existing = (1u8,); val t: (a: uint8,) = existing",
+    "val existing = (b = true, a = 1); val t: (a: int, b: bool) = existing",
+    "val existing = (1u8,); val t: (outer: (a: uint8,),) = (existing,)",
+    "val f = (t: (a: int, b: bool)) => t; val existing = (1, true); f(existing)",
+    "val f = (): (a: int, b: bool) => { val existing = (b = true, a = 1); return existing; }",
+    "val existing = (1, true); val t: (a: int, b: bool) = { existing }",
+    "val existing = (1, true); val t: (a: int, b: bool) = if (true) then (1, true) else existing",
+    "val S = struct { val t: (a: int, b: bool); }; new heap S { t = (1, true); }",
     "val existing = (1u8,); val t: (uint16,) = existing",
     "val existing = (1,); val t: (uint8,) = existing",
     "val f = (t: (uint16,)) => t; val existing = (1u8,); f(existing)",

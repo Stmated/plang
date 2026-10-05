@@ -2,6 +2,7 @@ package org.inf.hir.passes;
 
 import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
+import org.inf.hir.HirTupleMatching;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
 import org.inf.ty.TyStruct;
@@ -18,6 +19,8 @@ final class HirTupleTyping {
       throw new IllegalArgumentException("Empty tuple types and values are not supported");
     }
     final var fields = new TyField[entries.length];
+    final var contextual = tuple.contextualType();
+    final var slots = contextual == null ? null : HirTupleMatching.match(tuple, contextual);
     final var labels = new HashSet<String>();
     var diverges = false;
     for (var i = 0; i < entries.length; i++) {
@@ -32,7 +35,8 @@ final class HirTupleTyping {
         diverges = true;
       } else {
         TupleTypes.requireElementType(type);
-        fields[i] = new TyField(name, type);
+        final var index = slots == null ? i : slots[i];
+        fields[index] = new TyField(slots == null ? name : contextual.fields()[index].name(), type);
       }
     }
     // A diverging construction has no aggregate value or layout, even if some entries have values.

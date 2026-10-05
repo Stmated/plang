@@ -25,6 +25,32 @@ import static org.junit.jupiter.api.Assertions.*;
 class ThirToMirLoweringTest {
 
   @Test
+  void given__reordered_fresh_tuple__when__lowered__then__one_allocation_receives_destination_order() {
+    final var module = Inf.codeToMir("""
+      val t: (a: uint8, bool, b: uint16) = (true, b = 255u8, a = 1);
+      t.a
+      """);
+    final var instructions = instructions(module);
+    final var allocations = instructions.stream().filter(Mir.NewStruct.class::isInstance)
+      .map(Mir.NewStruct.class::cast).toList();
+    assertEquals(1, allocations.size());
+    final var allocation = allocations.getFirst();
+    final var type = assertInstanceOf(TyStruct.class, MirTypes.pointee(allocation.result().ty()));
+    final var conversion = instructions.stream().filter(Mir.Convert.class::isInstance)
+      .map(Mir.Convert.class::cast).findFirst().orElseThrow();
+    assertAll(
+      () -> assertEquals("a", type.fields()[0].name()),
+      () -> assertNull(type.fields()[1].name()),
+      () -> assertEquals("b", type.fields()[2].name()),
+      () -> assertEquals("1", assertInstanceOf(Mir.Constant.class, allocation.fields().get(0)).content()),
+      () -> assertEquals("true", assertInstanceOf(Mir.Constant.class, allocation.fields().get(1)).content()),
+      () -> assertSame(conversion.result(), allocation.fields().get(2)),
+      () -> assertTrue(instructions.indexOf(conversion) < instructions.indexOf(allocation)),
+      () -> assertInstanceOf(TyValueNumberInteger.class, conversion.value().ty())
+    );
+  }
+
+  @Test
   void given__named_tuple_and_struct_views__when__lowered__then__compatibility_does_not_allocate_copies() {
     final var module = Inf.codeToMir("""
       val S = struct { val a: int; val b: bool; };

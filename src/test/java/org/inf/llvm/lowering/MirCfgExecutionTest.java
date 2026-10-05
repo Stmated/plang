@@ -15,6 +15,120 @@ class MirCfgExecutionTest {
 
   @ParameterizedTest
   @ValueSource(ints = {0, 2})
+  void given__fresh_tuple_matching__when__executed__then__calls_and_bindings_use_destination_slots(final int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(6, Inf.codeToResult("""
+        val fn4 = (t: (p1: uint8, p2: uint8)): uint16 => {
+          return t.p1 + t.p2;
+        };
+        fn4((1, 2)) + fn4((p1 = 1, p2 = 2))
+        """, options).resultValue()),
+      () -> assertEquals(33, Inf.codeToResult("""
+        val fn4 = (t: (p1: uint8, p2: uint8)): uint16 => t.p1 * 10 + t.p2;
+        fn4((1, 2)) + fn4((p1 = 1, p2 = 2)) + fn4((p2 = 9, p1 = 0))
+        """, options).resultValue()),
+      () -> assertEquals(12, Inf.codeToResult("""
+        val fn4 = (t: (p1: uint8, p2: uint8)) => t.p1 * 10 + t.p2;
+        fn4 ((2, p1 = 1))
+        """, options).resultValue()),
+      () -> assertEquals(1256, Inf.codeToResult("""
+        val t: (a: uint8, bool, b: uint16) = (true, b = 1000, a = 255);
+        if (t[1]) then t.a + t.b + t[0] - 254 else 0
+        """, options).resultValue()),
+      () -> assertEquals(120, Inf.codeToResult("""
+        var t: (a: int, b: int) = (1, 2);
+        val original = t;
+        t = (b = 4, 3);
+        original.a * 100 + original.b * 10 + t.a + t.b - 7
+        """, options).resultValue()),
+      () -> assertEquals(256, Inf.codeToResult("""
+        val t: (a: int16, b: uint16) = (b = 1u8, a = 255u8);
+        t.a + t[1]
+        """, options).resultValue()),
+      () -> assertEquals(9, Inf.codeToResult("""
+        val captured = [0];
+        val outer = (): (a: uint8, b: uint8) => {
+          val read = (t: (a: uint8, b: uint8)) => { captured[0] += 1; t };
+          read((b = 4, 3))
+        };
+        val t = outer();
+        t.a + t.b + captured[0] + 1
+        """, options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void given__fresh_tuple_return_context__when__executed__then__nested_blocks_and_branches_match_recursively(final int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(123, Inf.codeToResult("""
+        val make = (flag: bool): (a: uint8, nested: (x: uint8, y: uint16)) => {
+          if (flag) { return (nested = (y = 3, 2), a = 1); };
+          if (true) then (1, (2, 3)) else { (nested = (3, x = 2), 1) }
+        };
+        val first = make(true);
+        val second = make(false);
+        first.a * 100 + first.nested.x * 10 + second.nested.y
+        """, options).resultValue()),
+      () -> assertEquals(12, Inf.codeToResult("""
+        val t: (a: uint8, b: uint16) = if (false) then (1, 2) else { (b = 2, 1) };
+        t.a * 10 + t.b
+        """, options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void given__reordered_tuple_effects__when__executed__then__source_order_and_early_exit_are_preserved(final int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertEquals(2313, Inf.codeToResult("""
+        val counter = [0];
+        val bump = () => { counter[0] += 1; counter[0] };
+        val t: (a: int, b: int, c: int) = (c = bump(), bump(), b = bump());
+        (t.a * 100 + t.b * 10 + t.c) * 10 + counter[0]
+        """, options).resultValue()),
+      () -> assertEquals(1221, Inf.codeToResult("""
+        val counter = [0];
+        val bump = () => { counter[0] += 1; counter[0] };
+        val read = (x: int, t: (a: int, b: int)) => x * 100 + t.a * 10 + t.b;
+        val result = read(t: (b = bump(), a = bump()), x: bump());
+        result + counter[0] * 300
+        """, options).resultValue()),
+      () -> assertEquals(112, Inf.codeToResult("""
+        val counter = [0];
+        val make = (): (a: int, b: int, c: int) => (
+          c = { counter[0] += 1; 3 },
+          { return (c = 6, b = 5, a = 4); },
+          b = { counter[0] += 100; 2 }
+        );
+        val t = make();
+        counter[0] * 100 + t.a + t.b + t.c - 3
+        """, options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
+  void given__reordered_fresh_outer_tuple__when__references_are_mutated__then__nested_objects_remain_shared(final int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertEquals(36, Inf.codeToResult("""
+      val S = struct { val a: int; };
+      val original = (a = 1,);
+      val object: S = original;
+      val array = [2];
+      val nested = (object = object,);
+      val t: (nested: (object: S,), values: [;int;1]) = (values = array, nested);
+      t.nested.object.a = 9;
+      t.values[0] = 9;
+      original.a + nested.object.a + array[0] + t[1][0]
+      """, options).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 2})
   void given__named_and_mixed_tuples__when__executed__then__both_read_forms_preserve_slot_order(final int optimization) {
     final var options = InfRunOptions.builder().optLevel(optimization).build();
     assertAll(
