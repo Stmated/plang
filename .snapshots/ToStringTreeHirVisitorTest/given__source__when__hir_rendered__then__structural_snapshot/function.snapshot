@@ -82,7 +82,7 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                       (ty null)))
                   (target null)))
               (arguments
-                (TupleEntry
+                (Argument
                   (label null)
                   (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
                   (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))

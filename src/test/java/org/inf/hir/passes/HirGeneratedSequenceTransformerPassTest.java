@@ -44,7 +44,7 @@ class HirGeneratedSequenceTransformerPassTest {
     final var signature = new Hir.FunctionSignature(
       new Hir.Parameter[0], false, new Hir.TyExpr(Ty.DEADEND), null
     );
-    final var call = new Hir.Call(signature, null, false, null, null);
+    final var call = new Hir.Call(signature, new Hir.Argument[0], false, null, null);
     final var declaration = new Hir.Dec(
       new Hir.Lexeme("value"), Hir.MutabilityKind.MUTABLE, new Hir.TyExpr(Ty.INTEGER)
     );

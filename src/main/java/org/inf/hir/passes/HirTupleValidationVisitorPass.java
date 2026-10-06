@@ -3,7 +3,6 @@ package org.inf.hir.passes;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
-import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
@@ -167,14 +166,14 @@ public final class HirTupleValidationVisitorPass {
       if (!(expression.target().valueTy() instanceof TyFn function)) {
         return;
       }
-      final var arguments = HirCallArguments.entries(expression.arguments());
-      if (!TupleTypes.containsTuple(function) && arguments.stream().noneMatch(it -> TupleTypes.containsTuple(it.ty()))) {
+      final var arguments = expression.arguments();
+      if (!TupleTypes.containsTuple(function) && ArrayUtils.none(arguments, it -> TupleTypes.containsTuple(it.ty()))) {
         return;
       }
       final var parameters = function.parameters();
       final var binding = new HirArgumentBinding(
         ArrayUtils.mapToStrings(parameters, TyParam::name),
-        function.vararg(), arguments.size()
+        function.vararg(), arguments.length
       );
       for (final var argument : arguments) {
         final var index = binding.bind(argument.label() == null ? null : argument.label().name());

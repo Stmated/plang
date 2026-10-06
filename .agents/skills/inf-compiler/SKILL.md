@@ -13,6 +13,7 @@ description: Use this skill for changes to the Inf compiler written in Java.
 * Make the smallest change that addresses the task.
 * Use existing tests where possible.
 * Never install external tools such as Maven. If code cannot be executed, investigate the existing tool setup. See the `java-testing` skill for tool discovery and test execution.
+* Add discovered needs to the `TODO.md` file, or update changed requirements from found issues on related features.
 
 ## Compiler pipeline
 

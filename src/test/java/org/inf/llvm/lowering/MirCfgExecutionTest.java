@@ -7,6 +7,7 @@ import org.inf.mir.MirUnionValue;
 import org.inf.ty.Ty;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -15,7 +16,7 @@ class MirCfgExecutionTest {
 
   @ParameterizedTest
   @ValueSource(ints = {0, 2})
-  void given__compact_named_call_lists__when__executed__then__binding_and_capture_evaluation_are_preserved(final int optimization) {
+  void given__named_call_lists__when__executed__then__binding_and_capture_evaluation_are_preserved(final int optimization) {
     final var options = InfRunOptions.builder().optLevel(optimization).build();
     assertAll(
       () -> assertEquals(22, Inf.codeToResult("""
@@ -55,6 +56,28 @@ class MirCfgExecutionTest {
         outer()
         """, options).resultValue())
     );
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "0 | identity(args)",
+    "2 | identity(args)",
+    "0 | identity(value = args)",
+    "2 | identity(value = args)",
+    "0 | identity value = args",
+    "2 | identity value = args"
+  })
+  void given__struct_reference_argument__when__executed__then__one_argument_preserves_the_value(
+    final int optimization, final String invocation
+  ) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertEquals(7, Inf.codeToResult("""
+      val S = struct { val a: int; };
+      val identity = (value: S): S => value;
+      val args = new heap S { a = 7; };
+      val result = %s;
+      result.a
+      """.formatted(invocation), options).resultValue());
   }
 
   @ParameterizedTest

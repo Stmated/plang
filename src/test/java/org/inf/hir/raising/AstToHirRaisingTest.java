@@ -17,7 +17,6 @@ import org.inf.hir.Hir;
 import org.inf.hir.Hir.Call;
 import org.inf.hir.Hir.Function;
 import org.inf.hir.Hir.Program;
-import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirTransformer;
 import org.inf.hir.HirVisitor;
 import org.inf.ast.util.SnapshotTestUtils;
@@ -34,6 +33,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 @EnableSnapshotTests
 @Execution(ExecutionMode.SAME_THREAD)
@@ -72,10 +72,10 @@ class AstToHirRaisingTest {
     final String code, final int tuples
   ) {
     final var call = Assertions.assertInstanceOf(Call.class, returned(code));
-    final var arguments = HirCallArguments.entries(call.arguments());
+    final var arguments = call.arguments();
     Assertions.assertAll(
-      () -> Assertions.assertEquals(1, arguments.size()),
-      () -> Assertions.assertEquals(tuples, arguments.stream().filter(it -> it.value() instanceof Hir.Tuple).count())
+      () -> Assertions.assertEquals(1, arguments.length),
+      () -> Assertions.assertEquals(tuples, Arrays.stream(arguments).filter(it -> it.value() instanceof Hir.Tuple).count())
     );
   }
 
@@ -167,23 +167,23 @@ class AstToHirRaisingTest {
     final String code, final int arity, final int tuples
   ) {
     final var call = Assertions.assertInstanceOf(Call.class, returned(code));
-    final var arguments = HirCallArguments.entries(call.arguments());
+    final var arguments = call.arguments();
     Assertions.assertAll(
-      () -> Assertions.assertEquals(arity, arguments.size()),
-      () -> Assertions.assertEquals(tuples, arguments.stream().filter(it -> it.value() instanceof Hir.Tuple).count())
+      () -> Assertions.assertEquals(arity, arguments.length),
+      () -> Assertions.assertEquals(tuples, Arrays.stream(arguments).filter(it -> it.value() instanceof Hir.Tuple).count())
     );
   }
 
   @Test
   void given__named_call__when__raised__then__labels_are_argument_metadata() {
     final var call = Assertions.assertInstanceOf(Call.class, returned("f(a = 1, b = 2)"));
-    final var arguments = HirCallArguments.entries(call.arguments());
+    final var arguments = call.arguments();
     Assertions.assertAll(
-      () -> Assertions.assertEquals(2, arguments.size()),
-      () -> Assertions.assertEquals("a", arguments.get(0).label().name()),
-      () -> Assertions.assertEquals("b", arguments.get(1).label().name()),
-      () -> Assertions.assertInstanceOf(Hir.Literal.class, arguments.get(0).value()),
-      () -> Assertions.assertInstanceOf(Hir.Literal.class, arguments.get(1).value())
+      () -> Assertions.assertEquals(2, arguments.length),
+      () -> Assertions.assertEquals("a", arguments[0].label().name()),
+      () -> Assertions.assertEquals("b", arguments[1].label().name()),
+      () -> Assertions.assertInstanceOf(Hir.Literal.class, arguments[0].value()),
+      () -> Assertions.assertInstanceOf(Hir.Literal.class, arguments[1].value())
     );
   }
 

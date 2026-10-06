@@ -147,7 +147,7 @@ public class AstToHirRaising {
   private Hir.Expression raise_juxta(Ast.Juxtaposition ast) {
 
     final var target = raise(ast.target());
-    final var arguments = new Hir.TupleEntry[ast.arguments().length];
+    final var arguments = new Hir.Argument[ast.arguments().length];
     for (var i = 0; i < arguments.length; i++) {
       arguments[i] = raiseCallArgument(ast.arguments()[i]);
     }
@@ -156,22 +156,22 @@ public class AstToHirRaising {
     if (target instanceof final Hir.Path path) {
       final var elements = path.elements();
       final var last = elements.length - 1;
-      elements[last] = new Hir.Call(elements[last], HirCallArguments.of(arguments));
+      elements[last] = new Hir.Call(elements[last], arguments);
       return path;
     }
 
-    return new Hir.Call(target, HirCallArguments.of(arguments));
+    return new Hir.Call(target, arguments);
   }
 
-  private Hir.TupleEntry raiseCallArgument(final Ast.Expression argument) {
+  private Hir.Argument raiseCallArgument(final Ast.Expression argument) {
     if (argument instanceof Ast.Labeling) {
       throw new IllegalArgumentException("Named call arguments require '=' instead of ':'");
     }
     if (argument instanceof Ast.Assignment assignment) {
-      return new Hir.TupleEntry(asLexeme(assignment.lhs()), raise(assignment.rhs()), false);
+      return new Hir.Argument(asLexeme(assignment.lhs()), raise(assignment.rhs()));
     }
     final var value = raise(argument);
-    return value == null ? null : new Hir.TupleEntry(null, value, false);
+    return value == null ? null : new Hir.Argument(null, value);
   }
 
   private Hir.Expression lower_dot_access(final Ast.DotAccess ast) {
@@ -488,7 +488,7 @@ public class AstToHirRaising {
         case null -> new Ast.Expression[0];
         default -> new Ast.Expression[]{contents};
       };
-      final var arguments = new ArrayList<Hir.TupleEntry>();
+      final var arguments = new ArrayList<Hir.Argument>();
       for (final var argument : astArguments) {
         final var entry = raiseCallArgument(argument);
         if (entry != null) {
@@ -496,7 +496,7 @@ public class AstToHirRaising {
         }
       }
 
-      return new Hir.Call(target, HirCallArguments.of(arguments.toArray(new Hir.TupleEntry[0])), false, null, null);
+      return new Hir.Call(target, arguments.toArray(new Hir.Argument[0]), false, null, null);
     }
 
     throw new IllegalArgumentException("Unknown postfix expression");

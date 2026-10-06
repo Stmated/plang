@@ -1,7 +1,6 @@
 package org.inf.hir.passes;
 
 import org.inf.hir.Hir;
-import org.inf.hir.HirCallArguments;
 import org.inf.ty.*;
 import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
@@ -12,14 +11,14 @@ class HirReturnTypeVisitorTest {
 
   private Hir.Call call(Ty result, Hir.Expression... operands) {
     final var parameters = new Hir.Parameter[operands.length];
-    final var arguments = new Hir.TupleEntry[operands.length];
+    final var arguments = new Hir.Argument[operands.length];
     for (var i = 0; i < operands.length; i++) {
       parameters[i] = new Hir.Parameter(new Hir.Lexeme("p" + i), new Hir.TyExpr(Ty.INTEGER), false, null);
-      arguments[i] = new Hir.TupleEntry(null, operands[i], false);
+      arguments[i] = new Hir.Argument(null, operands[i]);
     }
     return new Hir.Call(
       new Hir.FunctionSignature(parameters, false, new Hir.TyExpr(result), null),
-      HirCallArguments.of(arguments),
+      arguments,
       false,
       null, null
     );
@@ -57,7 +56,7 @@ class HirReturnTypeVisitorTest {
     final var target = new Hir.Conditional(new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), signature, signature, null, null);
     final var call = new Hir.Call(
       target,
-      new Hir.TupleEntry(null, new Hir.Return(new Hir.Literal("text", Ty.STRING)), false),
+      new Hir.Argument[] { new Hir.Argument(null, new Hir.Return(new Hir.Literal("text", Ty.STRING))) },
       false,
       null, null
     );

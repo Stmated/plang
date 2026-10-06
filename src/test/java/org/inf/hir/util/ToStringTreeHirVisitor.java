@@ -227,7 +227,13 @@ public final class ToStringTreeHirVisitor {
     @Override
     public void visitCall(final Hir.Call expr) {
       result = node("Call", atom("partial", expr.partial()), type("ty", expr.ty()),
-        type("valueTy", expr.valueTy()), child("target", expr.target()), child("arguments", expr.arguments()));
+        type("valueTy", expr.valueTy()), child("target", expr.target()), children("arguments", expr.arguments()));
+    }
+
+    @Override
+    public void visitCallArgument(final Hir.Argument expr) {
+      result = node("Argument", atom("label", expr.label() == null ? "null" : quote(expr.label().name())),
+        type("ty", expr.ty()), type("valueTy", expr.valueTy()), child("value", expr.value()));
     }
 
     @Override

@@ -180,6 +180,30 @@ class ThirToMirLoweringTest {
   }
 
   @ParameterizedTest
+  @ValueSource(strings = {
+    "identity(args)",
+    "identity(value = args)",
+    "identity value = args"
+  })
+  void given__struct_reference_argument__when__lowered__then__no_argument_aggregate_is_allocated(final String invocation) {
+    final var module = Inf.codeToMir("""
+      val S = struct { val a: int; };
+      val identity = (value: S): S => value;
+      val args = new heap S { a = 7; };
+      val result = %s;
+      result.a
+      """.formatted(invocation));
+    final var call = instructions(module).stream().filter(Mir.Call.class::isInstance)
+      .map(Mir.Call.class::cast).findFirst().orElseThrow();
+    assertAll(
+      () -> assertEquals(1, call.arguments().size()),
+      () -> assertEquals(call.signature().parameters()[0].ty(), call.arguments().getFirst().ty()),
+      () -> assertEquals(1, module.functions().stream().flatMap(function -> function.blocks().stream())
+        .flatMap(block -> block.instructions().stream()).filter(Mir.NewStruct.class::isInstance).count())
+    );
+  }
+
+  @ParameterizedTest
   @CsvSource(delimiter = '|', value = {
     "(1,) | 1",
     "(a = 1,) | 1",

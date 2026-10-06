@@ -4,7 +4,6 @@ import lombok.experimental.UtilityClass;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
-import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
@@ -83,7 +82,7 @@ public class HirTupleContextualTypingVisitorPass {
     @Override
     public void visitCall(Hir.Call expression) {
       visitChild(expression.target());
-      final var arguments = HirCallArguments.entries(expression.arguments());
+      final var arguments = expression.arguments();
       if (!(expression.target().valueTy() instanceof TyFn function)
         || Arrays.stream(function.parameters()).noneMatch(parameter -> tupleType(parameter.ty()) != null)) {
         visitCallArguments(expression.arguments());
@@ -91,7 +90,7 @@ public class HirTupleContextualTypingVisitorPass {
       }
       final var parameters = function.parameters();
       final var binding = new HirArgumentBinding(
-        ArrayUtils.mapToStrings(parameters, TyParam::name), function.vararg(), arguments.size()
+        ArrayUtils.mapToStrings(parameters, TyParam::name), function.vararg(), arguments.length
       );
       for (final var argument : arguments) {
         final var index = binding.bind(argument.label() == null ? null : argument.label().name());

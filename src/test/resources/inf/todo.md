@@ -10,9 +10,10 @@
 
 * Positional tuple calls depend on Tuple 1-4 above; named tuple expansion additionally needs the named-tuple items. Do not make every deferred tuple feature a
   prerequisite. Investigation stopped before implementation planning beyond the findings below.
-* Current calls share compact `Hir.TupleEntry`/`Hir.Tuple` containers with tuple values. Explicit calls extract only their outer argument list, preserving a
-  nested tuple as
-  one argument. Tuple spreading remains unsupported.
+* Calls use a non-null `Hir.Argument[]`, separate from tuple construction's `Hir.TupleEntry[]`. A tuple/struct reference remains an expression value in one
+  argument, not a converted `Hir.Tuple`. Spreading remains unsupported.
+* Future call and tuple spreading should share operand-shape/expansion logic while keeping parameter binding and tuple construction separate. A shared
+  `Hir.Spread` operand node could avoid duplicate spread flags; do not pre-expand a reference into expressions that evaluate it repeatedly.
 * Recommendation, not yet decided: explicit, shallow spread (`f(...args)` / `f ...args`). Keep `f(args)` as one argument; automatic unpacking makes tuple-taking
   functions ambiguous and must not change grouping based on a signature. Manual element arguments remain an alternative once tuple access works.
 * `Ast.Spread` and the `...` token already exist, but ordinary expression raising does not support spread and implicit-call grouping rejects it as an argument
@@ -37,14 +38,6 @@
     * Of course a syntax like `const result = service call ...args` should work, since parenthesis are optional.
     * If you have alternative ideas of how and when to destructure manually or automatically, then tell me.
 
-### Consider changing Hir.Call
-
-* I think it might be a good idea to either:
-    * Bring back Hir.Argument (see git history),
-    * or normalize Hir.Call#arguments to actually always be Hir.Tuple
-* Currently the code gets a bit more complex from having `#arguments` as they currently are.
-* Perhaps it truly is more idiomatic/easier to visit/transform uniformally if we always think of a call as fn-ref given tuple.
-
 ### Unification of "struct" and "tuple"
 
 * A tuple should in essence just be a short-form of a struct declaration
@@ -67,6 +60,10 @@
         * The main difference to `=` is that `=` returns `void` but `:=` returns RHS value.
 * Give feedback on viability of this change, if it is a good idea or not.
 
+### Change interpreter executor
+ThirToMirLoweringTest should not execute InterpreterCodeExecutor.
+If the test is made for testing the interpreter, then it should be inside an interpreter test class
+
 ### Optional arguments, default values for parameters, named arguments
 
 ### Updated test cases, thorough rework of how tests are done
@@ -75,6 +72,7 @@
 * Should use more test cases found in files
 * Should use better ways of storing expected output for a snapshot test
 * Should have ways of giving a kind of test matrix for the different test files
+  * This way we can test that all things run the same way both from LLVM and the interpreter
 * Global/common test value sources, such as one that gives all optimization levels
 
 ### Partial functions, for currying/composition

@@ -4,7 +4,6 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
-import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirTransformer;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.TyFn;
@@ -12,6 +11,7 @@ import org.inf.ty.TyParam;
 
 import java.util.ArrayList;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
@@ -112,9 +112,8 @@ public class HirLambdaLiftingTransformerPass {
 
       if (replacedWith != null) {
 
-        final var arguments = HirCallArguments.entries(expr.arguments());
-        final var newArguments = new Hir.TupleEntry[arguments.size() + replacedWith.captures().size()];
-        arguments.toArray(newArguments);
+        final var arguments = expr.arguments();
+        final var newArguments = Arrays.copyOf(arguments, arguments.length + replacedWith.captures().size());
 
         for (var i = 0; i < replacedWith.captures().size(); i++) {
 
@@ -128,15 +127,14 @@ public class HirLambdaLiftingTransformerPass {
               break;
             }
           }
-          newArguments[arguments.size() + i] = new Hir.TupleEntry(
+          newArguments[arguments.length + i] = new Hir.Argument(
             parameter.lexeme(),
-            new Hir.Identifier(parameter.lexeme(), declaration),
-            false
+            new Hir.Identifier(parameter.lexeme(), declaration)
           );
         }
 
         final var replacement = new Hir.Call(
-          replacedWith.toIdentifier(), HirCallArguments.of(newArguments), expr.partial(), expr.ty(), null
+          replacedWith.toIdentifier(), newArguments, expr.partial(), expr.ty(), null
         );
         rewritten.add(replacement);
         return replacement;

@@ -2,7 +2,6 @@ package org.inf.hir.passes;
 
 import org.inf.Inf;
 import org.inf.hir.Hir;
-import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
@@ -42,12 +41,12 @@ class HirLambdaLiftingIdentityTest {
 
       @Override
       public void visitCall(Hir.Call call) {
-        final var arguments = HirCallArguments.entries(call.arguments());
+        final var arguments = call.arguments();
         assertAll(
           () -> assertEquals(lifted.ty(), call.target().valueTy()),
-          () -> assertEquals(2, arguments.size()),
-          () -> assertEquals("argument", assertInstanceOf(Hir.Identifier.class, arguments.get(0).value()).lexeme().name()),
-          () -> assertEquals("captured", assertInstanceOf(Hir.Identifier.class, arguments.get(1).value()).lexeme().name())
+          () -> assertEquals(2, arguments.length),
+          () -> assertEquals("argument", assertInstanceOf(Hir.Identifier.class, arguments[0].value()).lexeme().name()),
+          () -> assertEquals("captured", assertInstanceOf(Hir.Identifier.class, arguments[1].value()).lexeme().name())
         );
         HirVisitor.super.visitCall(call);
       }
@@ -118,7 +117,7 @@ class HirLambdaLiftingIdentityTest {
     });
     assertEquals(1, calls.size());
     assertEquals(1, declarations.size());
-    final var argument = assertInstanceOf(Hir.Identifier.class, HirCallArguments.entries(calls.getFirst().arguments()).getFirst().value());
+    final var argument = assertInstanceOf(Hir.Identifier.class, calls.getFirst().arguments()[0].value());
     assertSame(declarations.getFirst(), argument.target());
     assertNotSame(lifted.signature().parameters()[0], argument.target());
   }
@@ -149,7 +148,7 @@ class HirLambdaLiftingIdentityTest {
     );
     final var program = new Hir.Program(new Hir.Expressions(new Hir.Expression[]{
       new Hir.Assignment(declaration, new Hir.Literal("7", Ty.INTEGER)),
-      new Hir.Return(new Hir.Call(function, null))
+      new Hir.Return(new Hir.Call(function, new Hir.Argument[0]))
     }));
     HirTyCommonVisitorPass.pass(program);
     final var root = HirLambdaLiftingTransformerPass.pass(program);
@@ -160,9 +159,9 @@ class HirLambdaLiftingIdentityTest {
     root.visit(new HirVisitor() {
       @Override
       public void visitCall(Hir.Call call) {
-        final var arguments = HirCallArguments.entries(call.arguments());
-        assertEquals(1, arguments.size());
-        assertSame(declaration, assertInstanceOf(Hir.Identifier.class, arguments.getFirst().value()).target());
+        final var arguments = call.arguments();
+        assertEquals(1, arguments.length);
+        assertSame(declaration, assertInstanceOf(Hir.Identifier.class, arguments[0].value()).target());
       }
     });
   }
@@ -182,8 +181,8 @@ class HirLambdaLiftingIdentityTest {
     });
 
     assertEquals(2, calls.size());
-    assertEquals(2, HirCallArguments.entries(calls.get(0).arguments()).size());
-    assertEquals(1, HirCallArguments.entries(calls.get(1).arguments()).size());
+    assertEquals(2, calls.get(0).arguments().length);
+    assertEquals(1, calls.get(1).arguments().length);
     for (final var function : functions(root)) {
       assertLocalBindings(function);
     }

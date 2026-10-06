@@ -234,14 +234,13 @@ public interface HirVisitor {
     visitCallArguments(expr.arguments());
   }
 
-  /// Traverse the call list without treating its container as a tuple value.
-  default void visitCallArguments(Hir.Expression expr) {
-    for (final var argument : HirCallArguments.entries(expr)) {
-      visitCallArgument(argument);
+  default void visitCallArguments(Hir.Argument[] arguments) {
+    for (final var argument : arguments) {
+      visitChild(argument);
     }
   }
 
-  default void visitCallArgument(Hir.TupleEntry expr) {
+  default void visitCallArgument(Hir.Argument expr) {
     visitChild(expr.value());
   }
 

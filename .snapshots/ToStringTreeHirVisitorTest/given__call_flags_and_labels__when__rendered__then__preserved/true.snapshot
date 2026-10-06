@@ -16,23 +16,19 @@ test-method: given__call_flags_and_labels__when__rendered__then__preserved
           (ty null)))
       (target null)))
   (arguments
-    (Tuple
-      (ty null)
-      (valueTy null)
-      (children
-        (TupleEntry
-          (label "label")
-          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-          (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-          (value
-            (Literal
-              (content "1")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
-        (TupleEntry
-          (label null)
-          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-          (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-          (value
-            (Literal
-              (content "2")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))
+    (Argument
+      (label "label")
+      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+      (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+      (value
+        (Literal
+          (content "1")
+          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+    (Argument
+      (label null)
+      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+      (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+      (value
+        (Literal
+          (content "2")
+          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
