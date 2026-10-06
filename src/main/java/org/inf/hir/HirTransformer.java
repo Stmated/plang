@@ -323,6 +323,11 @@ public interface HirTransformer {
     return expr;
   }
 
+  default Hir.Expression transformSpread(final Hir.Spread expr) {
+    expr.value(expr.value().transform(this));
+    return expr;
+  }
+
   default Hir.Expression transformLexeme(final Hir.Lexeme expr) {
     return expr;
   }

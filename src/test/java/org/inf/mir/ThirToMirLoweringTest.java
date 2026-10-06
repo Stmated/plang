@@ -1,6 +1,7 @@
 package org.inf.mir;
 
 import org.inf.Inf;
+import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.exceptions.UnreachableCodeException;
 import org.inf.execution.interpreter.InterpreterCodeExecutor;
 import org.inf.hir.Hir;
@@ -23,6 +24,87 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ThirToMirLoweringTest {
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "pair(...1)",
+    "pair(...[1, 2])",
+    "pair(...(1,))",
+    "pair(...(1, 2, 3))",
+    "pair(...(a = 1, b = 2), unknown = 3)",
+    "pair(a = 1, a = 2, ...(b = 3,))",
+    "pair(...(a = 1, b = 2), a = 3, a = 4)",
+    "pair(args = ...(1, 2))"
+  })
+  void given__invalid_spread_binding__when__lowered__then__compilation_fails(final String expression) {
+    assertThrows(IllegalArgumentException.class, () ->
+      Inf.codeToMir("val pair = (a: int, b: int) => a * 10 + b; %s".formatted(expression)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "pair((1, 2))",
+    "val args = (1, 2); pair(args)"
+  })
+  void given__unspread_tuple__when__passed_to_scalar_parameters__then__tuple_boundary_is_preserved(final String expression) {
+    assertThrows(InvalidTypeConversionException.class, () ->
+      Inf.codeToMir("val pair = (a: int, b: int) => a * 10 + b; %s".formatted(expression)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val f = (t: (p1: uint8, p2: uint8)) => t; val args = ((1u8, 2u8),); f(...args)",
+    "val f = (t: (int, int)) => t; f(...((1, true),), t = (1, 2))"
+  })
+  void given__incompatible_spread_tuple_slot__when__lowered__then__existing_layouts_and_overridden_values_are_checked(final String code) {
+    assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToMir(code));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "pair(...(1))",
+    "pair(...[1, 2])"
+  })
+  void given__non_aggregate_spread__when__typed__then__shape_diagnostic_is_reported(final String expression) {
+    final var error = assertThrows(IllegalArgumentException.class, () ->
+      Inf.codeToThir("val pair = (a: int, b: int) => a + b; %s".formatted(expression)));
+    assertTrue(error.getMessage().contains("Spreading requires a statically known tuple or struct"));
+  }
+
+  @Test
+  void given__existing_spread_reference__when__lowered__then__the_original_aggregate_is_not_copied() {
+    final var module = Inf.codeToMir("""
+      val pair = (a: int, b: int) => a + b;
+      val args = (1, 2);
+      pair(...args)
+      """);
+    final var instructions = instructions(module);
+    final var fields = instructions.stream().filter(Mir.Load.class::isInstance)
+      .map(Mir.Load.class::cast).map(Mir.Load::place).filter(Mir.Field.class::isInstance)
+      .map(Mir.Field.class::cast).toList();
+    assertAll(
+      () -> assertEquals(1, instructions.stream().filter(Mir.NewStruct.class::isInstance).count()),
+      () -> assertEquals(2, fields.size())
+    );
+    assertSame(fields.get(0).target(), fields.get(1).target());
+  }
+
+  @Test
+  void given__spread_varargs_and_overrides__when__lowered__then__only_bound_arguments_are_emitted_and_promoted() {
+    final var module = Inf.codeToMir("""
+      val external = (a: int, ...): int;
+      external(...(a = 2, ignored = true), a = 1, ...(255u8, true, 1.0f))
+      """);
+    final var call = instructions(module).stream().filter(Mir.Call.class::isInstance)
+      .map(Mir.Call.class::cast).findFirst().orElseThrow();
+    assertAll(
+      () -> assertEquals(4, call.arguments().size()),
+      () -> assertEquals(call.signature().parameters()[0].ty(), call.arguments().get(0).ty()),
+      () -> assertEquals(Ty.INTEGER, call.arguments().get(1).ty()),
+      () -> assertEquals(Ty.INTEGER, call.arguments().get(2).ty()),
+      () -> assertEquals(Ty.DOUBLE, call.arguments().get(3).ty())
+    );
+  }
 
   @Test
   void given__named_fixed_argument_and_varargs__when__lowered__then__vararg_promotions_are_preserved() {

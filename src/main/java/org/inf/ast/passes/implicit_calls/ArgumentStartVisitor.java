@@ -172,6 +172,6 @@ final class ArgumentStartVisitor implements AstVisitor<ArgumentStart> {
 
   @Override
   public ArgumentStart visitSpread(final Ast.Spread expr) {
-    return ArgumentStart.NONE;
+    return ArgumentStart.FIRST;
   }
 }

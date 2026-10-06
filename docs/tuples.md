@@ -23,7 +23,7 @@ Function parameter lists and explicit argument lists retain their boundaries.
 Calls consume only their outer argument list: `f(x, y)` has two arguments,
 while `f((x, y))` has one tuple argument. With `t = (x, y)`, `f t` also passes
 one tuple. Whitespace before parentheses does not change explicit call syntax.
-Tuples do not implicitly spread into arguments.
+Tuples do not implicitly spread into arguments. Use [explicit spreading](call-spreading.md): `f(...t)` or `f ...t`.
 
 ## Types and flow
 

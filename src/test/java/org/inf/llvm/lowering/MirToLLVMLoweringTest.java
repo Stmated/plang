@@ -27,6 +27,39 @@ import java.util.UUID;
 class MirToLLVMLoweringTest {
 
   @ParameterizedTest
+  @ValueSource(strings = {
+    "pair(...(1, 2))",
+    "val args = (b = 2, a = 1); pair ...args",
+    "val make = () => (1, 2); pair(...make())",
+    "val service = (call = pair,); service.call ...(1, 2)",
+    "val trace = [0]; val make = () => { trace[0] = trace[0] * 10 + 1; (1, 2); }; val result = pair(...make()); trace[0] + result - 1",
+    "pair(...(a = 3, b = 2, ignored = true), a = 1)",
+    "val S = struct { val a: int; }; val args = new heap S { a = 1; }; pair(...args, b = { args.a = 9; 2; })",
+    "val captured = 1; val f = (a: int, b: int) => a * 10 + b + captured; f(...(1, 1))"
+  })
+  void given__spread_call__when__executed_by_llvm__then__binding_and_capture_are_preserved(final String expression) {
+    Assertions.assertEquals(12, Inf.codeToResult(
+      "val pair = (a: int, b: int) => a * 10 + b; %s".formatted(expression)).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 1, 2, 3})
+  void given__spread_effects_and_overrides__when__optimized__then__evaluation_order_and_field_capture_are_preserved(final int optLevel) {
+    final var code = """
+      val S = struct { val a: int; };
+      val args = new heap S { a = 1; };
+      val trace = [0];
+      val make = () => { trace[0] = trace[0] * 10 + 1; args; };
+      val pair = (a: int, b: int) => a * 10 + b;
+      val result = pair(...make(), b = { trace[0] = trace[0] * 10 + 2; args.a = 9; 2; });
+      val overridden = pair(...(a = { trace[0] = trace[0] * 10 + 3; 5; }, b = 0), a = 1);
+      trace[0] * 100 + result + overridden
+      """;
+    Assertions.assertEquals(12322,
+      Inf.codeToResult(code, InfRunOptions.builder().optLevel(optLevel).build()).resultValue());
+  }
+
+  @ParameterizedTest
   @CsvSource(value = {
     "sum 20, 22 | 42",
     "sum 44, -2 | 42",

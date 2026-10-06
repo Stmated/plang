@@ -123,6 +123,39 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
+  public static class Spread implements Expression {
+
+    @Nonnull
+    Expression value;
+
+    @Override
+    public Ty ty() {
+      return value.ty();
+    }
+
+    @Override
+    public Ty valueTy() {
+      return value.valueTy();
+    }
+
+    @Override
+    public String toString() {
+      return "...%s".formatted(value);
+    }
+
+    @Override
+    public void visit(final HirVisitor visitor) {
+      visitor.visitSpread(this);
+    }
+
+    @Override
+    public Expression transform(final HirTransformer transformer) {
+      return transformer.transformSpread(this);
+    }
+  }
+
+  @Data
+  @AllArgsConstructor
   public static class Array implements Expression {
 
     Expression[] elements;

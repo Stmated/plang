@@ -134,7 +134,7 @@ public class HirLambdaLiftingTransformerPass {
         }
 
         final var replacement = new Hir.Call(
-          replacedWith.toIdentifier(), newArguments, expr.partial(), expr.ty(), null
+          replacedWith.toIdentifier(), newArguments, expr.partial(), expr.ty(), expr.valueTy()
         );
         rewritten.add(replacement);
         return replacement;

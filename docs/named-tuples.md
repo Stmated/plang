@@ -62,4 +62,4 @@ literals. Writes through tuple-typed slots are deferred, both `t.a = x` and
 arrays/structs retain their existing mutation behavior.
 
 Calls keep their existing boundaries: `f((a = 10,))` passes one tuple;
-`f(a = 10)` is a named call argument. The previous `f(a: 10)` spelling is rejected. Tuples are not implicitly spread.
+`f(a = 10)` is a named call argument. The previous `f(a: 10)` spelling is rejected. Tuples are not implicitly spread; use [explicit call spreading](call-spreading.md) to bind their fields as arguments.

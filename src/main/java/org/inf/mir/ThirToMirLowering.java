@@ -4,6 +4,8 @@ import org.inf.exceptions.NotImplementedException;
 import org.inf.exceptions.UnreachableCodeException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
+import org.inf.hir.HirCallArguments;
+import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirTupleAccess;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
@@ -538,27 +540,37 @@ public final class ThirToMirLowering {
       .map(p -> new MirFnParameter(p.name(), p.ty())).toArray(MirFnParameter[]::new), type.vararg(), type.returnTy());
     final var parameters = signature.parameters();
     final var entries = call.arguments();
-    final var arguments = new Mir.Operand[Math.max(parameters.length, entries.length)];
+    final var count = HirCallArguments.count(entries);
+    final var arguments = new Mir.Operand[Math.max(parameters.length, count)];
     final var binding = new HirArgumentBinding(
       Arrays.stream(parameters).map(MirFnParameter::name).toArray(String[]::new),
-      signature.vararg(), entries.length
+      signature.vararg(), count
     );
     for (final var argument : entries) {
-      final var flow = lower(argument.value());
+      final var spread = argument.value() instanceof Hir.Spread value ? value : null;
+      final var flow = lower(spread == null ? argument.value() : spread.value());
       if (flow instanceof Diverges) {
         return flow;
       }
-      final var index = binding.bind(argument.label() == null ? null : argument.label().name());
-      final var value = ((Continues) flow).value();
-      if (index < parameters.length) {
-        arguments[index] = convert(value, parameters[index].ty());
-      } else {
-        arguments[index] = promoteVararg(value);
+      final var indices = HirCallArguments.bind(argument, binding);
+      final var operand = ((Continues) flow).value();
+      for (var i = 0; i < indices.length; i++) {
+        final var index = indices[i];
+        if (index < 0) {
+          continue;
+        }
+        final var value = spread == null ? operand
+          : load(new Mir.Field(operand, i, MirTypes.valueType(HirSpreadShape.fields(spread)[i].ty())));
+        if (index < parameters.length) {
+          arguments[index] = convert(value, parameters[index].ty());
+        } else {
+          arguments[index] = promoteVararg(value);
+        }
       }
     }
     binding.requireComplete();
     final var result = signature.returnType() == Ty.VOID ? null : function.newValue(signature.returnType());
-    emit(new Mir.Call(result, target, signature, Arrays.asList(arguments)));
+    emit(new Mir.Call(result, target, signature, Arrays.asList(arguments).subList(0, binding.argumentCount())));
     if (call.ty() == Ty.DEADEND) {
       terminate(new Mir.Unreachable());
       return Diverges.INSTANCE;

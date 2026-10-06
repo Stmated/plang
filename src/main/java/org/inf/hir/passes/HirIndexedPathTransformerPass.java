@@ -3,10 +3,11 @@ package org.inf.hir.passes;
 import lombok.RequiredArgsConstructor;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
+import org.inf.util.ArrayUtils;
 
 import java.util.Arrays;
 
-/// Turn indexed members into accesses on the complete field path before resolving names.
+/// Turn indexed and spread-call members into operations on the complete field path before resolving names.
 public final class HirIndexedPathTransformerPass {
 
   private HirIndexedPathTransformerPass() {
@@ -31,18 +32,23 @@ public final class HirIndexedPathTransformerPass {
     public Hir.Expression transformPath(Hir.Path expression) {
       HirTransformer.super.transformPath(expression);
       final var elements = expression.elements();
-      if (Arrays.stream(elements).skip(1).noneMatch(Hir.ArrayAccess.class::isInstance)) {
+      if (Arrays.stream(elements).skip(1).noneMatch(element -> element instanceof Hir.ArrayAccess || isSpreadCall(element))) {
         return expression;
       }
       var target = elements[0];
       for (var i = 1; i < elements.length; i++) {
-        if (elements[i] instanceof Hir.ArrayAccess access) {
-          target = access.transform(new MemberTargetTransformer(target));
+        if (elements[i] instanceof Hir.ArrayAccess || isSpreadCall(elements[i])) {
+          target = elements[i].transform(new MemberTargetTransformer(target));
         } else {
           target = append(target, elements[i]);
         }
       }
       return target;
+    }
+
+    private static boolean isSpreadCall(final Hir.Expression expression) {
+      return expression instanceof Hir.Call call
+        && ArrayUtils.any(call.arguments(), argument -> argument.value() instanceof Hir.Spread);
     }
   }
 
@@ -54,6 +60,12 @@ public final class HirIndexedPathTransformerPass {
     @Override
     public Hir.Expression transformArrayAccess(Hir.ArrayAccess expression) {
       // Only the member target belongs to the path; index expressions keep their own scope.
+      expression.target(expression.target().transform(this));
+      return expression;
+    }
+
+    @Override
+    public Hir.Expression transformCall(final Hir.Call expression) {
       expression.target(expression.target().transform(this));
       return expression;
     }

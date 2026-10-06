@@ -6,37 +6,25 @@
 
 ## Next
 
-### Calling functions with tuples (and structs) (possibly unpacking, exploding)
+### Calling functions with tuples and structs: remaining work
 
-* Positional tuple calls depend on Tuple 1-4 above; named tuple expansion additionally needs the named-tuple items. Do not make every deferred tuple feature a
-  prerequisite. Investigation stopped before implementation planning beyond the findings below.
-* Calls use a non-null `Hir.Argument[]`, separate from tuple construction's `Hir.TupleEntry[]`. A tuple/struct reference remains an expression value in one
-  argument, not a converted `Hir.Tuple`. Spreading remains unsupported.
-* Future call and tuple spreading should share operand-shape/expansion logic while keeping parameter binding and tuple construction separate. A shared
-  `Hir.Spread` operand node could avoid duplicate spread flags; do not pre-expand a reference into expressions that evaluate it repeatedly.
-* Recommendation, not yet decided: explicit, shallow spread (`f(...args)` / `f ...args`). Keep `f(args)` as one argument; automatic unpacking makes tuple-taking
-  functions ambiguous and must not change grouping based on a signature. Manual element arguments remain an alternative once tuple access works.
-* `Ast.Spread` and the `...` token already exist, but ordinary expression raising does not support spread and implicit-call grouping rejects it as an argument
-  start. Define operand boundaries and comma ownership before extending both call forms; preserve parameter-vararg syntax.
-* Struct types, field access, and named-argument matching already exist. MIR call lowering matches labels against parameter names and rejects unknown,
-  duplicate, missing, and excess arguments. Complete optional/default-argument support is not a prerequisite.
-* On resuming, define positional versus named tuple expansion, struct fields matched by name, mixed explicit/spread arguments, collisions, extra fields, and
-  vararg interaction. Start with statically known shapes, not runtime-length array expansion.
-* Preserve source evaluation order, evaluate each spread operand once, and specify when its fields are read relative to later arguments. Reordering named
-  arguments into parameter order must not reorder side effects.
-* `service.call ...args` fits existing member-call syntax. `service call ...args` is not equivalent: adjacency nests calls to the right. Treat that spelling as
-  a separate syntax/UFC decision, not merely omitted parentheses.
-* The "arguments" to a function call is just a tuple (or *should* be, at least).
-    * So it should be possible to call a function with a tuple, and have it unpacked into the function's parameters.
-    * Either automatically unpacked, or with a special syntax like `const result = service.call(...args)` where `args` is a tuple.
-        * Help me decide what is most viable. But I do want the syntax to feel as clean/hackable as possible, to make it easy to write.
-    * A struct could be seen as a tuple of named values, so it should be possible to call a function with a struct, and have it unpacked into the function's
-      parameters.
-        * Same restrictions should apply as for the tuples, whatever is decided.
-        * The argument matching should be based on the names and not position.
-    * I need to know of caveats and problems and considerations to make this a good idea/feature
-    * Of course a syntax like `const result = service call ...args` should work, since parenthesis are optional.
-    * If you have alternative ideas of how and when to destructure manually or automatically, then tell me.
+* Support ordinary calls through function-valued fields, without requiring a spread argument. A function stored in `service.call` should be callable with either
+  spelling below:
+
+```inf
+val add = (a: int, b: int) => a + b;
+val service = (call = add,);
+service.call(1, 2);        // TODO: currently unsupported
+service.call(...(1, 2));   // Already works
+```
+
+* Support spreading arrays into calls: `val args = [1, 2]; add(...args)`. Only allow static array lengths, runtime array length is deferred until a later stage.
+
+### Tuple construction: remaining work
+
+* Support spreading fields into a new tuple: `val args = (1, 2); val combined = (0, ...args);`, producing `(0, 1, 2)`. Call spreading does not yet support this
+  construction syntax.
+* Support empty tuple values: `val args = ();`, allowing `f(...args)` to supply zero arguments.
 
 ### Unification of "struct" and "tuple"
 
@@ -61,6 +49,7 @@
 * Give feedback on viability of this change, if it is a good idea or not.
 
 ### Change interpreter executor
+
 ThirToMirLoweringTest should not execute InterpreterCodeExecutor.
 If the test is made for testing the interpreter, then it should be inside an interpreter test class
 
@@ -72,7 +61,7 @@ If the test is made for testing the interpreter, then it should be inside an int
 * Should use more test cases found in files
 * Should use better ways of storing expected output for a snapshot test
 * Should have ways of giving a kind of test matrix for the different test files
-  * This way we can test that all things run the same way both from LLVM and the interpreter
+    * This way we can test that all things run the same way both from LLVM and the interpreter
 * Global/common test value sources, such as one that gives all optimization levels
 
 ### Partial functions, for currying/composition
@@ -81,6 +70,8 @@ If the test is made for testing the interpreter, then it should be inside an int
 
 ### Universal function calls
 
+* Decide whether `service call ...args` should mean `service.call ...args`. The space-separated spelling currently nests calls; it does not look up a member of
+  `service`.
 * Identify source forms that could be universal function calls.
 * Preserve potential call sites in THIR.
 * Collect callable declarations for call-site lookup.
@@ -184,6 +175,18 @@ I am well aware that the feature can make some syntax ambiguous
 ## Other
 
 * Should `"val f = (t: (uint8, uint8)) => t; f({ (1, 2) })"` actually be valid? What does it actually MEAN/DO?
+
+* Support spreading in most locations of the code
+    * Support spreading inside tuple constructions
+    * Support labeled spreads (`name = ...args`)
+    * Support spreading of an array into another/new array
+
+* Support Arrays, runtime-length expansion for spreads (?)
+    * Seems very dangerous. Perhaps a good place to start developing error handling.
+        * ie. that if calling convention cannot be statically verified, then should always return `Result<T, Error>`
+
+* Consider if `Hir.Spread` return type should not be a *new* struct type, but with same fields
+    * So they are structurally equivalent, but loses any "nominal" identity
 
 * Redo the lexer and parser after the new ideas for the language:
     - Almost everything is a Tuple

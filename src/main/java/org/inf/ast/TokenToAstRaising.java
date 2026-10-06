@@ -624,7 +624,7 @@ public class TokenToAstRaising {
     final var t = next.type();
     if (t == TokenType.IDENTIFIER || t == TokenType.OPEN_PAREN || t == TokenType.OPEN_BRACKET || t == TokenType.OPEN_BRACE) {
       queuedTokens.push(next);
-      return new Ast.Spread(parseExpression());
+      return new Ast.Spread(parseLevel12());
     } else {
       queuedTokens.push(next);
       return new Ast.Rest();

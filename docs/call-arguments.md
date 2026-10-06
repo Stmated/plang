@@ -13,4 +13,4 @@ read(t = (10, true)); // One tuple argument, not two arguments.
 
 Only direct call arguments interpret `=` as a label. Labels do not resolve or assign surrounding variables. `(a = 1)` outside a call remains a grouped assignment; `f((a = 1))` passes that assignment expression, not a named argument. To assign and then supply a value, use `f(a = { variable = 1; variable; })`.
 
-Arguments evaluate once, left-to-right in source order, even when names reorder their parameter positions. Unknown, duplicate, missing, and excess arguments remain errors.  Tuples are never implicitly unpacked; spreading remains unsupported.
+Arguments evaluate once, left-to-right in source order, even when names reorder their parameter positions. Without spreads, unknown, duplicate, missing, and excess arguments remain errors. Tuples are never implicitly unpacked; [explicit spreading](call-spreading.md) passes tuple or struct fields as separate arguments and permits spread-related overrides.

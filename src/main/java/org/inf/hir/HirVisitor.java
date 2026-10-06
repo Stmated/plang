@@ -244,6 +244,10 @@ public interface HirVisitor {
     visitChild(expr.value());
   }
 
+  default void visitSpread(Hir.Spread expr) {
+    visitChild(expr.value());
+  }
+
   default void visitLexeme(Hir.Lexeme lexeme) {
 
   }

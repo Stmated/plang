@@ -164,10 +164,16 @@ public class AstToHirRaising {
   }
 
   private Hir.Argument raiseCallArgument(final Ast.Expression argument) {
+    if (argument instanceof Ast.Spread spread) {
+      return new Hir.Argument(null, new Hir.Spread(raise(spread.expression())));
+    }
     if (argument instanceof Ast.Labeling) {
       throw new IllegalArgumentException("Named call arguments require '=' instead of ':'");
     }
     if (argument instanceof Ast.Assignment assignment) {
+      if (assignment.rhs() instanceof Ast.Spread) {
+        throw new IllegalArgumentException("A spread call argument cannot have a label");
+      }
       return new Hir.Argument(asLexeme(assignment.lhs()), raise(assignment.rhs()));
     }
     final var value = raise(argument);

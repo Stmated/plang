@@ -3,6 +3,8 @@ package org.inf.hir.passes;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
+import org.inf.hir.HirCallArguments;
+import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
@@ -167,21 +169,29 @@ public final class HirTupleValidationVisitorPass {
         return;
       }
       final var arguments = expression.arguments();
-      if (!TupleTypes.containsTuple(function) && ArrayUtils.none(arguments, it -> TupleTypes.containsTuple(it.ty()))) {
+      if (!TupleTypes.containsTuple(function)
+        && ArrayUtils.none(arguments, it -> it.value() instanceof Hir.Spread || TupleTypes.containsTuple(it.ty()))) {
         return;
       }
       final var parameters = function.parameters();
       final var binding = new HirArgumentBinding(
         ArrayUtils.mapToStrings(parameters, TyParam::name),
-        function.vararg(), arguments.length
+        function.vararg(), HirCallArguments.count(arguments)
       );
       for (final var argument : arguments) {
-        final var index = binding.bind(argument.label() == null ? null : argument.label().name());
-        if (index < parameters.length) {
-          check(argument.ty(), parameters[index].ty(), "argument " + index);
+        final var indices = HirCallArguments.bind(argument, binding);
+        for (var i = 0; i < indices.length; i++) {
+          final var index = indices[i];
+          if (index >= 0 && index < parameters.length) {
+            final var actual = argument.value() instanceof Hir.Spread spread
+              ? HirSpreadShape.fields(spread)[i].ty() : argument.ty();
+            check(actual, parameters[index].ty(), "argument " + index);
+          }
         }
       }
-      binding.requireComplete();
+      if (expression.ty() != Ty.DEADEND || ArrayUtils.none(arguments, argument -> argument.value() instanceof Hir.Spread)) {
+        binding.requireComplete();
+      }
     }
 
     @Override

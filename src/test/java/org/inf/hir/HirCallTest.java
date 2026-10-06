@@ -13,6 +13,36 @@ import java.util.List;
 
 class HirCallTest {
 
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "f(...args)",
+    "f ...args",
+    "service.call(...args)",
+    "service.call ...args",
+    "f(...source.args)",
+    "f(...factory())",
+    "f(...values[0])",
+    "f(...(1, 2))"
+  })
+  void given__spread_call__when__raised__then__operand_boundary_and_traversal_are_preserved(final String code) {
+    final var expression = call(code);
+    final var spread = Assertions.assertInstanceOf(Hir.Spread.class, expression.arguments()[0].value());
+    final var operands = new ArrayList<Hir.Expression>();
+    expression.visit(new HirVisitor() {
+      @Override
+      public void visitSpread(final Hir.Spread value) {
+        operands.add(value.value());
+        HirVisitor.super.visitSpread(value);
+      }
+    });
+    expression.transform(new HirTransformer() {});
+    Assertions.assertAll(
+      () -> Assertions.assertNull(expression.arguments()[0].label()),
+      () -> Assertions.assertEquals(List.of(spread.value()), operands),
+      () -> Assertions.assertSame(spread, expression.arguments()[0].value())
+    );
+  }
+
   private static Hir.Call call(final String code) {
     final var calls = new ArrayList<Hir.Call>();
     Inf.codeToHir(code).visit(new HirVisitor() {

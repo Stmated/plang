@@ -4,10 +4,13 @@ import lombok.experimental.UtilityClass;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
+import org.inf.hir.HirCallArguments;
+import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
+import org.inf.ty.TyField;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyStruct;
 import org.inf.ty.TyValueNumberInteger;
@@ -83,20 +86,42 @@ public class HirTupleContextualTypingVisitorPass {
     public void visitCall(Hir.Call expression) {
       visitChild(expression.target());
       final var arguments = expression.arguments();
+      final var hasSpread = ArrayUtils.any(arguments, argument -> argument.value() instanceof Hir.Spread);
       if (!(expression.target().valueTy() instanceof TyFn function)
-        || Arrays.stream(function.parameters()).noneMatch(parameter -> tupleType(parameter.ty()) != null)) {
+        || !hasSpread && Arrays.stream(function.parameters()).noneMatch(parameter -> tupleType(parameter.ty()) != null)) {
         visitCallArguments(expression.arguments());
         return;
       }
+      if (hasSpread) {
+        visitCallArguments(arguments);
+      }
       final var parameters = function.parameters();
       final var binding = new HirArgumentBinding(
-        ArrayUtils.mapToStrings(parameters, TyParam::name), function.vararg(), arguments.length
+        ArrayUtils.mapToStrings(parameters, TyParam::name), function.vararg(), HirCallArguments.count(arguments)
       );
       for (final var argument : arguments) {
-        final var index = binding.bind(argument.label() == null ? null : argument.label().name());
-        visitExpected(argument.value(), index < parameters.length ? tupleType(parameters[index].ty()) : null);
+        final var indices = HirCallArguments.bind(argument, binding);
+        if (argument.value() instanceof Hir.Spread spread) {
+          final var fields = HirSpreadShape.fields(spread);
+          final var expected = new TyField[fields.length];
+          var contextual = false;
+          for (var i = 0; i < fields.length; i++) {
+            final var index = indices[i];
+            final var type = index >= 0 && index < parameters.length ? tupleType(parameters[index].ty()) : null;
+            expected[i] = new TyField(fields[i].name(), type == null ? fields[i].ty() : type);
+            contextual |= type != null;
+          }
+          if (contextual) {
+            visitExpected(spread.value(), new TyStruct(expected, true));
+          }
+        } else {
+          final var index = indices[0];
+          visitExpected(argument.value(), index < parameters.length ? tupleType(parameters[index].ty()) : null);
+        }
       }
-      binding.requireComplete();
+      if (!hasSpread || ArrayUtils.none(arguments, argument -> argument.ty() == Ty.DEADEND)) {
+        binding.requireComplete();
+      }
     }
 
     @Override

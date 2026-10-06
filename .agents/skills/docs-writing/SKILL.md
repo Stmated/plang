@@ -21,7 +21,7 @@ Do not adhere to max line length. Better to write longer lines than to have an u
 Exclude "changelog"-like paragraphs, that explain what was changed by implementing a new feature.
 Rather just explain the feature to a potential reader, what they need to know to understand how the feature works.
 
-Prefer code examples over explaining a feature using words.
+Extremely strongly prefer code examples over explaining a feature using words.
 
 ## Explain reasoning and relevance
 Do not assume that things can be logically deduced from "what is expected" and "what is obvious" to you,

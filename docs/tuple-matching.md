@@ -33,4 +33,4 @@ val named: (p1: uint8, p2: uint8) = original;
 val fresh: (p1: uint8, p2: uint8) = (original[0], original[1]);
 ```
 
-Nested existing references remain shared when their exact layouts match. [Tuple/struct compatibility](named-tuples.md) and struct-field/array-element contexts retain exact-layout rules. Tuple-slot writes and call spreading remain unsupported: `fn4((1, 2))` passes one tuple, not two arguments.
+Nested existing references remain shared when their exact layouts match. [Tuple/struct compatibility](named-tuples.md) and struct-field/array-element contexts retain exact-layout rules. Tuple-slot writes remain unsupported. `fn4((1, 2))` passes one tuple, not two arguments; [explicit call spreading](call-spreading.md) uses `...`.
