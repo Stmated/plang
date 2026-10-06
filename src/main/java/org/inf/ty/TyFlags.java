@@ -8,7 +8,7 @@ public enum TyFlags {
 
   private final int value;
 
-  TyFlags(int value) {
+  TyFlags(final int value) {
     this.value = value;
   }
 

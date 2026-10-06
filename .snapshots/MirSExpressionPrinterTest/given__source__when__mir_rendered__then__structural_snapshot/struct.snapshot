@@ -1,0 +1,217 @@
+dynamic-directory: true
+snapshot-name: struct
+snapshot-number: 0
+test-class: org.inf.mir.util.MirSExpressionPrinterTest
+test-method: given__source__when__mir_rendered__then__structural_snapshot
+
+(MirLoweringResult
+  (script (function-ref f0))
+  (functions
+    (MirFunction
+      (id f0)
+      (name "main")
+      (signature
+        (MirFnSignature !vararg
+          (parameters)
+          (returnType
+            (TyValueNumberInteger signed
+              (radix 10)
+              (width
+                (BitWidth explicit
+                  (value 32)))
+              (flags)))))
+      (locals
+        (Local
+          (id 0)
+          (name "s")
+          (ty
+            (TyPointer
+              (inner
+                (TyStruct !tuple
+                  (fields
+                    (TyField
+                      (name "value")
+                      (ty
+                        (TyValueNumberInteger signed
+                          (radix 10)
+                          (width
+                            (BitWidth explicit
+                              (value 32)))
+                          (flags)))))))
+              (addressSpace CPU)))))
+      (blocks
+        (MirNode
+          (id b0)
+          (name "entry_0")
+          (instructions
+            (Convert
+              (result
+                (Value
+                  (id 0)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (value
+                (Constant
+                  (content "7")
+                  (ty INTEGER))))
+            (NewStruct
+              (result
+                (Value
+                  (id 1)
+                  (ty
+                    (TyPointer
+                      (inner
+                        (TyStruct !tuple
+                          (fields
+                            (TyField
+                              (name "value")
+                              (ty
+                                (TyValueNumberInteger signed
+                                  (radix 10)
+                                  (width
+                                    (BitWidth explicit
+                                      (value 32)))
+                                  (flags)))))))
+                      (addressSpace CPU)))))
+              (fields
+                (Value
+                  (id 0)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags))))))
+            (Store
+              (place
+                (Local
+                  (id 0)
+                  (name "s")
+                  (ty
+                    (TyPointer
+                      (inner
+                        (TyStruct !tuple
+                          (fields
+                            (TyField
+                              (name "value")
+                              (ty
+                                (TyValueNumberInteger signed
+                                  (radix 10)
+                                  (width
+                                    (BitWidth explicit
+                                      (value 32)))
+                                  (flags)))))))
+                      (addressSpace CPU)))))
+              (value
+                (Value
+                  (id 1)
+                  (ty
+                    (TyPointer
+                      (inner
+                        (TyStruct !tuple
+                          (fields
+                            (TyField
+                              (name "value")
+                              (ty
+                                (TyValueNumberInteger signed
+                                  (radix 10)
+                                  (width
+                                    (BitWidth explicit
+                                      (value 32)))
+                                  (flags)))))))
+                      (addressSpace CPU))))))
+            (Load
+              (result
+                (Value
+                  (id 2)
+                  (ty
+                    (TyPointer
+                      (inner
+                        (TyStruct !tuple
+                          (fields
+                            (TyField
+                              (name "value")
+                              (ty
+                                (TyValueNumberInteger signed
+                                  (radix 10)
+                                  (width
+                                    (BitWidth explicit
+                                      (value 32)))
+                                  (flags)))))))
+                      (addressSpace CPU)))))
+              (place
+                (Local
+                  (id 0)
+                  (name "s")
+                  (ty
+                    (TyPointer
+                      (inner
+                        (TyStruct !tuple
+                          (fields
+                            (TyField
+                              (name "value")
+                              (ty
+                                (TyValueNumberInteger signed
+                                  (radix 10)
+                                  (width
+                                    (BitWidth explicit
+                                      (value 32)))
+                                  (flags)))))))
+                      (addressSpace CPU))))))
+            (Load
+              (result
+                (Value
+                  (id 3)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (place
+                (Field
+                  (target
+                    (Value
+                      (id 2)
+                      (ty
+                        (TyPointer
+                          (inner
+                            (TyStruct !tuple
+                              (fields
+                                (TyField
+                                  (name "value")
+                                  (ty
+                                    (TyValueNumberInteger signed
+                                      (radix 10)
+                                      (width
+                                        (BitWidth explicit
+                                          (value 32)))
+                                      (flags)))))))
+                          (addressSpace CPU)))))
+                  (index 0)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))))
+          (terminator
+            (Return
+              (value
+                (Value
+                  (id 3)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags))))))))))))

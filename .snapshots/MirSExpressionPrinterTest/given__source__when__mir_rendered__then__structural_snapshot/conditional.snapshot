@@ -1,0 +1,88 @@
+dynamic-directory: true
+snapshot-name: conditional
+snapshot-number: 0
+test-class: org.inf.mir.util.MirSExpressionPrinterTest
+test-method: given__source__when__mir_rendered__then__structural_snapshot
+
+(MirLoweringResult
+  (script (function-ref f0))
+  (functions
+    (MirFunction
+      (id f0)
+      (name "main")
+      (signature
+        (MirFnSignature !vararg
+          (parameters)
+          (returnType INTEGER)))
+      (locals
+        (Local
+          (id 0)
+          (name "if_result")
+          (ty INTEGER)))
+      (blocks
+        (MirNode
+          (id b0)
+          (name "entry_0")
+          (instructions)
+          (terminator
+            (Branch
+              (predicate
+                (Constant
+                  (content "true")
+                  (ty BOOLEAN)))
+              (pass (block-ref b1))
+              (fail (block-ref b2)))))
+        (MirNode
+          (id b1)
+          (name "if_true_1")
+          (instructions
+            (Store
+              (place
+                (Local
+                  (id 0)
+                  (name "if_result")
+                  (ty INTEGER)))
+              (value
+                (Constant
+                  (content "1")
+                  (ty INTEGER)))))
+          (terminator
+            (Jump
+              (target (block-ref b3)))))
+        (MirNode
+          (id b2)
+          (name "if_false_2")
+          (instructions
+            (Store
+              (place
+                (Local
+                  (id 0)
+                  (name "if_result")
+                  (ty INTEGER)))
+              (value
+                (Constant
+                  (content "2")
+                  (ty INTEGER)))))
+          (terminator
+            (Jump
+              (target (block-ref b3)))))
+        (MirNode
+          (id b3)
+          (name "if_merge_3")
+          (instructions
+            (Load
+              (result
+                (Value
+                  (id 0)
+                  (ty INTEGER)))
+              (place
+                (Local
+                  (id 0)
+                  (name "if_result")
+                  (ty INTEGER)))))
+          (terminator
+            (Return
+              (value
+                (Value
+                  (id 0)
+                  (ty INTEGER))))))))))

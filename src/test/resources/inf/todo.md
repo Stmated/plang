@@ -6,13 +6,7 @@
 
 ## Must fix to get things working again!
 
-* Need a MIR -> S-Expression printer, and replace almost all test case with these comparisons instead!
-
 ## Next
-
-### Better S-expression toString-ifier
-
-One which instead uses reflection, so it does not need big and unruly visitors with lots of manual adding of fields.
 
 ### Calling functions with tuples (and structs) (possibly unpacking, exploding)
 
@@ -63,6 +57,13 @@ One which instead uses reflection, so it does not need big and unruly visitors w
 * Give feedback on viability of this change, if it is a good idea or not.
 
 ### Optional arguments, default values for parameters, named arguments
+
+### Updated test cases, thorough rework of how tests are done
+* Should use more s-expression printing
+* Should use more test cases found in files
+* Should use better ways of storing expected output for a snapshot test
+* Should have ways of giving a kind of test matrix for the different test files
+* Global/common test value sources, such as one that gives all optimization levels
 
 ### Partial functions, for currying/composition
 

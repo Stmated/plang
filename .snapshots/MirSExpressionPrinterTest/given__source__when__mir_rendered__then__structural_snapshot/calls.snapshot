@@ -1,0 +1,344 @@
+dynamic-directory: true
+snapshot-name: calls
+snapshot-number: 0
+test-class: org.inf.mir.util.MirSExpressionPrinterTest
+test-method: given__source__when__mir_rendered__then__structural_snapshot
+
+(MirLoweringResult
+  (script (function-ref f0))
+  (functions
+    (MirFunction
+      (id f0)
+      (name "main")
+      (signature
+        (MirFnSignature !vararg
+          (parameters)
+          (returnType
+            (TyValueNumberInteger signed
+              (radix 10)
+              (width
+                (BitWidth explicit
+                  (value 32)))
+              (flags)))))
+      (locals)
+      (blocks
+        (MirNode
+          (id b0)
+          (name "entry_0")
+          (instructions
+            (Convert
+              (result
+                (Value
+                  (id 0)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (value
+                (Constant
+                  (content "2")
+                  (ty INTEGER))))
+            (Convert
+              (result
+                (Value
+                  (id 1)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (value
+                (Constant
+                  (content "1")
+                  (ty INTEGER))))
+            (Call
+              (result
+                (Value
+                  (id 2)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (target
+                (FunctionRef
+                  (function (function-ref f1))))
+              (signature
+                (MirFnSignature !vararg
+                  (parameters
+                    (MirFnParameter
+                      (name "a")
+                      (ty
+                        (TyValueNumberInteger signed
+                          (radix 10)
+                          (width
+                            (BitWidth explicit
+                              (value 32)))
+                          (flags))))
+                    (MirFnParameter
+                      (name "b")
+                      (ty
+                        (TyValueNumberInteger signed
+                          (radix 10)
+                          (width
+                            (BitWidth explicit
+                              (value 32)))
+                          (flags)))))
+                  (returnType
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (arguments
+                (Value
+                  (id 1)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags))))
+                (Value
+                  (id 0)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))))
+          (terminator
+            (Return
+              (value
+                (Value
+                  (id 2)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags))))))))))
+    (MirFunction
+      (id f1)
+      (name "f$0")
+      (signature
+        (MirFnSignature !vararg
+          (parameters
+            (MirFnParameter
+              (name "a")
+              (ty
+                (TyValueNumberInteger signed
+                  (radix 10)
+                  (width
+                    (BitWidth explicit
+                      (value 32)))
+                  (flags))))
+            (MirFnParameter
+              (name "b")
+              (ty
+                (TyValueNumberInteger signed
+                  (radix 10)
+                  (width
+                    (BitWidth explicit
+                      (value 32)))
+                  (flags)))))
+          (returnType
+            (TyValueNumberInteger signed
+              (radix 10)
+              (width
+                (BitWidth explicit
+                  (value 32)))
+              (flags)))))
+      (locals
+        (Local
+          (id 0)
+          (name "a")
+          (ty
+            (TyValueNumberInteger signed
+              (radix 10)
+              (width
+                (BitWidth explicit
+                  (value 32)))
+              (flags))))
+        (Local
+          (id 1)
+          (name "b")
+          (ty
+            (TyValueNumberInteger signed
+              (radix 10)
+              (width
+                (BitWidth explicit
+                  (value 32)))
+              (flags)))))
+      (blocks
+        (MirNode
+          (id b0)
+          (name "entry_0")
+          (instructions
+            (Parameter
+              (result
+                (Value
+                  (id 0)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (index 0))
+            (Store
+              (place
+                (Local
+                  (id 0)
+                  (name "a")
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (value
+                (Value
+                  (id 0)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags))))))
+            (Parameter
+              (result
+                (Value
+                  (id 1)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (index 1))
+            (Store
+              (place
+                (Local
+                  (id 1)
+                  (name "b")
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (value
+                (Value
+                  (id 1)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags))))))
+            (Load
+              (result
+                (Value
+                  (id 2)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (place
+                (Local
+                  (id 0)
+                  (name "a")
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags))))))
+            (Load
+              (result
+                (Value
+                  (id 3)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (place
+                (Local
+                  (id 1)
+                  (name "b")
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags))))))
+            (Binary
+              (result
+                (Value
+                  (id 4)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (lhs
+                (Value
+                  (id 2)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (kind ADD)
+              (rhs
+                (Value
+                  (id 3)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))))
+          (terminator
+            (Return
+              (value
+                (Value
+                  (id 4)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags))))))))))))

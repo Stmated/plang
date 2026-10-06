@@ -13,6 +13,7 @@
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <argLine/>
   </properties>
 
   <dependencyManagement>
@@ -106,6 +107,7 @@
         <configuration>
           <source>${java.version}</source>
           <target>${java.version}</target>
+          <proc>full</proc>
           <compilerArgs>--enable-preview</compilerArgs>
         </configuration>
       </plugin>
@@ -116,7 +118,7 @@
         <configuration>
           <argLine>@{argLine} --enable-preview --enable-native-access=ALL-UNNAMED</argLine>
           <reuseForks>true</reuseForks>
-          <rerunFailingTestsCount>3</rerunFailingTestsCount>
+          <rerunFailingTestsCount>0</rerunFailingTestsCount>
           <forkCount>100</forkCount>
         </configuration>
       </plugin>
@@ -124,6 +126,13 @@
       <plugin>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <version>3.6.0</version>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>14.3.0</version>
+          </dependency>
+        </dependencies>
         <configuration>
           <configLocation>checkstyle.xml</configLocation>
           <inputEncoding>${project.build.sourceEncoding}</inputEncoding>

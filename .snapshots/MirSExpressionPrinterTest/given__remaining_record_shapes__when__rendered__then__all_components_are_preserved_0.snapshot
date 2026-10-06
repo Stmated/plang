@@ -1,0 +1,53 @@
+dynamic-directory: true
+snapshot-name: given__remaining_record_shapes__when__rendered__then__all_components_are_preserved_0
+snapshot-number: 0
+test-class: org.inf.mir.util.MirSExpressionPrinterTest
+test-method: given__remaining_record_shapes__when__rendered__then__all_components_are_preserved
+
+(MirLoweringResult
+  (script (function-ref f0))
+  (functions
+    (MirFunction
+      (id f0)
+      (name "union")
+      (signature
+        (MirFnSignature !vararg
+          (parameters
+            (MirFnParameter
+              (name null)
+              (ty INTEGER)))
+          (returnType
+            (TyUnion
+              (types INTEGER STRING)))))
+      (locals)
+      (blocks
+        (MirNode
+          (id b0)
+          (name "entry_0")
+          (instructions
+            (Parameter
+              (result
+                (Value
+                  (id 0)
+                  (ty INTEGER)))
+              (index 0))
+            (UnionVariant
+              (result
+                (Value
+                  (id 1)
+                  (ty
+                    (TyUnion
+                      (types INTEGER STRING)))))
+              (variant 0)
+              (value
+                (Value
+                  (id 0)
+                  (ty INTEGER)))))
+          (terminator
+            (Return
+              (value
+                (Value
+                  (id 1)
+                  (ty
+                    (TyUnion
+                      (types INTEGER STRING))))))))))))

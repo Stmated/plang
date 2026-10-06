@@ -1,0 +1,61 @@
+dynamic-directory: true
+snapshot-name: given__cycles_shared_successors_and_dead_blocks__when__rendered__then__each_block_is_defined_once_0
+snapshot-number: 0
+test-class: org.inf.mir.util.MirSExpressionPrinterTest
+test-method: given__cycles_shared_successors_and_dead_blocks__when__rendered__then__each_block_is_defined_once
+
+(MirLoweringResult
+  (script (function-ref f0))
+  (functions
+    (MirFunction
+      (id f0)
+      (name "graph")
+      (signature
+        (MirFnSignature !vararg
+          (parameters)
+          (returnType VOID)))
+      (locals)
+      (blocks
+        (MirNode
+          (id b0)
+          (name "entry_0")
+          (instructions)
+          (terminator
+            (Jump
+              (target (block-ref b1)))))
+        (MirNode
+          (id b1)
+          (name "same_1")
+          (instructions)
+          (terminator
+            (Branch
+              (predicate
+                (Constant
+                  (content "true")
+                  (ty BOOLEAN)))
+              (pass (block-ref b2))
+              (fail (block-ref b3)))))
+        (MirNode
+          (id b2)
+          (name "same_2")
+          (instructions)
+          (terminator
+            (Jump
+              (target (block-ref b1)))))
+        (MirNode
+          (id b3)
+          (name "same_3")
+          (instructions)
+          (terminator
+            (Branch
+              (predicate
+                (Constant
+                  (content "false")
+                  (ty BOOLEAN)))
+              (pass (block-ref b1))
+              (fail (block-ref b1)))))
+        (MirNode
+          (id b4)
+          (name "dead_4")
+          (instructions)
+          (terminator (Unreachable)))))))

@@ -1,0 +1,80 @@
+dynamic-directory: true
+snapshot-name: given__recursive_calls_and_duplicate_names__when__rendered__then__references_use_function_identity_0
+snapshot-number: 0
+test-class: org.inf.mir.util.MirSExpressionPrinterTest
+test-method: given__recursive_calls_and_duplicate_names__when__rendered__then__references_use_function_identity
+
+(MirLoweringResult
+  (script (function-ref f1))
+  (functions
+    (MirFunction
+      (id f0)
+      (name "same")
+      (signature
+        (MirFnSignature !vararg
+          (parameters)
+          (returnType VOID)))
+      (locals)
+      (blocks))
+    (MirFunction
+      (id f1)
+      (name "same")
+      (signature
+        (MirFnSignature !vararg
+          (parameters)
+          (returnType VOID)))
+      (locals)
+      (blocks
+        (MirNode
+          (id b0)
+          (name "entry_0")
+          (instructions
+            (Call
+              (result null)
+              (target
+                (FunctionRef
+                  (function (function-ref f2))))
+              (signature
+                (MirFnSignature !vararg
+                  (parameters)
+                  (returnType VOID)))
+              (arguments))
+            (Call
+              (result null)
+              (target
+                (FunctionRef
+                  (function (function-ref f0))))
+              (signature
+                (MirFnSignature !vararg
+                  (parameters)
+                  (returnType VOID)))
+              (arguments)))
+          (terminator
+            (Return
+              (value (Unit)))))))
+    (MirFunction
+      (id f2)
+      (name "same")
+      (signature
+        (MirFnSignature !vararg
+          (parameters)
+          (returnType VOID)))
+      (locals)
+      (blocks
+        (MirNode
+          (id b0)
+          (name "entry_0")
+          (instructions
+            (Call
+              (result null)
+              (target
+                (FunctionRef
+                  (function (function-ref f2))))
+              (signature
+                (MirFnSignature !vararg
+                  (parameters)
+                  (returnType VOID)))
+              (arguments)))
+          (terminator
+            (Return
+              (value (Unit)))))))))

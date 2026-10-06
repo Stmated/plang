@@ -1,0 +1,132 @@
+dynamic-directory: true
+snapshot-name: given__composite_types__when__rendered__then__full_record_metadata_is_preserved_0
+snapshot-number: 0
+test-class: org.inf.mir.util.MirSExpressionPrinterTest
+test-method: given__composite_types__when__rendered__then__full_record_metadata_is_preserved
+
+(MirLoweringResult
+  (script (function-ref f0))
+  (functions
+    (MirFunction
+      (id f0)
+      (name "types")
+      (signature
+        (MirFnSignature !vararg
+          (parameters)
+          (returnType VOID)))
+      (locals
+        (Local
+          (id 0)
+          (name "type")
+          (ty UNKNOWN))
+        (Local
+          (id 1)
+          (name "type")
+          (ty
+            (TyIdentifier
+              (name "Named"))))
+        (Local
+          (id 2)
+          (name "type")
+          (ty (TyOpaque)))
+        (Local
+          (id 3)
+          (name "type")
+          (ty BOOLEAN))
+        (Local
+          (id 4)
+          (name "type")
+          (ty STRING))
+        (Local
+          (id 5)
+          (name "type")
+          (ty INTEGER_BINARY))
+        (Local
+          (id 6)
+          (name "type")
+          (ty FLOAT))
+        (Local
+          (id 7)
+          (name "type")
+          (ty DECIMAL))
+        (Local
+          (id 8)
+          (name "type")
+          (ty
+            (TyValueNumberInteger !signed
+              (radix 10)
+              (width
+                (BitWidth explicit
+                  (value 32)))
+              (flags CONSTANT IMMUTABLE))))
+        (Local
+          (id 9)
+          (name "type")
+          (ty
+            (TyValueArray
+              (elementType INTEGER)
+              (size null))))
+        (Local
+          (id 10)
+          (name "type")
+          (ty
+            (TyValueArray
+              (elementType INTEGER)
+              (size 0))))
+        (Local
+          (id 11)
+          (name "type")
+          (ty
+            (TyUninitialized
+              (inner INTEGER))))
+        (Local
+          (id 12)
+          (name "type")
+          (ty
+            (TyPointer
+              (inner INTEGER)
+              (addressSpace CUDA_GLOBAL))))
+        (Local
+          (id 13)
+          (name "type")
+          (ty
+            (TyPointerExplicit
+              (inner INTEGER)
+              (addressSpace CPU))))
+        (Local
+          (id 14)
+          (name "type")
+          (ty
+            (TyUnion
+              (types INTEGER STRING))))
+        (Local
+          (id 15)
+          (name "type")
+          (ty
+            (TyFn vararg
+              (parameters
+                (TyParam
+                  (name "p")
+                  (ty INTEGER)))
+              (returnTy VOID))))
+        (Local
+          (id 16)
+          (name "type")
+          (ty
+            (TyStruct !tuple
+              (fields
+                (TyField
+                  (name "field")
+                  (ty STRING))))))
+        (Local
+          (id 17)
+          (name "type")
+          (ty
+            (TyStruct tuple
+              (fields)))))
+      (blocks
+        (MirNode
+          (id b0)
+          (name "entry_0")
+          (instructions)
+          (terminator null))))))

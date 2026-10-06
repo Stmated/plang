@@ -1,0 +1,86 @@
+dynamic-directory: true
+snapshot-name: arithmetic
+snapshot-number: 0
+test-class: org.inf.mir.util.MirSExpressionPrinterTest
+test-method: given__source__when__mir_rendered__then__structural_snapshot
+
+(MirLoweringResult
+  (script (function-ref f0))
+  (functions
+    (MirFunction
+      (id f0)
+      (name "main")
+      (signature
+        (MirFnSignature !vararg
+          (parameters)
+          (returnType INTEGER)))
+      (locals
+        (Local
+          (id 0)
+          (name "x")
+          (ty INTEGER)))
+      (blocks
+        (MirNode
+          (id b0)
+          (name "entry_0")
+          (instructions
+            (Store
+              (place
+                (Local
+                  (id 0)
+                  (name "x")
+                  (ty INTEGER)))
+              (value
+                (Constant
+                  (content "1")
+                  (ty INTEGER))))
+            (Load
+              (result
+                (Value
+                  (id 0)
+                  (ty INTEGER)))
+              (place
+                (Local
+                  (id 0)
+                  (name "x")
+                  (ty INTEGER))))
+            (Binary
+              (result
+                (Value
+                  (id 1)
+                  (ty INTEGER)))
+              (lhs
+                (Value
+                  (id 0)
+                  (ty INTEGER)))
+              (kind ADD)
+              (rhs
+                (Constant
+                  (content "2")
+                  (ty INTEGER))))
+            (Store
+              (place
+                (Local
+                  (id 0)
+                  (name "x")
+                  (ty INTEGER)))
+              (value
+                (Value
+                  (id 1)
+                  (ty INTEGER))))
+            (Load
+              (result
+                (Value
+                  (id 2)
+                  (ty INTEGER)))
+              (place
+                (Local
+                  (id 0)
+                  (name "x")
+                  (ty INTEGER)))))
+          (terminator
+            (Return
+              (value
+                (Value
+                  (id 2)
+                  (ty INTEGER))))))))))

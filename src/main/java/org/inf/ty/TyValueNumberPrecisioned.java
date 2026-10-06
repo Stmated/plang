@@ -4,6 +4,7 @@ import lombok.Builder;
 
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Set;
 
 @Builder(toBuilder = true)
 public record TyValueNumberPrecisioned(
@@ -11,7 +12,7 @@ public record TyValueNumberPrecisioned(
   BitWidth width,
   int precision,
   boolean signed,
-  EnumSet<TyFlags> flags
+  Set<TyFlags> flags
 ) implements TyValueNumber {
 
   @Override
@@ -29,14 +30,14 @@ public record TyValueNumberPrecisioned(
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    TyValueNumberPrecisioned that = (TyValueNumberPrecisioned) o;
+    final TyValueNumberPrecisioned that = (TyValueNumberPrecisioned) o;
     return Objects.equals(width, that.width) && precision == that.precision && signed == that.signed && kind == that.kind
       && Objects.equals(flags, that.flags);
   }

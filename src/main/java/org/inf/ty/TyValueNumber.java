@@ -1,6 +1,7 @@
 package org.inf.ty;
 
 import java.util.EnumSet;
+import java.util.Set;
 
 public interface TyValueNumber extends TyValue {
 
@@ -10,7 +11,7 @@ public interface TyValueNumber extends TyValue {
 
   boolean signed();
 
-  EnumSet<TyFlags> flags();
+  Set<TyFlags> flags();
 
   @Override
   default boolean isNumber() {

@@ -4,9 +4,10 @@ import lombok.Builder;
 
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Set;
 
 @Builder(toBuilder = true)
-public record TyValueNumberInteger(byte radix, BitWidth width, boolean signed, EnumSet<TyFlags> flags) implements TyValueNumber {
+public record TyValueNumberInteger(byte radix, BitWidth width, boolean signed, Set<TyFlags> flags) implements TyValueNumber {
 
   @Override
   public TyValueKind getValueKind() {
@@ -32,14 +33,14 @@ public record TyValueNumberInteger(byte radix, BitWidth width, boolean signed, E
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    TyValueNumberInteger that = (TyValueNumberInteger) o;
+    final TyValueNumberInteger that = (TyValueNumberInteger) o;
     return radix == that.radix
       && Objects.equals(width, that.width)
       && signed == that.signed

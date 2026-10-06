@@ -132,7 +132,7 @@ public class Tys {
   /**
    * TODO: This is all bad and wrong and needs a way better system
    */
-  public static EnumSet<TyFlags> mixFlags(EnumSet<TyFlags> a, EnumSet<TyFlags> b) {
+  public static EnumSet<TyFlags> mixFlags(final Set<TyFlags> a, final Set<TyFlags> b) {
 
     final var mix = EnumSet.noneOf(TyFlags.class);
     mix.addAll(a);

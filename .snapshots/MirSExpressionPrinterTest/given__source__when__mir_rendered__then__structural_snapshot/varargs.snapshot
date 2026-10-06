@@ -1,0 +1,164 @@
+dynamic-directory: true
+snapshot-name: varargs
+snapshot-number: 0
+test-class: org.inf.mir.util.MirSExpressionPrinterTest
+test-method: given__source__when__mir_rendered__then__structural_snapshot
+
+(MirLoweringResult
+  (script (function-ref f0))
+  (functions
+    (MirFunction
+      (id f0)
+      (name "main")
+      (signature
+        (MirFnSignature !vararg
+          (parameters)
+          (returnType
+            (TyValueNumberInteger signed
+              (radix 10)
+              (width
+                (BitWidth explicit
+                  (value 32)))
+              (flags)))))
+      (locals)
+      (blocks
+        (MirNode
+          (id b0)
+          (name "entry_0")
+          (instructions
+            (Convert
+              (result
+                (Value
+                  (id 0)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (value
+                (Constant
+                  (content "1")
+                  (ty INTEGER))))
+            (Convert
+              (result
+                (Value
+                  (id 1)
+                  (ty INTEGER)))
+              (value
+                (Constant
+                  (content "255u8")
+                  (ty
+                    (TyValueNumberInteger !signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 8)))
+                      (flags))))))
+            (Convert
+              (result
+                (Value
+                  (id 2)
+                  (ty INTEGER)))
+              (value
+                (Constant
+                  (content "true")
+                  (ty BOOLEAN))))
+            (Convert
+              (result
+                (Value
+                  (id 3)
+                  (ty DOUBLE)))
+              (value
+                (Constant
+                  (content "1.0")
+                  (ty FLOAT))))
+            (Call
+              (result
+                (Value
+                  (id 4)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (target
+                (FunctionRef
+                  (function (function-ref f1))))
+              (signature
+                (MirFnSignature vararg
+                  (parameters
+                    (MirFnParameter
+                      (name "a")
+                      (ty
+                        (TyValueNumberInteger signed
+                          (radix 10)
+                          (width
+                            (BitWidth explicit
+                              (value 32)))
+                          (flags)))))
+                  (returnType
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags)))))
+              (arguments
+                (Value
+                  (id 0)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags))))
+                (Value
+                  (id 1)
+                  (ty INTEGER))
+                (Value
+                  (id 2)
+                  (ty INTEGER))
+                (Value
+                  (id 3)
+                  (ty DOUBLE)))))
+          (terminator
+            (Return
+              (value
+                (Value
+                  (id 4)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width
+                        (BitWidth explicit
+                          (value 32)))
+                      (flags))))))))))
+    (MirFunction
+      (id f1)
+      (name "external")
+      (signature
+        (MirFnSignature vararg
+          (parameters
+            (MirFnParameter
+              (name "a")
+              (ty
+                (TyValueNumberInteger signed
+                  (radix 10)
+                  (width
+                    (BitWidth explicit
+                      (value 32)))
+                  (flags)))))
+          (returnType
+            (TyValueNumberInteger signed
+              (radix 10)
+              (width
+                (BitWidth explicit
+                  (value 32)))
+              (flags)))))
+      (locals)
+      (blocks))))

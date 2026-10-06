@@ -2,8 +2,10 @@ package org.inf.ty;
 
 import org.inf.ty.util.Tys;
 
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Set;
 
 public interface Ty {
 
@@ -13,24 +15,31 @@ public interface Ty {
   Ty DEADEND = Tys.intern(new TyNamed("DEADEND"));
   Ty VOID = Tys.intern(new TyNamed("VOID"));
 
-  TyValueNumberInteger SHORT = Tys.intern(new TyValueNumberInteger((byte) 10, new BitWidth(16, false), true, EnumSet.noneOf(TyFlags.class)));
-  TyValueNumberInteger USHORT = Tys.intern(new TyValueNumberInteger((byte) 10, new BitWidth(16, false), false, EnumSet.noneOf(TyFlags.class)));
+  BitWidth BW_8 = new BitWidth(8, false);
+  BitWidth BW_16 = new BitWidth(16, false);
+  BitWidth BW_32 = new BitWidth(32, false);
+  BitWidth BW_64 = new BitWidth(64, false);
 
-  TyValueNumberInteger INTEGER = Tys.intern(new TyValueNumberInteger((byte) 10, new BitWidth(32, false), true, EnumSet.noneOf(TyFlags.class)));
-  TyValueNumberInteger UINTEGER = Tys.intern(new TyValueNumberInteger((byte) 10, new BitWidth(32, false), false, EnumSet.noneOf(TyFlags.class)));
-  TyValueNumberInteger LONG = Tys.intern(new TyValueNumberInteger((byte) 10, new BitWidth(64, false), true, EnumSet.noneOf(TyFlags.class)));
-  TyValueNumberInteger ULONG = Tys.intern(new TyValueNumberInteger((byte) 10, new BitWidth(64, false), false, EnumSet.noneOf(TyFlags.class)));
+  Set<TyFlags> NO_FLAGS = Collections.unmodifiableSet(EnumSet.noneOf(TyFlags.class));
 
-  TyValueNumberInteger CHAR = Tys.intern(new TyValueNumberInteger((byte) 10, new BitWidth(8, false), false, EnumSet.noneOf(TyFlags.class)));
+  TyValueNumberInteger SHORT = Tys.intern(new TyValueNumberInteger((byte) 10, BW_16, true, NO_FLAGS));
+  TyValueNumberInteger USHORT = Tys.intern(new TyValueNumberInteger((byte) 10, BW_16, false, NO_FLAGS));
 
-  TyValueNumberInteger INTEGER_BINARY = Tys.intern(new TyValueNumberInteger((byte) 2, new BitWidth(32, false), true, EnumSet.noneOf(TyFlags.class)));
-  TyValueNumberInteger INTEGER_OCTAL = Tys.intern(new TyValueNumberInteger((byte) 8, new BitWidth(32, false), true, EnumSet.noneOf(TyFlags.class)));
-  TyValueNumberInteger INTEGER_HEX = Tys.intern(new TyValueNumberInteger((byte) 16, new BitWidth(32, false), true, EnumSet.noneOf(TyFlags.class)));
+  TyValueNumberInteger INTEGER = Tys.intern(new TyValueNumberInteger((byte) 10, BW_32, true, NO_FLAGS));
+  TyValueNumberInteger UINTEGER = Tys.intern(new TyValueNumberInteger((byte) 10, BW_32, false, NO_FLAGS));
+  TyValueNumberInteger LONG = Tys.intern(new TyValueNumberInteger((byte) 10, BW_64, true, NO_FLAGS));
+  TyValueNumberInteger ULONG = Tys.intern(new TyValueNumberInteger((byte) 10, BW_64, false, NO_FLAGS));
 
-  TyValueNumberPrecisioned FLOAT16 = Tys.intern(new TyValueNumberPrecisioned(RealKind.FLOAT, new BitWidth(16, false), 4, true, EnumSet.noneOf(TyFlags.class)));
-  TyValueNumberPrecisioned FLOAT = Tys.intern(new TyValueNumberPrecisioned(RealKind.FLOAT, new BitWidth(32, false), 7, true, EnumSet.noneOf(TyFlags.class)));
-  TyValueNumberScaled DECIMAL = Tys.intern(new TyValueNumberScaled(new BitWidth(128, false), 10, true, EnumSet.noneOf(TyFlags.class)));
-  TyValueNumberPrecisioned DOUBLE = Tys.intern(new TyValueNumberPrecisioned(RealKind.DOUBLE, new BitWidth(64, false), 16, true, EnumSet.noneOf(TyFlags.class)));
+  TyValueNumberInteger CHAR = Tys.intern(new TyValueNumberInteger((byte) 10, BW_8, false, NO_FLAGS));
+
+  TyValueNumberInteger INTEGER_BINARY = Tys.intern(new TyValueNumberInteger((byte) 2, BW_32, true, NO_FLAGS));
+  TyValueNumberInteger INTEGER_OCTAL = Tys.intern(new TyValueNumberInteger((byte) 8, BW_32, true, NO_FLAGS));
+  TyValueNumberInteger INTEGER_HEX = Tys.intern(new TyValueNumberInteger((byte) 16, BW_32, true, NO_FLAGS));
+
+  TyValueNumberPrecisioned FLOAT16 = Tys.intern(new TyValueNumberPrecisioned(RealKind.FLOAT, BW_16, 4, true, NO_FLAGS));
+  TyValueNumberPrecisioned FLOAT = Tys.intern(new TyValueNumberPrecisioned(RealKind.FLOAT, BW_32, 7, true, NO_FLAGS));
+  TyValueNumberScaled DECIMAL = Tys.intern(new TyValueNumberScaled(new BitWidth(128, false), 10, true, NO_FLAGS));
+  TyValueNumberPrecisioned DOUBLE = Tys.intern(new TyValueNumberPrecisioned(RealKind.DOUBLE, BW_64, 16, true, NO_FLAGS));
   TyValueNumberPrecisioned FLOAT64 = Tys.intern(Ty.DOUBLE);
 
   TyValueBoolean BOOLEAN = Tys.intern(new TyValueBoolean());
@@ -53,7 +62,7 @@ public interface Ty {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
       if (this == o) {
         return true;
       }
