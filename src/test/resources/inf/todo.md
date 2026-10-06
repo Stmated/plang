@@ -1,10 +1,8 @@
-# PASSIVELY ACTIVE
+# Must TODO/fix to get things working again!
 
-* Hold off on the whole interpreter/Comptime stuff for now, until the whole compiler has been bootstrapped into its own language (so can reuse compiler code)
+-- Currently none
 
 # TODO
-
-## Must fix to get things working again!
 
 ## Next
 
@@ -12,7 +10,8 @@
 
 * Positional tuple calls depend on Tuple 1-4 above; named tuple expansion additionally needs the named-tuple items. Do not make every deferred tuple feature a
   prerequisite. Investigation stopped before implementation planning beyond the findings below.
-* Current calls share compact `Hir.TupleEntry`/`Hir.Tuple` containers with tuple values. Explicit calls extract only their outer argument list, preserving a nested tuple as
+* Current calls share compact `Hir.TupleEntry`/`Hir.Tuple` containers with tuple values. Explicit calls extract only their outer argument list, preserving a
+  nested tuple as
   one argument. Tuple spreading remains unsupported.
 * Recommendation, not yet decided: explicit, shallow spread (`f(...args)` / `f ...args`). Keep `f(args)` as one argument; automatic unpacking makes tuple-taking
   functions ambiguous and must not change grouping based on a signature. Manual element arguments remain an alternative once tuple access works.
@@ -38,19 +37,31 @@
     * Of course a syntax like `const result = service call ...args` should work, since parenthesis are optional.
     * If you have alternative ideas of how and when to destructure manually or automatically, then tell me.
 
+### Consider changing Hir.Call
+
+* I think it might be a good idea to either:
+    * Bring back Hir.Argument (see git history),
+    * or normalize Hir.Call#arguments to actually always be Hir.Tuple
+* Currently the code gets a bit more complex from having `#arguments` as they currently are.
+* Perhaps it truly is more idiomatic/easier to visit/transform uniformally if we always think of a call as fn-ref given tuple.
+
 ### Unification of "struct" and "tuple"
+
 * A tuple should in essence just be a short-form of a struct declaration
 * They should be convertable to and from each other if they exactly match
 * It should be possible to "explode"/"unpack" a struct as well to a function call and other locations, just like with a tuple
 
 ### Unification of Array and Tuple
+
 * An array of unbounded size and a tuple with only positional rest parameters should be equivalent
 * Difference then being that a Tuple type should be able to be defined as `(bool, uint8...)`
 * Investigate possibility/feasibility of supporting something like `(bool..., uint8..., bool)`
-  * Which means it can be any number of booleans, then any number of uint8, then one last bool
-  * This feature is absolutely not required and should only be supported if it can be "easily" done and would be considered idiomatic to the rest of the language
+    * Which means it can be any number of booleans, then any number of uint8, then one last bool
+    * This feature is absolutely not required and should only be supported if it can be "easily" done and would be considered idiomatic to the rest of the
+      language
 
 ### Unification of "named arguments"
+
 * Function calls now use `=` for named arguments: `fn(a = 10)`. The old `:` spelling is rejected (Tuple 8).
     * To be able to assign a value inside a nested expression, it must be done using new `:=` syntax like `fn(a = foo := 10)`
         * The main difference to `=` is that `=` returns `void` but `:=` returns RHS value.
@@ -59,6 +70,7 @@
 ### Optional arguments, default values for parameters, named arguments
 
 ### Updated test cases, thorough rework of how tests are done
+
 * Should use more s-expression printing
 * Should use more test cases found in files
 * Should use better ways of storing expected output for a snapshot test

@@ -6,7 +6,7 @@ description: Use when creating or updating Markdown (.md) documentation files.
 # Writing documentation
 
 Be terse and concise. Write as little text as possible while still being clear. But it is important to be clear, to not skip over such as which subject it pertains.
-Do not include overly indulgent implementation details, write about the purpose of the documentation.
+Do not include overly indulgent implementation details, write about the *purpose* of the documentation.
 Write for humans who need to skim the contents, not agents who can consume lots of text.
 Prefer bullet points, short tables, and short paragraphs.
 
@@ -16,12 +16,17 @@ They are reading the documentation to understand the purpose and overview of the
 
 Avoid writing sentences like "Do this and that" instead separate paragraphs to "Do this. Do that."
 
-Do not adhere to max line length. Better to write a bit longer lines than to have an unreadable document.
+Do not adhere to max line length. Better to write longer lines than to have an unreadable document.
+
+Exclude "changelog"-like paragraphs, that explain what was changed by implementing a new feature.
+Rather just explain the feature to a potential reader, what they need to know to understand how the feature works.
+
+Prefer code examples over explaining a feature using words.
 
 ## Explain reasoning and relevance
-Do not assume that things can be logically deduced from "what is expected" and "what is obvious",
+Do not assume that things can be logically deduced from "what is expected" and "what is obvious" to you,
 instead state the purpose of one item and the relevance to a next item, or for the next item and its relevance to the previous.
-You do not need to force this in just because, but if it improves readability, reasoning and understanding, then do so.
+You do not need to force this in, but if it improves readability, reasoning and understanding, then do so.
 For example, instead of:
 ```
 * Implement expressions

@@ -3,90 +3,75 @@ name: inf-compiler
 description: Use this skill for changes to the Inf compiler written in Java.
 ---
 
-# General
-* NEVER install external tools like Maven, if you cannot execute the code something is wrong with your tool investigation.
-
 # Inf Compiler
 
+## Workflow
+
+* Investigate and plan first. Summarize the plan and ask for confirmation before implementing.
+* Always ask clarifying questions rather than making assumptions about the task.
+* Ask one narrow, specific question at a time. Do not bundle related decisions into a single yes/no question.
 * Make the smallest change that addresses the task.
 * Use existing tests where possible.
-* Always ask me clarifying questions rather than making assumptions about the task.
-* Always attempt to investigate and plan first, then summarize the plan and ask for confirmation before implementing.
+* Never install external tools such as Maven. If code cannot be executed, investigate the existing tool setup. See the `java-testing` skill for tool discovery and test execution.
 
 ## Compiler pipeline
-Consider the compiler pipeline, including:
-* lexing,
-* parsing, 
-* Parse → AST (Abstract Syntax Tree),
-* AST → HIR (High Intermediate Representation) raising,
-* HIR → THIR raising (typed HIR, a "pseudo-step" inside HIR raising)
-* THIR → MIR (Middle-level Intermediate Representation) lowering,
-* MIR → LLVM lowering,
-* Execution.
 
-## Coding Instructions
-It is important to put the changes in the correct compiler pipeline step.
+Put changes in the appropriate stage:
 
-It is important to prefer implementing a new transformer/pass class to make an isolated change for a feature, rather than adding logic to a main lowerer/raiser class.
-The more isolated and separated a feature can be made, so it does its limited job in its own pass over a set of tree nodes, the better.
+1. Lexing.
+2. Parsing → AST (Abstract Syntax Tree).
+3. AST → HIR (High-Level Intermediate Representation) raising.
+4. HIR → THIR (Typed High-Level Intermediate Representation), a "pseudo-step" inside HIR raising.
+5. THIR → MIR (Middle-level Intermediate Representation) lowering.
+6. MIR → LLVM lowering.
+7. Execution.
 
-If the feature is a new language feature that needs explaining, then create a new `*.md` file in `/docs` to document it.
-Be sure to use the `docs-writing` skill to write the documentation.
+### AST
 
-Strongly prefer asking several questions that are more narrow and specific, rather than listing many overarching related decisions/options and asking for a simple "yes"/"no" for all of them.
-Rather than asking "should we do X and Y and Z", ask "should we do X like A or B?" and then "should we do Y like C or D?" and then "should we do Z like E or F?"
+Keep the AST abstract and agnostic. It groups a lexed stream into a tree describing code structure; logical groups and aggregations belong in HIR.
 
-When adding a new function, if the parameter name is not obvious with its intent, then add a comment describing its purpose.
-Do not add comments to all parameters, or add superfluous comments, but do it if it is not obvious what the parameter is for.
+### HIR and THIR
 
-If a conditional is highly complex, for example considering 3 or more boolean algebra conditions, then consider either:
-* Adding a very short comment inside the branch about what the current state means, or
-* Refactor the conditional into a separate function with a descriptive name, and call that function in the conditional.
-  * Only do this if the separate function would not need lots of arguments to be passed in.
+HIR represents logical structures such as predicates, loops, and lambda functions. HIR and THIR currently use the same tree node classes; THIR is the typed form of HIR.
+
+## Feature implementation
+
+* Prefer an isolated transformer/pass class over adding feature logic to a main lowerer/raiser. Each pass should perform a limited job over tree nodes.
+* Always use existing `XyzVisitor` interfaces and node `#visit` methods to traverse AST, HIR, and MIR nodes. Never write custom traversal logic.
+* For a new language feature that needs explaining, create a `*.md` file in `docs\`. Use the `docs-writing` skill.
 
 In the project the word `Ty` is used for its internal representation of a type, to not clash with the Java `Type` class.
 
-## Code style / formatting / idiomaticity
+## Code style
 
-Avoid cloning arrays or lists, instead use `Collections.unmodifiableList` or `Collections.unmodifiableSet` to return immutable views of mutable collections.
-Expect the programmer to not modify returned arrays/collections, rather than developing expensive safeguards against it.
+* Avoid cloning arrays or lists as defensive safeguards. Expect callers not to modify returned arrays/collections.
+* For lists and sets, use `Collections.unmodifiableList` or `Collections.unmodifiableSet` if you must protect from modifications. Do not clone them.
+* Avoid overly specific default values for new features. Let the caller decide the default when nothing is found.
+* For enum category checks, prefer a descriptive boolean helper method, such as `public boolean isXorY() { return this == X || this == Y; }`.
+* Prefer `String.formatted()` over string concatenation such as `"Hello, " + name`.
+* Prefer Lombok annotations such as `@Data`, `@Value`, or `@UtilityClass` to reduce boilerplate.
+* Prefer `final` for parameters, fields, and local variables where possible.
+* Never nest ternary expressions. Use explicit if-conditions instead.
 
-When developing a new feature, avoid setting default values that are too specific.
-It is better to let a caller decide what the default value should be if nothing is found by the feature.
+Prefer `ArrayUtils` (`src\main\java\org\inf\util\ArrayUtils.java`) for array operations. For example:
 
-For an enum, rather than having a helper method like `enum.isXorY()`, prefer adding a public boolean `this == Enum.X || this == Enum.Y` inside `Enum`.
+```java
+ArrayUtils.none(items, TheClass::isTrue)
+```
 
-Prefer modern Java comments in Markdown format, inside `///` comments.
-Also prefer backtick code sections over `{@code some.code()}`.
+Prefer this over `Arrays.stream(items).noneMatch(it -> isTrue(it))`.
 
-Prefer using `String.formatted()` rather than String concatenation using `"Hello, " + name`.
+## Comments and complex conditionals
 
-Prefer using lombok annotations to decrease boilerplate, such as `@Data`, `@Value` or `@UtilityClass`.
-
-Prefer adding `final` to parameters, fields and local variables where possible. 
-
-Never nest multiple ternary expressions, instead convert to explicit if-conditions.
-
-See `ArrayUtils` for useful array-methods.
-Rather than `Arrays.stream(items).noneMatch(it -> isTrue(it))` do `ArrayUtils.none(items, TheClass::isTrue)`
-
-## Traversing AST, HIR, and MIR nodes
-Never use custom logic for traversing AST, HIR or MIR nodes, always use the existing visitor pattern. `XyzVisitor` interface and node `#visit` method.
-
-## AST
-The AST should be as abstract and agnostic as possible.
-Its purpose is to group a lexed stream of words into a tree structure that explains the code structure rather than being an accurate representation of the Inf code.
-It is rather up to the HIR stage to represent the code in its logical groups/aggregations.
-
-## HIR
-HIR and THIR are the same tree node classes (for now),
-where the first is the High-Level Intermediate Representation, and second is Typed High-Level Intermediate Representation.
-
-The HIR will represent things as the logical structures of something, such as a predicate, loop, or lambda function.
+* Prefer Markdown documentation comments (`///`) with backticks for code rather than `{@code some.code()}`.
+* When adding a function, comment a parameter's purpose only if its name does not make the intent clear.
+* For complex conditionals, such as those combining three or more boolean conditions, consider either:
+  * A short comment inside the branch explaining what the current state means.
+  * A descriptively named helper function, only if it would not require many arguments.
 
 ## Language references
-See `*.inf` files in `src/test/resources/inf` for examples of the Inf language.
-* Examples of **valid** Inf code in `src/test/resources/inf/valid*`,
-* Examples of **invalid** Inf code in `src/test/resources/inf/invalid*`,
-* Examples of **theoretical** Inf code in `src/test/resources/inf/theoretical*`.
-  * These are examples of what the language could look like, and can be used as input for ideas, but not necessarily as reference for how to solve something.
+
+See `*.inf` files in `src\test\resources\inf`:
+* `valid*`: examples of valid Inf code.
+* `invalid*`: examples of invalid Inf code.
+* `theoretical*`: possible language designs for inspiration, not references for implemented behavior.
