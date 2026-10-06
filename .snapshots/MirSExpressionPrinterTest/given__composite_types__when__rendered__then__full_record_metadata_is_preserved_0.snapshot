@@ -55,9 +55,7 @@ test-method: given__composite_types__when__rendered__then__full_record_metadata_
           (ty
             (TyValueNumberInteger !signed
               (radix 10)
-              (width
-                (BitWidth explicit
-                  (value 32)))
+              (width EXPLICIT_32)
               (flags CONSTANT IMMUTABLE))))
         (Local
           (id 9)

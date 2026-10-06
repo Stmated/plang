@@ -52,11 +52,25 @@ public final class MirSExpressionPrinter {
     for (final var field : fields) {
       final var name = field.getName();
       final var underscoreIndex = name.indexOf('_');
+      final var lastIndex = name.lastIndexOf('_');
 
       // Remove any short prefixes for the display name, such as `BW_`
-      final var displayName = (underscoreIndex != -1 && underscoreIndex < 4)
-        ? name.substring(underscoreIndex + 1)
-        : name;
+      // `BW_EXPLICIT_16` becomes `EXPLICIT_16`.
+      final String displayName;
+      if (underscoreIndex != -1) {
+
+        if (underscoreIndex != lastIndex) {
+          displayName = name.substring(underscoreIndex + 1);
+        } else {
+          if (underscoreIndex < 4) {
+            displayName = name.substring(underscoreIndex + 1);
+          } else {
+            displayName = name;
+          }
+        }
+      } else {
+        displayName = name;
+      }
 
       try {
         constants.add(new NamedConstant(field.get(null), displayName));

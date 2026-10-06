@@ -16,9 +16,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
           (returnType
             (TyValueNumberInteger signed
               (radix 10)
-              (width
-                (BitWidth explicit
-                  (value 32)))
+              (width EXPLICIT_32)
               (flags)))))
       (locals)
       (blocks
@@ -33,9 +31,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))
               (value
                 (Constant
@@ -48,9 +44,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))
               (value
                 (Constant
@@ -63,9 +57,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))
               (target
                 (FunctionRef
@@ -78,25 +70,19 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                       (ty
                         (TyValueNumberInteger signed
                           (radix 10)
-                          (width
-                            (BitWidth explicit
-                              (value 32)))
+                          (width EXPLICIT_32)
                           (flags))))
                     (MirFnParameter
                       (name "b")
                       (ty
                         (TyValueNumberInteger signed
                           (radix 10)
-                          (width
-                            (BitWidth explicit
-                              (value 32)))
+                          (width EXPLICIT_32)
                           (flags)))))
                   (returnType
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))
               (arguments
                 (Value
@@ -104,18 +90,14 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags))))
                 (Value
                   (id 0)
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))))
           (terminator
             (Return
@@ -125,9 +107,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags))))))))))
     (MirFunction
       (id f1)
@@ -140,25 +120,19 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
               (ty
                 (TyValueNumberInteger signed
                   (radix 10)
-                  (width
-                    (BitWidth explicit
-                      (value 32)))
+                  (width EXPLICIT_32)
                   (flags))))
             (MirFnParameter
               (name "b")
               (ty
                 (TyValueNumberInteger signed
                   (radix 10)
-                  (width
-                    (BitWidth explicit
-                      (value 32)))
+                  (width EXPLICIT_32)
                   (flags)))))
           (returnType
             (TyValueNumberInteger signed
               (radix 10)
-              (width
-                (BitWidth explicit
-                  (value 32)))
+              (width EXPLICIT_32)
               (flags)))))
       (locals
         (Local
@@ -167,9 +141,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
           (ty
             (TyValueNumberInteger signed
               (radix 10)
-              (width
-                (BitWidth explicit
-                  (value 32)))
+              (width EXPLICIT_32)
               (flags))))
         (Local
           (id 1)
@@ -177,9 +149,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
           (ty
             (TyValueNumberInteger signed
               (radix 10)
-              (width
-                (BitWidth explicit
-                  (value 32)))
+              (width EXPLICIT_32)
               (flags)))))
       (blocks
         (MirNode
@@ -193,9 +163,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))
               (index 0))
             (Store
@@ -206,9 +174,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))
               (value
                 (Value
@@ -216,9 +182,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags))))))
             (Parameter
               (result
@@ -227,9 +191,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))
               (index 1))
             (Store
@@ -240,9 +202,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))
               (value
                 (Value
@@ -250,9 +210,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags))))))
             (Load
               (result
@@ -261,9 +219,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))
               (place
                 (Local
@@ -272,9 +228,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags))))))
             (Load
               (result
@@ -283,9 +237,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))
               (place
                 (Local
@@ -294,9 +246,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags))))))
             (Binary
               (result
@@ -305,9 +255,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))
               (lhs
                 (Value
@@ -315,9 +263,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))
               (kind ADD)
               (rhs
@@ -326,9 +272,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags)))))))
           (terminator
             (Return
@@ -338,7 +282,5 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
-                      (width
-                        (BitWidth explicit
-                          (value 32)))
+                      (width EXPLICIT_32)
                       (flags))))))))))))

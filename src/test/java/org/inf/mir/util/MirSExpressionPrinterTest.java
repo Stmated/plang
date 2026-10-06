@@ -126,17 +126,23 @@ class MirSExpressionPrinterTest {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {
-    8,
-    16,
-    32,
-    64
+  @CsvSource({
+    "8, false, 8",
+    "16, false, 16",
+    "32, false, 32",
+    "64, false, 64",
+    "8, true, EXPLICIT_8",
+    "16, true, EXPLICIT_16",
+    "32, true, EXPLICIT_32",
+    "64, true, EXPLICIT_64"
   })
-  void given__custom_number_with_predefined_width__when__rendered__then__width_name_is_used(final int width) {
-    final var type = new TyValueNumberInteger((byte) 3, new BitWidth(width, false), true, Ty.NO_FLAGS);
+  void given__custom_number_with_predefined_width__when__rendered__then__width_name_is_used(
+    final int width, final boolean explicit, final String name
+  ) {
+    final var type = new TyValueNumberInteger((byte) 3, new BitWidth(width, explicit), true, Ty.NO_FLAGS);
     final var actual = printer.render(module(function("width", type, false)));
     assertAll(
-      () -> assertTrue(actual.contains("(width %d)".formatted(width))),
+      () -> assertTrue(actual.contains("(width %s)".formatted(name))),
       () -> assertTrue(actual.contains("(radix 3)")),
       () -> assertFalse(actual.contains("(BitWidth"))
     );
@@ -144,10 +150,10 @@ class MirSExpressionPrinterTest {
 
   @ParameterizedTest
   @CsvSource({
-    "8, true",
-    "16, true",
-    "32, true",
-    "64, true",
+    "7, true",
+    "24, true",
+    "48, true",
+    "128, true",
     "128, false"
   })
   void given__nonmatching_width__when__rendered__then__value_and_explicitness_are_preserved(

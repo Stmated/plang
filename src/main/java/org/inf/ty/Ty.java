@@ -20,6 +20,11 @@ public interface Ty {
   BitWidth BW_32 = new BitWidth(32, false);
   BitWidth BW_64 = new BitWidth(64, false);
 
+  BitWidth BW_EXPLICIT_8 = new BitWidth(8, true);
+  BitWidth BW_EXPLICIT_16 = new BitWidth(16, true);
+  BitWidth BW_EXPLICIT_32 = new BitWidth(32, true);
+  BitWidth BW_EXPLICIT_64 = new BitWidth(64, true);
+
   Set<TyFlags> NO_FLAGS = Collections.unmodifiableSet(EnumSet.noneOf(TyFlags.class));
 
   TyValueNumberInteger SHORT = Tys.intern(new TyValueNumberInteger((byte) 10, BW_16, true, NO_FLAGS));
