@@ -38,8 +38,10 @@ HIR represents logical structures such as predicates, loops, and lambda function
 ## Feature implementation
 
 * Prefer an isolated transformer/pass class over adding feature logic to a main lowerer/raiser. Each pass should perform a limited job over tree nodes.
+* Prefer an isolated transformer/pass class over adding code to another transformer/pass that is closely related but deals with another area of responsibility. For example a "Handle spread visitor" should not have "Handle return type inference" code inside of it.
 * Always use existing `XyzVisitor` interfaces and node `#visit` methods to traverse AST, HIR, and MIR nodes. Never write custom traversal logic.
 * For a new language feature that needs explaining, create a `*.md` file in `docs\`. Use the `docs-writing` skill.
+* Do not recreate large type inference/investigation inside new THIR passes, use the resolution of previous passes and fill in the blanks. If refactoring is required to split some passes into more granular passes to be able to resolve them in order, and with narrowed responsibilities, then that is recommended. But ask first.
 
 In the project the word `Ty` is used for its internal representation of a type, to not clash with the Java `Type` class.
 

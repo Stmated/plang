@@ -677,6 +677,12 @@ public final class ThirToMirLowering {
     if (operand.ty() == Ty.VOID || expected == Ty.VOID || expected == Ty.DEADEND) {
       throw new IllegalArgumentException("Cannot convert " + operand.ty() + " to " + expected);
     }
+    if (operand.ty() instanceof TyPointer<?> actualPointer && actualPointer.inner() instanceof TyFn actualFunction
+      && expected instanceof TyPointer<?> expectedPointer && expectedPointer.inner() instanceof TyFn expectedFunction) {
+      if (!TypeComparison.sameValueType(actualFunction, expectedFunction)) {
+        throw new IllegalArgumentException("Cannot convert incompatible function signatures: %s to %s".formatted(actualFunction, expectedFunction));
+      }
+    }
     if ((TupleTypes.containsTuple(operand.ty()) || TupleTypes.containsTuple(expected))
       && !TypeComparison.sameValueType(operand.ty(), expected)) {
       throw new IllegalArgumentException("Cannot reinterpret incompatible tuple layouts: " + operand.ty() + " to " + expected);

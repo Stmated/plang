@@ -6,22 +6,41 @@
 
 ## Next
 
-### Calling functions with tuples and structs: remaining work
+### Stating function type for field inside struct
 
-* Support ordinary calls through function-valued fields, without requiring a spread argument. A function stored in `service.call` should be callable with either
-  spelling below:
+Should support:
 
 ```inf
-val add = (a: int, b: int) => a + b;
-val service = (call = add,);
-service.call(1, 2);        // TODO: currently unsupported
-service.call(...(1, 2));   // Already works
+val S = struct { val fn: (v: int): int };
 ```
+
+Or, if you strongly advise it as such because of difficult parsing rules/changes:
+
+```inf
+val S = struct { val fn: ((v: int): int) };
+```
+
+Update test cases that uses a type alias like `val Fn = (v: int): int;` for struct fn fields with inline types.
+But keep some test case that still tests that both work, both alias and inline.
+
+### Stored closures
+
+* Preserve captured environments when functions are stored in fields or passed as values. Lambda lifting currently adds capture parameters only to directly
+  resolved calls; incompatible stored signatures are rejected.
+
+### Contextual lambda typing: remaining work
+
+* Infer callback parameter types inside fresh spread tuples before validating their resolved parameter declarations and the spread shape.
+* Allow function-signature aliases inside tuple annotations, such as `val callbacks: (fn: Fn,)`.
+* Support tuple return types in function-signature declarations.
+
+### Calling function with spread arrays: remaining work
 
 * Support spreading arrays into calls: `val args = [1, 2]; add(...args)`. Only allow static array lengths, runtime array length is deferred until a later stage.
 
 ### Tuple construction: remaining work
 
+* Replace repeated whole-tree preparation with dependency-aware type resolution, without moving resolution back into tuple context or conversion visitors.
 * Support spreading fields into a new tuple: `val args = (1, 2); val combined = (0, ...args);`, producing `(0, 1, 2)`. Call spreading does not yet support this
   construction syntax.
 * Support empty tuple values: `val args = ();`, allowing `f(...args)` to supply zero arguments.
@@ -63,6 +82,16 @@ If the test is made for testing the interpreter, then it should be inside an int
 * Should have ways of giving a kind of test matrix for the different test files
     * This way we can test that all things run the same way both from LLVM and the interpreter
 * Global/common test value sources, such as one that gives all optimization levels
+* Rather than testing that for example spreading works for every scenario, there should be specialized test cases that test that all different permutations of
+  spreading works. This will keep the tests more focused on the area of their need/use rather than creating very complex test cases that become like a test
+  matrix of all mixes of all features.
+    * There is still need for tests which mixes different features to see that they play along well together, but that should be focused tests where that
+      purpose is more explicit, such as a "see that spreading works with lambda lifting" and "see that spreading works with array creation" and "see that
+      spreading works with captured lambda lifting" (these are just examples, do not need to implement these specific ones)
+
+### Fixes regarding tuples and spread
+
+* Most uses of `instanceof Hir.Spread`  feels suspect; there is something fishy going on.
 
 ### Partial functions, for currying/composition
 

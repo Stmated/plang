@@ -57,6 +57,69 @@ class InterpreterCodeExecutorTest {
     Assertions.assertEquals(expected, new InterpreterCodeExecutor().execute(Inf.codeToMir(code).initNode()));
   }
 
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "val Fn = (v: int): int; val S = struct { val fn: Fn }; val s = new heap S { fn = (v) => v * 2 }; s.fn(5) | 10",
+    "val Fn = (v: int): int; val S = struct { val fn: Fn; }; val s = new heap S { fn = (v) => v * 2; }; s.fn v = 5 | 10",
+    "val Fn = (v: int): int; val S = struct { val fn: Fn; }; val s = new heap S { fn = (x) => x * 2; }; s.fn(v = 5) | 10",
+    "val Fn = (v: int): int; val S = struct { val fn: Fn; }; val s = new heap S { fn = (v) => v * 2; }; s.fn(...(5,)) | 10",
+    "val Fn = (v: int): int; val S = struct { val fn: Fn; }; val s = new heap S { fn = (v) => v; }; s.fn = (v) => v * 2; s.fn(5) | 10",
+    "val Fn = (v: int): int; val S = struct { val fn: Fn; }; val s = new heap S { fn = { (v) => v * 2 }; }; val outer = (inner = s,); outer.inner.fn(5) | 10",
+    "val Fn = (): int; val S = struct { val fn: Fn; }; val s = new heap S { fn = () => 7; }; s.fn() | 7"
+  })
+  void given__call_on_instance_field__when__called__then__expect_proper_result(final String code, final int expected) {
+    Assertions.assertEquals(expected, new InterpreterCodeExecutor().execute(Inf.codeToMir(code).initNode()));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "val service = (call = pair,); service.call(1, 2) | 12",
+    "val service = (call = pair,); service.call b = 2, a = 1 | 12",
+    "val a = 1; val b = 2; val service = (call = pair, a = 9, b = 9); service.call(b = b, a = a) | 12",
+    "val service = (call = pair,); service.call((1, 2)[0], 2) | 12",
+    "val service = (inner = (call = pair,),); service.inner.call(1, 2) | 12",
+    "val service = (calls = [pair],); (service.calls[0])(1, 2) | 12",
+    "val services = [(call = pair,)]; services[0].call(1, 2) | 12",
+    "val service = (make = () => (call = pair,),); service.make().call(1, 2) | 12",
+    "val service = (make = () => pair,); (service.make())(1, 2) | 12",
+    "val read = (t: (int, int)) => t[0] * 10 + t[1]; val service = (call = read,); service.call((1, 2)) | 12"
+  })
+  void given__function_valued_tuple_field__when__called__then__ordinary_argument_binding_is_used(
+    final String expression, final int expected
+  ) {
+    final var code = "val pair = (a: int, b: int) => a * 10 + b; %s".formatted(expression);
+    Assertions.assertEquals(expected, new InterpreterCodeExecutor().execute(Inf.codeToMir(code).initNode()));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "val trace = [0]; val target = () => { trace[0] = trace[0] * 10 + 1; (call = (a: int, b: int) => a * 10 + b,); }; val result = target().call(b = { trace[0] = trace[0] * 10 + 2; 2; }, a = { trace[0] = trace[0] * 10 + 3; 1; }); trace[0] * 100 + result | 12312",
+    "val Fn = (v: int): int; val S = struct { val fn: Fn; }; val s = new heap S { fn = (v) => v * 2; }; s.fn({ s.fn = (v) => v * 3; 5; }) | 10",
+    "val trace = [0]; val call = () => { val service = (fn = (a: int, b: int) => a + b,); service.fn({ return 7; }, { trace[0] = 9; 5; }); }; val result = call(); result + trace[0] | 7"
+  })
+  void given__field_call_side_effects__when__executed__then__target_precedes_arguments_and_each_runs_once(
+    final String code, final int expected
+  ) {
+    Assertions.assertEquals(expected, new InterpreterCodeExecutor().execute(Inf.codeToMir(code).initNode()));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "service.call() | Missing function argument",
+    "service.call(1) | Missing function argument",
+    "service.call(1, 2, 3) | Too many arguments for function",
+    "service.call(a = 1, a = 2) | Duplicate or excess argument",
+    "service.call(other = 1, b = 2) | Unknown argument label: other",
+    "service.missing(1, 2) | Unknown field: missing"
+  })
+  void given__invalid_field_call__when__compiled__then__ordinary_call_errors_are_reported(
+    final String expression, final String expected
+  ) {
+    final var code = "val pair = (a: int, b: int) => a * 10 + b; val service = (call = pair,); %s".formatted(expression);
+    final var error = Assertions.assertThrows(IllegalArgumentException.class, () -> Inf.codeToMir(code));
+    Assertions.assertEquals(expected, error.getMessage());
+  }
+
   @Test
   void testArithmetic() {
     final var executor = new InterpreterCodeExecutor();

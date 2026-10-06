@@ -54,3 +54,7 @@ Elements execute left-to-right exactly once. Exiting an element skips later
 elements and the unfinished tuple's allocation; later source elements remain statically checked.
 For [named and mixed tuples](named-tuples.md), [fresh tuple matching](tuple-matching.md) selects each element's expected slot: labels match first, then unlabeled entries fill remaining positions. Destination order does not change source evaluation order.
 Tuple spreading and general contextual inference remain unsupported.
+
+## Compiler responsibilities
+
+Context linking records destination layouts on fresh tuple nodes. Literal typing adapts fitting unsuffixed integers; common typing then resolves expression types before the conversion pass inserts lossless slot conversions. Passes communicate only through the HIR tree, not shared resolution state.

@@ -38,6 +38,6 @@ The call target evaluates first, then arguments evaluate left-to-right exactly o
 
 `...args`, `...source.args`, `...make()`, and `...values[0]` each spread one operand. Group broader expressions: `pair(...(make args))`. Commas separate call arguments; a spread does not consume the following comma.
 
-Member calls support `service.call(...args)` and `service.call ...args`. `service call ...args` is not equivalent: adjacency nests calls to the right and does not introduce member lookup.
+Member calls support `service.call(...args)` and `service.call ...args`, as well as [ordinary field calls](function-fields.md) such as `service.call(1, 2)`. `service call ...args` is not equivalent: adjacency nests calls to the right and does not introduce member lookup.
 
 Only statically known tuple and struct shapes are supported. Arrays, runtime-length expansion, labeled spreads (`name = ...args`), and spreading inside tuple constructions are unsupported.

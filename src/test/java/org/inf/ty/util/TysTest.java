@@ -13,6 +13,31 @@ import java.util.stream.Stream;
 
 class TysTest {
 
+  static Stream<Arguments> inferredMembers() {
+    return Stream.of(
+      Arguments.of(null, true),
+      Arguments.of(Ty.INFER, true),
+      Arguments.of(Ty.INTEGER, false),
+      Arguments.of(tuple(Ty.INTEGER, Ty.INFER), true),
+      Arguments.of(tuple(Ty.INTEGER, Ty.BOOLEAN), false),
+      Arguments.of(new TyValueArray(Ty.INFER, 1), true),
+      Arguments.of(new TyPointer<>(Ty.INFER), true),
+      Arguments.of(new TyFn(new TyParam[]{new TyParam("v", Ty.INFER)}, false, Ty.INTEGER), true),
+      Arguments.of(new TyFn(new TyParam[0], false, tuple(Ty.INFER)), true),
+      Arguments.of(new TyFn(new TyParam[]{new TyParam("v", Ty.INTEGER)}, false, Ty.INTEGER), false),
+      Arguments.of(new TyUnion(new Ty[]{Ty.INTEGER, Ty.INFER}), true),
+      Arguments.of(new TyUnion(new Ty[]{Ty.INTEGER, Ty.BOOLEAN}), false)
+    );
+  }
+
+  @ParameterizedTest
+  @MethodSource("inferredMembers")
+  void given__compound_type__when__checked_for_unresolved_members__then__nested_inference_is_detected(
+    final Ty type, final boolean expected
+  ) {
+    Assertions.assertEquals(expected, Tys.containsInferred(type));
+  }
+
   private static TyStruct tuple(Ty... types) {
     return new TyStruct(Arrays.stream(types).map(type -> new TyField(null, type)).toArray(TyField[]::new));
   }

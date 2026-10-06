@@ -21,6 +21,26 @@ import java.util.ArrayList;
 
 class HirTupleContextualTypingVisitorPassTest {
 
+  @Test
+  void given__untyped_lambda_in_a_function_field__when__only_tuple_pass_runs__then__lambda_parameters_are_not_inferred() {
+    final var root = HirTyIdentifierToTyTransformerPass.pass(
+      Inf.codeToHir("val Fn = (value: int): int; val S = struct { val fn: Fn; }; new heap S { fn = (v) => v; }"),
+      new MachineTarget(64)
+    );
+    HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
+    HirTupleContextualTypingVisitorPass.pass(root);
+    final var functions = new ArrayList<Hir.Function>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitFunction(final Hir.Function expression) {
+        functions.add(expression);
+        HirVisitor.super.visitFunction(expression);
+      }
+    });
+    Assertions.assertEquals(1, functions.size());
+    Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].valueType().ty()));
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {
     "val t: (p1: uint8, p2: uint8) = (1, 2); t",
@@ -55,9 +75,10 @@ class HirTupleContextualTypingVisitorPassTest {
       Inf.codeToHir("val t: (a: uint8, bool, b: uint16) = (true, b = 255u8, a = 1); t"), new MachineTarget(64)
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
+    prepareTupleEntries(root);
     HirTupleContextualTypingVisitorPass.pass(root);
-    final var expected = root.ty();
     HirTyCommonVisitorPass.pass(root);
+    final var expected = root.ty();
     HirTupleValidationVisitorPass.pass(root);
     HirTupleContextualTypingVisitorPass.pass(root);
     HirTyCommonVisitorPass.pass(root);
@@ -93,15 +114,16 @@ class HirTupleContextualTypingVisitorPassTest {
   }
 
   @Test
-  void given__standalone_tuple_pass__when__followed_by_common_inference__then__explicit_widening_is_preserved() {
+  void given__prepared_tuple_entries__when__conversion_pass_runs__then__explicit_widening_is_preserved() {
     final var root = HirTyIdentifierToTyTransformerPass.pass(
       Inf.codeToHir("val t: (int16, (uint8,)) = (255u8, (1,)); t"), new MachineTarget(64)
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
+    prepareTupleEntries(root);
     HirTupleContextualTypingVisitorPass.pass(root);
+    HirTyCommonVisitorPass.pass(root);
     final var expected = root.ty();
 
-    HirTyCommonVisitorPass.pass(root);
     HirTupleValidationVisitorPass.pass(root);
     HirTupleContextualTypingVisitorPass.pass(root);
     HirTyCommonVisitorPass.pass(root);
@@ -297,5 +319,74 @@ class HirTupleContextualTypingVisitorPassTest {
       () -> Assertions.assertTrue(literals.stream().allMatch(literal ->
         literal.ty().equals(Ty.INTEGER)))
     );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val t: (int16,) = (255u8,); t",
+    "val t: ((int16,),) = ((255u8,),); t",
+    "val t: (int16,) = ({ 255u8 },); t"
+  })
+  void given__resolved_tuple_entries__when__only_conversions_run__then__enclosing_types_are_not_resolved(final String code) {
+    final var root = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), new MachineTarget(64));
+    HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
+    prepareTupleEntries(root);
+    Assertions.assertInstanceOf(Hir.Program.class, root).ty(Ty.BOOLEAN);
+    final var tuples = new ArrayList<Hir.Tuple>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitTuple(final Hir.Tuple expression) {
+        tuples.add(expression);
+        HirVisitor.super.visitTuple(expression);
+      }
+    });
+    final var before = tuples.stream().map(Hir.Tuple::ty).toList();
+    HirTupleContextualTypingVisitorPass.pass(root);
+    final var conversions = new ArrayList<Hir.Convert>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitConvert(final Hir.Convert expression) {
+        conversions.add(expression);
+        HirVisitor.super.visitConvert(expression);
+      }
+    });
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty()),
+      () -> Assertions.assertEquals(before, tuples.stream().map(Hir.Tuple::ty).toList()),
+      () -> Assertions.assertEquals(1, conversions.size()),
+      () -> Assertions.assertEquals(Tys.fromString("int16", new MachineTarget(64)), conversions.getFirst().ty())
+    );
+  }
+
+  @Test
+  void given__unlinked_tuple__when__only_conversions_run__then__context_and_literals_are_unchanged() {
+    final var root = HirTyIdentifierToTyTransformerPass.pass(
+      Inf.codeToHir("val t: (uint8,) = (1,); t"), new MachineTarget(64)
+    );
+    HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
+    HirTyCommonVisitorPass.resolveAvailableTypes(root);
+    final var before = root.ty();
+    HirTupleContextualTypingVisitorPass.pass(root);
+    final var tuples = new ArrayList<Hir.Tuple>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitTuple(final Hir.Tuple expression) {
+        tuples.add(expression);
+        HirVisitor.super.visitTuple(expression);
+      }
+    });
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(before, root.ty()),
+      () -> Assertions.assertNull(tuples.getLast().contextualType()),
+      () -> Assertions.assertInstanceOf(Hir.Literal.class, tuples.getLast().children()[0].value()),
+      () -> Assertions.assertEquals(Ty.INTEGER, tuples.getLast().children()[0].value().ty())
+    );
+  }
+
+  private static void prepareTupleEntries(final Hir.Expression root) {
+    HirTyCommonVisitorPass.resolveAvailableTypes(root);
+    HirTupleContextVisitorPass.pass(root);
+    HirTupleLiteralTypingVisitorPass.pass(root);
+    HirTyCommonVisitorPass.resolveAvailableTypes(root);
   }
 }

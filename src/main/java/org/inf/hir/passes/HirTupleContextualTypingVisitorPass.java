@@ -1,211 +1,58 @@
 package org.inf.hir.passes;
 
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
-import org.inf.hir.HirArgumentBinding;
-import org.inf.hir.HirCallArguments;
-import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
-import org.inf.ty.TyFn;
-import org.inf.ty.TyField;
-import org.inf.ty.TyParam;
 import org.inf.ty.TyStruct;
 import org.inf.ty.TyValueNumberInteger;
 import org.inf.ty.util.TypeComparison;
-import org.inf.util.ArrayUtils;
-import org.inf.util.IntegerLiterals;
 
-import java.math.BigInteger;
-import java.util.Arrays;
-
-/// Rewrites fresh tuple elements before enclosing expression types are resolved.
+/// Inserts slot conversions into fresh tuples with resolved contextual types.
 @UtilityClass
 public class HirTupleContextualTypingVisitorPass {
 
-  public static void pass(Hir.Expression expression) {
-    new Visitor().visitChild(expression);
+  public static void pass(final Hir.Expression expression) {
+    expression.visit(new Visitor());
   }
 
   private static final class Visitor implements HirVisitor {
 
-    private Ty expectedType;
-    private Ty returnType;
-    private TyStruct tupleType;
-    private int[] tupleSlots;
-    private int tupleIndex;
-
     @Override
-    public void visitChild(Hir.Expression expression) {
-      visitExpected(expression, null);
-    }
-
-    private void visitExpected(Hir.Expression expression, Ty expected) {
-      final var outerExpected = expectedType;
-      try {
-        expectedType = expected;
-        expression.visit(this);
-        HirTyCommonVisitorPass.resolveNode(expression);
-      } finally {
-        expectedType = outerExpected;
+    public void visitTuple(final Hir.Tuple expression) {
+      HirVisitor.super.visitTuple(expression);
+      final var destination = expression.contextualType();
+      if (destination != null) {
+        expression.visit(new EntryVisitor(destination, HirTupleMatching.match(expression, destination)));
       }
     }
+  }
 
-    private static TyStruct tupleType(Ty type) {
-      return type instanceof TyStruct struct && struct.tuple() ? struct : null;
-    }
+  @RequiredArgsConstructor
+  private static final class EntryVisitor implements HirVisitor {
 
-    @Override
-    public void visitAssignment(Hir.Assignment expression) {
-      visitAssignmentLhs(expression.lhs());
-      final var expected = expression.lhs() instanceof Hir.Dec || expression.lhs() instanceof Hir.Identifier
-        ? tupleType(expression.lhs().valueTy()) : null;
-      visitExpected(expression.rhs(), expected);
-    }
+    private final TyStruct destination;
+    private final int[] slots;
+    private int index;
 
     @Override
-    public void visitFunction(Hir.Function expression) {
-      visitChild(expression.signature());
-      final var outerReturn = returnType;
-      try {
-        returnType = tupleType(expression.signature().returnType().ty());
-        visitExpected(expression.body(), returnType);
-      } finally {
-        returnType = outerReturn;
-      }
-    }
-
-    @Override
-    public void visitReturn(Hir.Return expression) {
-      visitExpected(expression.expression(), returnType);
-    }
-
-    @Override
-    public void visitCall(Hir.Call expression) {
-      visitChild(expression.target());
-      final var arguments = expression.arguments();
-      final var hasSpread = ArrayUtils.any(arguments, argument -> argument.value() instanceof Hir.Spread);
-      if (!(expression.target().valueTy() instanceof TyFn function)
-        || !hasSpread && Arrays.stream(function.parameters()).noneMatch(parameter -> tupleType(parameter.ty()) != null)) {
-        visitCallArguments(expression.arguments());
+    public void visitTupleEntry(final Hir.TupleEntry expression) {
+      if (slots == null) {
         return;
       }
-      if (hasSpread) {
-        visitCallArguments(arguments);
+      final var expected = destination.fields()[slots[index++]].ty();
+      final var actual = expression.value().ty();
+      requireSlotConversion(actual, expected);
+      if (actual != Ty.DEADEND && !TypeComparison.sameValueType(actual, expected)) {
+        expression.value(new Hir.Convert(expression.value(), expected));
       }
-      final var parameters = function.parameters();
-      final var binding = new HirArgumentBinding(
-        ArrayUtils.mapToStrings(parameters, TyParam::name), function.vararg(), HirCallArguments.count(arguments)
-      );
-      for (final var argument : arguments) {
-        final var indices = HirCallArguments.bind(argument, binding);
-        if (argument.value() instanceof Hir.Spread spread) {
-          final var fields = HirSpreadShape.fields(spread);
-          final var expected = new TyField[fields.length];
-          var contextual = false;
-          for (var i = 0; i < fields.length; i++) {
-            final var index = indices[i];
-            final var type = index >= 0 && index < parameters.length ? tupleType(parameters[index].ty()) : null;
-            expected[i] = new TyField(fields[i].name(), type == null ? fields[i].ty() : type);
-            contextual |= type != null;
-          }
-          if (contextual) {
-            visitExpected(spread.value(), new TyStruct(expected, true));
-          }
-        } else {
-          final var index = indices[0];
-          visitExpected(argument.value(), index < parameters.length ? tupleType(parameters[index].ty()) : null);
-        }
-      }
-      if (!hasSpread || ArrayUtils.none(arguments, argument -> argument.ty() == Ty.DEADEND)) {
-        binding.requireComplete();
-      }
-    }
-
-    @Override
-    public void visitBlock(Hir.Block expression) {
-      visitExpected(expression.children(), expectedType);
-    }
-
-    @Override
-    public void visitExpressions(Hir.Expressions expression) {
-      final var expected = expectedType;
-      final var children = expression.children();
-      for (var i = 0; i < children.length; i++) {
-        visitExpected(children[i], i == children.length - 1 ? expected : null);
-      }
-    }
-
-    @Override
-    public void visitConditional(Hir.Conditional expression) {
-      final var expected = expectedType;
-      visitChild(expression.predicate());
-      visitExpected(expression.pass(), expected);
-      if (expression.fail() != null) {
-        visitExpected(expression.fail(), expected);
-      }
-    }
-
-    @Override
-    public void visitTuple(Hir.Tuple expression) {
-      final var expected = tupleType(expectedType);
-      final var outerTuple = tupleType;
-      final var outerSlots = tupleSlots;
-      final var outerIndex = tupleIndex;
-      try {
-        final var destination = expected == null ? expression.contextualType() : expected;
-        tupleSlots = destination == null ? null : HirTupleMatching.match(expression, destination);
-        tupleType = tupleSlots == null ? null : destination;
-        expression.contextualType(tupleType);
-        tupleIndex = 0;
-        HirVisitor.super.visitTuple(expression);
-      } finally {
-        tupleType = outerTuple;
-        tupleSlots = outerSlots;
-        tupleIndex = outerIndex;
-      }
-    }
-
-    @Override
-    public void visitTupleEntry(Hir.TupleEntry expression) {
-      final var expected = tupleType == null ? null : tupleType.fields()[tupleSlots[tupleIndex++]].ty();
-      visitExpected(expression.value(), expected);
-      if (expected != null) {
-        final var actual = expression.value().ty();
-        requireSlotConversion(actual, expected);
-        if (actual != Ty.DEADEND && !TypeComparison.sameValueType(actual, expected)) {
-          expression.value(new Hir.Convert(expression.value(), expected));
-        }
-      }
-    }
-
-    @Override
-    public void visitLiteral(Hir.Literal expression) {
-      contextualizeLiteral(expression, expectedType);
     }
   }
 
-  private static void contextualizeLiteral(Hir.Literal literal, Ty expected) {
-    // `L` suffixes are stripped by the lexer but retain their nondefault literal width.
-    if (!(expected instanceof TyValueNumberInteger target)
-      || !(literal.ty() instanceof TyValueNumberInteger source) || source.width().explicit()
-      || source.width().value() != Ty.INTEGER.width().value()) {
-      return;
-    }
-    final var value = IntegerLiterals.parse(literal.content(), source.radix());
-    final var magnitudeBits = target.width().value() - (target.signed() ? 1 : 0);
-    final var limit = BigInteger.ONE.shiftLeft(magnitudeBits);
-    final var minimum = target.signed() ? limit.negate() : BigInteger.ZERO;
-    if (value.compareTo(minimum) < 0 || value.compareTo(limit) >= 0) {
-      throw new InvalidTypeConversionException("Integer literal does not fit tuple slot", source, target);
-    }
-    literal.content(value.toString(target.radix()));
-    literal.ty(target);
-  }
-
-  private static void requireSlotConversion(Ty actual, Ty expected) {
+  private static void requireSlotConversion(final Ty actual, final Ty expected) {
     if (actual == Ty.DEADEND || TypeComparison.sameValueType(actual, expected)) {
       return;
     }

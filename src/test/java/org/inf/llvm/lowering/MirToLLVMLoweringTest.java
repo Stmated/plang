@@ -27,6 +27,39 @@ import java.util.UUID;
 class MirToLLVMLoweringTest {
 
   @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "val Fn = (v: int): int; val S = struct { val fn: Fn; }; val s = new heap S { fn = (v) => v * 2; }; s.fn(5) | 10",
+    "val Fn = (v: int): int; val S = struct { val fn: Fn; }; val s = new heap S { fn = (x) => x * 2; }; s.fn(v = 5) | 10",
+    "val pair = (a: int, b: int) => a * 10 + b; val service = (call = pair,); service.call b = 2, a = 1 | 12",
+    "val pair = (a: int, b: int) => a * 10 + b; val service = (make = () => (call = pair,),); service.make().call(1, 2) | 12",
+    "val read = (t: (int, int)) => t[0] * 10 + t[1]; val service = (call = read,); service.call((1, 2)) | 12",
+    "val Fn = (v: int): int; val S = struct { val fn: Fn; }; val s = new heap S { fn = (v) => v * 2; }; s.fn({ s.fn = (v) => v * 3; 5; }) | 10"
+  })
+  void given__function_valued_field__when__executed_by_llvm__then__binding_and_inference_are_preserved(
+    final String code, final int expected
+  ) {
+    Assertions.assertEquals(expected, Inf.codeToResult(code).resultValue());
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {0, 1, 2, 3})
+  void given__ordinary_field_call_effects__when__optimized__then__target_and_arguments_keep_source_order(final int optLevel) {
+    final var code = """
+      val trace = [0];
+      val target = () => {
+        trace[0] = trace[0] * 10 + 1;
+        (call = (a: int, b: int) => a * 10 + b,);
+      };
+      val result = target().call(
+        b = { trace[0] = trace[0] * 10 + 2; 2; },
+        a = { trace[0] = trace[0] * 10 + 3; 1; });
+      trace[0] * 100 + result
+      """;
+    Assertions.assertEquals(12312,
+      Inf.codeToResult(code, InfRunOptions.builder().optLevel(optLevel).build()).resultValue());
+  }
+
+  @ParameterizedTest
   @ValueSource(strings = {
     "pair(...(1, 2))",
     "val args = (b = 2, a = 1); pair ...args",

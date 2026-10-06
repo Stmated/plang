@@ -27,6 +27,23 @@ class ThirToMirLoweringTest {
 
   @ParameterizedTest
   @ValueSource(strings = {
+    "s.fn(5)",
+    "s.fn(...(5,))"
+  })
+  void given__captured_lambda_in_function_field__when__lowered__then__unsafe_signature_conversion_is_rejected(final String expression) {
+    final var code = """
+      val Fn = (v: int): int;
+      val S = struct { val fn: Fn; };
+      val offset = 2;
+      val s = new heap S { fn = (v) => v * 2 + offset; };
+      %s
+      """.formatted(expression);
+    final var error = assertThrows(IllegalArgumentException.class, () -> Inf.codeToMir(code));
+    assertTrue(error.getMessage().startsWith("Cannot convert incompatible function signatures:"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
     "pair(...1)",
     "pair(...[1, 2])",
     "pair(...(1,))",

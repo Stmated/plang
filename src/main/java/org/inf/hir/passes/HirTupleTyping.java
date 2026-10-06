@@ -7,6 +7,7 @@ import org.inf.ty.Ty;
 import org.inf.ty.TyField;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.TupleTypes;
+import org.inf.ty.util.Tys;
 
 import java.util.HashSet;
 
@@ -14,6 +15,10 @@ import java.util.HashSet;
 final class HirTupleTyping {
 
   static void resolve(Hir.Tuple tuple) {
+    resolve(tuple, false);
+  }
+
+  static void resolve(final Hir.Tuple tuple, final boolean availableOnly) {
     final var entries = tuple.children();
     if (entries.length == 0) {
       throw new IllegalArgumentException("Empty tuple types and values are not supported");
@@ -26,7 +31,7 @@ final class HirTupleTyping {
     for (var i = 0; i < entries.length; i++) {
       final var entry = entries[i];
       final var name = entry.label() == null ? null : entry.label().name();
-      if (name != null && !labels.add(name)) {
+      if (!availableOnly && name != null && !labels.add(name)) {
         throw new IllegalArgumentException("Duplicate tuple label: " + name);
       }
       final var value = entry.value();
@@ -34,9 +39,17 @@ final class HirTupleTyping {
       if (type == Ty.DEADEND) {
         diverges = true;
       } else {
-        TupleTypes.requireElementType(type);
+        if (!availableOnly || !Tys.containsInferred(type)) {
+          TupleTypes.requireElementType(type);
+        }
         final var index = slots == null ? i : slots[i];
-        fields[index] = new TyField(slots == null ? name : contextual.fields()[index].name(), type);
+        if (slots == null) {
+          fields[index] = new TyField(name, type);
+        } else {
+          // Preparation exposes the linked layout; final resolution uses converted entry types.
+          final var field = contextual.fields()[index];
+          fields[index] = new TyField(field.name(), availableOnly ? field.ty() : type);
+        }
       }
     }
     // A diverging construction has no aggregate value or layout, even if some entries have values.

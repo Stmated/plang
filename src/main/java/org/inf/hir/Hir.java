@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import org.inf.ty.*;
+import org.inf.ty.util.Tys;
 
 import java.util.Arrays;
 import java.util.Objects;
@@ -1170,6 +1171,12 @@ public class Hir {
     Lexeme lexeme;
     MutabilityKind mutabilityKind;
     Expression valueType;
+    /// Prepared type while an inferred annotation is retained for later resolution.
+    Ty valueTy;
+
+    public Dec(final Lexeme lexeme, final MutabilityKind mutabilityKind, final Expression valueType) {
+      this(lexeme, mutabilityKind, valueType, null);
+    }
 
     public Ty ty() {
       return Ty.VOID;
@@ -1177,7 +1184,8 @@ public class Hir {
 
     @Override
     public Ty valueTy() {
-      return (this.valueType != null) ? this.valueType.ty() : null;
+      final var annotation = this.valueType == null ? null : this.valueType.ty();
+      return Tys.containsInferred(annotation) && this.valueTy != null ? this.valueTy : annotation;
     }
 
     @Override

@@ -4,6 +4,7 @@ import jakarta.annotation.Nullable;
 import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.ty.*;
+import org.inf.util.ArrayUtils;
 
 import java.util.*;
 import java.util.function.Function;
@@ -228,6 +229,19 @@ public class Tys {
 
   public static boolean isInferred(Ty ty) {
     return ty == null || ty == Ty.INFER;
+  }
+
+  public static boolean containsInferred(final Ty ty) {
+    return switch (ty) {
+      case null -> true;
+      case TyFn function -> containsInferred(function.returnTy())
+        || ArrayUtils.any(function.parameters(), parameter -> containsInferred(parameter.ty()));
+      case TyStruct struct -> ArrayUtils.any(struct.fields(), field -> containsInferred(field.ty()));
+      case TyValueArray array -> containsInferred(array.elementType());
+      case TyPointer<?> pointer -> containsInferred(pointer.inner());
+      case TyUnion union -> ArrayUtils.any(union.types(), Tys::containsInferred);
+      default -> ty == Ty.INFER;
+    };
   }
 
   public static Ty getIfInferred(Ty original, Supplier<Ty> supplier) {
