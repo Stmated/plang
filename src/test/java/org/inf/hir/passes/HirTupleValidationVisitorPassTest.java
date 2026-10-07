@@ -176,7 +176,8 @@ class HirTupleValidationVisitorPassTest {
   })
   void given__incompatible_tuple_boundary__when__typed__then__explicit_conversion_error(String code) {
     final var error = Assertions.assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToThir(code));
-    Assertions.assertEquals(true, error.getMessage().contains("tuple"));
+    Assertions.assertTrue(error.getMessage().contains("tuple")
+      || error.getMessage().contains("Integer literal does not fit expected type"));
   }
 
   @ParameterizedTest

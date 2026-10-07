@@ -40,23 +40,10 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
           (id b0)
           (name "entry_0")
           (instructions
-            (Convert
-              (result
-                (Value
-                  (id 0)
-                  (ty
-                    (TyValueNumberInteger signed
-                      (radix 10)
-                      (width EXPLICIT_32)
-                      (flags)))))
-              (value
-                (Constant
-                  (content "7")
-                  (ty INTEGER))))
             (NewStruct
               (result
                 (Value
-                  (id 1)
+                  (id 0)
                   (ty
                     (TyPointer
                       (inner
@@ -71,8 +58,8 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                                   (flags)))))))
                       (addressSpace CPU)))))
               (fields
-                (Value
-                  (id 0)
+                (Constant
+                  (content "7")
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
@@ -98,7 +85,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                       (addressSpace CPU)))))
               (value
                 (Value
-                  (id 1)
+                  (id 0)
                   (ty
                     (TyPointer
                       (inner
@@ -115,7 +102,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
             (Load
               (result
                 (Value
-                  (id 2)
+                  (id 1)
                   (ty
                     (TyPointer
                       (inner
@@ -149,7 +136,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
             (Load
               (result
                 (Value
-                  (id 3)
+                  (id 2)
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
@@ -159,7 +146,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                 (Field
                   (target
                     (Value
-                      (id 2)
+                      (id 1)
                       (ty
                         (TyPointer
                           (inner
@@ -183,7 +170,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
             (Return
               (value
                 (Value
-                  (id 3)
+                  (id 2)
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)

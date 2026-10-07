@@ -23,6 +23,29 @@ class HirTyCommonVisitorPassTest {
 
   @ParameterizedTest
   @ValueSource(strings = {
+    "[17;double;1]",
+    "[17.0f;double;1]"
+  })
+  void given__noninteger_array_destination__when__common_typing_runs__then__existing_numeric_literal_adaptation_is_preserved(
+    final String code
+  ) {
+    final var root = prepare(code);
+    HirTyCommonVisitorPass.pass(root);
+    final var literals = new ArrayList<Hir.Literal>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitLiteral(final Hir.Literal expression) {
+        if (expression.content().startsWith("17")) {
+          literals.add(expression);
+        }
+      }
+    });
+    Assertions.assertEquals(1, literals.size());
+    Assertions.assertEquals(Ty.DOUBLE, literals.getFirst().ty());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
     "val S = struct { val fn: Fn; }; val s = new heap S { fn = (v) => v; }; s.fn",
     "val S = struct { val fn: Fn; }; val make = () => new heap S { fn = (v) => v; }; make().fn",
     "val S = struct { val fn: Fn; }; val make = () => { val s = new heap S { fn = (v) => v; }; s; }; make().fn",
@@ -55,9 +78,9 @@ class HirTyCommonVisitorPassTest {
     HirFunctionContextualTypingVisitorPass.pass(root);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
     HirTupleContextVisitorPass.pass(root);
-    HirTupleLiteralTypingVisitorPass.pass(root);
+    HirIntegerLiteralTypingVisitorPass.pass(root);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
-    HirTupleContextualTypingVisitorPass.pass(root);
+    HirTupleSlotConversionVisitorPass.pass(root);
     HirTyCommonVisitorPass.pass(root);
     Assertions.assertAll(
       () -> Assertions.assertTrue(TypeComparison.sameValueType(
@@ -84,9 +107,9 @@ class HirTyCommonVisitorPassTest {
     HirFunctionContextualTypingVisitorPass.pass(root);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
     HirTupleContextVisitorPass.pass(root);
-    HirTupleLiteralTypingVisitorPass.pass(root);
+    HirIntegerLiteralTypingVisitorPass.pass(root);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
-    HirTupleContextualTypingVisitorPass.pass(root);
+    HirTupleSlotConversionVisitorPass.pass(root);
     HirTyCommonVisitorPass.pass(root);
     Assertions.assertSame(annotation, declaration.valueType());
   }

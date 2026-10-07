@@ -14,7 +14,8 @@ read(t);
 
 ## Integer slots
 
-Unsuffixed integer literals adopt the expected slot type only when their value
+The shared [contextual integer literal rule](integer-literal-typing.md) lets
+unsuffixed integer literals adopt the expected slot type only when their value
 fits. `255` fits `uint8`; `256` and `-1` do not. Explicitly typed literals,
 including `1i32`, `1u8`, and `1L`, retain their source type.
 
@@ -48,12 +49,13 @@ even when their integer slots could widen. With `val original = (1u8,)`,
 
 The same restriction applies to nested tuple references. Matching nested tuples,
 arrays, and structs remain shared; contextual construction does not copy them.
-Struct-field initializers and array-element contexts retain exact-match rules.
+Struct-field initializers and array-element contexts also type fitting unsuffixed
+literals, but retain exact-match layout rules and do not widen other tuple elements.
 
 Elements execute left-to-right exactly once. Exiting an element skips later
 elements and the unfinished tuple's allocation; later source elements remain statically checked.
 For [named and mixed tuples](named-tuples.md), [fresh tuple matching](tuple-matching.md) selects each element's expected slot: labels match first, then unlabeled entries fill remaining positions. Destination order does not change source evaluation order.
-Tuple spreading and general contextual inference remain unsupported.
+Tuple spreading and general contextual expression inference remain unsupported.
 
 ## Compiler responsibilities
 

@@ -80,13 +80,11 @@ public class HirTyCommonVisitorPass {
       for (final var element : expr.elements()) {
 
         if (arrayElementTy instanceof TyValueNumber vn) {
-          if (element instanceof Hir.Literal lit && lit.ty() instanceof TyValueNumber litTy_n) {
+          if (element instanceof Hir.Literal lit && lit.ty() instanceof TyValueNumber litTy_n
+            && !(vn instanceof TyValueNumberInteger && litTy_n instanceof TyValueNumberInteger)) {
             if (!litTy_n.width().explicit() && (litTy_n.width().value() != vn.width().value() || litTy_n.signed() != vn.signed())) {
 
-              // val array = [1, 2, 3; uint8]
-              // val array = [1, 2, 3; uint]
-              // Should automatically translate non-explicit integers in array to stated type.
-              //elementArray[i] = new Hir.Literal(lit.content(), vn);
+              // Integer-to-integer typing is handled by HirIntegerLiteralTypingVisitorPass.
               lit.ty(vn);
             }
           }
@@ -266,7 +264,6 @@ public class HirTyCommonVisitorPass {
           expr.body().valueTy()
         );
 
-        //final var returnTy = HirFlow.returnType(expr.body());
         if (!availableOnly) {
           signature.returnType(new Hir.TyExpr(returnTy));
         }

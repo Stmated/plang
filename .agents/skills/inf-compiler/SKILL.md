@@ -42,8 +42,26 @@ HIR represents logical structures such as predicates, loops, and lambda function
 * Always use existing `XyzVisitor` interfaces and node `#visit` methods to traverse AST, HIR, and MIR nodes. Never write custom traversal logic.
 * For a new language feature that needs explaining, create a `*.md` file in `docs\`. Use the `docs-writing` skill.
 * Do not recreate large type inference/investigation inside new THIR passes, use the resolution of previous passes and fill in the blanks. If refactoring is required to split some passes into more granular passes to be able to resolve them in order, and with narrowed responsibilities, then that is recommended. But ask first.
+* You must always run all tests in the project to validate against any regressions, before counting things as done.
 
 In the project the word `Ty` is used for its internal representation of a type, to not clash with the Java `Type` class.
+
+### Needing result of multiple passes
+If you are unit testing a certain pass, then test that pass's logic specifically.
+If a certain pass need the result of other passes, then it is strongly preferred to do the whole `Inf.[...]` methods that use the whole compile pass.
+So avoid code like:
+```java
+HirTyCommonVisitorPass.resolveAvailableTypes(root);
+HirFunctionContextualTypingVisitorPass.pass(root);
+HirTyCommonVisitorPass.resolveAvailableTypes(root);
+HirTupleContextVisitorPass.pass(root);
+```
+and instead just do:
+```java
+final var root = Inf.codeToThir(root);
+```
+
+It is however allowed to manually call two different THIR passes, if the purpose is to test if two passes are specifically compatible with each other.
 
 ## Code style
 

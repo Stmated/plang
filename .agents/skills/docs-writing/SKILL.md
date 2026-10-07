@@ -16,7 +16,7 @@ They are reading the documentation to understand the purpose and overview of the
 
 Avoid writing sentences like "Do this and that" instead separate paragraphs to "Do this. Do that."
 
-Do not adhere to max line length. Better to write longer lines than to have an unreadable document.
+Better to write longer lines than to have an unreadable document.
 
 Exclude "changelog"-like paragraphs, that explain what was changed by implementing a new feature.
 Rather just explain the feature to a potential reader, what they need to know to understand how the feature works.

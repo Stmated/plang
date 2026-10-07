@@ -17,15 +17,23 @@ public interface HirVisitor {
     visitArrayElementType(expr.elementType());
 
     if (expr.length() != null) {
-      visitChild(expr.length());
+      visitArrayLength(expr.length());
     }
 
     for (final var element : expr.elements()) {
-      visitChild(element);
+      visitArrayElement(element);
     }
   }
 
   default void visitArrayElementType(Hir.Expression expr) {
+    visitChild(expr);
+  }
+
+  default void visitArrayLength(Hir.Expression expr) {
+    visitChild(expr);
+  }
+
+  default void visitArrayElement(Hir.Expression expr) {
     visitChild(expr);
   }
 

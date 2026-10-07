@@ -13,7 +13,7 @@ import org.inf.ty.util.TypeComparison;
 
 /// Inserts slot conversions into fresh tuples with resolved contextual types.
 @UtilityClass
-public class HirTupleContextualTypingVisitorPass {
+public class HirTupleSlotConversionVisitorPass {
 
   public static void pass(final Hir.Expression expression) {
     expression.visit(new Visitor());

@@ -28,19 +28,6 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
               (result
                 (Value
                   (id 0)
-                  (ty
-                    (TyValueNumberInteger signed
-                      (radix 10)
-                      (width EXPLICIT_32)
-                      (flags)))))
-              (value
-                (Constant
-                  (content "1")
-                  (ty INTEGER))))
-            (Convert
-              (result
-                (Value
-                  (id 1)
                   (ty INTEGER)))
               (value
                 (Constant
@@ -53,7 +40,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
             (Convert
               (result
                 (Value
-                  (id 2)
+                  (id 1)
                   (ty INTEGER)))
               (value
                 (Constant
@@ -62,7 +49,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
             (Convert
               (result
                 (Value
-                  (id 3)
+                  (id 2)
                   (ty DOUBLE)))
               (value
                 (Constant
@@ -71,7 +58,7 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
             (Call
               (result
                 (Value
-                  (id 4)
+                  (id 3)
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
@@ -96,27 +83,27 @@ test-method: given__source__when__mir_rendered__then__structural_snapshot
                       (width EXPLICIT_32)
                       (flags)))))
               (arguments
-                (Value
-                  (id 0)
+                (Constant
+                  (content "1")
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)
                       (width EXPLICIT_32)
                       (flags))))
                 (Value
+                  (id 0)
+                  (ty INTEGER))
+                (Value
                   (id 1)
                   (ty INTEGER))
                 (Value
                   (id 2)
-                  (ty INTEGER))
-                (Value
-                  (id 3)
                   (ty DOUBLE)))))
           (terminator
             (Return
               (value
                 (Value
-                  (id 4)
+                  (id 3)
                   (ty
                     (TyValueNumberInteger signed
                       (radix 10)

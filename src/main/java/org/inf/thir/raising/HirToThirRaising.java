@@ -28,9 +28,9 @@ public class HirToThirRaising {
     HirFunctionParameterValidationVisitorPass.pass(e);
     HirTyCommonVisitorPass.resolveAvailableTypes(e);
     HirTupleContextVisitorPass.pass(e);
-    HirTupleLiteralTypingVisitorPass.pass(e);
+    HirIntegerLiteralTypingVisitorPass.pass(e);
     HirTyCommonVisitorPass.resolveAvailableTypes(e);
-    HirTupleContextualTypingVisitorPass.pass(e);
+    HirTupleSlotConversionVisitorPass.pass(e);
     HirTyCommonVisitorPass.pass(e);
     HirFunctionValidationVisitorPass.pass(e);
     HirTupleValidationVisitorPass.pass(e);

@@ -28,7 +28,7 @@ class HirTupleContextualTypingVisitorPassTest {
       new MachineTarget(64)
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
-    HirTupleContextualTypingVisitorPass.pass(root);
+    HirTupleSlotConversionVisitorPass.pass(root);
     final var functions = new ArrayList<Hir.Function>();
     root.visit(new HirVisitor() {
       @Override
@@ -76,11 +76,11 @@ class HirTupleContextualTypingVisitorPassTest {
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     prepareTupleEntries(root);
-    HirTupleContextualTypingVisitorPass.pass(root);
+    HirTupleSlotConversionVisitorPass.pass(root);
     HirTyCommonVisitorPass.pass(root);
     final var expected = root.ty();
     HirTupleValidationVisitorPass.pass(root);
-    HirTupleContextualTypingVisitorPass.pass(root);
+    HirTupleSlotConversionVisitorPass.pass(root);
     HirTyCommonVisitorPass.pass(root);
     HirTupleValidationVisitorPass.pass(root);
     final var constructions = new ArrayList<Hir.Tuple>();
@@ -120,12 +120,12 @@ class HirTupleContextualTypingVisitorPassTest {
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     prepareTupleEntries(root);
-    HirTupleContextualTypingVisitorPass.pass(root);
+    HirTupleSlotConversionVisitorPass.pass(root);
     HirTyCommonVisitorPass.pass(root);
     final var expected = root.ty();
 
     HirTupleValidationVisitorPass.pass(root);
-    HirTupleContextualTypingVisitorPass.pass(root);
+    HirTupleSlotConversionVisitorPass.pass(root);
     HirTyCommonVisitorPass.pass(root);
     HirTupleValidationVisitorPass.pass(root);
 
@@ -256,7 +256,8 @@ class HirTupleContextualTypingVisitorPassTest {
   })
   void given__unsafe_or_incompatible_element_conversion__when__typed__then__explicit_error(String code) {
     final var error = Assertions.assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToThir(code));
-    Assertions.assertTrue(error.getMessage().contains("tuple"));
+    Assertions.assertTrue(error.getMessage().contains("tuple")
+      || error.getMessage().contains("Integer literal does not fit expected type"));
   }
 
   @ParameterizedTest
@@ -288,9 +289,6 @@ class HirTupleContextualTypingVisitorPassTest {
     "val existing = (1u8,); val t: (uint16,) = if (true) then (1,) else existing",
     "val f = () => (1u8,); val t: (uint16,) = f()",
     "val values = [(1u8,)]; val t: (uint16,) = values[0]",
-    "val S = struct { val t: (uint8,); }; new heap S { t = (1,); }",
-    "val S = struct { val t: (uint8,); }; val s = new heap S { t = (1u8,); }; s.t = (1,)",
-    "val values = [(1u8,)]; values[0] = (1,)",
     "val values = [(1u8,), (1,)]"
   })
   void given__existing_tuple_or_aggregate_storage_context__when__conversion_is_needed__then__rejected(String code) {
@@ -317,7 +315,7 @@ class HirTupleContextualTypingVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertFalse(literals.isEmpty()),
       () -> Assertions.assertTrue(literals.stream().allMatch(literal ->
-        literal.ty().equals(Ty.INTEGER)))
+        TypeComparison.sameValueType(literal.ty(), Ty.INTEGER)))
     );
   }
 
@@ -341,7 +339,7 @@ class HirTupleContextualTypingVisitorPassTest {
       }
     });
     final var before = tuples.stream().map(Hir.Tuple::ty).toList();
-    HirTupleContextualTypingVisitorPass.pass(root);
+    HirTupleSlotConversionVisitorPass.pass(root);
     final var conversions = new ArrayList<Hir.Convert>();
     root.visit(new HirVisitor() {
       @Override
@@ -366,7 +364,7 @@ class HirTupleContextualTypingVisitorPassTest {
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
     final var before = root.ty();
-    HirTupleContextualTypingVisitorPass.pass(root);
+    HirTupleSlotConversionVisitorPass.pass(root);
     final var tuples = new ArrayList<Hir.Tuple>();
     root.visit(new HirVisitor() {
       @Override
@@ -386,7 +384,7 @@ class HirTupleContextualTypingVisitorPassTest {
   private static void prepareTupleEntries(final Hir.Expression root) {
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
     HirTupleContextVisitorPass.pass(root);
-    HirTupleLiteralTypingVisitorPass.pass(root);
+    HirIntegerLiteralTypingVisitorPass.pass(root);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
   }
 }
