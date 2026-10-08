@@ -17,17 +17,6 @@ public class Hir {
   public interface Expression {
     Ty ty();
 
-    /// Difference between this and ty is that this is the value that a construct represents.
-    /// For example, a Dec is "void" itself but there is always a value ty behind it. This gets that ty.
-    default Ty valueTy() {
-      return this.ty();
-    }
-
-    /// Returns a "helpful" ty, which can be used for things like typechecking even when the syntax/type (or similar) is invalid.
-    default Ty helpfulTy() {
-      return Objects.requireNonNullElse(this.valueTy(), this.ty());
-    }
-
     void visit(HirVisitor visitor);
 
     Hir.Expression transform(HirTransformer transformer);
@@ -51,14 +40,6 @@ public class Hir {
     /// TODO: This should likely be fully derived from the child expressions, more specifically the last one.
     ///       There should not be any real need to cache a `ty` here, unless it turns out to be very expensive.
     Ty ty;
-
-    @Override
-    public Ty valueTy() {
-      if (this.children == null || this.children.length == 0) {
-        return this.ty();
-      }
-      return this.children[this.children.length - 1].valueTy();
-    }
 
     /// Only compiler-generated sequencing may discard unreachable suffixes.
     /// TODO: Would be preferable if this could be done some other way, with a specific "DEADEND-allowed container" node.
@@ -102,11 +83,6 @@ public class Hir {
     }
 
     @Override
-    public Ty valueTy() {
-      return value.valueTy();
-    }
-
-    @Override
     public String toString() {
       return "%s%s".formatted(label == null ? "" : "%s=".formatted(label), value);
     }
@@ -135,11 +111,6 @@ public class Hir {
     }
 
     @Override
-    public Ty valueTy() {
-      return value.valueTy();
-    }
-
-    @Override
     public String toString() {
       return "...%s".formatted(value);
     }
@@ -159,11 +130,12 @@ public class Hir {
   @AllArgsConstructor
   public static class Array implements Expression {
 
+    @Nonnull
     Expression[] elements;
     Expression elementType;
     Expression length;
     Ty ty;
-    Ty valueTy;
+    Ty arrayTy;
 
     @Override
     public String toString() {
@@ -192,7 +164,7 @@ public class Hir {
     Expression target;
     Expression accessor;
     Ty ty;
-    Ty valueTy;
+    Ty indexedTy;
 
     @Override
     public String toString() {
@@ -217,15 +189,9 @@ public class Hir {
     Expression lhs;
     Expression rhs;
     Ty ty;
-    Ty valueTy;
 
     public Assignment(Expression lhs, Expression rhs) {
-      this(lhs, rhs, null, null);
-    }
-
-    @Override
-    public Ty valueTy() {
-      return rhs.valueTy();
+      this(lhs, rhs, null);
     }
 
     @Override
@@ -287,11 +253,6 @@ public class Hir {
     }
 
     @Override
-    public Ty valueTy() {
-      return targetTy;
-    }
-
-    @Override
     public void visit(HirVisitor visitor) {
       visitor.visitConvert(this);
     }
@@ -310,7 +271,6 @@ public class Hir {
     BinaryOperationKind kind;
     Expression rhs;
     Ty ty;
-    Ty valueTy;
 
     public BinaryOperation(Expression lhs, BinaryOperationKind kind, Expression rhs) {
       this.lhs = lhs;
@@ -380,11 +340,6 @@ public class Hir {
     Ty ty;
 
     @Override
-    public Ty valueTy() {
-      return this.children.valueTy();
-    }
-
-    @Override
     public void visit(final HirVisitor visitor) {
       visitor.visitBlock(this);
     }
@@ -404,7 +359,6 @@ public class Hir {
     Argument[] arguments;
     boolean partial;
     Ty ty;
-    Ty valueTy;
 
     public Call(final Expression target, final Argument[] arguments) {
       this.target = target;
@@ -436,7 +390,6 @@ public class Hir {
     Expression pass;
     Expression fail;
     Ty ty;
-    Ty valueTy;
 
     public Conditional(Expression predicate, Expression pass, Expression fail) {
       this.predicate = predicate;
@@ -468,7 +421,7 @@ public class Hir {
     Expression body;
 
     @Override
-    public Ty ty() {
+    public TyFn ty() {
       return signature.ty();
     }
 
@@ -512,20 +465,20 @@ public class Hir {
     @Nonnull
     Parameter[] parameters;
     boolean vararg;
-    Expression returnType;
+    Expression returnTypeAnnotation;
     TyFn ty;
 
-    public FunctionSignature(@Nonnull Parameter[] parameters, boolean vararg, Expression returnType) {
+    public FunctionSignature(@Nonnull Parameter[] parameters, boolean vararg, Expression returnTypeAnnotation) {
       this.parameters = parameters;
       this.vararg = vararg;
-      this.returnType = returnType;
+      this.returnTypeAnnotation = returnTypeAnnotation;
     }
 
     @Override
     public String toString() {
 
       final var parameterStrings = Arrays.stream(parameters()).map(Parameter::toString).toList();
-      return "(%s%s): %s".formatted(String.join(", ", parameterStrings), vararg() ? ", ..." : "", returnType);
+      return "(%s%s): %s".formatted(String.join(", ", parameterStrings), vararg() ? ", ..." : "", returnTypeAnnotation);
     }
 
     @Override
@@ -574,7 +527,7 @@ public class Hir {
 
     @Override
     public Ty ty() {
-      return (this.target != null) ? this.target.valueTy() : null;
+      return (this.target != null) ? Tys.getBindingTy(this.target) : null;
     }
 
     @Override
@@ -682,7 +635,6 @@ public class Hir {
 
     Expression body;
     Ty ty;
-    Ty valueTy;
 
     public Loop(Expression body) {
       this.body = body;
@@ -778,7 +730,6 @@ public class Hir {
     Identifier allocator;
     Assignment[] fields;
     Ty ty;
-    Ty valueTy;
 
     @Override
     public String toString() {
@@ -804,7 +755,6 @@ public class Hir {
     Identifier allocator;
     Expression arguments;
     Ty ty;
-    Ty valueTy;
 
     @Override
     public String toString() {
@@ -828,7 +778,6 @@ public class Hir {
 
     Expression expression;
     Ty ty;
-    Ty valueTy;
 
     @Override
     public void visit(final HirVisitor visitor) {
@@ -848,18 +797,18 @@ public class Hir {
     @Nonnull
     Hir.Lexeme lexeme;
     @Nonnull
-    Hir.Expression valueType;
+    Hir.Expression typeAnnotation;
     boolean vararg;
-    Ty ty;
+    Ty resolvedTy;
 
     @Override
-    public Ty valueTy() {
-      return (this.valueType != null) ? valueType.ty() : null;
+    public Ty ty() {
+      return Ty.VOID;
     }
 
     @Override
     public String toString() {
-      return "%s:%s".formatted(lexeme, valueType);
+      return "%s:%s".formatted(lexeme, typeAnnotation);
     }
 
     @Override
@@ -880,7 +829,7 @@ public class Hir {
     @Nonnull
     Expression[] elements;
     Ty ty;
-    Ty valueTy;
+    Ty memberTy;
 
     @Override
     public String toString() {
@@ -926,7 +875,7 @@ public class Hir {
     Expression lower;
     Expression higher;
     Ty ty;
-    Ty valueTy;
+    Ty rangeTy;
 
 //    @Override
 //    public Ty ty() {
@@ -958,11 +907,6 @@ public class Hir {
     @Override
     public Ty ty() {
       return Ty.DEADEND;
-    }
-
-    @Override
-    public Ty helpfulTy() {
-      return this.expression.valueTy();
     }
 
     @Override
@@ -1054,16 +998,11 @@ public class Hir {
 
     TupleEntry[] children;
     Ty ty;
-    Ty valueTy;
     /// Destination layout of a fresh contextual construction; children remain in source order.
     TyStruct contextualType;
 
-    public Tuple(final TupleEntry[] children, final Ty ty, final Ty valueTy) {
-      this(children, ty, valueTy, null);
-    }
-
     public Tuple(final TupleEntry[] children, final Ty ty) {
-      this(children, ty, ty);
+      this(children, ty, null);
     }
 
     @Override
@@ -1099,11 +1038,6 @@ public class Hir {
     @Override
     public Ty ty() {
       return value.ty();
-    }
-
-    @Override
-    public Ty valueTy() {
-      return value.valueTy();
     }
 
     @Override
@@ -1170,12 +1104,11 @@ public class Hir {
 
     Lexeme lexeme;
     MutabilityKind mutabilityKind;
-    Expression valueType;
-    /// Prepared type while an inferred annotation is retained for later resolution.
-    Ty valueTy;
+    Expression typeAnnotation;
+    Ty resolvedTy;
 
-    public Dec(final Lexeme lexeme, final MutabilityKind mutabilityKind, final Expression valueType) {
-      this(lexeme, mutabilityKind, valueType, null);
+    public Dec(final Lexeme lexeme, final MutabilityKind mutabilityKind, final Expression typeAnnotation) {
+      this(lexeme, mutabilityKind, typeAnnotation, null);
     }
 
     public Ty ty() {
@@ -1183,14 +1116,8 @@ public class Hir {
     }
 
     @Override
-    public Ty valueTy() {
-      final var annotation = this.valueType == null ? null : this.valueType.ty();
-      return Tys.containsInferred(annotation) && this.valueTy != null ? this.valueTy : annotation;
-    }
-
-    @Override
     public String toString() {
-      return "%s: %s".formatted(toShortString(), valueType);
+      return "%s: %s".formatted(toShortString(), typeAnnotation);
     }
 
     public String toShortString() {

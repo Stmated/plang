@@ -13,7 +13,7 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
       (children
         (Array
           (ty (named "VOID"))
-          (valueTy (array size=1 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
+          (arrayTy (array size=1 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
           (elementType
             (TyExpr
               (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
@@ -27,7 +27,7 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
               (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
         (ArrayAccess
           (ty (named "VOID"))
-          (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+          (indexedTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
           (target
             (Identifier
               (lexeme
@@ -51,7 +51,6 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
               (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
         (Loop
           (ty null)
-          (valueTy null)
           (body
             (Block
               (ty (named "DEADEND"))
@@ -66,7 +65,6 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
           (ty (named "DEADEND")))
         (NewByBlock
           (ty (named "VOID"))
-          (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
           (target
             (Identifier
               (lexeme
@@ -88,11 +86,12 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
                 (Dec
                   (mutability CONSTANT)
                   (ty (named "VOID"))
+                  (resolvedTy null)
                   (lexeme
                     (Lexeme
                       (name "name")
                       (ty null)))
-                  (valueType
+                  (typeAnnotation
                     (TyExpr
                       (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))))
               (rhs
@@ -101,7 +100,6 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
                   (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
         (NewByCtor
           (ty null)
-          (valueTy null)
           (target
             (Identifier
               (lexeme
@@ -113,18 +111,17 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
           (arguments
             (Tuple
               (ty null)
-              (valueTy null)
+              (contextualType null)
               (children))))
         (Not
           (ty (boolean))
-          (valueTy (boolean))
           (expression
             (Literal
               (content "7")
               (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
         (Path
           (ty null)
-          (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+          (memberTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
           (elements
             (Identifier
               (lexeme
@@ -137,7 +134,7 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
               (ty null))))
         (Range
           (ty null)
-          (valueTy null)
+          (rangeTy null)
           (lower
             (Literal
               (content "7")
@@ -161,11 +158,12 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
             (Dec
               (mutability CONSTANT)
               (ty (named "VOID"))
+              (resolvedTy null)
               (lexeme
                 (Lexeme
                   (name "name")
                   (ty null)))
-              (valueType
+              (typeAnnotation
                 (TyExpr
                   (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
         (Trait
@@ -174,21 +172,21 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
             (Dec
               (mutability CONSTANT)
               (ty (named "VOID"))
+              (resolvedTy null)
               (lexeme
                 (Lexeme
                   (name "name")
                   (ty null)))
-              (valueType
+              (typeAnnotation
                 (TyExpr
                   (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
         (Tuple
           (ty null)
-          (valueTy null)
+          (contextualType null)
           (children
             (TupleEntry
               (label "name")
               (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-              (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
               (value
                 (Literal
                   (content "7")
@@ -196,7 +194,6 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
             (TupleEntry
               (label null)
               (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-              (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
               (value
                 (Literal
                   (content "7")

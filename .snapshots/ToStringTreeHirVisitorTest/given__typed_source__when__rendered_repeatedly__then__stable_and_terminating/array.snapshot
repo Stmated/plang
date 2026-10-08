@@ -17,17 +17,18 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
             (Dec
               (mutability MUTABLE)
               (ty (named "VOID"))
+              (resolvedTy (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
               (lexeme
                 (Lexeme
                   (name "a")
                   (ty null)))
-              (valueType
+              (typeAnnotation
                 (TyExpr
-                  (ty (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+                  (ty (named "INFER"))))))
           (rhs
             (Array
               (ty (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
-              (valueTy (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
+              (arrayTy (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
               (elementType
                 (TyExpr
                   (ty (named "INFER"))))
@@ -47,7 +48,7 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
           (lhs
             (ArrayAccess
               (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-              (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (indexedTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
               (target
                 (Identifier
                   (lexeme
@@ -68,7 +69,7 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
           (expression
             (ArrayAccess
               (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-              (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (indexedTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
               (target
                 (Identifier
                   (lexeme

@@ -13,6 +13,7 @@ import org.inf.ty.TyField;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyStruct;
+import org.inf.ty.TyValueArray;
 import org.inf.ty.util.Tys;
 import org.inf.util.ArrayUtils;
 
@@ -25,22 +26,51 @@ public class HirTupleContextVisitorPass {
   }
 
   private static void link(final Hir.Expression expression, final Ty type) {
-    if (!(type instanceof final TyStruct destination) || !destination.tuple()) {
-      return;
-    }
     for (final var result : FindResultExpressionsVisitor.find(expression)) {
-      if (result instanceof final Hir.Tuple tuple) {
-        final var slots = HirTupleMatching.match(tuple, destination);
-        tuple.contextualType(slots == null ? null : destination);
+      result.visit(new ContextVisitor(type));
+    }
+  }
+
+  private record ContextVisitor(Ty expected) implements HirVisitor {
+
+    @Override
+    public void visitChild(final Hir.Expression expression) {
+    }
+
+    @Override
+    public void visitTuple(final Hir.Tuple expression) {
+      if (expected instanceof final TyStruct tuple && tuple.tuple()) {
+        final var slots = HirTupleMatching.match(expression, tuple);
+        expression.contextualType(slots == null ? null : tuple);
         if (slots != null) {
-          tuple.visit(new EntryVisitor(destination, slots));
+          expression.visit(new EntryVisitor(tuple, slots));
+        }
+      }
+    }
+
+    @Override
+    public void visitArray(final Hir.Array expression) {
+      if (expected instanceof final TyValueArray array) {
+        for (final var element : expression.elements()) {
+          link(element, array.elementType());
+        }
+      }
+    }
+
+    @Override
+    public void visitFunction(final Hir.Function expression) {
+      if (expected instanceof final TyFn function) {
+        final var type = Tys.getFunctionReturnContextTy(expression.signature(), function.returnTy());
+        for (Hir.Expression result : FindResultExpressionsVisitor.findReturns(expression.body())) {
+          link(result, type);
         }
       }
     }
   }
 
   private static void linkArguments(final Hir.Call expression) {
-    if (!(expression.target().valueTy() instanceof final TyFn function)
+    final var function = Tys.getCallableSignature(expression.target());
+    if (function == null
       || ArrayUtils.none(function.parameters(), parameter -> parameter.ty() instanceof TyStruct tuple && tuple.tuple())) {
       return;
     }
@@ -88,18 +118,17 @@ public class HirTupleContextVisitorPass {
 
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
-      if (expression.lhs() instanceof Hir.Identifier
-        || expression.lhs() instanceof Hir.Dec declaration && !Tys.isInferred(declaration.valueType().ty())) {
-        link(expression.rhs(), expression.lhs().valueTy());
+      if (expression.lhs() instanceof Hir.Identifier || expression.lhs() instanceof Hir.Dec) {
+        link(expression.rhs(), Tys.getAssignmentContextTy(expression.lhs()));
       }
       HirVisitor.super.visitAssignment(expression);
     }
 
     @Override
     public void visitFunction(final Hir.Function expression) {
-      final var type = expression.signature().returnType().ty();
-      if (type instanceof TyStruct tuple && tuple.tuple()) {
-        FindResultExpressionsVisitor.findReturns(expression.body()).forEach(result -> link(result, type));
+      final var type = Tys.getFunctionReturnContextTy(expression.signature());
+      for (final var result : FindResultExpressionsVisitor.findReturns(expression.body())) {
+        link(result, type);
       }
       HirVisitor.super.visitFunction(expression);
     }

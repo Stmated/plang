@@ -20,7 +20,7 @@ class HirReturnTypeVisitorTest {
       new Hir.FunctionSignature(parameters, false, new Hir.TyExpr(result), null),
       arguments,
       false,
-      null, null
+      null
     );
   }
 
@@ -36,9 +36,8 @@ class HirReturnTypeVisitorTest {
 
     assertEquals(Ty.INTEGER, program.ty());
     assertEquals(Ty.DEADEND, ret.ty());
-    assertEquals(Ty.DEADEND, ret.valueTy());
     assertEquals(Ty.DEADEND, call.ty());
-    assertEquals(Ty.BOOLEAN, call.valueTy());
+    assertEquals(Ty.BOOLEAN, Tys.getCallableSignature(call.target()).returnTy());
   }
 
   @Test
@@ -47,18 +46,19 @@ class HirReturnTypeVisitorTest {
     final var sequence = HirTyCommonVisitorPass.pass(new Hir.Expressions(new Hir.Expression[]{call, new Hir.Return(new Hir.Literal("text", Ty.STRING))}));
 
     assertEquals(Ty.DEADEND, sequence.ty());
-    assertEquals(Ty.DEADEND, call.valueTy());
+    assertEquals(Ty.DEADEND, call.ty());
+    assertEquals(Ty.DEADEND, Tys.getCallableSignature(call.target()).returnTy());
   }
 
   @Test
   void callTargetTransferPreventsArgumentEvaluation() {
     final var signature = new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.TyExpr(Ty.BOOLEAN), null);
-    final var target = new Hir.Conditional(new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), signature, signature, null, null);
+    final var target = new Hir.Conditional(new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), signature, signature, null);
     final var call = new Hir.Call(
       target,
       new Hir.Argument[] { new Hir.Argument(null, new Hir.Return(new Hir.Literal("text", Ty.STRING))) },
       false,
-      null, null
+      null
     );
     final var ret = new Hir.Return(call);
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
@@ -66,23 +66,22 @@ class HirReturnTypeVisitorTest {
     assertEquals(Ty.INTEGER, program.ty());
     assertEquals(Ty.DEADEND, ret.ty());
     assertEquals(Ty.DEADEND, target.ty());
-    assertInstanceOf(TyFn.class, target.valueTy());
-    assertEquals(Ty.BOOLEAN, call.valueTy());
+    assertInstanceOf(TyFn.class, Tys.getCallableSignature(target));
+    assertEquals(Ty.BOOLEAN, Tys.getCallableSignature(call.target()).returnTy());
     assertEquals(Ty.DEADEND, call.ty());
   }
 
   @Test
-  void eagerBinaryKeepsNominalTypeAndStopsAtFirstTransfer() {
+  void eagerBinaryUsesCompletionTypesAndStopsAtFirstTransfer() {
     final var left = call(Ty.INTEGER, new Hir.Return(new Hir.Literal("1", Ty.INTEGER)));
     final var right = call(Ty.INTEGER, new Hir.Return(new Hir.Literal("text", Ty.STRING)));
-    final var binary = new Hir.BinaryOperation(left, Hir.BinaryOperationKind.ADD, right, null, null);
+    final var binary = new Hir.BinaryOperation(left, Hir.BinaryOperationKind.ADD, right, null);
     final var ret = new Hir.Return(binary);
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
 
     assertEquals(Ty.INTEGER, program.ty());
     assertEquals(Ty.DEADEND, ret.ty());
     assertEquals(Ty.DEADEND, binary.ty());
-    assertEquals(Ty.INTEGER, binary.valueTy());
   }
 
   @Test
@@ -99,10 +98,9 @@ class HirReturnTypeVisitorTest {
     HirTyCommonVisitorPass.pass(program);
 
     assertAll(
-      () -> assertEquals(Ty.INTEGER, program.valueTy(), "Program should be int"),
-      () -> assertEquals(Ty.DEADEND, ret.valueTy(), "Return should be bool"),
-      () -> assertEquals(Ty.DEADEND, binary.ty(), "binary ty should be dead-end"),
-      () -> assertEquals(Ty.BOOLEAN, binary.valueTy(), "binary valueTy should be bool")
+      () -> assertEquals(Ty.INTEGER, program.ty(), "Program should be int"),
+      () -> assertEquals(Ty.DEADEND, ret.ty(), "Return should be dead-end"),
+      () -> assertEquals(Ty.DEADEND, binary.ty(), "binary ty should be dead-end")
     );
   }
 
@@ -120,10 +118,10 @@ class HirReturnTypeVisitorTest {
     HirTyCommonVisitorPass.pass(program);
 
     assertAll(
-      () -> assertEquals(Ty.INTEGER, program.valueTy()),
-      () -> assertEquals(Ty.DEADEND, ret.valueTy()),
+      () -> assertEquals(Ty.INTEGER, program.ty()),
+      () -> assertEquals(Ty.DEADEND, ret.ty()),
       () -> assertEquals(Ty.DEADEND, array.ty()),
-      () -> assertEquals(Ty.INTEGER, assertInstanceOf(TyValueArray.class, array.valueTy()).elementType())
+      () -> assertEquals(Ty.INTEGER, assertInstanceOf(TyValueArray.class, array.arrayTy()).elementType())
     );
   }
 
@@ -140,19 +138,18 @@ class HirReturnTypeVisitorTest {
     assertEquals(Ty.STRING, program.ty());
     assertEquals(Ty.DEADEND, ret.ty());
     assertEquals(Ty.DEADEND, array.ty());
-    assertInstanceOf(TyValueArray.class, array.valueTy());
+    assertInstanceOf(TyValueArray.class, array.arrayTy());
   }
 
   @Test
-  void negationKeepsBooleanNominalType() {
-    final var not = new Hir.Not(new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), null, null);
+  void given__negation_of_return__when__typed__then__completion_remains_deadend() {
+    final var not = new Hir.Not(new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), null);
     final var ret = new Hir.Return(not);
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
 
     assertEquals(Ty.INTEGER, program.ty());
     assertEquals(Ty.DEADEND, ret.ty());
     assertEquals(Ty.DEADEND, not.ty());
-    assertEquals(Ty.BOOLEAN, not.valueTy());
   }
 
   @Test
@@ -165,8 +162,6 @@ class HirReturnTypeVisitorTest {
 
     assertEquals(Ty.INTEGER, program.ty());
     assertEquals(Ty.DEADEND, loop.ty());
-    assertEquals(Ty.VOID, loop.valueTy());
-    assertEquals(Ty.VOID, loop.valueTy());
   }
 
   @Test
@@ -179,8 +174,7 @@ class HirReturnTypeVisitorTest {
     HirTyCommonVisitorPass.pass(program);
 
     assertAll(
-      () -> assertEquals(Ty.INTEGER, program.valueTy(), "Program should be int"),
-      () -> assertEquals(Ty.VOID, loop.valueTy(), "Loop should be void"),
+      () -> assertEquals(Ty.INTEGER, program.ty(), "Program should be int"),
       () -> assertEquals(Ty.DEADEND, loop.ty(), "Loop ty should be dead-end")
     );
   }
@@ -192,14 +186,13 @@ class HirReturnTypeVisitorTest {
         new Hir.Literal("true", Ty.BOOLEAN),
         new Hir.LoopBreak(new Hir.Literal("1", Ty.INTEGER)),
         new Hir.LoopBreak(null),
-        null, null
+        null
       )
     );
 
     HirTyCommonVisitorPass.pass(loop);
 
-    assertEquals(Tys.union(Ty.INTEGER, Ty.VOID), loop.valueTy());
-    assertEquals(loop.ty(), loop.valueTy());
+    assertEquals(Tys.union(Ty.INTEGER, Ty.VOID), loop.ty());
   }
 
   @Test
@@ -243,27 +236,27 @@ class HirReturnTypeVisitorTest {
       new Hir.Dec(new Hir.Lexeme("x"), Hir.MutabilityKind.MUTABLE, new Hir.TyExpr(Ty.INTEGER)),
       new Hir.Return(new Hir.Literal("1", Ty.INTEGER))
     );
-    final var block = new Hir.NewByBlock(new Hir.TyExpr(layout), null, new Hir.Assignment[]{field}, null, null);
+    final var block = new Hir.NewByBlock(new Hir.TyExpr(layout), null, new Hir.Assignment[]{field}, null);
     final var ret = new Hir.Return(block);
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
 
-    assertEquals(Ty.INTEGER, program.valueTy());
-    assertEquals(Ty.DEADEND, ret.valueTy());
+    assertEquals(Ty.INTEGER, program.ty());
+    assertEquals(Ty.DEADEND, ret.ty());
     assertEquals(Ty.DEADEND, block.ty());
-    assertEquals(layout, block.valueTy());
+    assertEquals(layout, Tys.getConstructionTargetTy(block.target()));
   }
 
   @Test
   void constructorsPreserveNominalLayout() {
     final var layout = new TyStruct(new TyField[]{new TyField("x", Ty.INTEGER)});
-    final var ctor = new Hir.NewByCtor(new Hir.TyExpr(layout), null, new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), null, null);
+    final var ctor = new Hir.NewByCtor(new Hir.TyExpr(layout), null, new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), null);
     final var ret = new Hir.Return(ctor);
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
 
-    assertEquals(Ty.INTEGER, program.valueTy());
-    assertEquals(Ty.DEADEND, ret.valueTy());
+    assertEquals(Ty.INTEGER, program.ty());
+    assertEquals(Ty.DEADEND, ret.ty());
     assertEquals(Ty.DEADEND, ctor.ty());
-    assertEquals(layout, ctor.valueTy());
+    assertEquals(layout, Tys.getConstructionTargetTy(ctor.target()));
   }
 
   @Test
@@ -274,10 +267,10 @@ class HirReturnTypeVisitorTest {
     final var ret = new Hir.Return(path);
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
 
-    assertEquals(Ty.STRING, program.valueTy());
-    assertEquals(Ty.DEADEND, ret.valueTy());
+    assertEquals(Ty.STRING, program.ty());
+    assertEquals(Ty.DEADEND, ret.ty());
     assertEquals(Ty.DEADEND, path.ty());
-    assertEquals(Ty.INTEGER, path.valueTy());
+    assertEquals(Ty.INTEGER, path.memberTy());
   }
 
   @Test
@@ -288,14 +281,14 @@ class HirReturnTypeVisitorTest {
     final var ret = new Hir.Return(access);
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
 
-    assertEquals(Ty.STRING, program.valueTy());
-    assertEquals(Ty.DEADEND, ret.valueTy());
+    assertEquals(Ty.STRING, program.ty());
+    assertEquals(Ty.DEADEND, ret.ty());
     assertEquals(Ty.DEADEND, access.ty());
-    assertEquals(Ty.INTEGER, access.valueTy());
+    assertEquals(Ty.INTEGER, access.indexedTy());
   }
 
   @Test
-  void nominalTypesSurviveSequenceAndBlockWrappersWithoutBecomingReturns() {
+  void given__unreachable_tail__when__sequence_and_block_are_typed__then__completion_and_returns_ignore_the_tail() {
     final var sequence = new Hir.Expressions(new Hir.Expression[]{
       new Hir.Return(new Hir.Literal("1", Ty.INTEGER)),
       new Hir.Literal("text", Ty.STRING)
@@ -305,11 +298,10 @@ class HirReturnTypeVisitorTest {
 
     HirTyCommonVisitorPass.pass(program);
 
-    assertEquals(Ty.INTEGER, program.valueTy());
+    assertEquals(Ty.INTEGER, program.ty());
     assertEquals(Ty.DEADEND, block.ty());
-    assertEquals(Ty.STRING, block.valueTy());
     assertEquals(Ty.DEADEND, sequence.ty());
-    assertEquals(Ty.STRING, sequence.valueTy());
+    assertEquals(Ty.STRING, sequence.children()[1].ty());
   }
 
   @Test
@@ -322,13 +314,13 @@ class HirReturnTypeVisitorTest {
     final var ret = new Hir.Return(call);
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
 
-    assertEquals(Ty.BOOLEAN, program.valueTy());
-    assertEquals(Ty.DEADEND, ret.valueTy());
-    assertEquals(Ty.STRING, nested.signature().returnType().ty());
+    assertEquals(Ty.BOOLEAN, program.ty());
+    assertEquals(Ty.DEADEND, ret.ty());
+    assertEquals(Ty.STRING, nested.ty().returnTy());
   }
 
   @Test
-  void rangePreservesTypeForDeadEndWithIncompatibleBounds() {
+  void given__returning_range_bounds__when__typed__then__payloads_are_not_used_as_bounds() {
     final var rangeTy = new Hir.Range(
       new Hir.Return(new Hir.Literal("1", Ty.INTEGER)),
       new Hir.Return(new Hir.Literal("text", Ty.STRING))
@@ -340,12 +332,10 @@ class HirReturnTypeVisitorTest {
 
     assertAll(
       () -> assertEquals(Ty.INTEGER, program.ty()),
-      () -> assertEquals(Ty.INTEGER, program.valueTy()),
       () -> assertEquals(Ty.DEADEND, rangeTy.ty()),
-      () -> assertEquals(Ty.DEADEND, returnTy.valueTy(), "ret should be dead-end"),
-      () -> assertEquals(new TyValueArray(Ty.INVALID, null), rangeTy.valueTy(), "range should be invalid array"),
-      () -> assertEquals(new TyValueArray(Ty.INVALID, null), returnTy.helpfulTy(), "helpful ret should be invalid array"),
-      () -> assertEquals(new TyValueArray(Ty.INVALID, null), rangeTy.helpfulTy(), "helpful range should be invalid array")
+      () -> assertEquals(Ty.DEADEND, returnTy.ty(), "ret should be dead-end"),
+      () -> assertEquals(new TyValueArray(Ty.DEADEND, null), rangeTy.rangeTy()),
+      () -> assertEquals(rangeTy.rangeTy(), Tys.getIndexingAccessorTy(rangeTy))
     );
   }
 
@@ -358,7 +348,7 @@ class HirReturnTypeVisitorTest {
     HirTyCommonVisitorPass.pass(program);
 
     assertAll(
-      () -> assertEquals(new TyValueArray(Ty.INTEGER, null), program.valueTy()),
+      () -> assertEquals(new TyValueArray(Ty.INTEGER, null), program.ty()),
       () -> assertEquals(new TyValueArray(Ty.INTEGER, null), rangeTy.ty())
     );
   }

@@ -1,6 +1,5 @@
 package org.inf.hir.passes;
 
-import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.inf.exceptions.InvalidTypeConversionException;
@@ -16,7 +15,6 @@ import org.inf.ty.util.TypeComparison;
 import org.inf.util.ArrayUtils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Objects;
 
 @Slf4j
@@ -43,7 +41,10 @@ public class HirTyCommonVisitorPass {
     @Override
     public void visitParameter(Hir.Parameter expr) {
       HirVisitor.super.visitParameter(expr);
-      expr.ty(expr.valueType().ty());
+      final var annotation = expr.typeAnnotation().ty();
+      if (!Tys.isInferred(annotation) || expr.resolvedTy() == null) {
+        expr.resolvedTy(annotation);
+      }
     }
 
     @Override
@@ -63,12 +64,6 @@ public class HirTyCommonVisitorPass {
         expr.ty(Ty.BOOLEAN);
       } else {
         expr.ty(Objects.requireNonNullElse(Tys.getCommonDenominator(lhst, rhst).ty(), Ty.INFER));
-      }
-
-      if (expr.kind().isPredicate()) {
-        expr.valueTy(Ty.BOOLEAN);
-      } else {
-        expr.valueTy(Tys.union(expr.lhs().valueTy(), expr.rhs().valueTy()));
       }
     }
 
@@ -128,18 +123,23 @@ public class HirTyCommonVisitorPass {
         */
 
       // The element ty can still be INFER -- it will be used for late type decisions.
-      expr.valueTy(new TyValueArray(arrayElementTy, arrayLength).intern());
+      final var arrayTy = new TyValueArray(arrayElementTy, arrayLength).intern();
+      expr.arrayTy(arrayTy);
 
       if (Tys.isDeadEnd(expr.elements()) || (expr.length() != null && expr.length().ty() == Ty.DEADEND)) {
         expr.ty(Ty.DEADEND);
       } else {
-        expr.ty(expr.valueTy());
+        expr.ty(arrayTy);
       }
     }
 
     @Override
     public void visitDec(Hir.Dec expr) {
       HirVisitor.super.visitDec(expr);
+      final var annotation = expr.typeAnnotation() == null ? null : expr.typeAnnotation().ty();
+      if (!Tys.containsInferred(annotation) || expr.resolvedTy() == null) {
+        expr.resolvedTy(annotation);
+      }
     }
 
     @Override
@@ -149,18 +149,11 @@ public class HirTyCommonVisitorPass {
       if (Tys.isDeadEnd(expr.rhs(), expr.lhs())) {
         expr.ty(Ty.DEADEND);
       } else {
-        // TODO: This should likely be the RHS type, to make assignment behave more like an expression with result type
         expr.ty(Ty.VOID);
       }
 
-      expr.valueTy(expr.rhs().valueTy());
-
-      if (expr.lhs() instanceof Hir.Dec dec && Tys.containsInferred(dec.valueType().ty())) {
-        final var type = availableOnly ? expr.rhs().valueTy() : expr.rhs().ty();
-        dec.valueTy(type);
-        if (!availableOnly) {
-          dec.valueType(new Hir.TyExpr(type));
-        }
+      if (expr.lhs() instanceof Hir.Dec dec) {
+        HirDeclarationTyping.resolveBinding(dec, expr.rhs().ty(), availableOnly);
       }
     }
 
@@ -171,7 +164,6 @@ public class HirTyCommonVisitorPass {
       if (Tys.isDeadEnd(expr.rhs(), expr.target())) {
         expr.ty(Ty.DEADEND);
       } else {
-        // TODO: This should likely be the RHS type, to make assignment behave more like an expression with result type
         expr.ty(Ty.VOID);
       }
 
@@ -188,13 +180,10 @@ public class HirTyCommonVisitorPass {
       // TODO: Perhaps the loop return type should be the last expression in the loop body? Or require explicit break?
       if (Tys.isDeadEnd(expr.body())) {
         expr.ty(breakType);
-        expr.valueTy(breakType == Ty.DEADEND ? Ty.VOID : breakType);
       } else if (breakTypes.isEmpty()) {
         expr.ty(Ty.VOID);
-        expr.valueTy(expr.ty());
       } else {
         expr.ty(breakType);
-        expr.valueTy(expr.ty());
       }
     }
 
@@ -202,10 +191,6 @@ public class HirTyCommonVisitorPass {
     public void visitConditional(Hir.Conditional expr) {
       HirVisitor.super.visitConditional(expr);
 
-      expr.valueTy(Tys.union(
-        expr.pass() == null ? Ty.VOID : expr.pass().valueTy(),
-        expr.fail() == null ? Ty.VOID : expr.fail().valueTy()
-      ));
       final var predicate = expr.predicate().ty();
       if (predicate == Ty.DEADEND) {
         expr.ty(predicate);
@@ -238,37 +223,13 @@ public class HirTyCommonVisitorPass {
     @Override
     public void visitProgram(Hir.Program expr) {
       HirVisitor.super.visitProgram(expr);
-
-      final var visitor = new FindReturnTypesVisitor();
-      expr.visit(visitor);
-      final var retTy = visitor.returnType();
-      final var childTy = expr.expressions().valueTy();
-      expr.ty(Objects.requireNonNullElse(retTy, childTy));
-
-      //expr.ty(HirFlow.returnType(expr.expressions()));
+      expr.ty(HirBodyResultTyping.resolve(expr.expressions()));
     }
 
     @Override
     public void visitFunction(Hir.Function expr) {
       HirVisitor.super.visitFunction(expr);
-
-      final var signature = expr.signature();
-      if (Tys.containsInferred(signature.returnType().ty())) {
-
-        final var visitor = new FindReturnTypesVisitor();
-        expr.body().visit(visitor);
-
-        // For a program, return type is an explicit return or or the child's value type.
-        final var returnTy = Objects.requireNonNullElse(
-          visitor.returnType(),
-          expr.body().valueTy()
-        );
-
-        if (!availableOnly) {
-          signature.returnType(new Hir.TyExpr(returnTy));
-        }
-        signature.ty(HirFnTyVisitorPass.fnToTyFn(signature).toBuilder().returnTy(returnTy).build());
-      }
+      HirFunctionReturnTyping.resolve(expr);
     }
 
     @Override
@@ -284,52 +245,42 @@ public class HirTyCommonVisitorPass {
       HirVisitor.super.visitCall(expr);
 
       Ty ty;
-      if (expr.target().valueTy() instanceof TyFn fn) {
-        ty = fn.returnTy();
-      } else if (availableOnly || Tys.isInferred(expr.target().valueTy()) || expr.target().ty() == Ty.DEADEND) {
+      final var signature = Tys.getCallableSignature(expr.target());
+      if (signature != null) {
+        ty = signature.returnTy();
+      } else if (availableOnly || Tys.isInferred(expr.target().ty()) || expr.target().ty() == Ty.DEADEND) {
         ty = Ty.INFER;
       } else {
         log.error("A call is to a target that is not a function: {}", expr);
         ty = expr.target().ty();
       }
-      expr.valueTy(ty);
-
       if (expr.target().ty() == Ty.DEADEND || ArrayUtils.any(expr.arguments(), it -> it.ty() == Ty.DEADEND)) {
         expr.ty(Ty.DEADEND);
       } else {
-        expr.ty(expr.valueTy());
+        expr.ty(ty);
       }
     }
-
-    //    @Override
-    //    public void visitReturn(Hir.Return expr) {
-    //      HirVisitor.super.visitReturn(expr);
-    //      expr.ty(Ty.DEADEND);
-    //    }
 
     @Override
     public void visitArrayAccess(Hir.ArrayAccess expr) {
       HirVisitor.super.visitArrayAccess(expr);
 
-      final var accessorTy = expr.accessor().valueTy();
-      final var targetTy = expr.target().valueTy();
+      final var accessorTy = Tys.getIndexingAccessorTy(expr.accessor());
+      final var targetTy = Tys.getIndexingReceiverTy(expr.target());
 
       if (availableOnly && Tys.isInferred(targetTy)) {
-        expr.valueTy(Ty.INFER);
+        expr.indexedTy(Ty.INFER);
         expr.ty(Tys.isDeadEnd(expr.target(), expr.accessor()) ? Ty.DEADEND : Ty.INFER);
         return;
       }
 
       if ((Tys.isInferred(targetTy) || targetTy == Ty.DEADEND) && expr.target().ty() == Ty.DEADEND) {
-        expr.valueTy(Ty.INFER);
+        expr.indexedTy(Ty.INFER);
         expr.ty(Ty.DEADEND);
         return;
       }
 
-      final var isRange = switch (accessorTy) {
-        case TyValueArray _ -> true;
-        default -> false;
-      };
+      final var isRange = accessorTy instanceof TyValueArray;
 
       final var ty = switch (targetTy) {
         // The below should not return array type if is range, it should return a slice, which is different.
@@ -343,7 +294,7 @@ public class HirTyCommonVisitorPass {
           }
           yield index == null ? Ty.INFER : tuple.fields()[index].ty();
         }
-        default -> {
+        case null, default -> {
           if (!availableOnly) {
             throw new UnexpectedExpressionException(expr.target());
           }
@@ -351,14 +302,13 @@ public class HirTyCommonVisitorPass {
         }
       };
 
-      expr.valueTy(ty);
+      expr.indexedTy(ty);
       expr.ty(Tys.isDeadEnd(expr.target(), expr.accessor()) ? Ty.DEADEND : ty);
     }
 
     @Override
     public void visitNot(Hir.Not expr) {
       HirVisitor.super.visitNot(expr);
-      expr.valueTy(Ty.BOOLEAN);
       expr.ty(expr.expression().ty() == Ty.DEADEND ? Ty.DEADEND : Ty.BOOLEAN);
     }
 
@@ -366,17 +316,16 @@ public class HirTyCommonVisitorPass {
     public void visitRange(Hir.Range expr) {
       HirVisitor.super.visitRange(expr);
 
+      // Transfer payloads are not range bounds, but the resolved range still identifies a slice.
+      final var common = Tys.getCommonDenominator(expr.lower().ty(), expr.higher().ty());
+      final var commonTy = Objects.requireNonNullElse(common.ty(), Ty.INVALID);
+      final var rangeTy = new TyValueArray(commonTy, null);
+      expr.rangeTy(rangeTy);
       if (Tys.isDeadEnd(expr.lower(), expr.higher())) {
         expr.ty(Ty.DEADEND);
       } else {
-        final var common = Tys.getCommonDenominator(expr.lower().ty(), expr.higher().ty());
-        final var commonTy = Objects.requireNonNullElse(common.ty(), Ty.INVALID);
-        expr.ty(new TyValueArray(commonTy, null));
+        expr.ty(rangeTy);
       }
-
-      final var valueCommon = Tys.getCommonDenominator(expr.lower().helpfulTy(), expr.higher().helpfulTy());
-      final var valueCommonTy = Objects.requireNonNullElse(valueCommon.ty(), Ty.INVALID);
-      expr.valueTy(new TyValueArray(valueCommonTy, null));
     }
 
     @Override
@@ -388,7 +337,7 @@ public class HirTyCommonVisitorPass {
       for (final var decl : expr.declarations()) {
 
         final var name = decl.lexeme().name();
-        final var ty = Objects.requireNonNull(decl.valueType().ty()); // investigate_type_expression(decl.valueType());
+        final var ty = Objects.requireNonNull(decl.resolvedTy());
 
         fields.add(new TyField(name, ty));
       }
@@ -400,22 +349,23 @@ public class HirTyCommonVisitorPass {
     @Override
     public void visitNewByCtor(Hir.NewByCtor expr) {
       HirVisitor.super.visitNewByCtor(expr);
-      expr.valueTy(expr.target().valueTy());
+      final Ty type = Objects.requireNonNullElse(Tys.getConstructionTargetTy(expr.target()), Ty.INFER);
       expr.ty(expr.target().ty() == Ty.DEADEND || (expr.arguments() != null && expr.arguments().ty() == Ty.DEADEND)
-        ? Ty.DEADEND : expr.valueTy());
+        ? Ty.DEADEND : type);
     }
 
     @Override
     public void visitNewByBlock(Hir.NewByBlock expr) {
       HirVisitor.super.visitNewByBlock(expr);
-      expr.valueTy(expr.target().valueTy());
-      expr.ty(expr.target().ty() == Ty.DEADEND || Tys.isDeadEnd(expr.fields()) ? Ty.DEADEND : expr.valueTy());
+      final Ty type = Objects.requireNonNullElse(Tys.getConstructionTargetTy(expr.target()), Ty.INFER);
+      expr.ty(expr.target().ty() == Ty.DEADEND || Tys.isDeadEnd(expr.fields()) ? Ty.DEADEND : type);
     }
 
     @Override
     public void visitPath(Hir.Path expr) {
 
       if (expr.elements() == null || expr.elements().length == 0) {
+        expr.memberTy(Ty.INVALID);
         expr.ty(Ty.INVALID);
         return;
       }
@@ -423,16 +373,17 @@ public class HirTyCommonVisitorPass {
       final var elements = expr.elements();
 
       visitChild(elements[0]);
-      var pointer = elements[0].valueTy();
+      final var receiver = Tys.getMemberReceiverTy(elements[0]);
+      Ty pointer = receiver == null ? elements[0].ty() : receiver;
 
       if (availableOnly && Tys.isInferred(pointer)) {
-        expr.valueTy(Ty.INFER);
+        expr.memberTy(Ty.INFER);
         expr.ty(elements[0].ty() == Ty.DEADEND ? Ty.DEADEND : Ty.INFER);
         return;
       }
 
       if ((Tys.isInferred(pointer) || pointer == Ty.DEADEND) && elements[0].ty() == Ty.DEADEND) {
-        expr.valueTy(Ty.INFER);
+        expr.memberTy(Ty.INFER);
         expr.ty(Ty.DEADEND);
         return;
       }
@@ -441,7 +392,7 @@ public class HirTyCommonVisitorPass {
 
         final var current = elements[i];
         if (availableOnly && Tys.isInferred(pointer)) {
-          expr.valueTy(Ty.INFER);
+          expr.memberTy(Ty.INFER);
           expr.ty(elements[0].ty() == Ty.DEADEND ? Ty.DEADEND : Ty.INFER);
           return;
         }
@@ -452,14 +403,11 @@ public class HirTyCommonVisitorPass {
             switch (pointer) {
               case TyStruct struct -> {
 
-                final var field = Arrays.stream(struct.fields())
-                  .filter(f -> lexeme.name().equals(f.name()))
-                  .findFirst();
-
-                if (field.isEmpty() && !availableOnly) {
-                  throw new IllegalArgumentException("Unknown field: " + lexeme.name());
+                final var fieldTy = Tys.getStructFieldTy(struct, lexeme.name());
+                if (fieldTy == null && !availableOnly) {
+                  throw new IllegalArgumentException("Unknown field: %s".formatted(lexeme.name()));
                 }
-                pointer = field.map(TyField::ty).orElse(Ty.INFER);
+                pointer = Objects.requireNonNullElse(fieldTy, Ty.INFER);
                 lexeme.ty(pointer);
               }
               default -> {
@@ -482,7 +430,6 @@ public class HirTyCommonVisitorPass {
             };
 
             HirVisitor.super.visitCall(call);
-            call.valueTy(pointer);
             call.ty(ArrayUtils.any(call.arguments(), it -> it.ty() == Ty.DEADEND)
               || call.target().ty() == Ty.DEADEND ? Ty.DEADEND : pointer);
           }
@@ -490,7 +437,7 @@ public class HirTyCommonVisitorPass {
         }
       }
 
-      expr.valueTy(pointer);
+      expr.memberTy(pointer);
       expr.ty(Tys.isDeadEnd(elements) ? Ty.DEADEND : pointer);
     }
   }

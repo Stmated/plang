@@ -17,11 +17,12 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
             (Dec
               (mutability IMMUTABLE)
               (ty (named "VOID"))
+              (resolvedTy null)
               (lexeme
                 (Lexeme
                   (name "f")
                   (ty null)))
-              (valueType
+              (typeAnnotation
                 (TyExpr
                   (ty (named "INFER"))))))
           (rhs
@@ -33,12 +34,13 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                   (parameters
                     (Parameter
                       (vararg false)
-                      (ty null)
+                      (ty (named "VOID"))
+                      (resolvedTy null)
                       (lexeme
                         (Lexeme
                           (name "x")
                           (ty null)))
-                      (valueType
+                      (typeAnnotation
                         (Identifier
                           (lexeme
                             (Lexeme
@@ -55,7 +57,6 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                     (BinaryOperation
                       (kind ADD)
                       (ty null)
-                      (valueTy null)
                       (lhs
                         (Identifier
                           (lexeme
@@ -73,7 +74,6 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
             (Call
               (partial false)
               (ty null)
-              (valueTy null)
               (target
                 (Identifier
                   (lexeme
@@ -85,7 +85,6 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                 (Argument
                   (label null)
                   (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-                  (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
                   (value
                     (Literal
                       (content "2")

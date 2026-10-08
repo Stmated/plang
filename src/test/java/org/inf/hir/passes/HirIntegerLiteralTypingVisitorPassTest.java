@@ -5,6 +5,7 @@ import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
+import org.inf.ty.TyValueArray;
 import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
 import org.inf.ty.util.TypeComparison;
@@ -17,6 +18,78 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.ArrayList;
 
 class HirIntegerLiteralTypingVisitorPassTest {
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "read(...({ return true; args; }), n = 17)",
+    "read(...(make({ return true; })), n = 17)",
+    "read(...({ return true; },), n = 17)"
+  })
+  void given__noncontinuing_spread__when__other_literals_are_typed__then__named_binding_retains_integer_context(
+    final String call
+  ) {
+    final var root = Inf.codeToThir("""
+      val args = (x = 1u8,);
+      val make = (flag: bool): (x: uint8,) => args;
+      val read = (x: uint8, n: uint8) => n;
+      val use = () => %s;
+      use()
+      """.formatted(call)).root();
+    final var values = literals(root).stream().filter(literal -> literal.content().equals("17")).toList();
+    Assertions.assertEquals(1, values.size());
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(Tys.fromString("uint8", new MachineTarget(64)), values.getFirst().ty()),
+      () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "new heap S { n = 17; t = (18, true); flag = { return true; }; }",
+    "new heap ({ return true; S; }) { n = 17; t = (18, true); flag = false; }",
+    "new heap (if ({ return true; }) then S else S) { n = 17; t = (18, true); flag = false; }",
+    "({ return true; s; }).n = 17",
+    "({ return true; s; }).t = (18, true)"
+  })
+  void given__noncontinuing_construction_or_member__when__literals_are_typed__then__resolved_fields_supply_context(
+    final String expression
+  ) {
+    final var root = Inf.codeToThir("""
+      val S = struct { val n: uint8; val t: (uint8, bool); val flag: bool; };
+      val s = new heap S { n = 1; t = (2, false); flag = false; };
+      val use = () => { %s; };
+      use()
+      """.formatted(expression)).root();
+    final var values = literals(root).stream().filter(literal -> literal.content().matches("17|18")).toList();
+    final var uint8 = Tys.fromString("uint8", new MachineTarget(64));
+    Assertions.assertAll(
+      () -> Assertions.assertFalse(values.isEmpty()),
+      () -> Assertions.assertTrue(values.stream().allMatch(literal -> literal.ty().equals(uint8))),
+      () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val n = [256]; n",
+    "val n: [;1] = [256]; n"
+  })
+  void given__inferred_declaration__when__literals_are_contextualized__then__previous_binding_is_not_an_initializer_constraint(
+    final String code
+  ) {
+    final var root = Inf.codeToHir(code);
+    HirTyCommonVisitorPass.resolveAvailableTypes(root);
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitDec(final Hir.Dec declaration) {
+        declaration.resolvedTy(new TyValueArray(Tys.fromString("uint8", new MachineTarget(64)), 1));
+      }
+    });
+    Assertions.assertDoesNotThrow(() -> HirIntegerLiteralTypingVisitorPass.pass(root));
+    final var values = literals(root).stream().filter(literal -> literal.content().equals("256")).toList();
+    Assertions.assertEquals(1, values.size());
+    Assertions.assertEquals(Ty.INTEGER, values.getFirst().ty());
+  }
 
   @ParameterizedTest
   @ValueSource(strings = {

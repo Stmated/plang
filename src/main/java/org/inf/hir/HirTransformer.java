@@ -88,7 +88,7 @@ public interface HirTransformer {
   default Hir.Expression transformAssignment(final Hir.Assignment expr) {
     final var lhs = transformAssignmentLhs(expr.lhs());
     final var rhs = transformAssignmentRhs(expr.rhs());
-    return new Hir.Assignment(lhs, rhs, expr.ty(), expr.valueTy());
+    return new Hir.Assignment(lhs, rhs, expr.ty());
   }
 
   default Hir.Expression transformAssignmentLhs(final Hir.Expression expr) {
@@ -132,7 +132,7 @@ public interface HirTransformer {
 
   default Hir.Expression transformFunctionSignature(final Hir.FunctionSignature expr) {
     expr.parameters(transformFunctionSignatureParameters(expr.parameters()));
-    expr.returnType(transformFunctionSignatureReturnType(expr.returnType()));
+    expr.returnTypeAnnotation(transformFunctionSignatureReturnType(expr.returnTypeAnnotation()));
 
     return expr;
   }
@@ -229,7 +229,7 @@ public interface HirTransformer {
 
   default Hir.Expression transformParameter(final Hir.Parameter expr) {
     expr.lexeme(transformParameterName(expr.lexeme()));
-    expr.valueType(transformParameterType(expr.valueType()));
+    expr.typeAnnotation(transformParameterType(expr.typeAnnotation()));
     return expr;
   }
 
@@ -293,7 +293,7 @@ public interface HirTransformer {
 
   default Hir.Expression transformDec(final Hir.Dec expr) {
     expr.lexeme(transformDecName(expr.lexeme));
-    expr.valueType(transformDecType(expr.valueType()));
+    expr.typeAnnotation(transformDecType(expr.typeAnnotation()));
     return expr;
   }
 

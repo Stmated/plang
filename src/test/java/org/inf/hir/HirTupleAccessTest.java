@@ -6,6 +6,7 @@ import org.inf.ty.TyField;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.TypeComparison;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.Arguments;
@@ -15,6 +16,16 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.stream.Stream;
 
 class HirTupleAccessTest {
+
+  @Test
+  void given__integer_literal__when__tuple_index_is_resolved__then__its_direct_type_is_used() {
+    final var tuple = new TyStruct(new TyField[]{new TyField(null, Ty.BOOLEAN)}, true);
+    final var literal = new Hir.Literal("0x0", Ty.INTEGER.toBuilder().radix((byte) 16).build());
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(0, HirTupleAccess.availableIndex(tuple, literal)),
+      () -> Assertions.assertEquals(0, HirTupleAccess.index(tuple, literal))
+    );
+  }
 
   @ParameterizedTest
   @ValueSource(strings = {
@@ -69,7 +80,12 @@ class HirTupleAccessTest {
     "(10, true)[0 + 1] | Computed tuple indices are not supported",
     "(10, true)[{ 0 }] | Computed tuple indices are not supported",
     "val index = () => 0; (10, true)[index()] | Computed tuple indices are not supported",
-    "val f = () => (1, { return true; }, (10,)[1]); f() | Tuple index out of range"
+    "val f = () => (1, { return true; }, (10,)[1]); f() | Tuple index out of range",
+    "val f = () => ({ return true; (10,); })[1]; f() | Tuple index out of range",
+    "val f = () => ({ return true; (10,); })[-1]; f() | Tuple index must not be negative",
+    "val f = () => ({ return true; (10,); })[true]; f() | Tuple index must be an integer literal",
+    "val f = () => (10,)[{ return true; }]; f() | Tuple index must be an integer literal",
+    "val make = (flag: bool) => (10,); val f = () => (make({ return true; }))[1]; f() | Tuple index out of range"
   })
   void given__invalid_tuple_index__when__typed__then__explicit_diagnostic(String code, String diagnostic) {
     final var error = Assertions.assertThrows(IllegalArgumentException.class, () -> Inf.codeToThir(code));

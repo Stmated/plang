@@ -23,22 +23,26 @@ public final class TupleTypes {
   }
 
   public static void requireElementType(Ty ty) {
-    if (!isElementType(ty)) {
+    requireElementType(ty, false);
+  }
+
+  public static void requireElementType(final Ty ty, final boolean allowInferred) {
+    if (!isElementType(ty, allowInferred)) {
       throw new IllegalArgumentException("Invalid tuple element type: " + ty);
     }
   }
 
-  private static boolean isElementType(Ty ty) {
+  private static boolean isElementType(final Ty ty, final boolean allowInferred) {
     return switch (ty) {
       case TyValueNumber number -> number.width().value() > 0;
       case TyValueBoolean _, TyValueString _ -> true;
-      case TyStruct struct -> Arrays.stream(struct.fields()).allMatch(field -> isElementType(field.ty()));
-      case TyValueArray array -> isElementType(array.elementType()) && (array.size() == null || array.size() >= 0);
-      case TyPointer<?> pointer -> pointer.inner() instanceof TyOpaque || isElementType(pointer.inner());
-      case TyUnion union -> Arrays.stream(union.types()).allMatch(type -> type == Ty.VOID || isElementType(type));
-      case TyFn fn -> (fn.returnTy() == Ty.VOID || fn.returnTy() == Ty.DEADEND || isElementType(fn.returnTy()))
-        && Arrays.stream(fn.parameters()).allMatch(parameter -> isElementType(parameter.ty()));
-      case null, default -> false;
+      case TyStruct struct -> Arrays.stream(struct.fields()).allMatch(field -> isElementType(field.ty(), allowInferred));
+      case TyValueArray array -> isElementType(array.elementType(), allowInferred) && (array.size() == null || array.size() >= 0);
+      case TyPointer<?> pointer -> pointer.inner() instanceof TyOpaque || isElementType(pointer.inner(), allowInferred);
+      case TyUnion union -> Arrays.stream(union.types()).allMatch(type -> type == Ty.VOID || isElementType(type, allowInferred));
+      case TyFn fn -> (fn.returnTy() == Ty.VOID || fn.returnTy() == Ty.DEADEND || isElementType(fn.returnTy(), allowInferred))
+        && Arrays.stream(fn.parameters()).allMatch(parameter -> isElementType(parameter.ty(), allowInferred));
+      case null, default -> allowInferred && Tys.isInferred(ty);
     };
   }
 }

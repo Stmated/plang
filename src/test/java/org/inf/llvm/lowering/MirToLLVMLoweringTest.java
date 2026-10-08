@@ -170,7 +170,7 @@ class MirToLLVMLoweringTest {
           new Literal("1", Ty.INTEGER),
           BinaryOperationKind.ADD,
           new Literal("2", Ty.INTEGER),
-          null, null
+          null
         )
       )
     }));

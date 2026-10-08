@@ -77,7 +77,7 @@ class HirDeadEndTest {
     final var assignment = new Hir.Assignment(arrayAccess(new Hir.Return(integer())), integer());
     HirTyCommonVisitorPass.pass(assignment);
     assertEquals(Ty.DEADEND, assignment.ty());
-    assertEquals(Ty.INTEGER, assignment.lhs().valueTy());
+    assertEquals(Ty.INTEGER, Tys.getIndexedTy(assertInstanceOf(Hir.ArrayAccess.class, assignment.lhs())));
   }
 
   @Test
@@ -91,8 +91,7 @@ class HirDeadEndTest {
 
     assertAll(
       () -> assertEquals(Ty.DEADEND, compound.ty()),
-      () -> assertEquals(Ty.INTEGER, compound.target().valueTy()),
-      () -> assertEquals(Ty.DEADEND, compound.valueTy())
+      () -> assertEquals(Ty.INTEGER, Tys.getIndexedTy(assertInstanceOf(Hir.ArrayAccess.class, compound.target())))
     );
   }
 
@@ -100,34 +99,34 @@ class HirDeadEndTest {
   void returningArmDoesNotContributeToConditionalValue() {
     Hir.Expression pass = new Hir.Return(string());
     Hir.Expression fail = integer();
-    final var branch = new Hir.Conditional(literal_true(), pass, fail, null, null);
+    final var branch = new Hir.Conditional(literal_true(), pass, fail, null);
     final var fn = function(new Hir.Return(branch));
 
     HirTyCommonVisitorPass.pass(fn);
 
     assertEquals(Ty.INTEGER, branch.ty());
-    assertEquals(Tys.union(Ty.STRING, Ty.INTEGER), fn.signature().returnType().ty());
+    assertEquals(Tys.union(Ty.STRING, Ty.INTEGER), fn.ty().returnTy());
   }
 
   @Test
   void twoReturningArmsHaveNoContinuingValueButRetainReturnOperands() {
     Hir.Expression pass = new Hir.Return(integer());
     Hir.Expression fail = new Hir.Return(string());
-    final var branch = new Hir.Conditional(literal_true(), pass, fail, null, null);
+    final var branch = new Hir.Conditional(literal_true(), pass, fail, null);
     final var fn = function(new Hir.Return(branch));
 
     HirTyCommonVisitorPass.pass(fn);
 
     assertEquals(Ty.DEADEND, branch.ty());
-    assertEquals(Tys.union(Ty.INTEGER, Ty.STRING), fn.signature().returnType().ty());
+    assertEquals(Tys.union(Ty.INTEGER, Ty.STRING), fn.ty().returnTy());
   }
 
   @Test
   void missingElseAddsVoidOnlyToContinuingValue() {
     Hir.Expression pass1 = integer();
-    final var valueBranch = new Hir.Conditional(literal_true(), pass1, null, null, null);
+    final var valueBranch = new Hir.Conditional(literal_true(), pass1, null, null);
     Hir.Expression pass = new Hir.Return(integer());
-    final var returningBranch = new Hir.Conditional(literal_true(), pass, null, null, null);
+    final var returningBranch = new Hir.Conditional(literal_true(), pass, null, null);
 
     HirTyCommonVisitorPass.pass(valueBranch);
     HirTyCommonVisitorPass.pass(returningBranch);
@@ -140,10 +139,10 @@ class HirDeadEndTest {
   void loopTransfersDoNotContributeValuesToConditionalMerge() {
     Hir.Expression pass1 = new Hir.LoopBreak(integer());
     Hir.Expression fail1 = string();
-    final var breaking = new Hir.Conditional(literal_true(), pass1, fail1, null, null);
+    final var breaking = new Hir.Conditional(literal_true(), pass1, fail1, null);
     Hir.Expression pass = new Hir.LoopContinue();
     Hir.Expression fail = integer();
-    final var continuing = new Hir.Conditional(literal_true(), pass, fail, null, null);
+    final var continuing = new Hir.Conditional(literal_true(), pass, fail, null);
 
     HirTyCommonVisitorPass.pass(breaking);
     HirTyCommonVisitorPass.pass(continuing);
@@ -169,7 +168,7 @@ class HirDeadEndTest {
 
   @Test
   void returningConditionalArmDoesNotMakeSequenceDeadEnd() {
-    final var branch = new Hir.Conditional(literal_true(), new Hir.Return(integer()), integer(), null, null);
+    final var branch = new Hir.Conditional(literal_true(), new Hir.Return(integer()), integer(), null);
     final var after = string();
     final var sequence = new Hir.Expressions(new Hir.Expression[]{branch, after});
 
@@ -189,7 +188,7 @@ class HirDeadEndTest {
 
     HirTyCommonVisitorPass.pass(fn);
 
-    assertEquals(Ty.INTEGER, fn.signature().returnType().ty());
+    assertEquals(Ty.INTEGER, fn.ty().returnTy());
     assertEquals(Ty.DEADEND, fn.body().ty());
   }
 
@@ -203,8 +202,8 @@ class HirDeadEndTest {
 
     HirTyCommonVisitorPass.pass(outer);
 
-    assertEquals(Ty.STRING, nested.signature().returnType().ty());
-    assertEquals(Ty.INTEGER, outer.signature().returnType().ty());
+    assertEquals(Ty.STRING, nested.ty().returnTy());
+    assertEquals(Ty.INTEGER, outer.ty().returnTy());
   }
 
   @Test
@@ -217,15 +216,15 @@ class HirDeadEndTest {
     final var fn = function(new Hir.Expressions(new Hir.Expression[]{
       new Hir.Assignment(
         declaration,
-        new Hir.Conditional(literal_true(), new Hir.Return(string()), integer(), null, null)
+        new Hir.Conditional(literal_true(), new Hir.Return(string()), integer(), null)
       ),
       new Hir.Return(new Hir.Identifier(declaration.lexeme(), declaration))
     }));
 
     HirTyCommonVisitorPass.pass(fn);
 
-    assertEquals(Ty.INTEGER, declaration.valueTy());
-    assertEquals(Tys.union(Ty.STRING, Ty.INTEGER), fn.signature().returnType().ty());
+    assertEquals(Ty.INTEGER, declaration.resolvedTy());
+    assertEquals(Tys.union(Ty.STRING, Ty.INTEGER), fn.ty().returnTy());
   }
 
   @Test
@@ -251,14 +250,14 @@ class HirDeadEndTest {
       new Hir.Return(integer()),
       new Hir.Return(string()),
       new Hir.Return(literal_true()),
-      null, null
+      null
     );
     final var fn = function(branch);
 
     HirTyCommonVisitorPass.pass(fn);
 
     assertEquals(Ty.DEADEND, branch.ty());
-    assertEquals(Ty.INTEGER, fn.signature().returnType().ty());
+    assertEquals(Ty.INTEGER, fn.ty().returnTy());
   }
 
   @Test
@@ -267,7 +266,6 @@ class HirDeadEndTest {
       literal_true(),
       Hir.BinaryOperationKind.AND,
       new Hir.Return(integer()),
-      null,
       null
     );
     final var fn = function(new Hir.Return(logical));
@@ -275,7 +273,7 @@ class HirDeadEndTest {
     HirTyCommonVisitorPass.pass(fn);
 
     assertEquals(Ty.BOOLEAN, logical.ty());
-    assertEquals(Tys.union(Ty.INTEGER, Ty.BOOLEAN), fn.signature().returnType().ty());
+    assertEquals(Tys.union(Ty.INTEGER, Ty.BOOLEAN), fn.ty().returnTy());
   }
 
   @Test
@@ -294,7 +292,6 @@ class HirDeadEndTest {
     HirTyCommonVisitorPass.pass(root);
 
     assertEquals(Ty.INTEGER, root.ty());
-    assertEquals(Ty.INTEGER, root.valueTy());
   }
 
   @Test
@@ -304,7 +301,6 @@ class HirDeadEndTest {
     HirTyCommonVisitorPass.pass(root);
 
     assertEquals(Tys.union(Ty.INTEGER, Ty.VOID), root.ty());
-    assertEquals(root.ty(), root.valueTy());
   }
 
   @Test

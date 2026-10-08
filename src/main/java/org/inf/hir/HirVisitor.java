@@ -91,8 +91,8 @@ public interface HirVisitor {
       visitChild(parameter);
     }
 
-    if (expr.returnType() != null) {
-      visitFunctionSignatureReturnType(expr.returnType());
+    if (expr.returnTypeAnnotation() != null) {
+      visitFunctionSignatureReturnType(expr.returnTypeAnnotation());
     }
   }
 
@@ -160,7 +160,7 @@ public interface HirVisitor {
 
   default void visitParameter(Hir.Parameter expr) {
     visitParameterName(expr.lexeme());
-    visitParameterType(expr.valueType());
+    visitParameterType(expr.typeAnnotation());
   }
 
   default void visitParameterName(Hir.Lexeme expr) {
@@ -226,7 +226,7 @@ public interface HirVisitor {
 
   default void visitDec(Hir.Dec expr) {
     visitDecName(expr.lexeme());
-    visitDecType(expr.valueType());
+    visitDecType(expr.typeAnnotation());
   }
 
   default void visitDecName(Hir.Expression expr) {

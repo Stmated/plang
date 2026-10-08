@@ -55,14 +55,14 @@ public final class ToStringTreeHirVisitor {
 
     @Override
     public void visitArray(final Hir.Array expr) {
-      result = node("Array", type("ty", expr.ty()), type("valueTy", expr.valueTy()),
+      result = node("Array", type("ty", expr.ty()), type("arrayTy", expr.arrayTy()),
         child("elementType", expr.elementType()), child("length", expr.length()),
         children("elements", expr.elements()));
     }
 
     @Override
     public void visitArrayAccess(final Hir.ArrayAccess expr) {
-      result = node("ArrayAccess", type("ty", expr.ty()), type("valueTy", expr.valueTy()),
+      result = node("ArrayAccess", type("ty", expr.ty()), type("indexedTy", expr.indexedTy()),
         child("target", expr.target()), child("accessor", expr.accessor()));
     }
 
@@ -74,7 +74,7 @@ public final class ToStringTreeHirVisitor {
     @Override
     public void visitBinaryOperation(final Hir.BinaryOperation expr) {
       result = node("BinaryOperation", atom("kind", expr.kind()), type("ty", expr.ty()),
-        type("valueTy", expr.valueTy()), child("lhs", expr.lhs()), child("rhs", expr.rhs()));
+        child("lhs", expr.lhs()), child("rhs", expr.rhs()));
     }
 
     @Override
@@ -96,7 +96,7 @@ public final class ToStringTreeHirVisitor {
 
     @Override
     public void visitConditional(final Hir.Conditional expr) {
-      result = node("Conditional", type("ty", expr.ty()), type("valueTy", expr.valueTy()),
+      result = node("Conditional", type("ty", expr.ty()),
         child("predicate", expr.predicate()), child("pass", expr.pass()), child("fail", expr.fail()));
     }
 
@@ -108,12 +108,12 @@ public final class ToStringTreeHirVisitor {
     @Override
     public void visitFunctionSignature(final Hir.FunctionSignature expr) {
       result = node("FunctionSignature", atom("vararg", expr.vararg()), type("ty", expr.ty()),
-        children("parameters", expr.parameters()), child("returnType", expr.returnType()));
+        children("parameters", expr.parameters()), child("returnType", expr.returnTypeAnnotation()));
     }
 
     @Override
     public void visitIdentifier(final Hir.Identifier expr) {
-      // Even ty() follows target.valueTy(), which can recurse through unresolved declaration cycles.
+      // Type queries can follow unresolved identifier targets recursively.
       result = node("Identifier", child("lexeme", expr.lexeme()),
         atom("target", expr.target() == null ? "null" : "(reference " + quote(expr.lexeme().name()) + ")"));
     }
@@ -130,7 +130,7 @@ public final class ToStringTreeHirVisitor {
 
     @Override
     public void visitLoop(final Hir.Loop expr) {
-      result = node("Loop", type("ty", expr.ty()), type("valueTy", expr.valueTy()), child("body", expr.body()));
+      result = node("Loop", type("ty", expr.ty()), child("body", expr.body()));
     }
 
     @Override
@@ -145,35 +145,35 @@ public final class ToStringTreeHirVisitor {
 
     @Override
     public void visitNewByBlock(final Hir.NewByBlock expr) {
-      result = node("NewByBlock", type("ty", expr.ty()), type("valueTy", expr.valueTy()),
+      result = node("NewByBlock", type("ty", expr.ty()),
         child("target", expr.target()), child("allocator", expr.allocator()), children("fields", expr.fields()));
     }
 
     @Override
     public void visitNewByCtor(final Hir.NewByCtor expr) {
-      result = node("NewByCtor", type("ty", expr.ty()), type("valueTy", expr.valueTy()),
+      result = node("NewByCtor", type("ty", expr.ty()),
         child("target", expr.target()), child("allocator", expr.allocator()), child("arguments", expr.arguments()));
     }
 
     @Override
     public void visitNot(final Hir.Not expr) {
-      result = node("Not", type("ty", expr.ty()), type("valueTy", expr.valueTy()), child("expression", expr.expression()));
+      result = node("Not", type("ty", expr.ty()), child("expression", expr.expression()));
     }
 
     @Override
     public void visitParameter(final Hir.Parameter expr) {
       result = node("Parameter", atom("vararg", expr.vararg()), type("ty", expr.ty()),
-        child("lexeme", expr.lexeme()), child("valueType", expr.valueType()));
+        type("resolvedTy", expr.resolvedTy()), child("lexeme", expr.lexeme()), child("typeAnnotation", expr.typeAnnotation()));
     }
 
     @Override
     public void visitPath(final Hir.Path expr) {
-      result = node("Path", type("ty", expr.ty()), type("valueTy", expr.valueTy()), children("elements", expr.elements()));
+      result = node("Path", type("ty", expr.ty()), type("memberTy", expr.memberTy()), children("elements", expr.elements()));
     }
 
     @Override
     public void visitRange(final Hir.Range expr) {
-      result = node("Range", type("ty", expr.ty()), type("valueTy", expr.valueTy()),
+      result = node("Range", type("ty", expr.ty()), type("rangeTy", expr.rangeTy()),
         child("lower", expr.lower()), child("higher", expr.higher()));
     }
 
@@ -204,13 +204,14 @@ public final class ToStringTreeHirVisitor {
 
     @Override
     public void visitTuple(final Hir.Tuple expr) {
-      result = node("Tuple", type("ty", expr.ty()), type("valueTy", expr.valueTy()), children("children", expr.children()));
+      result = node("Tuple", type("ty", expr.ty()), type("contextualType", expr.contextualType()),
+        children("children", expr.children()));
     }
 
     @Override
     public void visitTupleEntry(final Hir.TupleEntry expr) {
       result = node("TupleEntry", atom("label", expr.label() == null ? "null" : quote(expr.label().name())),
-        type("ty", expr.ty()), type("valueTy", expr.valueTy()), child("value", expr.value()));
+        type("ty", expr.ty()), child("value", expr.value()));
     }
 
     @Override
@@ -221,19 +222,19 @@ public final class ToStringTreeHirVisitor {
     @Override
     public void visitDec(final Hir.Dec expr) {
       result = node("Dec", atom("mutability", expr.mutabilityKind()), type("ty", expr.ty()),
-        child("lexeme", expr.lexeme()), child("valueType", expr.valueType()));
+        type("resolvedTy", expr.resolvedTy()), child("lexeme", expr.lexeme()), child("typeAnnotation", expr.typeAnnotation()));
     }
 
     @Override
     public void visitCall(final Hir.Call expr) {
       result = node("Call", atom("partial", expr.partial()), type("ty", expr.ty()),
-        type("valueTy", expr.valueTy()), child("target", expr.target()), children("arguments", expr.arguments()));
+        child("target", expr.target()), children("arguments", expr.arguments()));
     }
 
     @Override
     public void visitCallArgument(final Hir.Argument expr) {
       result = node("Argument", atom("label", expr.label() == null ? "null" : quote(expr.label().name())),
-        type("ty", expr.ty()), type("valueTy", expr.valueTy()), child("value", expr.value()));
+        type("ty", expr.ty()), child("value", expr.value()));
     }
 
     @Override

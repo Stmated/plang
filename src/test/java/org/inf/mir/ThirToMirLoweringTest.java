@@ -27,6 +27,231 @@ class ThirToMirLoweringTest {
 
   @ParameterizedTest
   @ValueSource(strings = {
+    "val n = 7;",
+    "var n: int;",
+    "var n = 7; n = 8;",
+    "var n = 7; n += 1;",
+    "val use = () => 7;"
+  })
+  void given__terminal_script_assignment_or_declaration__when__lowered__then__signature_and_return_are_void(
+    final String code
+  ) {
+    final var module = Inf.codeToMir(code);
+    final var ret = assertInstanceOf(Mir.Return.class, module.initNode().terminator());
+    assertAll(
+      () -> assertEquals(Ty.VOID, module.script().signature().returnType()),
+      () -> assertSame(Mir.Unit.INSTANCE, ret.value())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "if (flag) { return 7; }; true",
+    "if (flag) { return 7; }; val n = true;",
+    "if (flag) { return 7; }",
+    "flag && { return 7; }",
+    "flag || { return 7; }"
+  })
+  void given__script_returns_and_fallthrough__when__lowered__then__both_paths_return_the_inferred_union(
+    final String body
+  ) {
+    final var module = Inf.codeToMir("val flag = false; %s".formatted(body));
+    final var returns = module.script().blocks().stream().map(block -> block.terminator())
+      .filter(Mir.Return.class::isInstance).map(Mir.Return.class::cast).toList();
+    assertAll(
+      () -> assertInstanceOf(TyUnion.class, module.script().signature().returnType()),
+      () -> assertEquals(2, returns.size()),
+      () -> assertTrue(returns.stream().allMatch(ret -> ret.value().ty().equals(module.script().signature().returnType())))
+    );
+  }
+
+  @Test
+  void given__noncontinuing_script_without_returns__when__lowered__then__no_normal_return_is_emitted() {
+    final var root = new Hir.Program(new Hir.Loop(new Hir.LoopContinue()));
+    final var thir = new HirToThirRaising(new MachineTarget(64)).raise(root);
+    final var module = ThirToMirLowering.lower(thir);
+    assertAll(
+      () -> assertEquals(Ty.DEADEND, root.ty()),
+      () -> assertEquals(Ty.DEADEND, root.expressions().ty()),
+      () -> assertEquals(Ty.VOID, module.script().signature().returnType()),
+      () -> assertTrue(module.script().blocks().stream().noneMatch(block -> block.terminator() instanceof Mir.Return))
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val n = 7",
+    "var n: int",
+    "var n = 7; n = 8",
+    "var n = 7; n += 1"
+  })
+  void given__terminal_assignment_or_declaration__when__function_is_lowered__then__signature_and_return_are_void(
+    final String body
+  ) {
+    final var module = Inf.codeToMir("val use = () => { %s; }; use()".formatted(body));
+    final var use = module.functions().stream().filter(function -> function != module.script()).findFirst().orElseThrow();
+    final var returns = use.blocks().stream().map(block -> block.terminator())
+      .filter(Mir.Return.class::isInstance).map(Mir.Return.class::cast).toList();
+    assertAll(
+      () -> assertEquals(Ty.VOID, use.signature().returnType()),
+      () -> assertEquals(Ty.VOID, module.script().signature().returnType()),
+      () -> assertEquals(1, returns.size()),
+      () -> assertSame(Mir.Unit.INSTANCE, returns.getFirst().value())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "{ if (flag) { return 7; }; true }",
+    "flag && { return 7; }",
+    "flag || { return 7; }"
+  })
+  void given__explicit_return_and_boolean_fallthrough__when__lowered__then__both_paths_return_the_inferred_union(
+    final String body
+  ) {
+    final var module = Inf.codeToMir("val use = (flag: bool) => %s; use(false)".formatted(body));
+    final var use = module.functions().stream().filter(function -> function != module.script()).findFirst().orElseThrow();
+    final var returns = use.blocks().stream().map(block -> block.terminator())
+      .filter(Mir.Return.class::isInstance).map(Mir.Return.class::cast).toList();
+    assertAll(
+      () -> assertInstanceOf(TyUnion.class, use.signature().returnType()),
+      () -> assertEquals(2, returns.size()),
+      () -> assertTrue(returns.stream().allMatch(ret -> ret.value().ty().equals(use.signature().returnType()))),
+      () -> assertEquals(use.signature().returnType(), module.script().signature().returnType())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "(b = 2, a = 1)",
+    "new heap S { b = 2; a = 1; }"
+  })
+  void given__named_tuple_or_struct_spread__when__lowered__then__field_order_is_bound_to_parameter_order(final String value) {
+    final var module = Inf.codeToMir("""
+      val S = struct { val b: int; val a: int; };
+      val args = %s;
+      val pair = (a: int, b: int) => a;
+      pair(...args)
+      """.formatted(value));
+    final var instructions = instructions(module);
+    final var loads = instructions.stream().filter(Mir.Load.class::isInstance).map(Mir.Load.class::cast)
+      .filter(load -> load.place() instanceof Mir.Field).toList();
+    final var call = instructions.stream().filter(Mir.Call.class::isInstance).map(Mir.Call.class::cast)
+      .findFirst().orElseThrow();
+    assertEquals(2, loads.size());
+    assertAll(
+      () -> assertEquals(1, instructions.stream().filter(Mir.NewStruct.class::isInstance).count()),
+      () -> assertEquals(0, assertInstanceOf(Mir.Field.class, loads.get(0).place()).index()),
+      () -> assertEquals(1, assertInstanceOf(Mir.Field.class, loads.get(1).place()).index()),
+      () -> assertEquals(2, call.arguments().size())
+    );
+    for (var i = 0; i < loads.size(); i++) {
+      final var argument = call.arguments().get(1 - i);
+      final var loadedValue = loads.get(i).result();
+      if (argument != loadedValue) {
+        final var conversion = instructions.stream().filter(Mir.Convert.class::isInstance).map(Mir.Convert.class::cast)
+          .filter(convert -> convert.result() == argument).findFirst().orElseThrow();
+        assertSame(loadedValue, conversion.value());
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "pair(...(if ({ return true; }) then args else args))",
+    "pair(...(if ({ return true; }) then s else s))",
+    "pair(...(make({ return true; })))",
+    "pair(...(new heap S { b = 2; a = { return true; }; }))",
+    "pair(...({ return true; }, 2u8))",
+    "pair(...({ return true; }))"
+  })
+  void given__noncontinuing_spread__when__lowered__then__no_hypothetical_aggregate_or_call_is_emitted(final String call) {
+    final var code = """
+      val S = struct { val b: uint8; val a: uint8; };
+      val args = (b = 2u8, a = 1u8);
+      val s = new heap S { b = 2; a = 1; };
+      val make = (flag: bool): S => s;
+      val pair = (a: uint8, b: uint8) => a;
+      val use = () => %s;
+      use()
+      """.formatted(call);
+    final var module = Inf.codeToMir(code);
+    final var use = module.functions().stream()
+      .filter(function -> function != module.script() && function.signature().returnType() == Ty.BOOLEAN)
+      .findFirst().orElseThrow();
+    final var instructions = use.blocks().stream().flatMap(block -> block.instructions().stream()).toList();
+    assertAll(
+      () -> assertEquals(Ty.BOOLEAN, module.script().signature().returnType()),
+      () -> assertEquals(Ty.BOOLEAN, use.signature().returnType()),
+      () -> assertEquals(0, instructions.stream().filter(Mir.Call.class::isInstance).count()),
+      () -> assertEquals(0, instructions.stream().filter(Mir.NewStruct.class::isInstance).count())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val f = (p: uint8) => p; f(1)",
+    "val Fn = (value: uint8): uint8; val f: Fn = (p) => p; f(1)",
+    "val Fn = (value: uint8): uint8; val outer: Fn = (p) => { val inner = () => p; inner() }; outer(1)",
+    "val outer = (captured: uint8) => { val f = (p: uint8) => p + captured; f(1) }; outer(2)"
+  })
+  void given__resolved_parameters__when__lowered__then__signatures_values_and_locals_retain_binding_types(final String code) {
+    final var module = Inf.codeToMir(code);
+    final var parameterValues = module.functions().stream().flatMap(function -> function.blocks().stream())
+      .flatMap(block -> block.instructions().stream()).filter(Mir.Parameter.class::isInstance)
+      .map(Mir.Parameter.class::cast).toList();
+    assertFalse(parameterValues.isEmpty());
+    for (final var function : module.functions()) {
+      for (final var parameter : function.signature().parameters()) {
+        assertTrue(parameter.ty() instanceof TyValueNumberInteger integer
+          && integer.width().value() == 8 && !integer.signed());
+        if (!function.external()) {
+          final var local = function.locals().stream().filter(value -> value.name().equals(parameter.name()))
+            .findFirst().orElseThrow();
+          assertEquals(parameter.ty(), local.ty());
+        }
+      }
+    }
+    for (final var parameter : parameterValues) {
+      assertTrue(parameter.result().ty() instanceof TyValueNumberInteger integer
+        && integer.width().value() == 8 && !integer.signed());
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val n: uint8 = 7; n",
+    "val n = 7u8; n",
+    "var n: uint8 = 7; n = 8; n"
+  })
+  void given__scalar_declaration__when__lowered__then__locals_and_stores_use_the_binding_type(final String code) {
+    final var module = Inf.codeToMir(code);
+    final var locals = module.functions().stream().flatMap(function -> function.locals().stream())
+      .filter(local -> local.name().equals("n")).toList();
+    assertEquals(1, locals.size());
+    final var local = locals.getFirst();
+    final var stores = instructions(module).stream().filter(Mir.Store.class::isInstance)
+      .map(Mir.Store.class::cast).filter(store -> store.place() == local).toList();
+    assertAll(
+      () -> assertTrue(local.ty() instanceof TyValueNumberInteger integer
+        && integer.width().value() == 8 && !integer.signed()),
+      () -> assertFalse(stores.isEmpty()),
+      () -> assertTrue(stores.stream().allMatch(store -> store.value().ty().equals(local.ty())))
+    );
+  }
+
+  @Test
+  void given__standalone_declaration__when__lowered__then__local_allocation_uses_the_binding_type() {
+    final var module = Inf.codeToMir("var n: uint8; 7");
+    final var locals = module.functions().stream().flatMap(function -> function.locals().stream())
+      .filter(local -> local.name().equals("n")).toList();
+    assertEquals(1, locals.size());
+    assertTrue(locals.getFirst().ty() instanceof TyValueNumberInteger integer
+      && integer.width().value() == 8 && !integer.signed());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
     "s.fn(5)",
     "s.fn(...(5,))"
   })
@@ -558,6 +783,8 @@ class ThirToMirLoweringTest {
   @Test
   void unreachableSourceStatementsAreRejectedDuringMirLowering() {
     assertThrows(UnreachableCodeException.class, () -> Inf.codeToMir("return 1; 2;"));
+    assertThrows(UnreachableCodeException.class, () ->
+      Inf.codeToMir("val f = (a: int) => a; val args = (2,); f(...({ return 1; args; }))"));
     assertThrows(UnreachableCodeException.class, () -> Inf.codeToMir("if (1 == 1) { return 1; } else { return 2; } 3;"));
     assertThrows(UnreachableCodeException.class, () -> Inf.codeToMir(
       "for (var i = 0; i < 3; i += 1) { return 7; 8; } return 9;"
@@ -581,9 +808,9 @@ class ThirToMirLoweringTest {
         new Hir.Literal("true", Ty.BOOLEAN),
         new Hir.LoopBreak(null),
         new Hir.LoopContinue(),
-        Ty.DEADEND, null
+        Ty.DEADEND
       ),
-      Ty.VOID, null
+      Ty.VOID
     );
     final var root = new Hir.Program(new Hir.Expressions(new Hir.Expression[]{
       loop, new Hir.Return(new Hir.Literal("7", Ty.INTEGER))
@@ -599,14 +826,14 @@ class ThirToMirLoweringTest {
     final var tuple = new Hir.Tuple(new Hir.TupleEntry[]{
       new Hir.TupleEntry(null, new Hir.Literal("1", Ty.INTEGER)),
       new Hir.TupleEntry(null, new Hir.Conditional(
-        new Hir.Literal("true", Ty.BOOLEAN), new Hir.LoopBreak(null), new Hir.LoopContinue(), Ty.DEADEND, null
+        new Hir.Literal("true", Ty.BOOLEAN), new Hir.LoopBreak(null), new Hir.LoopContinue(), Ty.DEADEND
       )),
       new Hir.TupleEntry(null, new Hir.BinaryOperation(
         new Hir.Literal("1", Ty.INTEGER), Hir.BinaryOperationKind.DIVIDE, new Hir.Literal("0", Ty.INTEGER)
       ))
     }, null);
     final var root = new Hir.Program(new Hir.Expressions(new Hir.Expression[]{
-      new Hir.Loop(tuple, Ty.VOID, null), new Hir.Return(new Hir.Literal("7", Ty.INTEGER))
+      new Hir.Loop(tuple, Ty.VOID), new Hir.Return(new Hir.Literal("7", Ty.INTEGER))
     }, Ty.INTEGER));
     final var thir = new HirToThirRaising(new MachineTarget(64)).raise(root);
     final var module = ThirToMirLowering.lower(thir);
@@ -620,7 +847,7 @@ class ThirToMirLoweringTest {
   void statementsAfterBreakOrContinueAreRejected() {
     for (final var transfer : List.of(new Hir.LoopBreak(null), new Hir.LoopContinue())) {
       final var body = new Hir.Expressions(new Hir.Expression[]{transfer, new Hir.Literal("1", Ty.INTEGER)}, Ty.INTEGER);
-      final var root = new Hir.Program(new Hir.Loop(body, Ty.VOID, null));
+      final var root = new Hir.Program(new Hir.Loop(body, Ty.VOID));
       final var thir = new HirToThirRaising(new MachineTarget(64)).raise(root);
       assertThrows(UnreachableCodeException.class, () -> ThirToMirLowering.lower(thir));
     }

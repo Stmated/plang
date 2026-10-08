@@ -14,6 +14,67 @@ class HirFunctionValidationVisitorPassTest {
 
   @ParameterizedTest
   @ValueSource(strings = {
+    "apply(...({ return true; args; }))",
+    "apply(...(make({ return true; })))",
+    "apply(...(if ({ return true; }) then args else args))",
+    "apply(...({ return true; args; }), fn = (v) => v)"
+  })
+  void given__noncontinuing_spread_with_an_incompatible_function_slot__when__validated__then__the_slot_is_still_checked(
+    final String call
+  ) {
+    final var error = Assertions.assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToThir("""
+      val Fn = (value: uint8): uint8;
+      val wrong = (value: uint8): bool => false;
+      val args = (fn = wrong, x = 1u8);
+      val make = (flag: bool) => args;
+      val apply = (x: uint8, fn: Fn) => fn(x);
+      val use = () => %s;
+      use()
+      """.formatted(call)));
+    Assertions.assertTrue(error.getMessage().contains("Function type does not match expected function type"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "new heap S { flag = { return true; }; fn = (v) => false; }",
+    "new heap ({ return true; S; }) { fn = (v) => false; flag = false; }",
+    "new heap (if ({ return true; }) then S else S) { fn = (v) => false; flag = false; }",
+    "({ return true; s; }).fn = (v) => false"
+  })
+  void given__incompatible_function_field_after_transfer__when__validated__then__resolved_member_constraint_is_reported(
+    final String expression
+  ) {
+    Assertions.assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToThir("""
+      val Fn = (value: uint8): uint8;
+      val S = struct { val fn: Fn; val flag: bool; };
+      val s = new heap S { fn = (v) => v; flag = false; };
+      val use = () => { %s; };
+      use()
+      """.formatted(expression)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "({ return true; apply; })((v) => false)",
+    "apply({ return true; (v) => false; })",
+    "(factory({ return true; }))((v) => false)",
+    "({ return true; apply; })(fn = (v) => false)"
+  })
+  void given__noncontinuing_function_use__when__the_pipeline_validates__then__nominal_signatures_still_report_mismatches(
+    final String invocation
+  ) {
+    Assertions.assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToThir("""
+      val Fn = (value: uint8): uint8;
+      val Consumer = (fn: Fn): uint8;
+      val apply: Consumer = (fn) => fn(1);
+      val factory = (flag: bool): Consumer => apply;
+      val use = () => %s;
+      use()
+      """.formatted(invocation)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
     "val f: Fn = () => 1; f",
     "val f: Fn = (a, b) => 1; f",
     "val f: Fn = (v, ...) => v; f",

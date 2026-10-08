@@ -234,7 +234,7 @@ public final class ThirToMirLowering {
   }
 
   private Flow declaration(Hir.Dec declaration) {
-    locals.computeIfAbsent(declaration, key -> function.newLocal(declaration.lexeme().name(), MirTypes.valueType(declaration.valueTy())));
+    locals.computeIfAbsent(declaration, key -> function.newLocal(declaration.lexeme().name(), MirTypes.valueType(declaration.resolvedTy())));
     return UNIT;
   }
 
@@ -277,7 +277,7 @@ public final class ThirToMirLowering {
         return UNIT;
       }
       final var value = ((Continues) rhs).value();
-      final var type = MirTypes.valueType(declaration.valueTy());
+      final var type = MirTypes.valueType(declaration.resolvedTy());
       final var local = function.newLocal(declaration.lexeme().name(), type);
       locals.put(declaration, local);
       emit(new Mir.Store(local, convert(value, type)));
@@ -487,8 +487,7 @@ public final class ThirToMirLowering {
         binary.lhs(),
         binary.kind() == Hir.BinaryOperationKind.AND ? binary.rhs() : constant,
         binary.kind() == Hir.BinaryOperationKind.AND ? constant : binary.rhs(),
-        Ty.BOOLEAN,
-        null
+        Ty.BOOLEAN
       ));
     }
     final var left = lower(binary.lhs());
@@ -638,7 +637,10 @@ public final class ThirToMirLowering {
   }
 
   private Flow instance(Hir.NewByBlock instance) {
-    final var type = (TyStruct) instance.ty();
+    final var type = Tys.getConstructionTargetTy(instance.target());
+    if (type == null) {
+      throw new IllegalArgumentException("Struct construction requires a resolved target layout");
+    }
     final var fields = new Mir.Operand[type.fields().length];
     for (final var assignment : instance.fields()) {
       final var index = fieldIndex(type, fieldName(assignment.lhs()));

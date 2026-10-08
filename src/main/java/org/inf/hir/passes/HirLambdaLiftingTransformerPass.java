@@ -134,7 +134,7 @@ public class HirLambdaLiftingTransformerPass {
         }
 
         final var replacement = new Hir.Call(
-          replacedWith.toIdentifier(), newArguments, expr.partial(), expr.ty(), expr.valueTy()
+          replacedWith.toIdentifier(), newArguments, expr.partial(), expr.ty()
         );
         rewritten.add(replacement);
         return replacement;
@@ -201,7 +201,8 @@ public class HirLambdaLiftingTransformerPass {
             if (entry.toIdentifier() == transformedRhs) {
               entry.fromAssignment(expr);
               entry.fromDec(ass_lhs_dec);
-              ass_lhs_dec.valueType(new Hir.TyExpr(transformedRhs.ty()));
+              ass_lhs_dec.typeAnnotation(new Hir.TyExpr(transformedRhs.ty()));
+              ass_lhs_dec.resolvedTy(transformedRhs.ty());
               break;
             }
           }
@@ -251,7 +252,7 @@ public class HirLambdaLiftingTransformerPass {
           new Hir.FunctionSignature(
             expr.signature().parameters(),
             expr.signature().vararg(),
-            expr.signature().returnType(),
+            expr.signature().returnTypeAnnotation(),
             expr.signature().ty()
           ),
           expr.body()
@@ -261,7 +262,7 @@ public class HirLambdaLiftingTransformerPass {
         // We will add these as parameters to the function.
 
         final var parameters = transformed.signature().parameters();
-        final var parameterTys = transformed.signature().ty().parameters();
+        final var parameterTys = transformed.ty().parameters();
 
         final var newParameters = new Hir.Parameter[parameters.length + needsClosure.size()];
         final var newParametersTy = new TyParam[newParameters.length];
@@ -305,7 +306,7 @@ public class HirLambdaLiftingTransformerPass {
         transformed.signature().ty(new TyFn(
           newParametersTy,
           transformed.signature().vararg(),
-          transformed.signature().returnType().ty()
+          transformed.signature().ty().returnTy()
         ));
 
         final var randomName = UUID.randomUUID().toString();
@@ -318,7 +319,8 @@ public class HirLambdaLiftingTransformerPass {
         final var newDec = new Hir.Dec(
           new Hir.Lexeme(randomName),
           Hir.MutabilityKind.CONSTANT,
-          new Hir.TyExpr(transformed.ty())
+          new Hir.TyExpr(transformed.ty()),
+          transformed.ty()
         );
 
         final var newAssignment = new Hir.Assignment(

@@ -21,6 +21,70 @@ import java.util.ArrayList;
 
 class HirTupleContextualTypingVisitorPassTest {
 
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "consume(...({ return true; args; }), t = (b = true, a = 17))",
+    "consume(...(make({ return true; })), t = (b = true, a = 17))",
+    "consume(...({ return true; },), t = (b = true, a = 17))"
+  })
+  void given__noncontinuing_spread__when__other_tuples_are_contextualized__then__named_binding_retains_destination_layout(
+    final String call
+  ) {
+    final var root = Inf.codeToThir("""
+      val args = (x = 1u8,);
+      val make = (flag: bool): (x: uint8,) => args;
+      val consume = (x: uint8, t: (a: uint8, b: bool)) => t;
+      val use = () => %s;
+      use()
+      """.formatted(call)).root();
+    final var tuples = new ArrayList<Hir.Tuple>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitTuple(final Hir.Tuple tuple) {
+        if (tuple.contextualType() != null) {
+          tuples.add(tuple);
+        }
+        HirVisitor.super.visitTuple(tuple);
+      }
+    });
+    Assertions.assertEquals(1, tuples.size());
+    final var tuple = tuples.getFirst();
+    Assertions.assertAll(
+      () -> Assertions.assertEquals("b", tuple.children()[0].label().name()),
+      () -> Assertions.assertEquals("a", tuple.children()[1].label().name()),
+      () -> Assertions.assertEquals("a", tuple.contextualType().fields()[0].name()),
+      () -> Assertions.assertEquals("b", tuple.contextualType().fields()[1].name()),
+      () -> Assertions.assertTrue(TypeComparison.sameValueType(tuple.ty(), tuple.contextualType())),
+      () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty())
+    );
+  }
+
+  @Test
+  void given__inferred_declaration__when__tuple_context_is_linked__then__previous_binding_is_not_an_initializer_constraint() {
+    final var root = Inf.codeToHir("val t = (1,); t");
+    final var declarations = new ArrayList<Hir.Dec>();
+    final var tuples = new ArrayList<Hir.Tuple>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitDec(final Hir.Dec declaration) {
+        declaration.resolvedTy(new TyStruct(new TyField[]{new TyField(null, Ty.LONG)}, true));
+        declarations.add(declaration);
+      }
+
+      @Override
+      public void visitTuple(final Hir.Tuple tuple) {
+        tuples.add(tuple);
+        HirVisitor.super.visitTuple(tuple);
+      }
+    });
+    HirTupleContextVisitorPass.pass(root);
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(1, declarations.size()),
+      () -> Assertions.assertEquals(1, tuples.size()),
+      () -> Assertions.assertNull(tuples.getFirst().contextualType())
+    );
+  }
+
   @Test
   void given__untyped_lambda_in_a_function_field__when__only_tuple_pass_runs__then__lambda_parameters_are_not_inferred() {
     final var root = HirTyIdentifierToTyTransformerPass.pass(
@@ -38,7 +102,7 @@ class HirTupleContextualTypingVisitorPassTest {
       }
     });
     Assertions.assertEquals(1, functions.size());
-    Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].valueType().ty()));
+    Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].typeAnnotation().ty()));
   }
 
   @ParameterizedTest
@@ -109,7 +173,7 @@ class HirTupleContextualTypingVisitorPassTest {
       () -> Assertions.assertEquals("b", tuple.children()[1].label().name()),
       () -> Assertions.assertEquals("a", tuple.children()[2].label().name()),
       () -> Assertions.assertEquals(1, conversions.size()),
-      () -> Assertions.assertEquals(Tys.fromString("uint16", new MachineTarget(64)), conversions.getFirst().ty())
+      () -> Assertions.assertEquals(Tys.fromString("uint16", new MachineTarget(64)), conversions.getFirst().targetTy())
     );
   }
 
@@ -143,7 +207,7 @@ class HirTupleContextualTypingVisitorPassTest {
     final var sourceType = Assertions.assertInstanceOf(TyValueNumberInteger.class, source.ty());
     Assertions.assertAll(
       () -> Assertions.assertEquals(expected, root.ty()),
-      () -> Assertions.assertEquals(Tys.fromString("int16", new MachineTarget(64)), conversion.ty()),
+      () -> Assertions.assertEquals(Tys.fromString("int16", new MachineTarget(64)), conversion.targetTy()),
       () -> Assertions.assertEquals(8, sourceType.width().value()),
       () -> Assertions.assertEquals("255u8", source.content())
     );
@@ -352,7 +416,7 @@ class HirTupleContextualTypingVisitorPassTest {
       () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty()),
       () -> Assertions.assertEquals(before, tuples.stream().map(Hir.Tuple::ty).toList()),
       () -> Assertions.assertEquals(1, conversions.size()),
-      () -> Assertions.assertEquals(Tys.fromString("int16", new MachineTarget(64)), conversions.getFirst().ty())
+      () -> Assertions.assertEquals(Tys.fromString("int16", new MachineTarget(64)), conversions.getFirst().targetTy())
     );
   }
 

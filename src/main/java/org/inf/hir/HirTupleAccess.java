@@ -14,7 +14,7 @@ public final class HirTupleAccess {
 
   /// Returns null when index validation must wait for final type resolution.
   public static Integer availableIndex(final TyStruct tuple, final Hir.Expression accessor) {
-    if (!(accessor.valueTy() instanceof TyValueNumberInteger type) || !(accessor instanceof Hir.Literal literal)) {
+    if (!(accessor instanceof Hir.Literal literal) || !(literal.ty() instanceof TyValueNumberInteger type)) {
       return null;
     }
     final var index = IntegerLiterals.parse(literal.content(), type.radix());
@@ -25,7 +25,7 @@ public final class HirTupleAccess {
   }
 
   public static int index(TyStruct tuple, Hir.Expression accessor) {
-    if (!(accessor.valueTy() instanceof TyValueNumberInteger type)) {
+    if (!(accessor.ty() instanceof TyValueNumberInteger type)) {
       throw new IllegalArgumentException("Tuple index must be an integer literal");
     }
     if (!(accessor instanceof Hir.Literal literal)) {

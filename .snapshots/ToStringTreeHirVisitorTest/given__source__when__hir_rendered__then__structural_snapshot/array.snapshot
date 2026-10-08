@@ -17,17 +17,18 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
             (Dec
               (mutability IMMUTABLE)
               (ty (named "VOID"))
+              (resolvedTy null)
               (lexeme
                 (Lexeme
                   (name "a")
                   (ty null)))
-              (valueType
+              (typeAnnotation
                 (TyExpr
                   (ty (named "INFER"))))))
           (rhs
             (Array
               (ty null)
-              (valueTy null)
+              (arrayTy null)
               (elementType
                 (TyExpr
                   (ty (named "INFER"))))
@@ -47,7 +48,7 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
           (expression
             (ArrayAccess
               (ty null)
-              (valueTy null)
+              (indexedTy null)
               (target
                 (Identifier
                   (lexeme

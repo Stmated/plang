@@ -23,6 +23,8 @@ Rather just explain the feature to a potential reader, what they need to know to
 
 Extremely strongly prefer code examples over explaining a feature using words.
 
+When updating `todo.md`, remember to mark a header/section as "done" when you have finished that item.
+
 ## Explain reasoning and relevance
 Do not assume that things can be logically deduced from "what is expected" and "what is obvious" to you,
 instead state the purpose of one item and the relevance to a next item, or for the next item and its relevance to the previous.

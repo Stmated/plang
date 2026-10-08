@@ -1,0 +1,6 @@
+
+val array1 = [0, 1, 2]; // initialize with values
+val array2 = [0u8; 500]; // initialize with 0, type inferred uint8, size 500
+val array2 = [0;uint8;500]; // initialize with 0 (as uint8, since explicitly said so in next section), type uint8, size 500
+val array3 = [;uint8;500]; // do not initialize, type uint8, size 500
+val array4 = [1,2,3;uint8;500]; // initialize with 1,2,3 repeating, type uint8, size 500

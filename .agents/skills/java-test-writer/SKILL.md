@@ -6,8 +6,9 @@ description: Use when writing Java test cases, including for the Inf compiler wr
 # Test writer
 
 * Prefer parameterized tests when testing multiple inputs and outputs for the same method.
-  * Always separate parameterized test case entries by newline, such as between different values sent in as @ValueSource.  
+  * Always separate parameterized test case entries by newline, such as between different values sent in as @ValueSource.
 * Prefer using `assertAll` if there are several assertions one after another that do not have dependencies on each other.
+* Avoid tests that check only "does not throw" -- a test is supposed to check against a result only reachable because of the thing the test tests.
 
 ## Test naming
 Name test methods in `given-when-then` format, e.g. `given__X__when__Y__then__Z`.
@@ -17,9 +18,15 @@ If there are words in `X`, `Y` or `Z`, separate them with underscores, e.g. `giv
 Strongly prefer creating test classes that have the same name as the class being tested, with `Test` appended to the end, e.g. `MyClassTest` for `MyClass`.
 If there is a need to create a test class that is not limited to the testing of one unit/class, that is likely indicative of a design problem.
 
+## What tests are for
+Test are created to verify the compilation/running of Inf code, they are not for verifying programmer conduct.
+For example if a job is to "remove all fields called 'foo'", then you should not create a test case that checks that no class contains a field 'foo'.
+
 ## Compiler test setup
 * Prefer creating test case that take a code snippet as a string, and then compile it to the desired stage (AST, HIR, THIR, MIR, etc) and then assert on the output.
   * i.e. avoid creating test cases that manually create AST, HIR, MIR nodes unless that is required for a specialized unit test case.
+
+If a test scenario cannot be represented as Inf code and it requires manual creation of nodes, then the test is extremely likely there for the wrong reasons.
 
 ## Snapshot testing
 Strongly prefer using snapshot testing for complex outputs, to assert toString-able structures.

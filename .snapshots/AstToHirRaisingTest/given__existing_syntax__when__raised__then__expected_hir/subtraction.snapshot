@@ -13,7 +13,6 @@ test-method: given__existing_syntax__when__raised__then__expected_hir
         (BinaryOperation
           (kind SUBTRACT)
           (ty null)
-          (valueTy null)
           (lhs
             (Identifier
               (lexeme

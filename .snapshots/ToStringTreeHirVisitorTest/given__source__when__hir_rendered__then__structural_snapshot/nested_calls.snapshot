@@ -13,7 +13,6 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
         (Call
           (partial false)
           (ty null)
-          (valueTy null)
           (target
             (Identifier
               (lexeme
@@ -25,12 +24,10 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
             (Argument
               (label null)
               (ty null)
-              (valueTy null)
               (value
                 (Call
                   (partial false)
                   (ty null)
-                  (valueTy null)
                   (target
                     (Identifier
                       (lexeme
@@ -42,7 +39,6 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                     (Argument
                       (label null)
                       (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-                      (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
                       (value
                         (Literal
                           (content "1")
@@ -50,7 +46,6 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
             (Argument
               (label "label")
               (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-              (valueTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
               (value
                 (Literal
                   (content "2")

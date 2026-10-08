@@ -5,6 +5,7 @@ import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.hir.util.ToStringTreeHirVisitor;
+import org.inf.ty.Ty;
 import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Assertions;
@@ -15,6 +16,21 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.ArrayList;
 
 class HirFunctionParameterValidationVisitorPassTest {
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val read: Fn = (arr: [;2]) => arr[1]; read",
+    "val read: Fn = (arr: [;int;3]) => arr[1]; read",
+    "val read: Fn = (arr: [;bool;2]) => arr[1]; read",
+    "val read: Fn = (arr: [;int;]) => arr[1]; read"
+  })
+  void given__explicit_array_parameter__when__it_is_partial_or_incompatible__then__expected_signature_does_not_fill_it(
+    final String expression
+  ) {
+    final var error = Assertions.assertThrows(InvalidTypeConversionException.class,
+      () -> Inf.codeToThir("val Fn = (arr: [;int;2]): int; %s".formatted(expression)));
+    Assertions.assertTrue(error.getMessage().contains("Lambda parameter type does not match expected function type"));
+  }
 
   @ParameterizedTest
   @ValueSource(strings = {
@@ -46,6 +62,7 @@ class HirFunctionParameterValidationVisitorPassTest {
   @ParameterizedTest
   @ValueSource(strings = {
     "val f: Fn = (v: bool) => 1; f",
+    "val Other = (flag: bool): bool; val f: Fn = (v: Other) => v.missing; f",
     "val f: Fn = (v: bool) => v.missing; f",
     "val S = struct { val fn: Fn; }; new heap S { fn = (v: bool) => 1; }",
     "val apply = (fn: Fn) => fn(5); apply((v: bool) => 1)",
@@ -83,10 +100,24 @@ class HirFunctionParameterValidationVisitorPassTest {
   @Test
   void given__contextually_resolved_parameters__when__validated__then__no_inference_or_mutation_occurs() {
     final var root = prepare("val Fn = (v: int): int; val f: Fn = (v) => v; f");
+    final var parameters = new ArrayList<Hir.Parameter>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitFunction(final Hir.Function function) {
+        parameters.add(function.signature().parameters()[0]);
+        HirVisitor.super.visitFunction(function);
+      }
+    });
+    Assertions.assertEquals(1, parameters.size());
+    final var parameter = parameters.getFirst();
     final var printer = new ToStringTreeHirVisitor();
     final var before = printer.render(root);
     HirFunctionParameterValidationVisitorPass.pass(root);
-    Assertions.assertEquals(before, printer.render(root));
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
+      () -> Assertions.assertEquals(Tys.fromString("int", new MachineTarget(64)), parameter.resolvedTy()),
+      () -> Assertions.assertEquals(before, printer.render(root))
+    );
   }
 
   @ParameterizedTest
@@ -128,7 +159,7 @@ class HirFunctionParameterValidationVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertThrows(InvalidTypeConversionException.class,
         () -> HirFunctionParameterValidationVisitorPass.pass(root)),
-      () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].valueType().ty())),
+      () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].typeAnnotation().ty())),
       () -> Assertions.assertEquals(before, printer.render(root))
     );
   }
@@ -152,6 +183,7 @@ class HirFunctionParameterValidationVisitorPassTest {
   @ParameterizedTest
   @ValueSource(strings = {
     "val f: Fn = (v: bool) => v.missing; f",
+    "val Other = (flag: bool): bool; val f: Fn = (v: Other) => v.missing; f",
     "val Factory = (): Fn; val factory: Factory = () => ((v: bool) => v.missing); factory",
     "val apply = (x: int, fn: Fn) => fn(x); apply(...(5,), (v: bool) => v.missing)"
   })

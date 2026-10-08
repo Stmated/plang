@@ -5,14 +5,86 @@ import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
+import org.inf.ty.TyStruct;
 import org.inf.ty.util.MachineTarget;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.IdentityHashMap;
+import java.util.Map;
 
 class HirTupleValidationVisitorPassTest {
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "(1, { val x = 2; })",
+    "val f = () => { val x = 2; }; (1, f())",
+    "val f = () => (1, { return true; }, { val x = 2; }); f()"
+  })
+  void given__void_tuple_member__when__validated_after_typing__then__rejected_even_after_transfer(final String code) {
+    final var root = infer(code);
+    final var error = Assertions.assertThrows(
+      IllegalArgumentException.class, () -> HirTupleValidationVisitorPass.pass(root)
+    );
+    Assertions.assertEquals("Invalid tuple element type: VOID", error.getMessage());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "consume(...({ return true; args; }))",
+    "consume(...(make({ return true; })))",
+    "consume(...(if ({ return true; }) then args else args))",
+    "consume(...({ return true; args; }), t = (a = 1, b = true))"
+  })
+  void given__noncontinuing_spread_with_an_incompatible_tuple_slot__when__validated__then__the_slot_is_still_checked(
+    final String call
+  ) {
+    final var error = Assertions.assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToThir("""
+      val args = (t = (1u8, true), x = 1u8);
+      val make = (flag: bool) => args;
+      val consume = (x: uint8, t: (a: uint8, b: bool)) => t;
+      val use = () => %s;
+      use()
+      """.formatted(call)));
+    Assertions.assertTrue(error.getMessage().contains("Incompatible tuple shape or slot type"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "new heap S { flag = { return true; }; t = (1, 2); }",
+    "new heap ({ return true; S; }) { t = (1, 2); flag = false; }",
+    "new heap (if ({ return true; }) then S else S) { t = (1, 2); flag = false; }",
+    "({ return true; s; }).t = (1, 2)"
+  })
+  void given__incompatible_tuple_field_after_transfer__when__validated__then__resolved_member_constraint_is_reported(
+    final String expression
+  ) {
+    Assertions.assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToThir("""
+      val S = struct { val t: (uint8, bool); val flag: bool; };
+      val s = new heap S { t = (1, true); flag = false; };
+      val use = () => { %s; };
+      use()
+      """.formatted(expression)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "({ return true; consume; })((1, 2))",
+    "(factory({ return true; }))((1, 2))",
+    "({ return true; consume; })(t = (1, 2))"
+  })
+  void given__noncontinuing_callee__when__tuple_arguments_are_validated__then__resolved_signature_still_constrains_shape(
+    final String invocation
+  ) {
+    Assertions.assertThrows(InvalidTypeConversionException.class, () -> Inf.codeToThir("""
+      val Consumer = (t: (uint8, bool)): uint8;
+      val consume: Consumer = (t) => t[0];
+      val factory = (flag: bool): Consumer => consume;
+      val use = () => %s;
+      use()
+      """.formatted(invocation)));
+  }
 
   @ParameterizedTest
   @ValueSource(strings = {
@@ -21,12 +93,17 @@ class HirTupleValidationVisitorPassTest {
     "var t = (a = 1,); t[0] = 2",
     "var t = (a = 1,); t[0] += 2",
     "var t = (nested = (a = 1,),); t.nested.a = 2",
+    "val use = () => { var t = (a = 1,); ({ return true; t; }).a = 2; }; use()",
+    "val use = () => { var t = (nested = (a = 1,),); ({ return true; t; }).nested.a = 2; }; use()",
     "var t = ((a = 1,),); t[0].a += 2",
     "val S = struct { val t: (a: int,); }; val s = new heap S { t = (a = 1,); }; s.t.a = 2",
     "var t = (1, true); t[0] = 2",
     "var t = (1, true); t[0] += 2",
     "var t = ((1,), true); t[0][0] = 2",
     "var t = ((1,), true); t[0] = (2,)",
+    "val use = () => { var t = (1, true); ({ return true; t; })[0] = 2; }; use()",
+    "val use = () => { var t = (1, true); ({ return true; t; })[0] += 2; }; use()",
+    "val make = (flag: bool) => (1, true); val use = () => { (make({ return true; }))[0] = 2; }; use()",
     "val f = () => (1, { return true; }, { var t = (1,); t[0] = 2; 3 }); f()",
     "val S = struct { val t: (int, bool); }; val s = new heap S { t = (1, true); }; s.t[0] = 2",
     "val S = struct { val t: (int, bool); }; val s = new heap S { t = (1, true); }; s.t[0] += 2"
@@ -100,6 +177,7 @@ class HirTupleValidationVisitorPassTest {
     "val f = (): (1, true) => (1, true)",
     "[(1, true); (1, true); 1]",
     "val t: ((int, 1), bool) = ((1, 2), true)",
+    "val t: (int, ()) = (1, 2)",
     "val f = () => 1; val t: (f(), bool) = (1, true)",
     "val f = (): (int, { return true; }) => (1, true)",
     "val t: ([1], bool) = ([1], true)",
@@ -128,12 +206,12 @@ class HirTupleValidationVisitorPassTest {
   void given__typed_tuples__when__validated__then__type_references_are_preserved(String code) {
     final var hir = infer(code);
     final var types = new IdentityHashMap<Hir.Tuple, Ty>();
-    final var valueTypes = new IdentityHashMap<Hir.Tuple, Ty>();
+    final var contextualTypes = new IdentityHashMap<Hir.Tuple, TyStruct>();
     hir.visit(new HirVisitor() {
       @Override
       public void visitTuple(Hir.Tuple expression) {
         types.put(expression, expression.ty());
-        valueTypes.put(expression, expression.valueTy());
+        contextualTypes.put(expression, expression.contextualType());
         HirVisitor.super.visitTuple(expression);
       }
     });
@@ -141,10 +219,14 @@ class HirTupleValidationVisitorPassTest {
     HirTupleValidationVisitorPass.pass(hir);
 
     Assertions.assertEquals(false, types.isEmpty());
-    types.forEach((tuple, type) -> Assertions.assertAll(
-      () -> Assertions.assertSame(type, tuple.ty()),
-      () -> Assertions.assertSame(valueTypes.get(tuple), tuple.valueTy())
-    ));
+    for (final var entry : types.entrySet()) {
+      Hir.Tuple tuple = entry.getKey();
+      Ty type = entry.getValue();
+      Assertions.assertAll(
+        () -> Assertions.assertSame(type, tuple.ty()),
+        () -> Assertions.assertSame(contextualTypes.get(tuple), tuple.contextualType())
+      );
+    }
   }
 
   @ParameterizedTest
@@ -154,6 +236,7 @@ class HirTupleValidationVisitorPassTest {
     "val t: (int, bool) = ((1,), true)",
     "val t: int = (1,)",
     "val t: (int,) = 1",
+    "val t: (int, ()) = (1, 2)",
     "var t = (1, true); t = (false, 2)",
     "val f = (t: (int, bool)) => 1; f((1, 2))",
     "val f = (t: (int, bool)) => 1; f((1,))",
@@ -204,7 +287,6 @@ class HirTupleValidationVisitorPassTest {
     "val f = () => (1, { return true; }, missing); f()",
     "val t: (1, 2) = (1, 2)",
     "val x = 1; val t: (x, bool) = (1, true)",
-    "val t: (int, ()) = (1, 2)",
     "[(1, true); (1, true); 1]",
     "(label: 1)",
     "(label: 1,)",

@@ -169,7 +169,9 @@ public final class MirSExpressionPrinter {
           item(item, depth + 1);
         }
       } else if (value instanceof final Set<?> items) {
-        items.stream().map(Printer::enumValue).sorted(Comparator.comparing(Enum::name))
+        items.stream()
+          .map(Printer::enumValue)
+          .sorted(Comparator.comparing(Enum::name))
           .forEach(item -> item(item, depth + 1));
       } else if (value != null && value.getClass().isArray()) {
         for (int i = 0; i < Array.getLength(value); i++) {

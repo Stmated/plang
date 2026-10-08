@@ -65,6 +65,25 @@ class HirTupleTypingTest {
     return new TyStruct(Arrays.stream(elements).map(type -> new TyField(null, type)).toArray(TyField[]::new));
   }
 
+  static Stream<Ty> memberTypes() {
+    return Stream.of(
+      Ty.INTEGER,
+      Ty.INFER,
+      Ty.VOID,
+      tuple(Ty.INTEGER, Ty.INFER)
+    );
+  }
+
+  @ParameterizedTest
+  @MethodSource("memberTypes")
+  void given__member_type__when__tuple_type_is_built__then__member_type_is_preserved_without_validation(final Ty memberType) {
+    final var expression = new Hir.Tuple(new Hir.TupleEntry[]{
+      new Hir.TupleEntry(null, new Hir.TyExpr(memberType))
+    }, null);
+    HirTupleTyping.resolve(expression);
+    Assertions.assertEquals(tuple(memberType), expression.ty());
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {
     "(1, true)",
@@ -167,7 +186,8 @@ class HirTupleTypingTest {
     HirTyCommonVisitorPass.pass(expression);
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.DEADEND, expression.ty()),
-      () -> Assertions.assertEquals(Ty.DEADEND, expression.valueTy())
+      () -> Assertions.assertNull(expression.contextualType()),
+      () -> Assertions.assertNull(Tys.getConstructionTargetTy(expression))
     );
   }
 

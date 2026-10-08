@@ -43,6 +43,10 @@ HIR represents logical structures such as predicates, loops, and lambda function
 * For a new language feature that needs explaining, create a `*.md` file in `docs\`. Use the `docs-writing` skill.
 * Do not recreate large type inference/investigation inside new THIR passes, use the resolution of previous passes and fill in the blanks. If refactoring is required to split some passes into more granular passes to be able to resolve them in order, and with narrowed responsibilities, then that is recommended. But ask first.
 * You must always run all tests in the project to validate against any regressions, before counting things as done.
+* Do not make validation/assertion of nodes a focus when implementing a functionality inside a pass.
+  * Focus on solving the narrow scope of the pass, and leave any requirement of validation to a separate pass.
+  * It is still allowed to fail early if something is obviously wrong, but do not spend resources heavily validating early something that will fail later.
+* It is better to separate a large feature into smaller, localized steps to be aded to `todo.md`. If a feature grows large, ask to split it up.
 
 In the project the word `Ty` is used for its internal representation of a type, to not clash with the Java `Type` class.
 
@@ -73,6 +77,7 @@ It is however allowed to manually call two different THIR passes, if the purpose
 * Prefer Lombok annotations such as `@Data`, `@Value`, or `@UtilityClass` to reduce boilerplate.
 * Prefer `final` for parameters, fields, and local variables where possible.
 * Never nest ternary expressions. Use explicit if-conditions instead.
+* Avoid `.forEach` and instead use a regular for-loop.
 
 Prefer `ArrayUtils` (`src\main\java\org\inf\util\ArrayUtils.java`) for array operations. For example:
 

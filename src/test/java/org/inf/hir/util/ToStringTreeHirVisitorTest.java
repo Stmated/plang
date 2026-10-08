@@ -98,7 +98,6 @@ class ToStringTreeHirVisitorTest {
         (Call
           (partial false)
           (ty null)
-          (valueTy null)
           (target
             (Lexeme
               (name "f")
@@ -120,10 +119,10 @@ class ToStringTreeHirVisitorTest {
     final var call = new Hir.Call(new Hir.Identifier(new Hir.Lexeme("f"), null), new Hir.Argument[] {
       new Hir.Argument(new Hir.Lexeme("label"), new Hir.Literal("1", Ty.INTEGER)),
       new Hir.Argument(null, new Hir.Literal("2", Ty.INTEGER))
-    }, partial, null, null);
+    }, partial, null);
 
     SnapshotTestUtils.assertMatches(testInfo, snapshot, Boolean.toString(partial), printer.render(call));
-    assertNotEquals(printer.render(call), printer.render(new Hir.Call(call.target(), call.arguments(), !partial, null, null)));
+    assertNotEquals(printer.render(call), printer.render(new Hir.Call(call.target(), call.arguments(), !partial, null)));
   }
 
   @ParameterizedTest
@@ -136,7 +135,6 @@ class ToStringTreeHirVisitorTest {
         (BinaryOperation
           (kind %s)
           (ty null)
-          (valueTy null)
           (lhs
             (Lexeme
               (name "left")
@@ -177,7 +175,7 @@ class ToStringTreeHirVisitorTest {
   void given__varargs_and_generated_sequence_flags__when__rendered__then__preserved(
     final boolean flag, final TestInfo testInfo, final Snapshot snapshot
   ) {
-    final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), new Hir.TyExpr(Ty.INTEGER), flag, Ty.VOID);
+    final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), new Hir.TyExpr(Ty.INTEGER), flag, Ty.INTEGER);
     final var signature = new Hir.FunctionSignature(new Hir.Parameter[] { parameter }, flag, null);
     final var expressions = new Hir.Expressions(new Hir.Expression[] {
       new Hir.Function(signature, new Hir.Return(new Hir.Identifier(parameter.lexeme(), parameter)))
@@ -232,11 +230,12 @@ class ToStringTreeHirVisitorTest {
       (Dec
         (mutability IMMUTABLE)
         (ty (named "VOID"))
+        (resolvedTy null)
         (lexeme
           (Lexeme
             (name "self")
             (ty null)))
-        (valueType
+        (typeAnnotation
           (Identifier
             (lexeme
               (Lexeme
@@ -255,6 +254,38 @@ class ToStringTreeHirVisitorTest {
       (TyExpr
         (ty (struct ("next" (pointer CPU (recursive))))))""",
       assertTimeout(Duration.ofSeconds(1), () -> printer.render(new Hir.TyExpr(type))));
+  }
+
+  @Test
+  void given__inferred_binding_and_contextual_tuple__when__rendered__then__specific_type_metadata_is_preserved() {
+    final var declarations = new ArrayList<Hir.Dec>();
+    final var tuples = new ArrayList<Hir.Tuple>();
+    Inf.codeToThir("val n = 7; val pair: (value: uint8,) = (value = 1,); pair").root().visit(new HirVisitor() {
+      @Override
+      public void visitDec(final Hir.Dec declaration) {
+        declarations.add(declaration);
+        HirVisitor.super.visitDec(declaration);
+      }
+
+      @Override
+      public void visitTuple(final Hir.Tuple tuple) {
+        if (tuple.contextualType() != null) {
+          tuples.add(tuple);
+        }
+        HirVisitor.super.visitTuple(tuple);
+      }
+    });
+
+    final var binding = printer.render(declarations.getFirst());
+    final var tuple = printer.render(tuples.getFirst());
+    assertAll(
+      () -> assertTrue(binding.contains("(ty (named \"VOID\"))")),
+      () -> assertTrue(binding.contains("(resolvedTy (number INTEGER")),
+      () -> assertTrue(binding.contains("(typeAnnotation\n    (TyExpr\n      (ty (named \"INFER\"))))")),
+      () -> assertTrue(tuple.contains("(contextualType (struct (\"value\" (number INTEGER width=8")),
+      () -> assertFalse(binding.contains("valueTy")),
+      () -> assertFalse(tuple.contains("valueTy"))
+    );
   }
 
   @Test
@@ -285,9 +316,9 @@ class ToStringTreeHirVisitorTest {
       new Hir.Labeling(name, value, Ty.INTEGER),
       new Hir.Loop(new Hir.Block(new Hir.LoopBreak(value), Ty.DEADEND)),
       new Hir.LoopContinue(),
-      new Hir.NewByBlock(identifier, identifier, new Hir.Assignment[] { assignment }, Ty.VOID, Ty.INTEGER),
-      new Hir.NewByCtor(identifier, null, new Hir.Tuple(new Hir.TupleEntry[0], null), null, null),
-      new Hir.Not(value, Ty.BOOLEAN, Ty.BOOLEAN),
+      new Hir.NewByBlock(identifier, identifier, new Hir.Assignment[] { assignment }, Ty.VOID),
+      new Hir.NewByCtor(identifier, null, new Hir.Tuple(new Hir.TupleEntry[0], null), null),
+      new Hir.Not(value, Ty.BOOLEAN),
       new Hir.Path(new Hir.Expression[] { identifier, name }, null, Ty.INTEGER),
       new Hir.Range(value, new Hir.Literal("9", Ty.INTEGER)),
       new Hir.DeadEnd(new Hir.Return(value)),

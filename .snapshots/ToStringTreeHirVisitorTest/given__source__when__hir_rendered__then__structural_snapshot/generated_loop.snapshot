@@ -20,11 +20,12 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                 (Dec
                   (mutability MUTABLE)
                   (ty (named "VOID"))
+                  (resolvedTy null)
                   (lexeme
                     (Lexeme
                       (name "i")
                       (ty null)))
-                  (valueType
+                  (typeAnnotation
                     (TyExpr
                       (ty (named "INFER"))))))
               (rhs
@@ -33,16 +34,13 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                   (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
             (Loop
               (ty null)
-              (valueTy null)
               (body
                 (Conditional
                   (ty null)
-                  (valueTy null)
                   (predicate
                     (BinaryOperation
                       (kind LT)
                       (ty null)
-                      (valueTy null)
                       (lhs
                         (Identifier
                           (lexeme

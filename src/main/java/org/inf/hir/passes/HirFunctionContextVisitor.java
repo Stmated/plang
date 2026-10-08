@@ -5,12 +5,14 @@ import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
 import org.inf.hir.HirCallArguments;
+import org.inf.hir.HirSpreadShape;
+import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
-import org.inf.ty.TyField;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyStruct;
+import org.inf.ty.TyValueArray;
 import org.inf.ty.util.Tys;
 import org.inf.util.ArrayUtils;
 
@@ -30,42 +32,82 @@ final class HirFunctionContextVisitor {
     private final BiConsumer<Hir.FunctionSignature, TyFn> action;
 
     private void visitContext(final Hir.Expression expression, final Ty type) {
-      if (type instanceof final TyFn expected) {
-        for (final var result : FindResultExpressionsVisitor.find(expression)) {
-          if (result instanceof final Hir.Function lambda) {
-            action.accept(lambda.signature(), expected);
-            final var declaredReturn = lambda.signature().returnType().ty();
-            visitReturns(lambda, Tys.isInferred(declaredReturn) ? expected.returnTy() : declaredReturn);
+      for (final var result : FindResultExpressionsVisitor.find(expression)) {
+        result.visit(new ContextVisitor(type));
+      }
+    }
+
+    private void visitReturns(final Hir.Function expression, final Ty type) {
+      for (final var result : FindResultExpressionsVisitor.findReturns(expression.body())) {
+        visitContext(result, type);
+      }
+    }
+
+    @RequiredArgsConstructor
+    private final class ContextVisitor implements HirVisitor {
+
+      private final Ty expected;
+
+      @Override
+      public void visitChild(final Hir.Expression expression) {
+      }
+
+      @Override
+      public void visitFunction(final Hir.Function expression) {
+        if (expected instanceof final TyFn function) {
+          action.accept(expression.signature(), function);
+          visitReturns(expression, Tys.getFunctionReturnContextTy(expression.signature(), function.returnTy()));
+        }
+      }
+
+      @Override
+      public void visitTuple(final Hir.Tuple expression) {
+        if (expected instanceof final TyStruct tuple && tuple.tuple()) {
+          final var slots = HirTupleMatching.match(expression, tuple);
+          if (slots != null) {
+            expression.visit(new EntryVisitor(tuple, slots));
+          }
+        }
+      }
+
+      @Override
+      public void visitArray(final Hir.Array expression) {
+        if (expected instanceof final TyValueArray array) {
+          for (final var element : expression.elements()) {
+            visitContext(element, array.elementType());
           }
         }
       }
     }
 
-    private void visitReturns(final Hir.Function expression, final Ty type) {
-      if (type instanceof TyFn) {
-        FindResultExpressionsVisitor.findReturns(expression.body()).forEach(result -> visitContext(result, type));
+    @RequiredArgsConstructor
+    private final class EntryVisitor implements HirVisitor {
+
+      private final TyStruct destination;
+      private final int[] slots;
+      private int index;
+
+      @Override
+      public void visitTupleEntry(final Hir.TupleEntry expression) {
+        visitContext(expression.value(), destination.fields()[slots[index++]].ty());
       }
     }
 
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
       if (!(expression.lhs() instanceof Hir.Lexeme)) {
-        visitContext(expression.rhs(), expression.lhs().valueTy());
+        visitContext(expression.rhs(), Tys.getAssignmentContextTy(expression.lhs()));
       }
       HirVisitor.super.visitAssignment(expression);
     }
 
     @Override
     public void visitNewByBlock(final Hir.NewByBlock expression) {
-      if (expression.target().valueTy() instanceof final TyStruct struct) {
+      final var struct = Tys.getConstructionTargetTy(expression.target());
+      if (struct != null) {
         for (final var assignment : expression.fields()) {
           if (assignment.lhs() instanceof final Hir.Lexeme name) {
-            for (final TyField field : struct.fields()) {
-              if (name.name().equals(field.name())) {
-                visitContext(assignment.rhs(), field.ty());
-                break;
-              }
-            }
+            visitContext(assignment.rhs(), Tys.getStructFieldTy(struct, name.name()));
           }
         }
       }
@@ -74,17 +116,17 @@ final class HirFunctionContextVisitor {
 
     @Override
     public void visitFunction(final Hir.Function expression) {
-      visitReturns(expression, expression.signature().returnType().ty());
+      visitReturns(expression, Tys.getFunctionReturnContextTy(expression.signature()));
       HirVisitor.super.visitFunction(expression);
     }
 
     @Override
     public void visitCall(final Hir.Call expression) {
-      if (expression.target().valueTy() instanceof final TyFn function
-        && ArrayUtils.any(function.parameters(), parameter -> parameter.ty() instanceof TyFn)) {
+      final var function = Tys.getCallableSignature(expression.target());
+      if (function != null && ArrayUtils.any(function.parameters(), parameter -> parameter.ty() instanceof TyFn)) {
         final var arguments = expression.arguments();
         if (ArrayUtils.none(arguments, argument -> argument.value() instanceof Hir.Spread spread
-          && !(spread.value().valueTy() instanceof TyStruct))) {
+          && HirSpreadShape.availableFields(spread) == null)) {
           final var parameters = function.parameters();
           final var binding = new HirArgumentBinding(
             ArrayUtils.mapToStrings(parameters, TyParam::name), function.vararg(), HirCallArguments.count(arguments)

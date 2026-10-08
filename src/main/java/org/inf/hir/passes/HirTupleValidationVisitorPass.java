@@ -7,14 +7,13 @@ import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
-import org.inf.ty.TyFn;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyStruct;
 import org.inf.ty.TyUnion;
 import org.inf.ty.util.TupleTypes;
 import org.inf.ty.util.TypeComparison;
+import org.inf.ty.util.Tys;
 
-import java.util.Arrays;
 import org.inf.util.ArrayUtils;
 
 /// Check tuple boundaries after inference, including expressions that cannot execute.
@@ -83,11 +82,13 @@ public final class HirTupleValidationVisitorPass {
 
     @Override
     public void visitTupleEntry(Hir.TupleEntry expression) {
+      final var value = expression.value();
       if (inAnnotation) {
-        final var value = expression.value();
         if (!isTypeExpression(value)) {
           throw new IllegalArgumentException("Tuple annotations require types, not value expressions");
         }
+        TupleTypes.requireElementType(value.ty(), true);
+      } else if (value.ty() != Ty.DEADEND) {
         TupleTypes.requireElementType(value.ty());
       }
       HirVisitor.super.visitTupleEntry(expression);
@@ -122,7 +123,7 @@ public final class HirTupleValidationVisitorPass {
       requireWritable(expression.lhs());
       // Constructor field names acquire their types from the aggregate, not identifier resolution.
       if (!(expression.lhs() instanceof Hir.Lexeme)) {
-        check(expression.rhs().ty(), expression.lhs().valueTy(), "assignment");
+        check(expression.rhs().ty(), Tys.getBindingTy(expression.lhs()), "assignment");
       }
     }
 
@@ -134,11 +135,11 @@ public final class HirTupleValidationVisitorPass {
 
     private static void requireWritable(Hir.Expression expression) {
       if (expression instanceof Hir.ArrayAccess access
-        && access.target().valueTy() instanceof TyStruct tuple && tuple.tuple()) {
+        && Tys.getIndexingReceiverTy(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
         throw new IllegalArgumentException("Tuple element writes are not supported yet");
       }
       if (expression instanceof Hir.Path path && path.elements().length >= 2
-        && path.elements()[path.elements().length - 2].valueTy() instanceof TyStruct tuple && tuple.tuple()) {
+        && Tys.getMemberReceiverTy(path.elements()[path.elements().length - 2]) instanceof TyStruct tuple && tuple.tuple()) {
         throw new IllegalArgumentException("Tuple element writes are not supported yet");
       }
     }
@@ -146,14 +147,13 @@ public final class HirTupleValidationVisitorPass {
     @Override
     public void visitNewByBlock(Hir.NewByBlock expression) {
       HirVisitor.super.visitNewByBlock(expression);
-      if (expression.valueTy() instanceof TyStruct struct) {
+      final var struct = Tys.getConstructionTargetTy(expression.target());
+      if (struct != null) {
         for (final var assignment : expression.fields()) {
           if (assignment.lhs() instanceof Hir.Lexeme name) {
-            final var field = Arrays.stream(struct.fields())
-              .filter(candidate -> name.name().equals(candidate.name()))
-              .findFirst();
-            if (field.isPresent()) {
-              check(assignment.rhs().ty(), field.get().ty(), "field " + name.name());
+            final var fieldTy = Tys.getStructFieldTy(struct, name.name());
+            if (fieldTy != null) {
+              check(assignment.rhs().ty(), fieldTy, "field " + name.name());
             } else if (TupleTypes.containsTuple(assignment.rhs().ty())) {
               throw new IllegalArgumentException("Unknown struct field: " + name.name());
             }
@@ -165,7 +165,8 @@ public final class HirTupleValidationVisitorPass {
     @Override
     public void visitCall(Hir.Call expression) {
       HirVisitor.super.visitCall(expression);
-      if (!(expression.target().valueTy() instanceof TyFn function)) {
+      final var function = Tys.getCallableSignature(expression.target());
+      if (function == null) {
         return;
       }
       final var arguments = expression.arguments();
@@ -198,7 +199,7 @@ public final class HirTupleValidationVisitorPass {
     public void visitFunction(Hir.Function expression) {
       final var outerReturnType = returnType;
       try {
-        returnType = expression.signature().returnType().ty();
+        returnType = expression.signature().ty().returnTy();
         HirVisitor.super.visitFunction(expression);
         check(expression.body().ty(), returnType, "implicit return");
       } finally {

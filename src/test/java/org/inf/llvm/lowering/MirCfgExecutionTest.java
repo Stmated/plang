@@ -15,6 +15,108 @@ import static org.junit.jupiter.api.Assertions.*;
 class MirCfgExecutionTest {
 
   @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "0 | true",
+    "0 | false",
+    "2 | true",
+    "2 | false"
+  })
+  void given__script_return_and_fallthrough__when__executed__then__the_reached_union_variant_is_returned(
+    final int optimization, final boolean flag
+  ) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    final var booleanFallthrough = assertInstanceOf(MirUnionValue.class, Inf.codeToResult("""
+      val flag = %s;
+      if (flag) { return 7; };
+      true
+      """.formatted(flag), options).resultValue());
+    final var voidFallthrough = assertInstanceOf(MirUnionValue.class, Inf.codeToResult("""
+      val flag = %s;
+      if (flag) { return 7; };
+      val n = true;
+      """.formatted(flag), options).resultValue());
+    final var missingBranch = assertInstanceOf(MirUnionValue.class,
+      Inf.codeToResult("if (%s) { return 7; }".formatted(flag), options).resultValue());
+    final var shortCircuit = assertInstanceOf(MirUnionValue.class,
+      Inf.codeToResult("%s && { return 7; }".formatted(flag), options).resultValue());
+    assertAll(
+      () -> assertEquals(flag ? Ty.INTEGER : Ty.BOOLEAN, booleanFallthrough.type().types()[booleanFallthrough.variant()]),
+      () -> assertEquals(flag ? 7 : true, booleanFallthrough.payload()),
+      () -> assertEquals(flag ? Ty.INTEGER : Ty.VOID, voidFallthrough.type().types()[voidFallthrough.variant()]),
+      () -> assertEquals(flag ? 7 : null, voidFallthrough.payload()),
+      () -> assertEquals(flag ? Ty.INTEGER : Ty.VOID, missingBranch.type().types()[missingBranch.variant()]),
+      () -> assertEquals(flag ? 7 : null, missingBranch.payload()),
+      () -> assertEquals(flag ? Ty.INTEGER : Ty.BOOLEAN, shortCircuit.type().types()[shortCircuit.variant()]),
+      () -> assertEquals(flag ? 7 : false, shortCircuit.payload())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {
+    0,
+    2
+  })
+  void given__terminal_script_assignment_or_declaration__when__executed__then__the_result_is_void(final int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    assertAll(
+      () -> assertNull(Inf.codeToResult("val n = 7;", options).resultValue()),
+      () -> assertNull(Inf.codeToResult("var n: int;", options).resultValue()),
+      () -> assertNull(Inf.codeToResult("var n = 7; n = 8;", options).resultValue()),
+      () -> assertNull(Inf.codeToResult("var n = 7; n += 1;", options).resultValue()),
+      () -> assertNull(Inf.codeToResult("val use = () => 7;", options).resultValue())
+    );
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "0 | true",
+    "0 | false",
+    "2 | true",
+    "2 | false"
+  })
+  void given__explicit_return_and_fallthrough__when__executed__then__the_reached_union_variant_is_returned(
+    final int optimization, final boolean flag
+  ) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    final var booleanFallthrough = assertInstanceOf(MirUnionValue.class, Inf.codeToResult("""
+      val use = (flag: bool) => { if (flag) { return 7; }; true };
+      use(%s)
+      """.formatted(flag), options).resultValue());
+    final var voidFallthrough = assertInstanceOf(MirUnionValue.class, Inf.codeToResult("""
+      val use = (flag: bool) => { if (flag) { return 7; }; val n = true; };
+      use(%s)
+      """.formatted(flag), options).resultValue());
+    final var shortCircuit = assertInstanceOf(MirUnionValue.class, Inf.codeToResult("""
+      val use = (flag: bool) => flag && { return 7; };
+      use(%s)
+      """.formatted(flag), options).resultValue());
+    assertAll(
+      () -> assertEquals(flag ? Ty.INTEGER : Ty.BOOLEAN, booleanFallthrough.type().types()[booleanFallthrough.variant()]),
+      () -> assertEquals(flag ? 7 : true, booleanFallthrough.payload()),
+      () -> assertEquals(flag ? Ty.INTEGER : Ty.VOID, voidFallthrough.type().types()[voidFallthrough.variant()]),
+      () -> assertEquals(flag ? 7 : null, voidFallthrough.payload()),
+      () -> assertEquals(flag ? Ty.INTEGER : Ty.BOOLEAN, shortCircuit.type().types()[shortCircuit.variant()]),
+      () -> assertEquals(flag ? 7 : false, shortCircuit.payload())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {
+    0,
+    2
+  })
+  void given__terminal_assignment__when__void_function_is_called__then__the_effect_is_preserved(final int optimization) {
+    final var options = InfRunOptions.builder().optLevel(optimization).build();
+    final var result = Inf.codeToResult("""
+      val values = [0];
+      val use = () => { values[0] = 7; };
+      use();
+      values[0]
+      """, options);
+    assertEquals(7, result.resultValue());
+  }
+
+  @ParameterizedTest
   @ValueSource(ints = {0, 2})
   void given__named_call_lists__when__executed__then__binding_and_capture_evaluation_are_preserved(final int optimization) {
     final var options = InfRunOptions.builder().optLevel(optimization).build();

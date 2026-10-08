@@ -2,6 +2,8 @@ package org.inf.hir;
 
 import org.inf.Inf;
 import org.inf.ty.Ty;
+import org.inf.ty.TyValueArray;
+import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -87,7 +89,7 @@ class HirCallTest {
     final var expression = new Hir.Call(target, new Hir.Argument[0]);
     Assertions.assertAll(
       () -> Assertions.assertThrows(NullPointerException.class, () -> new Hir.Call(target, null)),
-      () -> Assertions.assertThrows(NullPointerException.class, () -> new Hir.Call(target, null, false, null, null)),
+      () -> Assertions.assertThrows(NullPointerException.class, () -> new Hir.Call(target, null, false, null)),
       () -> Assertions.assertThrows(NullPointerException.class, () -> expression.arguments(null))
     );
   }
@@ -246,12 +248,13 @@ class HirCallTest {
   }
 
   @Test
-  void given__non_returning_argument_value__when__types_are_queried__then__nominal_value_type_is_preserved() {
-    final var value = new Hir.Block(new Hir.Literal("1", Ty.INTEGER), Ty.DEADEND);
+  void given__non_returning_argument_value__when__queried__then__completion_and_syntactic_indexing_type_are_distinct() {
+    final var array = new TyValueArray(Ty.INTEGER, 1);
+    final var value = new Hir.Block(new Hir.TyExpr(array), Ty.DEADEND);
     final var argument = new Hir.Argument(null, value);
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.DEADEND, argument.ty()),
-      () -> Assertions.assertEquals(Ty.INTEGER, argument.valueTy())
+      () -> Assertions.assertSame(array, Tys.getIndexingAccessorTy(argument))
     );
   }
 }

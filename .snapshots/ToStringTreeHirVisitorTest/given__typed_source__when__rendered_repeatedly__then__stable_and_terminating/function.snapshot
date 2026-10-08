@@ -17,13 +17,14 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
             (Dec
               (mutability IMMUTABLE)
               (ty (named "VOID"))
+              (resolvedTy (function vararg=false (parameters ("x" (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
               (lexeme
                 (Lexeme
                   (name "f")
                   (ty null)))
-              (valueType
+              (typeAnnotation
                 (TyExpr
-                  (ty (function vararg=false (parameters ("x" (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))))))
+                  (ty (named "INFER"))))))
           (rhs
             (Function
               (signature
@@ -33,17 +34,18 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
                   (parameters
                     (Parameter
                       (vararg false)
-                      (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+                      (ty (named "VOID"))
+                      (resolvedTy (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
                       (lexeme
                         (Lexeme
                           (name "x")
                           (ty null)))
-                      (valueType
+                      (typeAnnotation
                         (TyExpr
                           (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))))
                   (returnType
                     (TyExpr
-                      (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))))
+                      (ty (named "INFER"))))))
               (body
                 (Return
                   (ty (named "DEADEND"))
@@ -51,7 +53,6 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
                     (BinaryOperation
                       (kind ADD)
                       (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
-                      (valueTy (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
                       (lhs
                         (Identifier
                           (lexeme
@@ -69,7 +70,6 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
             (Call
               (partial false)
               (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
-              (valueTy (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
               (target
                 (Identifier
                   (lexeme
@@ -81,7 +81,6 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
                 (Argument
                   (label null)
                   (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
-                  (valueTy (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
                   (value
                     (Literal
                       (content "2")

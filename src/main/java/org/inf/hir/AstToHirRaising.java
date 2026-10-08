@@ -227,11 +227,11 @@ public class AstToHirRaising {
         }
 
 
-        yield new Hir.NewByBlock(target, allocatorIdentifier, assignments.toArray(new Hir.Assignment[0]), null, null);
+        yield new Hir.NewByBlock(target, allocatorIdentifier, assignments.toArray(new Hir.Assignment[0]), null);
       }
 
       // This is a creation using `new Obj('1')` syntax, meaning it is trying to call a manually added constructor.
-      case final Hir.Expressions exprs -> new Hir.NewByCtor(target, allocatorIdentifier, exprs, null, null);
+      case final Hir.Expressions exprs -> new Hir.NewByCtor(target, allocatorIdentifier, exprs, null);
       default -> throw new UnexpectedExpressionException(argumentExpr);
     };
   }
@@ -299,21 +299,19 @@ public class AstToHirRaising {
 
       // There are only elements. We will derive the rest from that.
       // TODO: Ty here should be "inferred" until THIR kicks in
-      final var tyExpr = new Hir.TyExpr(Ty.INFER); // (elementArray.length > 0) ? getTy(elementArray[0]) : Ty.INFER);
+      final var tyExpr = new Hir.TyExpr(Ty.INFER);
       final var arrayLengthExpr = new Hir.Literal(Objects.toString(elementArray.length), Ty.INTEGER);
       return new Hir.Array(elementArray, tyExpr, arrayLengthExpr, null, null);
 
     } else if (section == 1) {
 
-      final var tyExpr = new Hir.TyExpr(Ty.INFER); // new Hir.TyExpr((elementArray.length > 0) ? getTy(elementArray[0]) : Ty.INFER);
+      final var tyExpr = new Hir.TyExpr(Ty.INFER);
       final var size = sections[1];
       return new Hir.Array(elementArray, tyExpr, size, null, null);
 
     } else if (section == 2) {
 
       final var tyExpr = sections[1];
-      // TODO: Ty here should be "inferred" until THIR kicks in (?) Or is info lost here?
-      //final var exprArrayElementTy = getTyFromType(tyExpr);
       final var sizeExpr = sections[2];
       return new Hir.Array(elementArray, tyExpr, sizeExpr, null, null);
 
@@ -502,7 +500,7 @@ public class AstToHirRaising {
         }
       }
 
-      return new Hir.Call(target, arguments.toArray(new Hir.Argument[0]), false, null, null);
+      return new Hir.Call(target, arguments.toArray(new Hir.Argument[0]), false, null);
     }
 
     throw new IllegalArgumentException("Unknown postfix expression");
@@ -563,7 +561,7 @@ public class AstToHirRaising {
       raise(ast.lhs()),
       lower_binary_operation_type(ast.kind()),
       raise(ast.rhs()),
-      null, null
+      null
     );
   }
 
@@ -653,7 +651,7 @@ public class AstToHirRaising {
         new Hir.Expressions(new Hir.Expression[]{loweredBody, loopAction}, null, true),
         // TODO: Add support for adding value to the break
         new Hir.LoopBreak(null),
-        null, null
+        null
       )
     );
 
@@ -754,7 +752,7 @@ public class AstToHirRaising {
       raise(astConditional.predicate()),
       raise(astConditional.pass()),
       fail,
-      null, null
+      null
     );
   }
 }

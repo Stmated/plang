@@ -4,7 +4,49 @@
 
 # TODO
 
-## Next
+### Updated test cases, thorough rework of how tests are done
+
+* Some test cases seem to create invalid code structures, such as passing a TyExpr inside a block
+  * A TyExpr is not an "expression" at all, it is very special, since it is just placeholder for future comptime
+    * Perhaps this expr should be removed and instead it is a regular record with two fields, either a "ty" or a "Hir.CompTime"
+  * Find test cases that do similar weird things
+* Should use more s-expression printing
+* Should use more test cases found in files
+* Should use better ways of storing expected output for a snapshot test
+* Should have ways of giving a kind of test matrix for the different test files
+  * This way we can test that all things run the same way both from LLVM and the interpreter
+* Global/common test value sources, such as one that gives all optimization levels
+* Rather than testing that for example spreading works for every scenario, there should be specialized test cases that test that all different permutations of
+  spreading works. This will keep the tests more focused on the area of their need/use rather than creating very complex test cases that become like a test
+  matrix of all mixes of all features.
+  * There is still need for tests which mixes different features to see that they play along well together, but that should be focused tests where that
+    purpose is more explicit, such as a "see that spreading works with lambda lifting" and "see that spreading works with array creation" and "see that
+    spreading works with captured lambda lifting" (these are just examples, do not need to implement these specific ones)
+
+### Updated passes
+* Go through each pass separately and try to simplify them, then at the end ask the agent to write findings that other agents can make use of for further passes.
+* Special consideration should be taken to the extremely ugly Hir.Call and Hir.Function visitors that do lots of special spread/tuple work
+  * IFF there is need for this special lookup, I am sure it can be simplified into some outside visitor that can do things better.
+  * It is just too extremely ugly to have all this structure-specific code inside the visitors
+
+### Incomplete function-signature aliases: investigation
+
+* Investigate reusable incomplete function-signature aliases such as `val Fn = (value): bool`. Decide whether inference is independent per use or shared,
+  and how it relates to generics. These declarations are currently invalid, even with a complete expected type on the left-hand side.
+
+### Standalone declaration references
+
+* Register standalone declarations in identifier resolution: `var n: uint8; n = 7; n` currently fails to find `n`. Keep this separate from the Ty migration.
+
+### Indexing syntax: remaining work
+
+* Support unparenthesized call-result indexing: `make()[0]`. Currently use `(make())[0]` to preserve the intended receiver.
+* Raise range accessors such as `values[0..1]` from AST to HIR. Keep slice syntax/lowering separate from the Ty migration's existing indexing type rules.
+
+### Construction-target evaluation
+
+* Evaluate runtime effects in construction-target wrappers during MIR lowering. Targets currently supply only layouts; lambda capture discovery also skips
+  these expressions. Keep type-only identifiers distinct from runtime values.
 
 ### Stating function type for field inside struct
 
@@ -27,6 +69,16 @@ But keep some test case that still tests that both work, both alias and inline.
 
 * Preserve captured environments when functions are stored in fields or passed as values. Lambda lifting currently adds capture parameters only to directly
   resolved calls; incompatible stored signatures are rejected.
+
+### Conversion expressions: investigation
+
+* Investigate explicit conversion expressions; syntax is undecided, possibly `(uint8) 10` or `10 as uint8`. Neither is currently supported.
+  Keep this separate from existing contextual literal typing (`val n: uint8 = 10`) and numeric literal suffixes (`10u8`).
+
+### Array length constraints: investigation
+
+* Investigate minimum-length constraints separately from exact fixed sizes; no syntax is chosen. Fixed lengths are exact at binding/reassignment, argument,
+  field, and return boundaries. Existing unspecified-length arrays such as `[;int;]` are supported, not minimum-length constraints.
 
 ### Contextual lambda typing: remaining work
 
@@ -62,32 +114,29 @@ But keep some test case that still tests that both work, both alias and inline.
 
 ### Unification of "named arguments"
 
-* Function calls now use `=` for named arguments: `fn(a = 10)`. The old `:` spelling is rejected (Tuple 8).
+* Function calls now use `=` for named arguments: `fn(a = 10)`. The old `:` spelling is rejected.
     * To be able to assign a value inside a nested expression, it must be done using new `:=` syntax like `fn(a = foo := 10)`
         * The main difference to `=` is that `=` returns `void` but `:=` returns RHS value.
 * Give feedback on viability of this change, if it is a good idea or not.
+
+### Pointer and union annotation inference: deferred
+
+* Defer speculative pointer/union inference until source syntax makes it reachable.
+
+### Partial and generic tuple annotations: investigation
+
+* Investigate partial/generic tuple annotations, preferably named types such as `(uint8,$T)` so the inferred type can be referenced elsewhere.
+  There is no `?` placeholder syntax; generic semantics and syntax remain undecided.
+
 
 ### Change interpreter executor
 
 ThirToMirLoweringTest should not execute InterpreterCodeExecutor.
 If the test is made for testing the interpreter, then it should be inside an interpreter test class
 
+* Normalize suffixed integer constant content before interpreter execution: `val args = (2u8,); args[0]` currently passes `2u8` to `BigInteger`.
+
 ### Optional arguments, default values for parameters, named arguments
-
-### Updated test cases, thorough rework of how tests are done
-
-* Should use more s-expression printing
-* Should use more test cases found in files
-* Should use better ways of storing expected output for a snapshot test
-* Should have ways of giving a kind of test matrix for the different test files
-    * This way we can test that all things run the same way both from LLVM and the interpreter
-* Global/common test value sources, such as one that gives all optimization levels
-* Rather than testing that for example spreading works for every scenario, there should be specialized test cases that test that all different permutations of
-  spreading works. This will keep the tests more focused on the area of their need/use rather than creating very complex test cases that become like a test
-  matrix of all mixes of all features.
-    * There is still need for tests which mixes different features to see that they play along well together, but that should be focused tests where that
-      purpose is more explicit, such as a "see that spreading works with lambda lifting" and "see that spreading works with array creation" and "see that
-      spreading works with captured lambda lifting" (these are just examples, do not need to implement these specific ones)
 
 ### Fixes regarding tuples and spread
 

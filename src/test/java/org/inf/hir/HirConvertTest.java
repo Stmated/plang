@@ -59,7 +59,7 @@ class HirConvertTest {
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(conversion));
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.DEADEND, conversion.ty()),
-      () -> Assertions.assertEquals(Ty.LONG, conversion.valueTy()),
+      () -> Assertions.assertEquals(Ty.LONG, conversion.targetTy()),
       () -> Assertions.assertEquals(Ty.INTEGER, program.ty())
     );
   }

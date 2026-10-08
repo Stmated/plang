@@ -4,8 +4,10 @@ import org.inf.Inf;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.hir.util.ToStringTreeHirVisitor;
+import org.inf.thir.raising.HirToThirRaising;
 import org.inf.ty.TyFn;
 import org.inf.ty.Ty;
+import org.inf.ty.TyParam;
 import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Assertions;
@@ -17,6 +19,142 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.ArrayList;
 
 class HirFunctionContextualTypingVisitorPassTest {
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "apply(...({ return true; args; }), fn = (v) => v)",
+    "apply(...({ return true; }), fn = (v) => v)",
+    "apply(...({ return true; },), fn = (v) => v)",
+    "apply(...(make({ return true; })), fn = (v) => v)"
+  })
+  void given__noncontinuing_spread__when__other_arguments_are_contextualized__then__binding_uses_available_slots(
+    final String call
+  ) {
+    final var root = Inf.codeToThir("""
+      val Fn = (value: uint8): uint8;
+      val args = (x = 1u8,);
+      val make = (flag: bool): (x: uint8,) => args;
+      val apply = (x: uint8, fn: Fn) => fn(x);
+      val use = () => %s;
+      use()
+      """.formatted(call)).root();
+    final var parameters = new ArrayList<Hir.Parameter>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitParameter(final Hir.Parameter parameter) {
+        if (parameter.lexeme().name().equals("v")) {
+          parameters.add(parameter);
+        }
+        HirVisitor.super.visitParameter(parameter);
+      }
+    });
+    Assertions.assertEquals(1, parameters.size());
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(Ty.INFER, parameters.getFirst().typeAnnotation().ty()),
+      () -> Assertions.assertEquals(Tys.fromString("uint8", new MachineTarget(64)), parameters.getFirst().resolvedTy()),
+      () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "new heap S { fn = (v) => v; flag = false; }",
+    "new heap S { flag = { return true; }; fn = (v) => v; }",
+    "new heap ({ return true; S; }) { fn = (v) => v; flag = false; }",
+    "new heap (if ({ return true; }) then S else S) { fn = (v) => v; flag = false; }"
+  })
+  void given__construction_layout__when__lambda_fields_are_contextualized__then__transfers_do_not_hide_the_signature(
+    final String construction
+  ) {
+    final var root = Inf.codeToThir("""
+      val Fn = (value: uint8): uint8;
+      val S = struct { val fn: Fn; val flag: bool; };
+      val use = () => %s;
+      use()
+      """.formatted(construction)).root();
+    final var parameters = new ArrayList<Hir.Parameter>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitParameter(final Hir.Parameter parameter) {
+        if (parameter.lexeme().name().equals("v")) {
+          parameters.add(parameter);
+        }
+        HirVisitor.super.visitParameter(parameter);
+      }
+    });
+    Assertions.assertEquals(1, parameters.size());
+    final var parameter = parameters.getFirst();
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
+      () -> Assertions.assertEquals(Tys.fromString("uint8", new MachineTarget(64)), parameter.resolvedTy())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val Fn = (value: uint8): uint8; val f: Fn = (p) => p; f",
+    "val Fn = (value: (uint8, bool)): uint8; val f: Fn = (p) => p[0]; f",
+    "val Fn = (value: uint8): uint8; val Consumer = (callback: Fn): uint8; val f: Consumer = (p) => p(1); f",
+    "val Fn = (value: uint8): uint8; val f = (p: Fn) => p(1); f",
+    "val S = struct { val value: uint8; }; val f = (p: S) => p.value; f"
+  })
+  void given__inferred_or_alias_parameter_annotation__when__the_pipeline_runs__then__source_annotation_is_preserved(
+    final String code
+  ) {
+    final var hir = Inf.codeToHir(code);
+    final var parameters = new ArrayList<Hir.Parameter>();
+    hir.visit(new HirVisitor() {
+      @Override
+      public void visitParameter(final Hir.Parameter parameter) {
+        if (parameter.lexeme().name().equals("p")) {
+          parameters.add(parameter);
+        }
+        HirVisitor.super.visitParameter(parameter);
+      }
+    });
+    Assertions.assertEquals(1, parameters.size());
+    final var parameter = parameters.getFirst();
+    final var annotation = parameter.typeAnnotation();
+    final var root = new HirToThirRaising(new MachineTarget(64)).raise(hir).root();
+    final var signature = Assertions.assertInstanceOf(TyFn.class, root.ty());
+    Assertions.assertAll(
+      () -> Assertions.assertSame(annotation, parameter.typeAnnotation()),
+      () -> Assertions.assertEquals(Ty.VOID, parameter.ty()),
+      () -> Assertions.assertFalse(Tys.containsInferred(parameter.resolvedTy())),
+      () -> Assertions.assertEquals(parameter.resolvedTy(), signature.parameters()[0].ty())
+    );
+    if (annotation instanceof Hir.TyExpr) {
+      Assertions.assertEquals(Ty.INFER, annotation.ty());
+    } else {
+      Assertions.assertInstanceOf(Hir.Identifier.class, annotation);
+      Assertions.assertSame(annotation.ty(), parameter.resolvedTy());
+    }
+  }
+
+  @Test
+  void given__inferred_declaration__when__lambda_is_contextualized__then__previous_binding_is_not_an_initializer_constraint() {
+    final var root = Inf.codeToHir("val f = (v) => v; f");
+    final var functions = new ArrayList<Hir.Function>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitDec(final Hir.Dec declaration) {
+        declaration.resolvedTy(new TyFn(new TyParam[]{new TyParam("v", Ty.BOOLEAN)}, false, Ty.BOOLEAN));
+      }
+
+      @Override
+      public void visitFunction(final Hir.Function function) {
+        functions.add(function);
+        HirVisitor.super.visitFunction(function);
+      }
+    });
+    HirFunctionContextualTypingVisitorPass.pass(root);
+    Assertions.assertEquals(1, functions.size());
+    final var parameter = functions.getFirst().signature().parameters()[0];
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
+      () -> Assertions.assertNull(parameter.resolvedTy())
+    );
+  }
 
   @ParameterizedTest
   @ValueSource(strings = {
@@ -60,8 +198,10 @@ class HirFunctionContextualTypingVisitorPassTest {
     final var parameter = functions.getFirst().signature().parameters()[0];
     Assertions.assertAll(
       () -> Assertions.assertEquals("v", parameter.lexeme().name()),
-      () -> Assertions.assertEquals(function.parameters()[0].ty(), parameter.ty()),
-      () -> Assertions.assertEquals(function.returnTy(), parameter.ty())
+      () -> Assertions.assertEquals(Ty.VOID, parameter.ty()),
+      () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
+      () -> Assertions.assertEquals(function.parameters()[0].ty(), parameter.resolvedTy()),
+      () -> Assertions.assertEquals(function.returnTy(), parameter.resolvedTy())
     );
   }
 
@@ -90,10 +230,9 @@ class HirFunctionContextualTypingVisitorPassTest {
   }
 
   @Test
-  void given__no_expected_function_type__when__lambda_is_typed__then__parameter_type_is_not_guessed() {
-    final var root = Inf.codeToThir("val f = (v) => v; f").root();
-    final var function = Assertions.assertInstanceOf(TyFn.class, root.ty());
-    Assertions.assertTrue(Tys.isInferred(function.parameters()[0].ty()));
+  void given__no_expected_function_type__when__lambda_is_typed__then__unresolved_parameter_is_rejected() {
+    final var error = Assertions.assertThrows(IllegalArgumentException.class, () -> Inf.codeToThir("val f = (v) => v; f"));
+    Assertions.assertTrue(error.getMessage().contains("Function signature requires resolved parameter and return types"));
   }
 
   @Test
@@ -149,7 +288,8 @@ class HirFunctionContextualTypingVisitorPassTest {
     HirFunctionContextualTypingVisitorPass.pass(root);
     final var parameter = functions.getFirst().signature().parameters()[0];
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Tys.fromString("int", new MachineTarget(64)), parameter.valueType().ty()),
+      () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
+      () -> Assertions.assertEquals(Tys.fromString("int", new MachineTarget(64)), parameter.resolvedTy()),
       () -> Assertions.assertEquals(beforeRootType, root.ty()),
       () -> Assertions.assertEquals(beforeTupleTypes, tuples.stream().map(Hir.Tuple::ty).toList()),
       () -> Assertions.assertTrue(tuples.stream().allMatch(tuple -> tuple.contextualType() == null)),
@@ -213,9 +353,11 @@ class HirFunctionContextualTypingVisitorPassTest {
     Assertions.assertEquals(2, functions.size());
     HirFunctionContextualTypingVisitorPass.pass(root);
     Assertions.assertAll(
-      () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].valueType().ty())),
+      () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].typeAnnotation().ty())),
+      () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].resolvedTy())),
+      () -> Assertions.assertEquals(Ty.INFER, functions.getLast().signature().parameters()[0].typeAnnotation().ty()),
       () -> Assertions.assertEquals(Tys.fromString("int", new MachineTarget(64)),
-        functions.getLast().signature().parameters()[0].valueType().ty())
+        functions.getLast().signature().parameters()[0].resolvedTy())
     );
   }
 
@@ -260,7 +402,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     constructors.getFirst().target(new Hir.TyExpr(Ty.INFER));
     HirFunctionContextualTypingVisitorPass.pass(root);
     Assertions.assertEquals(Tys.fromString("int", new MachineTarget(64)),
-      functions.getFirst().signature().parameters()[0].valueType().ty(),
+      functions.getFirst().signature().parameters()[0].resolvedTy(),
       () -> new ToStringTreeHirVisitor().render(root));
   }
 

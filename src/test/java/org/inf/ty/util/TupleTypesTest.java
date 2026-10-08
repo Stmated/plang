@@ -31,6 +31,23 @@ class TupleTypesTest {
     );
   }
 
+  static Stream<Ty> partialConstraints() {
+    return Stream.of(
+      Ty.INFER,
+      tuple(Ty.INTEGER, new TyValueArray(Ty.INFER, 2)),
+      new TyValueArray(Ty.INFER, 1)
+    );
+  }
+
+  @ParameterizedTest
+  @MethodSource("partialConstraints")
+  void given__partial_member_constraint__when__validated__then__placeholders_are_allowed_only_in_annotations(final Ty type) {
+    Assertions.assertAll(
+      () -> Assertions.assertDoesNotThrow(() -> TupleTypes.requireElementType(type, true)),
+      () -> Assertions.assertThrows(IllegalArgumentException.class, () -> TupleTypes.requireElementType(type))
+    );
+  }
+
   @Test
   void given__fully_named_tuple__when__formatted__then__singleton_comma_is_preserved() {
     final var type = new TyStruct(new TyField[]{new TyField("x", Ty.INTEGER)}, true);

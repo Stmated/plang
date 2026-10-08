@@ -12,7 +12,6 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
       (expression
         (Conditional
           (ty null)
-          (valueTy null)
           (predicate
             (Literal
               (content "true")

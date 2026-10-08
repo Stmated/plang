@@ -20,7 +20,7 @@ public class HirFunctionParameterValidationVisitorPass {
       throw new IllegalArgumentException("Lambda parameter count or variadic shape does not match expected function type");
     }
     for (var i = 0; i < parameters.length; i++) {
-      final var actual = parameters[i].valueType().ty();
+      final var actual = parameters[i].resolvedTy();
       final var destination = expected.parameters()[i].ty();
       if (!TypeComparison.sameValueType(actual, destination)) {
         throw new InvalidTypeConversionException("Lambda parameter type does not match expected function type", actual, destination);

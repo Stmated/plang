@@ -6,8 +6,6 @@ import org.inf.hir.HirTupleMatching;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
 import org.inf.ty.TyStruct;
-import org.inf.ty.util.TupleTypes;
-import org.inf.ty.util.Tys;
 
 import java.util.HashSet;
 
@@ -39,22 +37,18 @@ final class HirTupleTyping {
       if (type == Ty.DEADEND) {
         diverges = true;
       } else {
-        if (!availableOnly || !Tys.containsInferred(type)) {
-          TupleTypes.requireElementType(type);
-        }
         final var index = slots == null ? i : slots[i];
         if (slots == null) {
           fields[index] = new TyField(name, type);
         } else {
           // Preparation exposes the linked layout; final resolution uses converted entry types.
           final var field = contextual.fields()[index];
-          fields[index] = new TyField(field.name(), availableOnly ? field.ty() : type);
+          fields[index] = new TyField(field.name(), availableOnly ? HirDeclarationTyping.resolve(field.ty(), type) : type);
         }
       }
     }
     // A diverging construction has no aggregate value or layout, even if some entries have values.
     final var type = diverges ? Ty.DEADEND : new TyStruct(fields, true).intern();
     tuple.ty(type);
-    tuple.valueTy(type);
   }
 }

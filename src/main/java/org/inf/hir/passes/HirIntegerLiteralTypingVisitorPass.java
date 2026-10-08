@@ -61,22 +61,21 @@ public class HirIntegerLiteralTypingVisitorPass {
 
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
-      if (!(expression.lhs() instanceof Hir.Lexeme)
-        && !(expression.lhs() instanceof Hir.Dec declaration && Tys.containsInferred(declaration.valueType().ty()))) {
-        contextualize(expression.rhs(), expression.lhs().valueTy());
+      if (!(expression.lhs() instanceof Hir.Lexeme)) {
+        contextualize(expression.rhs(), Tys.getAssignmentContextTy(expression.lhs()));
       }
       HirVisitor.super.visitAssignment(expression);
     }
 
     @Override
     public void visitCompoundAssignment(final Hir.CompoundAssignment expression) {
-      contextualize(expression.rhs(), expression.target().valueTy());
+      contextualize(expression.rhs(), Tys.getBindingTy(expression.target()));
       HirVisitor.super.visitCompoundAssignment(expression);
     }
 
     @Override
     public void visitFunction(final Hir.Function expression) {
-      contextualizeReturns(expression, expression.signature().returnType().ty());
+      contextualizeReturns(expression, Tys.getFunctionReturnContextTy(expression.signature()));
       HirVisitor.super.visitFunction(expression);
     }
 
@@ -97,15 +96,11 @@ public class HirIntegerLiteralTypingVisitorPass {
 
     @Override
     public void visitNewByBlock(final Hir.NewByBlock expression) {
-      if (expression.target().valueTy() instanceof final TyStruct struct) {
+      final var struct = Tys.getConstructionTargetTy(expression.target());
+      if (struct != null) {
         for (final var assignment : expression.fields()) {
           if (assignment.lhs() instanceof final Hir.Lexeme name) {
-            for (final var field : struct.fields()) {
-              if (name.name().equals(field.name())) {
-                contextualize(assignment.rhs(), field.ty());
-                break;
-              }
-            }
+            contextualize(assignment.rhs(), Tys.getStructFieldTy(struct, name.name()));
           }
         }
       }
@@ -114,7 +109,8 @@ public class HirIntegerLiteralTypingVisitorPass {
 
     @Override
     public void visitCall(final Hir.Call expression) {
-      if (expression.target().valueTy() instanceof final TyFn function) {
+      final var function = Tys.getCallableSignature(expression.target());
+      if (function != null) {
         final var parameters = function.parameters();
         final var binding = new HirArgumentBinding(
           ArrayUtils.mapToStrings(parameters, TyParam::name), function.vararg(), HirCallArguments.count(expression.arguments())
@@ -140,7 +136,9 @@ public class HirIntegerLiteralTypingVisitorPass {
   }
 
   private static void contextualizeReturns(final Hir.Function expression, final Ty expected) {
-    FindResultExpressionsVisitor.findReturns(expression.body()).forEach(result -> contextualize(result, expected));
+    for (final var result : FindResultExpressionsVisitor.findReturns(expression.body())) {
+      contextualize(result, expected);
+    }
   }
 
   private static void contextualizeElements(final Hir.Array expression, final Ty expected) {
@@ -178,8 +176,7 @@ public class HirIntegerLiteralTypingVisitorPass {
     @Override
     public void visitFunction(final Hir.Function expression) {
       if (expected instanceof final TyFn function) {
-        final var declared = expression.signature().returnType().ty();
-        contextualizeReturns(expression, Tys.isInferred(declared) ? function.returnTy() : declared);
+        contextualizeReturns(expression, Tys.getFunctionReturnContextTy(expression.signature(), function.returnTy()));
       }
     }
   }

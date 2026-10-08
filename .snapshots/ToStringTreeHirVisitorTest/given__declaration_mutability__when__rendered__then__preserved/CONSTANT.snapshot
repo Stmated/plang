@@ -7,10 +7,11 @@ test-method: given__declaration_mutability__when__rendered__then__preserved
 (Dec
   (mutability CONSTANT)
   (ty (named "VOID"))
+  (resolvedTy null)
   (lexeme
     (Lexeme
       (name "value")
       (ty null)))
-  (valueType
+  (typeAnnotation
     (TyExpr
       (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))

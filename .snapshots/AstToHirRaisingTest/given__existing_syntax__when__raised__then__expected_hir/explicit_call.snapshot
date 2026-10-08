@@ -13,7 +13,6 @@ test-method: given__existing_syntax__when__raised__then__expected_hir
         (Call
           (partial false)
           (ty null)
-          (valueTy null)
           (target
             (Identifier
               (lexeme
@@ -25,7 +24,6 @@ test-method: given__existing_syntax__when__raised__then__expected_hir
             (Argument
               (label null)
               (ty null)
-              (valueTy null)
               (value
                 (Identifier
                   (lexeme
@@ -36,7 +34,6 @@ test-method: given__existing_syntax__when__raised__then__expected_hir
             (Argument
               (label null)
               (ty null)
-              (valueTy null)
               (value
                 (Identifier
                   (lexeme

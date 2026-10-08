@@ -8,14 +8,11 @@ import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
-import org.inf.ty.TyFn;
 import org.inf.ty.TyParam;
-import org.inf.ty.TyStruct;
 import org.inf.ty.TyUnion;
 import org.inf.ty.util.TypeComparison;
+import org.inf.ty.util.Tys;
 import org.inf.util.ArrayUtils;
-
-import java.util.Arrays;
 
 /// Checks function-valued use sites after type resolution without inferring or propagating expected types.
 @UtilityClass
@@ -25,19 +22,13 @@ public class HirFunctionValidationVisitorPass {
     expression.visit(new Visitor());
   }
 
-  private static boolean containsFunction(final Ty type) {
-    return type instanceof TyFn
-      || type instanceof TyUnion union && ArrayUtils.any(union.types(), HirFunctionValidationVisitorPass::containsFunction);
-  }
-
   private static void check(final Hir.Expression expression, final Ty expected, final String context) {
-    final var actual = expression.ty() == Ty.DEADEND && !containsFunction(expression.valueTy())
-      ? Ty.DEADEND : expression.valueTy();
-    check(actual, expected, context);
+    final var callable = Tys.getCallableValueTy(expression);
+    check(callable == null ? expression.ty() : callable, expected, context);
   }
 
   private static void check(final Ty actual, final Ty expected, final String context) {
-    if (actual == Ty.DEADEND || !(containsFunction(actual) || containsFunction(expected))) {
+    if (actual == Ty.DEADEND || !(Tys.containsFunction(actual) || Tys.containsFunction(expected))) {
       return;
     }
     if (TypeComparison.sameValueType(actual, expected)) {
@@ -60,21 +51,21 @@ public class HirFunctionValidationVisitorPass {
     public void visitAssignment(final Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
       if (!(expression.lhs() instanceof Hir.Lexeme)) {
-        check(expression.rhs(), expression.lhs().valueTy(), "assignment");
+        check(expression.rhs(), Tys.getBindingTy(expression.lhs()), "assignment");
       }
     }
 
     @Override
     public void visitNewByBlock(final Hir.NewByBlock expression) {
       HirVisitor.super.visitNewByBlock(expression);
-      if (expression.valueTy() instanceof TyStruct struct) {
+      final var struct = Tys.getConstructionTargetTy(expression.target());
+      if (struct != null) {
         for (final var assignment : expression.fields()) {
           if (assignment.lhs() instanceof Hir.Lexeme name) {
-            final var field = Arrays.stream(struct.fields()).filter(candidate -> name.name().equals(candidate.name()))
-              .findFirst();
-            if (field.isPresent()) {
-              check(assignment.rhs(), field.get().ty(), "field %s".formatted(name.name()));
-            } else if (containsFunction(assignment.rhs().valueTy())) {
+            final var fieldTy = Tys.getStructFieldTy(struct, name.name());
+            if (fieldTy != null) {
+              check(assignment.rhs(), fieldTy, "field %s".formatted(name.name()));
+            } else if (Tys.getCallableValueTy(assignment.rhs()) != null) {
               throw new IllegalArgumentException("Unknown struct field: %s".formatted(name.name()));
             }
           }
@@ -86,7 +77,7 @@ public class HirFunctionValidationVisitorPass {
     public void visitFunction(final Hir.Function expression) {
       final var outerReturn = returnType;
       try {
-        returnType = expression.signature().returnType().ty();
+        returnType = expression.signature().ty().returnTy();
         HirVisitor.super.visitFunction(expression);
         check(expression.body(), returnType, "implicit return");
       } finally {
@@ -105,8 +96,8 @@ public class HirFunctionValidationVisitorPass {
     @Override
     public void visitCall(final Hir.Call expression) {
       HirVisitor.super.visitCall(expression);
-      if (!(expression.target().valueTy() instanceof TyFn function)
-        || ArrayUtils.none(function.parameters(), parameter -> containsFunction(parameter.ty()))) {
+      final var function = Tys.getCallableSignature(expression.target());
+      if (function == null || ArrayUtils.none(function.parameters(), parameter -> Tys.containsFunction(parameter.ty()))) {
         return;
       }
       final var arguments = expression.arguments();
