@@ -5,9 +5,8 @@
 # TODO
 
 ### Support for union syntax
-Add union syntax, so more test cases can create test cases by string code.
-Right now lots of test cases are created manually since you cannot represent a Ty.union using syntax.
-Once syntax has been added, appropriately update test cases
+* Lexer and Token -> AST raising: done. `val v: A | B = other` keeps the union inside the declaration's type.
+* Raise union annotations to `Ty.union` in later compiler stages, then replace manually constructed union fixtures with source-driven tests.
 
 ### Updated test cases, thorough rework of how tests are done
 
@@ -25,6 +24,7 @@ Once syntax has been added, appropriately update test cases
   * There is still need for tests which mixes different features to see that they play along well together, but that should be focused tests where that
     purpose is more explicit, such as a "see that spreading works with lambda lifting" and "see that spreading works with array creation" and "see that
     spreading works with captured lambda lifting" (these are just examples, do not need to implement these specific ones)
+* Look into changing s-expression strings wrapped in ' so that inline test cases do not need to escape 
 
 ### Updated passes
 * Go through each pass separately and try to simplify them, then at the end ask the agent to write findings that other agents can make use of for further passes.

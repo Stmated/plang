@@ -28,6 +28,9 @@ For example if a job is to "remove all fields called 'foo'", then you should not
 
 If a test scenario cannot be represented as Inf code and it requires manual creation of nodes, then the test is extremely likely there for the wrong reasons.
 
+## Asserting expression structure
+
+
 ## Snapshot testing
 Strongly prefer using snapshot testing for complex outputs, to assert toString-able structures.
 But do not introduce snapshot testing if other assertions in the test already cover the same need for verification.

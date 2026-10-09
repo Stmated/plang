@@ -311,6 +311,101 @@ class TokenToAstRaisingTest {
     );
   }
 
+  @ParameterizedTest
+  @CsvSource({
+    "val, Immutable",
+    "var, Mutable"
+  })
+  void given__union_type_annotation__when__parsed__then__assignment_lhs_is_declaration(
+    final String keyword, final Ast.MutabilityKind mutability
+  ) {
+    final var code = "%s v: A | B = other".formatted(keyword);
+    final var program = Inf.codeToRawAst(code);
+    final var expressions = toExpressions(program);
+    assertEquals(1, expressions.length);
+    final var assignment = assertType(Ast.Assignment.class, expressions[0]);
+    final var declaration = assertType(Ast.VariableDeclaration.class, assignment.lhs());
+    final var union = assertType(Ast.BinaryOperation.class, declaration.type());
+    Assertions.assertAll(
+      () -> assertEquals(new Ast.Lexeme("v"), declaration.lexeme()),
+      () -> assertEquals(mutability, declaration.mutabilityKind()),
+      () -> assertEquals(Ast.BinaryOperationKind.BIT_OR, union.kind()),
+      () -> assertEquals(new Ast.Lexeme("A"), union.lhs()),
+      () -> assertEquals(new Ast.Lexeme("B"), union.rhs()),
+      () -> assertEquals(new Ast.Lexeme("other"), assignment.rhs()),
+      () -> assertEquals(program, Inf.codeToAst(code))
+    );
+  }
+
+  @ParameterizedTest
+  @CsvSource(value = {
+    "A | B | C # (BinaryOperation BIT_OR (Lexeme \"A\") (BinaryOperation BIT_OR (Lexeme \"B\") (Lexeme \"C\")))",
+    "(A | B) # (Paren (BinaryOperation BIT_OR (Lexeme \"A\") (Lexeme \"B\")))",
+    "(A) | (B) # (BinaryOperation BIT_OR (Paren (Lexeme \"A\")) (Paren (Lexeme \"B\")))",
+    "A | (B | C) # (BinaryOperation BIT_OR (Lexeme \"A\") (Paren (BinaryOperation BIT_OR (Lexeme \"B\") (Lexeme \"C\"))))",
+    "ns.A | ns.B # (BinaryOperation BIT_OR (DotAccess (Lexeme \"ns\") (Lexeme \"A\")) (DotAccess (Lexeme \"ns\") (Lexeme \"B\")))"
+  }, delimiter = '#')
+  void given__compound_union_annotation__when__parsed__then__whole_annotation_belongs_to_declaration(
+    final String annotation, final String expected
+  ) {
+    final var expressions = toExpressions(Inf.codeToRawAst("val v: %s = other".formatted(annotation)));
+    assertEquals(1, expressions.length);
+    final var assignment = assertType(Ast.Assignment.class, expressions[0]);
+    final var declaration = assertType(Ast.VariableDeclaration.class, assignment.lhs());
+    Assertions.assertAll(
+      () -> assertEquals(expected, new ToStringTreeAstVisitor().visit(declaration.type()).replaceAll("\\s+", " ")),
+      () -> assertEquals(new Ast.Lexeme("other"), assignment.rhs())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val v: A | B",
+    "var v: A | B",
+    "val v: A | B;",
+    "var v: A | B;"
+  })
+  void given__union_annotation_without_initializer__when__parsed__then__declaration_owns_union(final String code) {
+    final var expressions = toExpressions(Inf.codeToRawAst(code));
+    assertEquals(code.endsWith(";") ? 2 : 1, expressions.length);
+    final var declaration = assertType(Ast.VariableDeclaration.class, expressions[0]);
+    final var union = assertType(Ast.BinaryOperation.class, declaration.type());
+    Assertions.assertAll(
+      () -> assertEquals(Ast.BinaryOperationKind.BIT_OR, union.kind()),
+      () -> assertEquals(new Ast.Lexeme("A"), union.lhs()),
+      () -> assertEquals(new Ast.Lexeme("B"), union.rhs())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val v: A | B = x | y",
+    "val v: A = x | y",
+    "val v = x | y"
+  })
+  void given__bitwise_or_initializer__when__parsed__then__bitwise_or_remains_on_assignment_rhs(final String code) {
+    final var expressions = toExpressions(Inf.codeToRawAst(code));
+    assertEquals(1, expressions.length);
+    final var assignment = assertType(Ast.Assignment.class, expressions[0]);
+    assertType(Ast.VariableDeclaration.class, assignment.lhs());
+    final var operation = assertType(Ast.BinaryOperation.class, assignment.rhs());
+    Assertions.assertAll(
+      () -> assertEquals(Ast.BinaryOperationKind.BIT_OR, operation.kind()),
+      () -> assertEquals(new Ast.Lexeme("x"), operation.lhs()),
+      () -> assertEquals(new Ast.Lexeme("y"), operation.rhs())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val v: A |",
+    "val v: A | = other",
+    "val v: | B = other"
+  })
+  void given__missing_union_operand__when__parsed__then__error(final String code) {
+    assertThrows(RuntimeException.class, () -> Inf.codeToRawAst(code));
+  }
+
   @Test
   void given__possible_fn_call_as_member_specific_parenthesised_3_words__expect__lexemes_and_access_and_paren() {
     final var ast = toExpressions(Inf.codeToAst("person.eats(fruit)"));
@@ -323,55 +418,4 @@ class TokenToAstRaisingTest {
       );
     });
   }
-
-//  @Test
-//  void testAnonymousFnWithDirectCall() {
-//
-//    final var ast = toExpressions(Inf.codeToAst("((a: int, b: int) => a + b)(5, 5)"));
-//
-//    // TODO: Fix test case :) And make sure all tests still work properly
-//    //        ... is it worth looking into making a function call a binary operation? Would that make it easier to parse and still understandable?
-//
-//    Assertions.assertEquals(1, ast.length);
-//
-//    // TODO: Convert this into some common format that is common in lang dev -- need to find some known format
-//    //        So we can easily compare against a string, and make it understandable for others
-//    as(ast[0], Ast.Call.class, call -> {
-//      as(call.target(), Ast.Paren.class, paren -> {
-//        as(paren.expression(), Ast.Callable.class, callable -> {
-//          as(callable.lhs(), Ast.Paren.class, call_lhs_paren -> {
-//            as(call_lhs_paren.expression(), Ast.Expressions.class, call_lhs_exprs -> {
-//              as(call_lhs_exprs.children()[0], Ast.Labeling.class, labeling -> {
-//                as(labeling.lhs(), Ast.Lexeme.class, id -> {
-//                  Assertions.assertEquals("a", id.name());
-//                });
-//                as(labeling.rhs(), Ast.Lexeme.class, id -> {
-//                  Assertions.assertEquals("int", id.name());
-//                });
-//              });
-//              as(call_lhs_exprs.children()[1], Ast.Labeling.class, labeling -> {
-//                as(labeling.lhs(), Ast.Lexeme.class, id -> {
-//                  Assertions.assertEquals("b", id.name());
-//                });
-//                as(labeling.rhs(), Ast.Lexeme.class, id -> {
-//                  Assertions.assertEquals("int", id.name());
-//                });
-//              });
-//            });
-//          });
-//
-//          as(callable.rhs(), Ast.BinaryOperation.class, bop -> {
-//            Assertions.assertEquals(Ast.BinaryOperationKind.ADD, bop.kind());
-//          });
-//        });
-//      });
-//
-//      as(call.paren(), Ast.Paren.class, paren -> {
-//        as(paren.expression(), Ast.Expressions.class, exprs -> {
-//          as(exprs.children()[0], Ast.Literal.class, literal -> Assertions.assertEquals("5", literal.content()));
-//          as(exprs.children()[1], Ast.Literal.class, literal -> Assertions.assertEquals("5", literal.content()));
-//        });
-//      });
-//    });
-//  }
 }

@@ -70,6 +70,7 @@ It is however allowed to manually call two different THIR passes, if the purpose
 
 ## Code style
 
+* Do not read/follow checkstyle file.
 * Avoid cloning arrays or lists as defensive safeguards. Expect callers not to modify returned arrays/collections.
 * For lists and sets, use `Collections.unmodifiableList` or `Collections.unmodifiableSet` if you must protect from modifications. Do not clone them.
 * Avoid overly specific default values for new features. Let the caller decide the default when nothing is found.

@@ -670,9 +670,7 @@ public class TokenToAstRaising {
     final Ast.Expression type;
     final var potentialColon = next();
     if (potentialColon != null && potentialColon.type() == TokenType.COLON) {
-//      next(); // TODO: Wrong? Or is this what we should do always? next() before?
-      //type = this.parseIdentifierLike();
-      type = this.parseExpression();
+      type = this.parseLevel8();
     } else {
       queuedTokens.add(potentialColon);
       type = null;
@@ -691,7 +689,7 @@ public class TokenToAstRaising {
       final var rhs = this.parseLevel0();
       return new Ast.Assignment(declaration, rhs);
 
-    } else {
+    } else if (potentialAssign != null) {
       queuedTokens.add(potentialAssign);
     }
 
