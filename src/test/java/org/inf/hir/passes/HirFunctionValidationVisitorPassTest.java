@@ -161,17 +161,6 @@ class HirFunctionValidationVisitorPassTest {
     );
   }
 
-  @Test
-  void given__unknown_function_field__when__typed_initializer_is_validated__then__field_error_is_reported() {
-    final var root = prepare("""
-      val Fn = (v: int): int;
-      val S = struct { val fn: Fn; };
-      new heap S { missing = (v: int) => v; }
-      """);
-    final var error = Assertions.assertThrows(IllegalArgumentException.class, () -> HirFunctionValidationVisitorPass.pass(root));
-    Assertions.assertEquals("Unknown struct field: missing", error.getMessage());
-  }
-
   @ParameterizedTest
   @ValueSource(strings = {
     "val x: uint8 = 1; x",

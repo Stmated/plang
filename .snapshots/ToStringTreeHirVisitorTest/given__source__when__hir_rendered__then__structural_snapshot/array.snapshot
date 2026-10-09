@@ -21,17 +21,19 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
               (lexeme
                 (Lexeme
                   (name "a")
-                  (ty null)))
+                  (ty (named "VOID"))))
               (typeAnnotation
-                (TyExpr
-                  (ty (named "INFER"))))))
+                (DynamicTy
+                  (ty (named "INFER"))
+                  (expression null)))))
           (rhs
             (Array
               (ty null)
               (arrayTy null)
               (elementType
-                (TyExpr
-                  (ty (named "INFER"))))
+                (DynamicTy
+                  (ty (named "INFER"))
+                  (expression null)))
               (length
                 (Literal
                   (content "2")
@@ -51,10 +53,7 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
               (indexedTy null)
               (target
                 (Identifier
-                  (lexeme
-                    (Lexeme
-                      (name "a")
-                      (ty null)))
+                  (name "a")
                   (target null)))
               (accessor
                 (Literal

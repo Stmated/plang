@@ -451,6 +451,27 @@ class ThirToMirLoweringTest {
   }
 
   @Test
+  void given__out_of_order_struct_initializers__when__lowered__then__source_evaluation_order_and_resolved_field_order_are_distinct() {
+    final var module = Inf.codeToMir("""
+      val S = struct { val first: int; val second: int; };
+      val evaluate = (v: int): int => v;
+      val s = new heap S { second = evaluate(2); first = evaluate(1); };
+      s.first
+      """);
+    final var operations = instructions(module);
+    final var calls = operations.stream().filter(Mir.Call.class::isInstance).map(Mir.Call.class::cast).toList();
+    final var construction = operations.stream().filter(Mir.NewStruct.class::isInstance)
+      .map(Mir.NewStruct.class::cast).findFirst().orElseThrow();
+    assertAll(
+      () -> assertEquals(2, calls.size()),
+      () -> assertEquals("2", assertInstanceOf(Mir.Constant.class, calls.getFirst().arguments().getFirst()).content()),
+      () -> assertEquals("1", assertInstanceOf(Mir.Constant.class, calls.getLast().arguments().getFirst()).content()),
+      () -> assertSame(calls.getLast().result(), construction.fields().getFirst()),
+      () -> assertSame(calls.getFirst().result(), construction.fields().getLast())
+    );
+  }
+
+  @Test
   void given__contextual_tuple_widening__when__lowered__then__scalar_slots_are_converted_before_allocation() {
     final var module = Inf.codeToMir("""
       val x = 255u8;

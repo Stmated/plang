@@ -465,7 +465,7 @@ class MirToLLVMLoweringTest {
 
   @ParameterizedTest
   @ValueSource(strings = {
-    "val fn = (a: int, ...x: [int]) => a + x[0] + x[1]; fn(1, 5, 4)",
+    "val fn = (a: int, ...x: [;int;]) => a + x[0] + x[1]; fn(1, 5, 4)",
   })
   void testFnImplVararg(String code) {
     Assertions.assertThrows(InvalidImplementationException.class, () -> Inf.codeToResult(code).resultValue());

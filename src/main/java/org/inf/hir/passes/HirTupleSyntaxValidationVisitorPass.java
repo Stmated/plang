@@ -17,33 +17,33 @@ public class HirTupleSyntaxValidationVisitorPass {
     private boolean inAnnotation;
     private boolean inTuple;
 
-    private void visitAnnotation(final Hir.Expression expression) {
+    private void visitAnnotation(final Hir.DynamicTy annotation) {
       final var outer = inAnnotation;
       try {
         inAnnotation = true;
-        visitChild(expression);
+        annotation.visit(this);
       } finally {
         inAnnotation = outer;
       }
     }
 
     @Override
-    public void visitDecType(final Hir.Expression expression) {
+    public void visitDecType(final Hir.DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitParameterType(final Hir.Expression expression) {
+    public void visitParameterType(final Hir.DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitFunctionSignatureReturnType(final Hir.Expression expression) {
+    public void visitFunctionSignatureReturnType(final Hir.DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitArrayElementType(final Hir.Expression expression) {
+    public void visitArrayElementType(final Hir.DynamicTy expression) {
       visitAnnotation(expression);
     }
 

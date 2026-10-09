@@ -59,13 +59,13 @@ public class ThirToLLVMLowering {
       case Hir.Struct it -> lower_struct(it);
       case Hir.NewByBlock it -> lower_new_by_block(it);
       case Hir.NewByCtor it -> lower_new_by_ctor(it);
-      case Hir.Path it -> lower_path(it);
+      case Hir.DotAccess it -> lower_dot_access(it);
 
       default -> throw new NotImplementedException("Do not know how to handle '" + expr + "' (" + expr.getClass().getSimpleName() + ")");
     };
   }
 
-  private LoweringResult lower_path(Hir.Path it) {
+  private LoweringResult lower_dot_access(Hir.DotAccess it) {
     return null;
   }
 

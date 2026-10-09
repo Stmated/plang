@@ -1,11 +1,14 @@
 package org.inf.hir;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import org.inf.ty.*;
+import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
 
 import java.util.Arrays;
@@ -20,6 +23,50 @@ public class Hir {
     void visit(HirVisitor visitor);
 
     Hir.Expression transform(HirTransformer transformer);
+  }
+
+  /// A source type constraint, not a runtime expression or an inferred binding type.
+  public record DynamicTy(@Nonnull Ty ty, Expression expression) {
+
+    public DynamicTy {
+      Objects.requireNonNull(ty);
+    }
+
+    public DynamicTy(final Ty ty) {
+      this(ty, null);
+    }
+
+    public DynamicTy(final Expression expression) {
+      this(Ty.INFER, Objects.requireNonNull(expression));
+    }
+
+    /// Refresh expression-backed constraints; static constraints need no resolution.
+    public DynamicTy resolve(final java.util.function.Function<Expression, Ty> resolver) {
+      if (expression == null) {
+        return this;
+      }
+      final var resolved = Objects.requireNonNullElse(resolver.apply(expression), Ty.INFER);
+      return resolved == ty ? this : new DynamicTy(resolved, expression);
+    }
+
+    public void visit(final HirVisitor visitor) {
+      if (expression != null) {
+        visitor.visitChild(expression);
+      }
+    }
+
+    public DynamicTy transform(final HirTransformer transformer) {
+      if (expression == null) {
+        return this;
+      }
+      final var transformed = Objects.requireNonNull(expression.transform(transformer));
+      return transformed == expression ? this : new DynamicTy(ty, transformed);
+    }
+
+    @Override
+    public String toString() {
+      return expression == null ? ty.toShortString() : expression.toString();
+    }
   }
 
   public interface ExpressionsOwner<Self extends Expression> {
@@ -132,7 +179,8 @@ public class Hir {
 
     @Nonnull
     Expression[] elements;
-    Expression elementType;
+    @Nonnull
+    DynamicTy elementType;
     Expression length;
     Ty ty;
     Ty arrayTy;
@@ -465,13 +513,14 @@ public class Hir {
     @Nonnull
     Parameter[] parameters;
     boolean vararg;
-    Expression returnTypeAnnotation;
+    @Nonnull
+    DynamicTy returnTypeAnnotation;
     TyFn ty;
 
-    public FunctionSignature(@Nonnull Parameter[] parameters, boolean vararg, Expression returnTypeAnnotation) {
+    public FunctionSignature(@Nonnull Parameter[] parameters, boolean vararg, @Nonnull DynamicTy returnTypeAnnotation) {
       this.parameters = parameters;
       this.vararg = vararg;
-      this.returnTypeAnnotation = returnTypeAnnotation;
+      this.returnTypeAnnotation = Objects.requireNonNull(returnTypeAnnotation);
     }
 
     @Override
@@ -493,13 +542,16 @@ public class Hir {
   }
 
   @Data
-  @AllArgsConstructor
   @RequiredArgsConstructor
   public static class Lexeme implements Expression {
 
     @Nonnull
     final String name;
-    Ty ty;
+
+    @Override
+    public Ty ty() {
+      return Ty.VOID;
+    }
 
     @Override
     public String toString() {
@@ -518,11 +570,43 @@ public class Hir {
   }
 
   @Data
+  @AllArgsConstructor(access = AccessLevel.PRIVATE)
+  public static final class BuiltInTy implements Expression {
+
+    @Nonnull
+    final String name;
+    @Nonnull
+    final Ty ty;
+
+    /// Like `Tys.fromString`, returns null for an unrecognized built-in name.
+    @Nullable
+    public static BuiltInTy fromString(final String name, final MachineTarget machineTarget) {
+      final var ty = Tys.fromString(name, machineTarget);
+      return ty == null ? null : new BuiltInTy(name, ty);
+    }
+
+    @Override
+    public String toString() {
+      return name;
+    }
+
+    @Override
+    public void visit(final HirVisitor visitor) {
+      visitor.visitBuiltInTy(this);
+    }
+
+    @Override
+    public Expression transform(final HirTransformer transformer) {
+      return transformer.transformBuiltInTy(this);
+    }
+  }
+
+  @Data
   @AllArgsConstructor
   public static class Identifier implements Expression {
 
     @Nonnull
-    final Lexeme lexeme;
+    final String name;
     Expression target;
 
     @Override
@@ -532,7 +616,7 @@ public class Hir {
 
     @Override
     public String toString() {
-      return Objects.toString(lexeme); // -> \{this.target}";
+      return name;
     }
 
     @Override
@@ -554,7 +638,7 @@ public class Hir {
         return false;
       }
       final Identifier that = (Identifier) o;
-      return Objects.equals(lexeme, that.lexeme)
+      return Objects.equals(name, that.name)
         && Objects.equals(target, that.target);
     }
 
@@ -797,7 +881,7 @@ public class Hir {
     @Nonnull
     Hir.Lexeme lexeme;
     @Nonnull
-    Hir.Expression typeAnnotation;
+    DynamicTy typeAnnotation;
     boolean vararg;
     Ty resolvedTy;
 
@@ -824,26 +908,35 @@ public class Hir {
 
   @Data
   @AllArgsConstructor
-  public static class Path implements Expression {
+  public static class DotAccess implements Expression {
 
     @Nonnull
-    Expression[] elements;
+    Expression target;
+    @Nonnull
+    final String name;
     Ty ty;
-    Ty memberTy;
+
+    public DotAccess(final Expression target, final String name) {
+      this(target, name, null);
+    }
+
+    public Ty memberTy() {
+      return Tys.getMemberTy(this);
+    }
 
     @Override
     public String toString() {
-      return Arrays.toString(elements);
+      return "%s.%s".formatted(target, name);
     }
 
     @Override
     public void visit(final HirVisitor visitor) {
-      visitor.visitPath(this);
+      visitor.visitDotAccess(this);
     }
 
     @Override
     public Expression transform(final HirTransformer transformer) {
-      return transformer.transformPath(this);
+      return transformer.transformDotAccess(this);
     }
   }
 
@@ -1057,57 +1150,16 @@ public class Hir {
   }
 
   @Data
-  public static class TyExpr implements Expression {
-
-    Ty ty;
-
-    public TyExpr(final Ty ty) {
-      this.ty = Objects.requireNonNull(ty);
-    }
-
-    @Override
-    public String toString() {
-      return (ty == null) ? null : ty.toShortString();
-    }
-
-    @Override
-    public void visit(final HirVisitor visitor) {
-      visitor.visitTyExpr(this);
-    }
-
-    @Override
-    public Expression transform(final HirTransformer transformer) {
-      return transformer.transformTyExpr(this);
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      final var tyExpr = (TyExpr) o;
-      return Objects.equals(ty, tyExpr.ty);
-    }
-
-    @Override
-    public int hashCode() {
-      return System.identityHashCode(this);
-    }
-  }
-
-  @Data
   @AllArgsConstructor
   public static class Dec implements Expression {
 
     Lexeme lexeme;
     MutabilityKind mutabilityKind;
-    Expression typeAnnotation;
+    @Nonnull
+    DynamicTy typeAnnotation;
     Ty resolvedTy;
 
-    public Dec(final Lexeme lexeme, final MutabilityKind mutabilityKind, final Expression typeAnnotation) {
+    public Dec(final Lexeme lexeme, final MutabilityKind mutabilityKind, final DynamicTy typeAnnotation) {
       this(lexeme, mutabilityKind, typeAnnotation, null);
     }
 

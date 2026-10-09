@@ -50,33 +50,33 @@ public final class HirTupleValidationVisitorPass {
     /// Only annotation entries must denote types; their enclosing type position supplies that distinction.
     private boolean inAnnotation;
 
-    private void visitAnnotation(Hir.Expression expression) {
+    private void visitAnnotation(Hir.DynamicTy annotation) {
       final var outerAnnotation = inAnnotation;
       try {
         inAnnotation = true;
-        visitChild(expression);
+        annotation.visit(this);
       } finally {
         inAnnotation = outerAnnotation;
       }
     }
 
     @Override
-    public void visitDecType(Hir.Expression expression) {
+    public void visitDecType(Hir.DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitParameterType(Hir.Expression expression) {
+    public void visitParameterType(Hir.DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitFunctionSignatureReturnType(Hir.Expression expression) {
+    public void visitFunctionSignatureReturnType(Hir.DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitArrayElementType(Hir.Expression expression) {
+    public void visitArrayElementType(Hir.DynamicTy expression) {
       visitAnnotation(expression);
     }
 
@@ -101,7 +101,9 @@ public final class HirTupleValidationVisitorPass {
         @Override
         public void visitChild(Hir.Expression child) {
           switch (child) {
-            case Hir.TyExpr _, Hir.Tuple _ -> {
+            case Hir.BuiltInTy _ -> {
+            }
+            case Hir.Tuple _ -> {
             }
             case Hir.Array array -> {
               valid &= array.elements().length == 0;
@@ -121,10 +123,7 @@ public final class HirTupleValidationVisitorPass {
     public void visitAssignment(Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
       requireWritable(expression.lhs());
-      // Constructor field names acquire their types from the aggregate, not identifier resolution.
-      if (!(expression.lhs() instanceof Hir.Lexeme)) {
-        check(expression.rhs().ty(), Tys.getBindingTy(expression.lhs()), "assignment");
-      }
+      check(expression.rhs().ty(), Tys.getBindingTy(expression.lhs()), "assignment");
     }
 
     @Override
@@ -138,27 +137,18 @@ public final class HirTupleValidationVisitorPass {
         && Tys.getIndexingReceiverTy(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
         throw new IllegalArgumentException("Tuple element writes are not supported yet");
       }
-      if (expression instanceof Hir.Path path && path.elements().length >= 2
-        && Tys.getMemberReceiverTy(path.elements()[path.elements().length - 2]) instanceof TyStruct tuple && tuple.tuple()) {
+      if (expression instanceof Hir.DotAccess access
+        && Tys.getMemberReceiverTy(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
         throw new IllegalArgumentException("Tuple element writes are not supported yet");
       }
     }
 
     @Override
-    public void visitNewByBlock(Hir.NewByBlock expression) {
-      HirVisitor.super.visitNewByBlock(expression);
-      final var struct = Tys.getConstructionTargetTy(expression.target());
-      if (struct != null) {
-        for (final var assignment : expression.fields()) {
-          if (assignment.lhs() instanceof Hir.Lexeme name) {
-            final var fieldTy = Tys.getStructFieldTy(struct, name.name());
-            if (fieldTy != null) {
-              check(assignment.rhs().ty(), fieldTy, "field " + name.name());
-            } else if (TupleTypes.containsTuple(assignment.rhs().ty())) {
-              throw new IllegalArgumentException("Unknown struct field: " + name.name());
-            }
-          }
-        }
+    public void visitNewByBlockField(final Hir.NewByBlock construction, final Hir.Assignment expression) {
+      HirVisitor.super.visitAssignment(expression);
+      final var field = Tys.getInitializerField(construction, expression);
+      if (field != null) {
+        check(expression.rhs().ty(), field.ty(), "field %s".formatted(expression.lhs()));
       }
     }
 

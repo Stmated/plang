@@ -118,16 +118,16 @@ class HirFunctionContextualTypingVisitorPassTest {
     final var root = new HirToThirRaising(new MachineTarget(64)).raise(hir).root();
     final var signature = Assertions.assertInstanceOf(TyFn.class, root.ty());
     Assertions.assertAll(
-      () -> Assertions.assertSame(annotation, parameter.typeAnnotation()),
+      () -> Assertions.assertSame(annotation.expression(), parameter.typeAnnotation().expression()),
       () -> Assertions.assertEquals(Ty.VOID, parameter.ty()),
       () -> Assertions.assertFalse(Tys.containsInferred(parameter.resolvedTy())),
       () -> Assertions.assertEquals(parameter.resolvedTy(), signature.parameters()[0].ty())
     );
-    if (annotation instanceof Hir.TyExpr) {
+    if (annotation.expression() == null) {
       Assertions.assertEquals(Ty.INFER, annotation.ty());
     } else {
-      Assertions.assertInstanceOf(Hir.Identifier.class, annotation);
-      Assertions.assertSame(annotation.ty(), parameter.resolvedTy());
+      Assertions.assertInstanceOf(Hir.Identifier.class, parameter.typeAnnotation().expression());
+      Assertions.assertSame(parameter.typeAnnotation().ty(), parameter.resolvedTy());
     }
   }
 
@@ -399,7 +399,10 @@ class HirFunctionContextualTypingVisitorPassTest {
       () -> Assertions.assertEquals(1, constructors.size()),
       () -> Assertions.assertEquals(1, functions.size())
     );
-    constructors.getFirst().target(new Hir.TyExpr(Ty.INFER));
+    final var target = Assertions.assertInstanceOf(Hir.Identifier.class, constructors.getFirst().target());
+    final var declaration = Assertions.assertInstanceOf(Hir.Dec.class, target.target());
+    declaration.resolvedTy(null);
+    Assertions.assertNull(Tys.getConstructionTargetTy(target));
     HirFunctionContextualTypingVisitorPass.pass(root);
     Assertions.assertEquals(Tys.fromString("int", new MachineTarget(64)),
       functions.getFirst().signature().parameters()[0].resolvedTy(),

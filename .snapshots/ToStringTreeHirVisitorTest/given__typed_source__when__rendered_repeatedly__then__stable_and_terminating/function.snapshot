@@ -21,10 +21,11 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
               (lexeme
                 (Lexeme
                   (name "f")
-                  (ty null)))
+                  (ty (named "VOID"))))
               (typeAnnotation
-                (TyExpr
-                  (ty (named "INFER"))))))
+                (DynamicTy
+                  (ty (named "INFER"))
+                  (expression null)))))
           (rhs
             (Function
               (signature
@@ -39,13 +40,15 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
                       (lexeme
                         (Lexeme
                           (name "x")
-                          (ty null)))
+                          (ty (named "VOID"))))
                       (typeAnnotation
-                        (TyExpr
-                          (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))))
+                        (DynamicTy
+                          (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+                          (expression null)))))
                   (returnType
-                    (TyExpr
-                      (ty (named "INFER"))))))
+                    (DynamicTy
+                      (ty (named "INFER"))
+                      (expression null)))))
               (body
                 (Return
                   (ty (named "DEADEND"))
@@ -55,10 +58,7 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
                       (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
                       (lhs
                         (Identifier
-                          (lexeme
-                            (Lexeme
-                              (name "x")
-                              (ty null)))
+                          (name "x")
                           (target (reference "x"))))
                       (rhs
                         (Literal
@@ -72,10 +72,7 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
               (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
               (target
                 (Identifier
-                  (lexeme
-                    (Lexeme
-                      (name "f")
-                      (ty null)))
+                  (name "f")
                   (target (reference "f"))))
               (arguments
                 (Argument

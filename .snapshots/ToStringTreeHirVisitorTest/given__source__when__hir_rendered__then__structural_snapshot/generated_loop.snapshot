@@ -24,10 +24,11 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                   (lexeme
                     (Lexeme
                       (name "i")
-                      (ty null)))
+                      (ty (named "VOID"))))
                   (typeAnnotation
-                    (TyExpr
-                      (ty (named "INFER"))))))
+                    (DynamicTy
+                      (ty (named "INFER"))
+                      (expression null)))))
               (rhs
                 (Literal
                   (content "0")
@@ -43,10 +44,7 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                       (ty null)
                       (lhs
                         (Identifier
-                          (lexeme
-                            (Lexeme
-                              (name "i")
-                              (ty null)))
+                          (name "i")
                           (target null)))
                       (rhs
                         (Literal
@@ -61,20 +59,14 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                           (ty null)
                           (children
                             (Identifier
-                              (lexeme
-                                (Lexeme
-                                  (name "continue")
-                                  (ty null)))
+                              (name "continue")
                               (target null))))
                         (CompoundAssignment
                           (kind ADD)
                           (ty null)
                           (target
                             (Identifier
-                              (lexeme
-                                (Lexeme
-                                  (name "i")
-                                  (ty null)))
+                              (name "i")
                               (target null)))
                           (rhs
                             (Literal

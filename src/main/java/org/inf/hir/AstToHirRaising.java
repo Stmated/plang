@@ -1,14 +1,11 @@
 package org.inf.hir;
 
 import org.inf.ast.Ast;
-import org.inf.ast.AstVisitor;
 import org.inf.exceptions.NotImplementedException;
 import org.inf.exceptions.UnexpectedExpressionException;
-import org.inf.hir.passes.HirIndexedPathTransformerPass;
 import org.inf.hir.passes.HirLexemeToIdentifierTransformerPass;
 import org.inf.hir.passes.HirSimplifyTransformerPass;
 import org.inf.ty.Ty;
-import org.inf.ty.util.MachineTarget;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,21 +20,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /// followed by a bracket syntax. It is up to this AST -> HIR raising to notice the contextual significance of those brackets and turn it into an array access.
 public class AstToHirRaising {
 
-  private final MachineTarget machineTarget;
+  public static Hir.Expression lower_program(final Ast.Program astProgram) {
 
-  public AstToHirRaising(final MachineTarget machineTarget) {
-    this.machineTarget = machineTarget;
-  }
-
-  public static Hir.Expression lower_program(final Ast.Program astProgram, final MachineTarget machineTarget) {
-
-    final var raising = new AstToHirRaising(machineTarget);
+    final var raising = new AstToHirRaising();
     final var raised = raising.raise(astProgram.children());
     final var implicitlyReturned = raising.implicit_return(raised, true);
 
     final var program = new Hir.Program(implicitlyReturned);
-    final var indexedPaths = HirIndexedPathTransformerPass.pass(program);
-    final var identifiersResolved = HirLexemeToIdentifierTransformerPass.pass(indexedPaths);
+    final var identifiersResolved = HirLexemeToIdentifierTransformerPass.pass(program);
     final var simplified = HirSimplifyTransformerPass.pass(identifiersResolved);
 
     return simplified;
@@ -152,14 +142,6 @@ public class AstToHirRaising {
       arguments[i] = raiseCallArgument(ast.arguments()[i]);
     }
 
-    // Keep the same path representation as explicit member calls.
-    if (target instanceof final Hir.Path path) {
-      final var elements = path.elements();
-      final var last = elements.length - 1;
-      elements[last] = new Hir.Call(elements[last], arguments);
-      return path;
-    }
-
     return new Hir.Call(target, arguments);
   }
 
@@ -182,52 +164,33 @@ public class AstToHirRaising {
 
   private Hir.Expression lower_dot_access(final Ast.DotAccess ast) {
 
-    final var elements = new ArrayList<Hir.Expression>();
-    ast.visit(new AstVisitor<Void>() {
-      @Override
-      public Void aggregate(final Void a, final Void b) {
-        return null;
-      }
+    final var visitor = new DotAccessAstToHirVisitor(this::raise);
+    ast.visit(visitor);
 
-      @Override
-      public Void noValue() {
-        return null;
-      }
-
-      @Override
-      public Void visit(final Ast.Expression expression) {
-        if (expression instanceof Ast.DotAccess) {
-          return expression.visit(this);
-        }
-        elements.add(raise(expression));
-        return null;
-      }
-    });
-
-    return new Hir.Path(elements.toArray(new Hir.Expression[0]), null, null);
+    return visitor.target();
   }
 
   private Hir.Expression lower_new(final Ast.New ast) {
 
     final var target = raise(ast.target());
-    final var allocatorLexeme = lower_lexeme(ast.allocator());
     final var argumentExpr = raise(ast.arguments());
 
-    final var allocatorIdentifier = new Hir.Identifier(allocatorLexeme, null);
+    final var allocatorIdentifier = new Hir.Identifier(ast.allocator().name(), null);
 
     return switch (argumentExpr) {
       // This is a creation using `new Obj { Val = '1' }` syntax. Which all structs inherently can do.
       case final Hir.Block block -> {
-        final var assignments = new ArrayList<Hir.Assignment>();
+        final var fields = new ArrayList<Hir.Assignment>();
         for (final var expr : expand(block.children())) {
           switch (expr) {
-            case final Hir.Assignment assignment -> assignments.add(assignment);
+            case final Hir.Assignment assignment when assignment.lhs() instanceof Hir.Lexeme ->
+              fields.add(assignment);
             default -> throw new UnexpectedExpressionException(expr);
           }
         }
 
 
-        yield new Hir.NewByBlock(target, allocatorIdentifier, assignments.toArray(new Hir.Assignment[0]), null);
+        yield new Hir.NewByBlock(target, allocatorIdentifier, fields.toArray(new Hir.Assignment[0]), null);
       }
 
       // This is a creation using `new Obj('1')` syntax, meaning it is trying to call a manually added constructor.
@@ -299,21 +262,21 @@ public class AstToHirRaising {
 
       // There are only elements. We will derive the rest from that.
       // TODO: Ty here should be "inferred" until THIR kicks in
-      final var tyExpr = new Hir.TyExpr(Ty.INFER);
+      final var elementType = new Hir.DynamicTy(Ty.INFER);
       final var arrayLengthExpr = new Hir.Literal(Objects.toString(elementArray.length), Ty.INTEGER);
-      return new Hir.Array(elementArray, tyExpr, arrayLengthExpr, null, null);
+      return new Hir.Array(elementArray, elementType, arrayLengthExpr, null, null);
 
     } else if (section == 1) {
 
-      final var tyExpr = new Hir.TyExpr(Ty.INFER);
+      final var elementType = new Hir.DynamicTy(Ty.INFER);
       final var size = sections[1];
-      return new Hir.Array(elementArray, tyExpr, size, null, null);
+      return new Hir.Array(elementArray, elementType, size, null, null);
 
     } else if (section == 2) {
 
-      final var tyExpr = sections[1];
+      final var elementType = new Hir.DynamicTy(sections[1]);
       final var sizeExpr = sections[2];
-      return new Hir.Array(elementArray, tyExpr, sizeExpr, null, null);
+      return new Hir.Array(elementArray, elementType, sizeExpr, null, null);
 
     } else {
       throw new IllegalArgumentException("Unknown array syntax");
@@ -368,9 +331,9 @@ public class AstToHirRaising {
       case final Ast.Labeling labeling -> {
 
         final var signature = find_and_lower_parameters(labeling.lhs());
-        final var returnTypeExpr = raise(labeling.rhs());
+        final var returnTypeAnnotation = new Hir.DynamicTy(raise(labeling.rhs()));
 
-        yield new Hir.FunctionSignature(signature.parameters(), signature.vararg(), returnTypeExpr, null);
+        yield new Hir.FunctionSignature(signature.parameters(), signature.vararg(), returnTypeAnnotation, null);
       }
       case final Ast.Paren paren -> {
 
@@ -379,7 +342,7 @@ public class AstToHirRaising {
         final var parameters = (signature == null) ? new Hir.Parameter[0] : signature.parameters();
         final var vararg = signature != null && signature.vararg();
 
-        yield new Hir.FunctionSignature(parameters, vararg, new Hir.TyExpr(Ty.INFER), null);
+        yield new Hir.FunctionSignature(parameters, vararg, new Hir.DynamicTy(Ty.INFER), null);
       }
       default -> find_and_lower_parameters_inner(ast);
     };
@@ -403,13 +366,13 @@ public class AstToHirRaising {
       default -> parameters.add(lower_parameter(ast, isVarArg));
     }
 
-    return new Hir.FunctionSignature(parameters.toArray(new Hir.Parameter[0]), isVarArg.get(), null, null);
+    return new Hir.FunctionSignature(parameters.toArray(new Hir.Parameter[0]), isVarArg.get(), new Hir.DynamicTy(Ty.INFER), null);
   }
 
   private Hir.Parameter lower_parameter(final Ast.Expression expr, final AtomicBoolean restVararg) {
 
     return switch (expr) {
-      case final Ast.Spread spread -> new Hir.Parameter(asLexeme(spread.expression()), new Hir.TyExpr(Ty.INFER), true, null);
+      case final Ast.Spread spread -> new Hir.Parameter(asLexeme(spread.expression()), new Hir.DynamicTy(Ty.INFER), true, null);
       case Ast.Rest _ -> {
         restVararg.set(true);
         yield null;
@@ -417,10 +380,10 @@ public class AstToHirRaising {
       }
       case final Ast.Labeling labeling -> {
         final var labelingLhs = lower_parameter(labeling.lhs(), restVararg);
-        final var labelingRhs = raise(labeling.rhs());
+        final var labelingRhs = new Hir.DynamicTy(raise(labeling.rhs()));
         yield new Hir.Parameter(labelingLhs.lexeme(), labelingRhs, labelingLhs.vararg(), null);
       }
-      default -> new Hir.Parameter(asLexeme(expr), new Hir.TyExpr(Ty.INFER), false, null);
+      default -> new Hir.Parameter(asLexeme(expr), new Hir.DynamicTy(Ty.INFER), false, null);
     };
   }
 
@@ -439,7 +402,7 @@ public class AstToHirRaising {
         case Immutable -> Hir.MutabilityKind.IMMUTABLE;
         case Mutable -> Hir.MutabilityKind.MUTABLE;
       },
-      ast.type() == null ? new Hir.TyExpr(Ty.INFER) : raise(ast.type())
+      ast.type() == null ? new Hir.DynamicTy(Ty.INFER) : new Hir.DynamicTy(raise(ast.type()))
     );
   }
 
@@ -512,13 +475,6 @@ public class AstToHirRaising {
 
     if (child instanceof final Hir.Call call) {
       return call.partial(true);
-    }
-
-    if (child instanceof final Hir.Path path
-      && path.elements().length > 0
-      && path.elements()[path.elements().length - 1] instanceof final Hir.Call call) {
-      call.partial(true);
-      return path;
     }
 
     throw new IllegalArgumentException("Do not know how to make a %s partial".formatted(child));

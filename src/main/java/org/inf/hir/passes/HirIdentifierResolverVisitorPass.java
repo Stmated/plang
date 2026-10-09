@@ -38,7 +38,7 @@ public class HirIdentifierResolverVisitorPass {
 
     private Hir.Expression find(Hir.Identifier id) {
 
-      final var name = id.lexeme().name();
+      final var name = id.name();
 
       for (final var scope : scopes) {
         final var expr = scope.map().get(name);

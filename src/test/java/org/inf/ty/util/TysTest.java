@@ -1,6 +1,9 @@
 package org.inf.ty.util;
 
+import org.inf.Inf;
 import org.inf.hir.Hir;
+import org.inf.hir.HirVisitor;
+import org.inf.hir.passes.HirTyCommonVisitorPass;
 import org.inf.ty.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -9,104 +12,166 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.stream.Stream;
 
 class TysTest {
 
   static Stream<Arguments> callableTargets() {
-    final var function = new TyFn(new TyParam[]{new TyParam("value", Ty.INTEGER)}, false, Ty.INTEGER);
-    final var signature = new Hir.FunctionSignature(
-      new Hir.Parameter[0], false, new Hir.TyExpr(Ty.LONG), function
-    );
-    final var lambda = new Hir.Function(signature, new Hir.Return(new Hir.Literal("true", Ty.BOOLEAN)));
-    final var declaration = new Hir.Dec(
-      new Hir.Lexeme("f"), Hir.MutabilityKind.IMMUTABLE, new Hir.TyExpr(Ty.INFER), function
-    );
-    final var parameter = new Hir.Parameter(new Hir.Lexeme("f"), new Hir.TyExpr(Ty.INFER), false, function);
-    final var factory = new TyFn(new TyParam[0], false, function);
-    final var union = new TyUnion(new Ty[]{function, Ty.BOOLEAN});
-    final var returning = new Hir.Return(new Hir.TyExpr(function));
+    final var integer = Tys.fromString("int", new MachineTarget(64));
+    final var function = new TyFn(new TyParam[]{new TyParam("value", integer)}, false, integer);
+    final var prefix = """
+      val fn = (value: int): int => value;
+      val factory = (flag: bool) => fn;
+      """;
     return Stream.of(
-      Arguments.of(signature, function),
-      Arguments.of(lambda, function),
-      Arguments.of(declaration, function),
-      Arguments.of(parameter, function),
-      Arguments.of(new Hir.Identifier(declaration.lexeme(), declaration), function),
-      Arguments.of(new Hir.Identifier(parameter.lexeme(), parameter), function),
-      Arguments.of(new Hir.Block(lambda, Ty.DEADEND), function),
-      Arguments.of(new Hir.Expressions(new Hir.Expression[]{returning, lambda}, Ty.DEADEND), function),
-      Arguments.of(new Hir.Argument(null, new Hir.Block(lambda, Ty.DEADEND)), function),
-      Arguments.of(new Hir.TupleEntry(null, lambda), function),
-      Arguments.of(new Hir.Assignment(declaration, lambda, Ty.VOID), function),
-      Arguments.of(new Hir.Convert(returning, function), function),
-      Arguments.of(new Hir.Path(new Hir.Expression[0], Ty.DEADEND, function), function),
-      Arguments.of(new Hir.ArrayAccess(returning, returning, Ty.DEADEND, function), function),
-      Arguments.of(new Hir.Conditional(returning, lambda, lambda, Ty.DEADEND), function),
-      Arguments.of(new Hir.Call(new Hir.TyExpr(factory), new Hir.Argument[0], false, Ty.DEADEND), function),
-      Arguments.of(new Hir.TyExpr(union), union),
-      Arguments.of(new Hir.Conditional(returning, lambda, new Hir.Literal("true", Ty.BOOLEAN), Ty.DEADEND), union),
-      Arguments.of(returning, null),
-      Arguments.of(new Hir.LoopBreak(lambda), null),
-      Arguments.of(new Hir.DeadEnd(lambda), null),
-      Arguments.of(new Hir.Block(returning, Ty.DEADEND), null),
-      Arguments.of(new Hir.Expressions(new Hir.Expression[0], Ty.VOID), null),
-      Arguments.of(new Hir.Identifier(new Hir.Lexeme("unresolved"), null), null),
-      Arguments.of(new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.TyExpr(function), null), null),
-      Arguments.of(new Hir.Dec(new Hir.Lexeme("f"), Hir.MutabilityKind.IMMUTABLE, new Hir.TyExpr(function)), null),
-      Arguments.of(new Hir.Convert(returning, Ty.INTEGER), null),
-      Arguments.of(new Hir.ArrayAccess(returning, returning, Ty.DEADEND, Ty.INTEGER), null),
-      Arguments.of(new Hir.TyExpr(new TyStruct(new TyField[]{new TyField("f", function)}, true)), null)
+      Arguments.of(prefix + "fn", function),
+      Arguments.of(prefix + "(value: int): int => value", function),
+      Arguments.of(prefix + "{ fn }", function),
+      Arguments.of(prefix + "{ return true; fn; }", function),
+      Arguments.of(prefix + "var stored = fn; stored = fn", function),
+      Arguments.of(prefix + "(callback = fn,).callback", function),
+      Arguments.of(prefix + "[fn][0]", function),
+      Arguments.of(prefix + "if ({ return true; }) then fn else fn", function),
+      Arguments.of(prefix + "factory({ return true; })", function),
+      Arguments.of(prefix + "if (true) then fn else true", Tys.union(function, Ty.BOOLEAN)),
+      Arguments.of(prefix + "{ return fn; }", null),
+      Arguments.of(prefix + "{ val n = 1; }", null),
+      Arguments.of(prefix + "(callback = fn,)", null),
+      Arguments.of(prefix + "[fn]", null),
+      Arguments.of(prefix + "7", null)
     );
   }
 
   @ParameterizedTest
   @MethodSource("callableTargets")
   void given__resolved_result_wrappers__when__callable_information_is_queried__then__only_function_values_are_exposed(
-    final Hir.Expression target, final Ty expected
+    final String code, final Ty expected
   ) {
+    final var returns = new ArrayList<Hir.Return>();
+    Inf.codeToThir(code).root().visit(new HirVisitor() {
+      @Override
+      public void visitReturn(final Hir.Return expression) {
+        returns.add(expression);
+      }
+    });
+    final var target = returns.getLast().expression();
     final var completion = target.ty();
     final var signature = expected instanceof TyFn function ? function : null;
     Assertions.assertAll(
       () -> Assertions.assertEquals(expected, Tys.getCallableValueTy(target)),
-      () -> Assertions.assertSame(signature, Tys.getCallableSignature(target)),
+      () -> Assertions.assertEquals(signature, Tys.getCallableSignature(target)),
       () -> Assertions.assertSame(completion, target.ty())
     );
   }
 
   @Test
-  void given__higher_order_call__when__resolved_signature_changes__then__callable_query_uses_the_latest_return_signature() {
-    final var original = new TyFn(new TyParam[0], false, Ty.INTEGER);
-    final var updated = new TyFn(new TyParam[0], false, Ty.BOOLEAN);
-    final var signature = new Hir.FunctionSignature(
-      new Hir.Parameter[0], false, new Hir.TyExpr(Ty.INFER), new TyFn(new TyParam[0], false, original)
-    );
-    final var call = new Hir.Call(signature, new Hir.Argument[0], false, Ty.DEADEND);
-    Assertions.assertSame(original, Tys.getCallableSignature(call));
-    signature.ty(signature.ty().toBuilder().returnTy(updated).build());
+  void given__callable_parameter_reference__when__queried__then__the_resolved_parameter_signature_is_used() {
+    final var parameters = new ArrayList<Hir.Parameter>();
+    final var references = new ArrayList<Hir.Identifier>();
+    Inf.codeToThir("""
+      val Fn = (value: int): int;
+      val use = (callback: Fn) => callback;
+      use
+      """).root().visit(new HirVisitor() {
+      @Override
+      public void visitParameter(final Hir.Parameter parameter) {
+        if (parameter.lexeme().name().equals("callback")) {
+          parameters.add(parameter);
+        }
+      }
+
+      @Override
+      public void visitIdentifier(final Hir.Identifier identifier) {
+        if (identifier.name().equals("callback")) {
+          references.add(identifier);
+        }
+      }
+    });
     Assertions.assertAll(
-      () -> Assertions.assertSame(updated, Tys.getCallableSignature(call)),
-      () -> Assertions.assertSame(updated, Tys.getCallableValueTy(call)),
+      () -> Assertions.assertEquals(1, parameters.size()),
+      () -> Assertions.assertEquals(1, references.size())
+    );
+    final var parameter = parameters.getFirst();
+    final var reference = references.getFirst();
+    Assertions.assertAll(
+      () -> Assertions.assertSame(parameter, reference.target()),
+      () -> Assertions.assertSame(Ty.VOID, parameter.ty()),
+      () -> Assertions.assertInstanceOf(TyFn.class, parameter.resolvedTy()),
+      () -> Assertions.assertSame(parameter.resolvedTy(), Tys.getCallableSignature(reference)),
+      () -> Assertions.assertSame(parameter.resolvedTy(), Tys.getCallableValueTy(parameter))
+    );
+  }
+
+  @Test
+  void given__higher_order_call__when__resolved_signature_changes__then__callable_query_uses_the_latest_return_signature() {
+    final var factories = new ArrayList<Hir.Function>();
+    final var replacements = new ArrayList<Hir.Function>();
+    final var calls = new ArrayList<Hir.Call>();
+    final var root = Inf.codeToThir("""
+      val integer = () => 7;
+      val boolean = () => true;
+      val factory = (flag: bool) => integer;
+      val replacement = (flag: bool) => boolean;
+      factory({ return true; })
+      """).root();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitAssignment(final Hir.Assignment assignment) {
+        if (assignment.lhs() instanceof Hir.Dec declaration && assignment.rhs() instanceof Hir.Function function) {
+          if (declaration.lexeme().name().equals("factory")) {
+            factories.add(function);
+          } else if (declaration.lexeme().name().equals("replacement")) {
+            replacements.add(function);
+          }
+        }
+        HirVisitor.super.visitAssignment(assignment);
+      }
+
+      @Override
+      public void visitCall(final Hir.Call call) {
+        calls.add(call);
+        HirVisitor.super.visitCall(call);
+      }
+    });
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(1, factories.size()),
+      () -> Assertions.assertEquals(1, replacements.size()),
+      () -> Assertions.assertEquals(1, calls.size())
+    );
+    final var factory = factories.getFirst();
+    final var original = factory.ty().returnTy();
+    final var updated = replacements.getFirst().ty().returnTy();
+    final var call = calls.getFirst();
+    Assertions.assertSame(original, Tys.getCallableSignature(call));
+    factory.body(replacements.getFirst().body());
+    HirTyCommonVisitorPass.pass(root);
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(updated, Tys.getCallableSignature(call)),
+      () -> Assertions.assertNotEquals(original, Tys.getCallableSignature(call)),
+      () -> Assertions.assertSame(factory.ty().returnTy(), Tys.getCallableSignature(call)),
+      () -> Assertions.assertSame(factory.ty().returnTy(), Tys.getCallableValueTy(call)),
       () -> Assertions.assertSame(Ty.DEADEND, call.ty()),
-      () -> Assertions.assertSame(Ty.INFER, signature.returnTypeAnnotation().ty())
+      () -> Assertions.assertSame(Ty.INFER, factory.signature().returnTypeAnnotation().ty())
     );
   }
 
   static Stream<Arguments> bindingTargets() {
     final var declaration = new Hir.Dec(
-      new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.TyExpr(Ty.LONG), Ty.INTEGER
+      new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(Ty.LONG), Ty.INTEGER
     );
-    final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), new Hir.TyExpr(Ty.LONG), false, Ty.INTEGER);
+    final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), new Hir.DynamicTy(Ty.LONG), false, Ty.INTEGER);
     final var function = new TyFn(new TyParam[0], false, Ty.INTEGER);
     return Stream.of(
       Arguments.of(declaration, Ty.INTEGER),
-      Arguments.of(new Hir.Dec(new Hir.Lexeme("unresolved"), Hir.MutabilityKind.IMMUTABLE, new Hir.TyExpr(Ty.INTEGER)), null),
-      Arguments.of(new Hir.Identifier(declaration.lexeme(), declaration), Ty.INTEGER),
+      Arguments.of(new Hir.Dec(new Hir.Lexeme("unresolved"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(Ty.INTEGER)), null),
+      Arguments.of(new Hir.Identifier(declaration.lexeme().name(), declaration), Ty.INTEGER),
       Arguments.of(parameter, Ty.INTEGER),
-      Arguments.of(new Hir.Identifier(parameter.lexeme(), parameter), Ty.INTEGER),
-      Arguments.of(new Hir.Parameter(new Hir.Lexeme("unresolved"), new Hir.TyExpr(Ty.INTEGER), false, null), null),
-      Arguments.of(new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.TyExpr(Ty.INTEGER), function), function),
-      Arguments.of(new Hir.Path(new Hir.Expression[0], Ty.DEADEND, Ty.LONG), Ty.LONG)
+      Arguments.of(new Hir.Identifier(parameter.lexeme().name(), parameter), Ty.INTEGER),
+      Arguments.of(new Hir.Parameter(new Hir.Lexeme("unresolved"), new Hir.DynamicTy(Ty.INTEGER), false, null), null),
+      Arguments.of(new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.DynamicTy(Ty.INTEGER), function), function),
+      Arguments.of(noncontinuingMember(), Ty.LONG)
     );
   }
 
@@ -120,8 +185,19 @@ class TysTest {
 
   @Test
   void given__expression_binding_target__when__queried__then__completion_is_read() {
-    final var target = new Hir.TyExpr(Ty.INTEGER);
-    final var assignment = new Hir.Assignment(target, target, Ty.VOID);
+    final var assignments = new ArrayList<Hir.Assignment>();
+    Inf.codeToThir("var n = 1; n = 2").root().visit(new HirVisitor() {
+      @Override
+      public void visitAssignment(final Hir.Assignment assignment) {
+        if (assignment.lhs() instanceof Hir.Identifier) {
+          assignments.add(assignment);
+        }
+        HirVisitor.super.visitAssignment(assignment);
+      }
+    });
+    Assertions.assertEquals(1, assignments.size());
+    final var assignment = assignments.getFirst();
+    final var target = assignment.lhs();
     Assertions.assertAll(
       () -> Assertions.assertSame(Ty.INTEGER, Tys.getBindingTy(target)),
       () -> Assertions.assertSame(Ty.INTEGER, Tys.getAssignmentContextTy(target)),
@@ -131,19 +207,34 @@ class TysTest {
 
   static Stream<Arguments> assignmentContexts() {
     final var declaration = new Hir.Dec(
-      new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.TyExpr(Ty.LONG), Ty.INTEGER
+      new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(Ty.LONG), Ty.INTEGER
     );
     final var partial = new TyValueArray(Ty.INFER, 2);
     return Stream.of(
       Arguments.of(declaration, Ty.LONG),
-      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.TyExpr(Ty.INFER), Ty.INTEGER), null),
-      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.TyExpr(partial),
+      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(Ty.INFER), Ty.INTEGER), null),
+      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(partial),
         new TyValueArray(Ty.INTEGER, 2)), partial),
-      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, null, Ty.INTEGER), null),
-      Arguments.of(new Hir.Identifier(declaration.lexeme(), declaration), Ty.INTEGER),
-      Arguments.of(new Hir.Parameter(new Hir.Lexeme("p"), new Hir.TyExpr(Ty.INFER), false, Ty.INTEGER), Ty.INTEGER),
-      Arguments.of(new Hir.Path(new Hir.Expression[0], Ty.DEADEND, Ty.LONG), Ty.LONG)
+      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(Ty.INFER), Ty.INTEGER), null),
+      Arguments.of(new Hir.Identifier(declaration.lexeme().name(), declaration), Ty.INTEGER),
+      Arguments.of(new Hir.Parameter(new Hir.Lexeme("p"), new Hir.DynamicTy(Ty.INFER), false, Ty.INTEGER), Ty.INTEGER),
+      Arguments.of(noncontinuingMember(), Ty.LONG)
     );
+  }
+
+  private static Hir.DotAccess noncontinuingMember() {
+    final var members = new ArrayList<Hir.DotAccess>();
+    Inf.codeToThir("""
+      val S = struct { val value: long; };
+      val s = new heap S { value = 7; };
+      ({ return true; s; }).value
+      """).root().visit(new HirVisitor() {
+      @Override
+      public void visitDotAccess(final Hir.DotAccess expression) {
+        members.add(expression);
+      }
+    });
+    return members.getFirst();
   }
 
   @ParameterizedTest
@@ -173,7 +264,7 @@ class TysTest {
   void given__return_context__when__queried__then__declared_constraints_and_inferred_types_are_selected_separately(
     final Ty declared, final Ty resolved, final Ty expected, final Ty useSiteContext, final Ty useSiteExpected
   ) {
-    final var annotation = declared == null ? null : new Hir.TyExpr(declared);
+    final var annotation = new Hir.DynamicTy(declared == null ? Ty.INFER : declared);
     final var signature = new Hir.FunctionSignature(
       new Hir.Parameter[0], false, annotation, resolved == null ? null : new TyFn(new TyParam[0], false, resolved)
     );

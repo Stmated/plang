@@ -111,11 +111,11 @@ class HirGeneratedSequenceTransformerPassTest {
   @Test
   void resolvedNonReturningCallStopsGeneratedSequencingEvenInsideAssignment() {
     final var signature = new Hir.FunctionSignature(
-      new Hir.Parameter[0], false, new Hir.TyExpr(Ty.DEADEND), null
+      new Hir.Parameter[0], false, new Hir.DynamicTy(Ty.DEADEND), null
     );
     final var call = new Hir.Call(signature, new Hir.Argument[0], false, null);
     final var declaration = new Hir.Dec(
-      new Hir.Lexeme("value"), Hir.MutabilityKind.MUTABLE, new Hir.TyExpr(Ty.INTEGER)
+      new Hir.Lexeme("value"), Hir.MutabilityKind.MUTABLE, new Hir.DynamicTy(Ty.INTEGER)
     );
     final var assignment = new Hir.Assignment(declaration, call);
     final var literal = new Hir.Literal("9", Ty.INTEGER);

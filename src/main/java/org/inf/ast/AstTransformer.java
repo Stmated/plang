@@ -7,11 +7,6 @@ public interface AstTransformer extends AstVisitor<Ast.Expression> {
     throw new UnsupportedOperationException("Transform children with their owning node");
   }
 
-  @Override
-  default Ast.Expression noValue() {
-    return null;
-  }
-
   default <E extends Ast.Expression> E visitAs(final E expression, final Class<E> type) {
     return type.cast(visit(expression));
   }

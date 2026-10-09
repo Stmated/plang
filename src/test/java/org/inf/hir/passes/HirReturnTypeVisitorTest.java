@@ -1,9 +1,13 @@
 package org.inf.hir.passes;
 
+import org.inf.Inf;
 import org.inf.hir.Hir;
+import org.inf.hir.HirVisitor;
 import org.inf.ty.*;
 import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -13,11 +17,11 @@ class HirReturnTypeVisitorTest {
     final var parameters = new Hir.Parameter[operands.length];
     final var arguments = new Hir.Argument[operands.length];
     for (var i = 0; i < operands.length; i++) {
-      parameters[i] = new Hir.Parameter(new Hir.Lexeme("p" + i), new Hir.TyExpr(Ty.INTEGER), false, null);
+      parameters[i] = new Hir.Parameter(new Hir.Lexeme("p" + i), new Hir.DynamicTy(Ty.INTEGER), false, null);
       arguments[i] = new Hir.Argument(null, operands[i]);
     }
     return new Hir.Call(
-      new Hir.FunctionSignature(parameters, false, new Hir.TyExpr(result), null),
+      new Hir.FunctionSignature(parameters, false, new Hir.DynamicTy(result), null),
       arguments,
       false,
       null
@@ -52,7 +56,7 @@ class HirReturnTypeVisitorTest {
 
   @Test
   void callTargetTransferPreventsArgumentEvaluation() {
-    final var signature = new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.TyExpr(Ty.BOOLEAN), null);
+    final var signature = new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.DynamicTy(Ty.BOOLEAN), null);
     final var target = new Hir.Conditional(new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), signature, signature, null);
     final var call = new Hir.Call(
       target,
@@ -108,7 +112,7 @@ class HirReturnTypeVisitorTest {
   void arrayElementsAreRuntimeExpressionsAndLengthIsEvaluatedLast() {
     final var array = new Hir.Array(
       new Hir.Expression[]{new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), new Hir.Return(new Hir.Literal("text", Ty.STRING))},
-      new Hir.TyExpr(Ty.INTEGER),
+      new Hir.DynamicTy(Ty.INTEGER),
       new Hir.Return(new Hir.Literal("4", Ty.INTEGER)),
       null, null
     );
@@ -129,7 +133,7 @@ class HirReturnTypeVisitorTest {
   void returningArrayLengthRetainsNominalArrayLayout() {
     final var array = new Hir.Array(
       new Hir.Expression[]{new Hir.Literal("1", Ty.INTEGER)},
-      new Hir.TyExpr(Ty.INTEGER), new Hir.Return(new Hir.Literal("text", Ty.STRING)),
+      new Hir.DynamicTy(Ty.INTEGER), new Hir.Return(new Hir.Literal("text", Ty.STRING)),
       null, null
     );
     final var ret = new Hir.Return(array);
@@ -230,40 +234,35 @@ class HirReturnTypeVisitorTest {
   }
 
   @Test
-  void fieldInitializersPreserveNominalLayout() {
-    final var layout = new TyStruct(new TyField[]{new TyField("x", Ty.INTEGER)});
-    final var field = new Hir.Assignment(
-      new Hir.Dec(new Hir.Lexeme("x"), Hir.MutabilityKind.MUTABLE, new Hir.TyExpr(Ty.INTEGER)),
-      new Hir.Return(new Hir.Literal("1", Ty.INTEGER))
+  void given__field_initializer_transfer__when__return_types_are_collected__then__the_payload_not_the_layout_is_returned() {
+    final var program = Inf.codeToThir("""
+      val S = struct { val x: int; };
+      new heap S { x = { return true; }; }
+      """).root();
+    final var constructions = new ArrayList<Hir.NewByBlock>();
+    program.visit(new HirVisitor() {
+      @Override
+      public void visitNewByBlock(final Hir.NewByBlock construction) {
+        constructions.add(construction);
+        HirVisitor.super.visitNewByBlock(construction);
+      }
+    });
+    assertEquals(1, constructions.size());
+    final var construction = constructions.getFirst();
+    final var layout = assertInstanceOf(TyStruct.class, Tys.getConstructionTargetTy(construction.target()));
+    assertAll(
+      () -> assertEquals(Ty.BOOLEAN, program.ty()),
+      () -> assertEquals(Ty.DEADEND, construction.ty()),
+      () -> assertEquals("x", layout.fields()[0].name()),
+      () -> assertSame(layout, Tys.getConstructionTargetTy(construction))
     );
-    final var block = new Hir.NewByBlock(new Hir.TyExpr(layout), null, new Hir.Assignment[]{field}, null);
-    final var ret = new Hir.Return(block);
-    final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
-
-    assertEquals(Ty.INTEGER, program.ty());
-    assertEquals(Ty.DEADEND, ret.ty());
-    assertEquals(Ty.DEADEND, block.ty());
-    assertEquals(layout, Tys.getConstructionTargetTy(block.target()));
-  }
-
-  @Test
-  void constructorsPreserveNominalLayout() {
-    final var layout = new TyStruct(new TyField[]{new TyField("x", Ty.INTEGER)});
-    final var ctor = new Hir.NewByCtor(new Hir.TyExpr(layout), null, new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), null);
-    final var ret = new Hir.Return(ctor);
-    final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
-
-    assertEquals(Ty.INTEGER, program.ty());
-    assertEquals(Ty.DEADEND, ret.ty());
-    assertEquals(Ty.DEADEND, ctor.ty());
-    assertEquals(layout, Tys.getConstructionTargetTy(ctor.target()));
   }
 
   @Test
   void memberAccessUsesNominalReceiverTypeAfterTransfer() {
     final var layout = new TyStruct(new TyField[]{new TyField("x", Ty.INTEGER)});
     final var receiver = call(layout, new Hir.Return(new Hir.Literal("text", Ty.STRING)));
-    final var path = new Hir.Path(new Hir.Expression[]{receiver, new Hir.Lexeme("x")}, null, null);
+    final var path = new Hir.DotAccess(receiver, "x");
     final var ret = new Hir.Return(path);
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
 
@@ -307,7 +306,7 @@ class HirReturnTypeVisitorTest {
   @Test
   void nestedFunctionBodiesDoNotExecuteWhenPassedAsArguments() {
     final var nested = new Hir.Function(
-      new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.TyExpr(Ty.INFER), null),
+      new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.DynamicTy(Ty.INFER), null),
       new Hir.Return(new Hir.Literal("text", Ty.STRING))
     );
     final var call = call(Ty.BOOLEAN, nested);

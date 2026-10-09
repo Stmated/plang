@@ -23,7 +23,6 @@ import org.inf.ast.util.SnapshotTestUtils;
 import org.inf.ast.util.ToStringTreeAstVisitor;
 import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
-import org.inf.ty.util.MachineTarget;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -31,13 +30,159 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 @EnableSnapshotTests
 @Execution(ExecutionMode.SAME_THREAD)
 class AstToHirRaisingTest {
+
+  @Test
+  void given__nested_member_syntax__when__raised_directly__then__accesses_contain_only_their_receiver_as_a_child() {
+    final var ast = Inf.codeToAst("s.inner.value");
+    final var astPrinter = new ToStringTreeAstVisitor();
+    final var before = astPrinter.visit(ast);
+    final var expression = Assertions.assertInstanceOf(Ast.Expressions.class, ast.children()).children()[0];
+    final var outer = Assertions.assertInstanceOf(Hir.DotAccess.class, new AstToHirRaising().raise(expression));
+    final var inner = Assertions.assertInstanceOf(Hir.DotAccess.class, outer.target());
+    final var receiver = Assertions.assertInstanceOf(Hir.Lexeme.class, inner.target());
+    final var visited = new ArrayList<String>();
+    outer.visit(new HirVisitor() {
+      @Override
+      public void visitLexeme(final Hir.Lexeme lexeme) {
+        visited.add(lexeme.name());
+      }
+    });
+    final var replacement = new Hir.Lexeme("replacement");
+    outer.transform(new HirTransformer() {
+      @Override
+      public Hir.Expression transformLexeme(final Hir.Lexeme lexeme) {
+        return replacement;
+      }
+    });
+    Assertions.assertAll(
+      () -> Assertions.assertEquals("value", outer.name()),
+      () -> Assertions.assertEquals("inner", inner.name()),
+      () -> Assertions.assertEquals("s", receiver.name()),
+      () -> Assertions.assertEquals(List.of("s"), visited),
+      () -> Assertions.assertSame(replacement, inner.target()),
+      () -> Assertions.assertEquals(before, astPrinter.visit(ast))
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "s.1",
+    "s.true",
+    "s.(1 + 2)"
+  })
+  void given__a_value_instead_of_a_member_name__when__raised__then__the_receiver_is_not_silently_discarded(final String source) {
+    Assertions.assertThrows(UnexpectedExpressionException.class, () -> Inf.codeToHir(source));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "s.value[0] | (s.value)[0]",
+    "s.value[0][1] | (s.value)[0][1]",
+    "s.values[index][0] | (s.values)[index][0]",
+    "s.inner.value[0] | (s.inner.value)[0]",
+    "s.values[index].value[0] | ((s.values)[index].value)[0]",
+    "s.values[index][0] = t | (s.values)[index][0] = t",
+    "s.values[t.indices[0]] | (s.values)[(t.indices)[0]]"
+  })
+  void given__indexed_member_syntax__when__raised__then__indexing_targets_the_complete_member(
+    final String code, final String equivalent
+  ) {
+    final var printer = new ToStringTreeHirVisitor();
+    Assertions.assertEquals(printer.render(Inf.codeToHir(equivalent)), printer.render(Inf.codeToHir(code)));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "s.call() | (s.call)()",
+    "s.call(1, 2) | (s.call)(1, 2)",
+    "s.call(b = value, a = 1) | (s.call)(b = value, a = 1)",
+    "s.call a = 1, b = value | (s.call)(a = 1, b = value)",
+    "s.call(...args) | (s.call)(...args)",
+    "s.inner.call(1) | (s.inner.call)(1)",
+    "s.values[index].call(value) | ((s.values)[index].call)(value)",
+    "(s.calls[index])(value) | ((s.calls)[index])(value)",
+    "s.make().call(value) | ((s.make)().call)(value)",
+    "(s.make())(value) | ((s.make)())(value)",
+    "s.make().values[index] | ((s.make)().values)[index]",
+    "s.call(t.value) | (s.call)(t.value)"
+  })
+  void given__called_member_syntax__when__raised__then__only_the_target_uses_the_complete_member_receiver(
+    final String code, final String equivalent
+  ) {
+    final var printer = new ToStringTreeHirVisitor();
+    Assertions.assertEquals(printer.render(Inf.codeToHir(equivalent)), printer.render(Inf.codeToHir(code)));
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "~(s.call(1)) | s",
+    "~((s.call)(1)) | s",
+    "~(s.call value) | s",
+    "~(s.inner.call(1)) | s.inner",
+    "~(s.inner.call value) | s.inner"
+  })
+  void given__partial_member_call__when__raised__then__the_call_keeps_its_complete_receiver_and_partial_flag(
+    final String code, final String receiver
+  ) {
+    final var call = Assertions.assertInstanceOf(Hir.Call.class, returned(code));
+    final var member = Assertions.assertInstanceOf(Hir.DotAccess.class, call.target());
+    Assertions.assertAll(
+      () -> Assertions.assertTrue(call.partial()),
+      () -> Assertions.assertEquals("call", member.name()),
+      () -> Assertions.assertEquals(1, call.arguments().length),
+      () -> Assertions.assertEquals(receiver, member.target().toString())
+    );
+  }
+
+  @Test
+  void given__explicit_and_omitted_annotations__when__raised__then__source_syntax_is_preserved_without_type_resolution() {
+    final var root = Inf.codeToHir("val v: int = 7; val use = (p: bool, q): bool => p; [7;int;1]; [7]");
+    final var annotations = new ArrayList<Hir.DynamicTy>();
+    root.visit(new HirVisitor() {
+      @Override
+      public void visitDec(final Hir.Dec declaration) {
+        annotations.add(declaration.typeAnnotation());
+        HirVisitor.super.visitDec(declaration);
+      }
+
+      @Override
+      public void visitParameter(final Hir.Parameter parameter) {
+        annotations.add(parameter.typeAnnotation());
+        HirVisitor.super.visitParameter(parameter);
+      }
+
+      @Override
+      public void visitFunctionSignatureReturnType(final Hir.DynamicTy annotation) {
+        annotations.add(annotation);
+        HirVisitor.super.visitFunctionSignatureReturnType(annotation);
+      }
+
+      @Override
+      public void visitArrayElementType(final Hir.DynamicTy annotation) {
+        annotations.add(annotation);
+        HirVisitor.super.visitArrayElementType(annotation);
+      }
+    });
+    final var explicit = annotations.stream().filter(annotation -> annotation.expression() != null)
+      .map(annotation -> Assertions.assertInstanceOf(Hir.Identifier.class, annotation.expression())).toList();
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(7, annotations.size()),
+      () -> Assertions.assertTrue(annotations.stream().allMatch(annotation -> annotation.ty() == Ty.INFER)),
+      () -> Assertions.assertEquals(java.util.List.of("int", "bool", "bool", "int"),
+        explicit.stream().map(Hir.Identifier::name).toList()),
+      () -> Assertions.assertTrue(explicit.stream().allMatch(identifier -> identifier.ty() == null)),
+      () -> Assertions.assertTrue(explicit.stream().allMatch(identifier -> identifier.target() == null))
+    );
+  }
 
   @Test
   void given__typed_tuple_value_entry__when__raised__then__deferred_syntax_is_rejected() {
@@ -103,7 +248,7 @@ class AstToHirRaisingTest {
     final var ast = Inf.codeToAst(code);
     final var astPrinter = new ToStringTreeAstVisitor();
     final var before = astPrinter.visit(ast);
-    final var hir = AstToHirRaising.lower_program(ast, new MachineTarget(64));
+    final var hir = AstToHirRaising.lower_program(ast);
 
     Assertions.assertAll(
       () -> Assertions.assertEquals(printer.render(Inf.codeToHir(equivalent)), printer.render(hir)),
@@ -128,7 +273,7 @@ class AstToHirRaisingTest {
     final var astPrinter = new ToStringTreeAstVisitor();
     final var before = astPrinter.visit(ast);
     final var program = Assertions.assertInstanceOf(
-      Program.class, AstToHirRaising.lower_program(ast, new MachineTarget(64))
+      Program.class, AstToHirRaising.lower_program(ast)
     );
     final var ret = Assertions.assertInstanceOf(Hir.Return.class, program.expressions());
     final var tuple = Assertions.assertInstanceOf(Hir.Tuple.class, ret.expression());
@@ -200,7 +345,7 @@ class AstToHirRaisingTest {
 
       @Override
       public void visitIdentifier(final Hir.Identifier identifier) {
-        visited.add(identifier.lexeme().name());
+        visited.add(identifier.name());
       }
     });
     final var transformed = new ArrayList<String>();
@@ -213,7 +358,7 @@ class AstToHirRaisingTest {
 
       @Override
       public Hir.Expression transformIdentifier(final Hir.Identifier identifier) {
-        transformed.add(identifier.lexeme().name());
+        transformed.add(identifier.name());
         return identifier;
       }
     });
@@ -235,7 +380,7 @@ class AstToHirRaisingTest {
     final var raw = Inf.codeToRawAst("1, 2");
     Assertions.assertThrows(
       IllegalArgumentException.class,
-      () -> AstToHirRaising.lower_program(raw, new MachineTarget(64))
+      () -> AstToHirRaising.lower_program(raw)
     );
   }
 
@@ -282,7 +427,7 @@ class AstToHirRaisingTest {
       )
     );
 
-    final var hir = new AstToHirRaising(new MachineTarget(64)).lower_conditional(ast);
+    final var hir = new AstToHirRaising().lower_conditional(ast);
 
     Assertions.assertInstanceOf(Hir.BinaryOperation.class, hir.predicate());
 

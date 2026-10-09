@@ -15,10 +15,7 @@ test-method: given__existing_syntax__when__raised__then__expected_hir
           (ty null)
           (target
             (Identifier
-              (lexeme
-                (Lexeme
-                  (name "f")
-                  (ty null)))
+              (name "f")
               (target null)))
           (arguments
             (Argument
@@ -26,18 +23,12 @@ test-method: given__existing_syntax__when__raised__then__expected_hir
               (ty null)
               (value
                 (Identifier
-                  (lexeme
-                    (Lexeme
-                      (name "x")
-                      (ty null)))
+                  (name "x")
                   (target null))))
             (Argument
               (label null)
               (ty null)
               (value
                 (Identifier
-                  (lexeme
-                    (Lexeme
-                      (name "y")
-                      (ty null)))
+                  (name "y")
                   (target null))))))))))

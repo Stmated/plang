@@ -9,10 +9,7 @@ test-method: given__call_flags_and_labels__when__rendered__then__preserved
   (ty null)
   (target
     (Identifier
-      (lexeme
-        (Lexeme
-          (name "f")
-          (ty null)))
+      (name "f")
       (target null)))
   (arguments
     (Argument

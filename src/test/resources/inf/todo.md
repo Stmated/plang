@@ -4,12 +4,15 @@
 
 # TODO
 
+### Support for union syntax
+Add union syntax, so more test cases can create test cases by string code.
+Right now lots of test cases are created manually since you cannot represent a Ty.union using syntax.
+Once syntax has been added, appropriately update test cases
+
 ### Updated test cases, thorough rework of how tests are done
 
-* Some test cases seem to create invalid code structures, such as passing a TyExpr inside a block
-  * A TyExpr is not an "expression" at all, it is very special, since it is just placeholder for future comptime
-    * Perhaps this expr should be removed and instead it is a regular record with two fields, either a "ty" or a "Hir.CompTime"
-  * Find test cases that do similar weird things
+* Find test cases that create invalid code structures. Type-only nodes in value positions were removed with `Hir.TyExpr`; review other synthetic fixtures separately.
+* Restore source-driven constructor layout and return-flow coverage when constructor-call syntax can be raised reliably. Unrepresentable constructor fixtures are deferred.
 * Should use more s-expression printing
 * Should use more test cases found in files
 * Should use better ways of storing expected output for a snapshot test
@@ -29,13 +32,17 @@
   * IFF there is need for this special lookup, I am sure it can be simplified into some outside visitor that can do things better.
   * It is just too extremely ugly to have all this structure-specific code inside the visitors
 
-### Incomplete function-signature aliases: investigation
+### Change `allocator` fields to Expression
+The allocator expression should be just Hir.Expression.
+It should be a Hir.Lexeme at first, not Hir.Identifier.
+It is then up to later passes to properly find the proper allocator.
+Allocators themselves are not supported yet, support is deferred.
+So right now they will always stay Hir.Lexeme, and not be validated.
 
-* Investigate reusable incomplete function-signature aliases such as `val Fn = (value): bool`. Decide whether inference is independent per use or shared,
-  and how it relates to generics. These declarations are currently invalid, even with a complete expected type on the left-hand side.
+### Constant array-length folding
+* Fix integer addition in `JavaUtil.add`: `[;int;(1 + 1)]` currently gets length `0`. Keep arithmetic folding separate from annotation representation.
 
 ### Standalone declaration references
-
 * Register standalone declarations in identifier resolution: `var n: uint8; n = 7; n` currently fails to find `n`. Keep this separate from the Ty migration.
 
 ### Indexing syntax: remaining work
@@ -47,6 +54,13 @@
 
 * Evaluate runtime effects in construction-target wrappers during MIR lowering. Targets currently supply only layouts; lambda capture discovery also skips
   these expressions. Keep type-only identifiers distinct from runtime values.
+
+### Dynamically resolvable type annotations: deferred
+
+* Define comptime type values and resolve expressions that calculate or obtain a type from metadata.
+* Distinguish a type-valued result from an ordinary expression's value/completion type. Calls, literals, blocks, and runtime bindings are currently rejected as annotations.
+* Preserve source constraints separately from inferred bindings when adding dynamic resolution to `Hir.DynamicTy`.
+* Resolve dynamic array-length constraints explicitly; identifier lengths currently become unspecified, not evaluated constant lengths.
 
 ### Stating function type for field inside struct
 
@@ -103,6 +117,10 @@ But keep some test case that still tests that both work, both alias and inline.
 * They should be convertable to and from each other if they exactly match
 * It should be possible to "explode"/"unpack" a struct as well to a function call and other locations, just like with a tuple
 
+### Simplify `Hir.Array`
+Look into the fields of Array, seems there is duplication of how the array ty and element ty and such are stored.
+Seems like the element ty can be fetched from the array ty, and that the Array expression can always give back `TyValueArray`
+
 ### Unification of Array and Tuple
 
 * An array of unbounded size and a tuple with only positional rest parameters should be equivalent
@@ -118,6 +136,12 @@ But keep some test case that still tests that both work, both alias and inline.
     * To be able to assign a value inside a nested expression, it must be done using new `:=` syntax like `fn(a = foo := 10)`
         * The main difference to `=` is that `=` returns `void` but `:=` returns RHS value.
 * Give feedback on viability of this change, if it is a good idea or not.
+
+### Incomplete function-signature aliases: investigation
+
+* Investigate reusable incomplete function-signature aliases such as `val Fn = (value): bool`. Decide whether inference is independent per use or shared,
+  and how it relates to generics. These declarations are currently invalid, even with a complete expected type on the left-hand side.
+
 
 ### Pointer and union annotation inference: deferred
 
@@ -251,6 +275,8 @@ I am well aware that the feature can make some syntax ambiguous
   type of the expression.
 
 ## Other
+
+* Replace `new MachineTarget(64)` with `MachineTarget.T64`
 
 * Should `"val f = (t: (uint8, uint8)) => t; f({ (1, 2) })"` actually be valid? What does it actually MEAN/DO?
 

@@ -22,15 +22,15 @@ import java.util.Objects;
 public class HirTyCommonVisitorPass {
 
   public static <T extends Hir.Expression> T pass(T expr) {
-    expr.visit(new Visitor(false));
+    expr.visit(new Visitor(false, new HirTypeAnnotationResolver(expr)));
     return expr;
   }
 
   public static void resolveAvailableTypes(final Hir.Expression expression) {
-    expression.visit(new Visitor(true));
+    expression.visit(new Visitor(true, new HirTypeAnnotationResolver(expression)));
   }
 
-  private record Visitor(boolean availableOnly) implements HirVisitor {
+  private record Visitor(boolean availableOnly, HirTypeAnnotationResolver annotations) implements HirVisitor {
 
     @Override
     public void visitTuple(Hir.Tuple expr) {
@@ -41,6 +41,7 @@ public class HirTyCommonVisitorPass {
     @Override
     public void visitParameter(Hir.Parameter expr) {
       HirVisitor.super.visitParameter(expr);
+      expr.typeAnnotation(expr.typeAnnotation().resolve(annotations::resolve));
       final var annotation = expr.typeAnnotation().ty();
       if (!Tys.isInferred(annotation) || expr.resolvedTy() == null) {
         expr.resolvedTy(annotation);
@@ -70,6 +71,7 @@ public class HirTyCommonVisitorPass {
     @Override
     public void visitArray(Hir.Array expr) {
       HirVisitor.super.visitArray(expr);
+      expr.elementType(expr.elementType().resolve(annotations::resolve));
 
       var arrayElementTy = expr.elementType().ty();
       for (final var element : expr.elements()) {
@@ -136,7 +138,8 @@ public class HirTyCommonVisitorPass {
     @Override
     public void visitDec(Hir.Dec expr) {
       HirVisitor.super.visitDec(expr);
-      final var annotation = expr.typeAnnotation() == null ? null : expr.typeAnnotation().ty();
+      expr.typeAnnotation(expr.typeAnnotation().resolve(annotations::resolve));
+      final var annotation = expr.typeAnnotation().ty();
       if (!Tys.containsInferred(annotation) || expr.resolvedTy() == null) {
         expr.resolvedTy(annotation);
       }
@@ -235,6 +238,7 @@ public class HirTyCommonVisitorPass {
     @Override
     public void visitFunctionSignature(Hir.FunctionSignature expr) {
       HirVisitor.super.visitFunctionSignature(expr);
+      expr.returnTypeAnnotation(expr.returnTypeAnnotation().resolve(annotations::resolve));
 
       expr.ty(HirFnTyVisitorPass.fnToTyFn(expr));
     }
@@ -357,88 +361,15 @@ public class HirTyCommonVisitorPass {
     @Override
     public void visitNewByBlock(Hir.NewByBlock expr) {
       HirVisitor.super.visitNewByBlock(expr);
+      HirFieldResolution.resolve(expr, availableOnly);
       final Ty type = Objects.requireNonNullElse(Tys.getConstructionTargetTy(expr.target()), Ty.INFER);
       expr.ty(expr.target().ty() == Ty.DEADEND || Tys.isDeadEnd(expr.fields()) ? Ty.DEADEND : type);
     }
 
     @Override
-    public void visitPath(Hir.Path expr) {
-
-      if (expr.elements() == null || expr.elements().length == 0) {
-        expr.memberTy(Ty.INVALID);
-        expr.ty(Ty.INVALID);
-        return;
-      }
-
-      final var elements = expr.elements();
-
-      visitChild(elements[0]);
-      final var receiver = Tys.getMemberReceiverTy(elements[0]);
-      Ty pointer = receiver == null ? elements[0].ty() : receiver;
-
-      if (availableOnly && Tys.isInferred(pointer)) {
-        expr.memberTy(Ty.INFER);
-        expr.ty(elements[0].ty() == Ty.DEADEND ? Ty.DEADEND : Ty.INFER);
-        return;
-      }
-
-      if ((Tys.isInferred(pointer) || pointer == Ty.DEADEND) && elements[0].ty() == Ty.DEADEND) {
-        expr.memberTy(Ty.INFER);
-        expr.ty(Ty.DEADEND);
-        return;
-      }
-
-      for (var i = 1; i < elements.length; i++) {
-
-        final var current = elements[i];
-        if (availableOnly && Tys.isInferred(pointer)) {
-          expr.memberTy(Ty.INFER);
-          expr.ty(elements[0].ty() == Ty.DEADEND ? Ty.DEADEND : Ty.INFER);
-          return;
-        }
-
-        switch (current) {
-          case Hir.Lexeme lexeme -> {
-
-            switch (pointer) {
-              case TyStruct struct -> {
-
-                final var fieldTy = Tys.getStructFieldTy(struct, lexeme.name());
-                if (fieldTy == null && !availableOnly) {
-                  throw new IllegalArgumentException("Unknown field: %s".formatted(lexeme.name()));
-                }
-                pointer = Objects.requireNonNullElse(fieldTy, Ty.INFER);
-                lexeme.ty(pointer);
-              }
-              default -> {
-                if (!availableOnly) {
-                  throw new UnexpectedExpressionException(current);
-                }
-                pointer = Ty.INFER;
-              }
-            }
-          }
-          case Hir.Call call -> {
-
-            // TODO: Make this work, even if ugly! :)
-            pointer = switch (call.target()) {
-              case Hir.Identifier id -> switch (id.lexeme().name()) {
-                case "toString" -> Ty.STRING;
-                default -> throw new UnexpectedExpressionException(id);
-              };
-              default -> throw new UnexpectedExpressionException(call.target());
-            };
-
-            HirVisitor.super.visitCall(call);
-            call.ty(ArrayUtils.any(call.arguments(), it -> it.ty() == Ty.DEADEND)
-              || call.target().ty() == Ty.DEADEND ? Ty.DEADEND : pointer);
-          }
-          default -> throw new UnexpectedExpressionException(current);
-        }
-      }
-
-      expr.memberTy(pointer);
-      expr.ty(Tys.isDeadEnd(elements) ? Ty.DEADEND : pointer);
+    public void visitDotAccess(final Hir.DotAccess expr) {
+      HirVisitor.super.visitDotAccess(expr);
+      HirFieldResolution.resolve(expr, availableOnly);
     }
   }
 }

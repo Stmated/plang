@@ -129,7 +129,7 @@ public class HirLambdaLiftingTransformerPass {
           }
           newArguments[arguments.length + i] = new Hir.Argument(
             parameter.lexeme(),
-            new Hir.Identifier(parameter.lexeme(), declaration)
+            new Hir.Identifier(parameter.lexeme().name(), declaration)
           );
         }
 
@@ -201,7 +201,7 @@ public class HirLambdaLiftingTransformerPass {
             if (entry.toIdentifier() == transformedRhs) {
               entry.fromAssignment(expr);
               entry.fromDec(ass_lhs_dec);
-              ass_lhs_dec.typeAnnotation(new Hir.TyExpr(transformedRhs.ty()));
+              ass_lhs_dec.typeAnnotation(new Hir.DynamicTy(transformedRhs.ty()));
               ass_lhs_dec.resolvedTy(transformedRhs.ty());
               break;
             }
@@ -276,12 +276,12 @@ public class HirLambdaLiftingTransformerPass {
 
           final var id = needsClosure.get(i);
           final var ty = id.ty();
-          final var typeExpr = new Hir.TyExpr(ty);
+          final var typeAnnotation = new Hir.DynamicTy(ty);
 
-          final var newParam = new Hir.Parameter(id.lexeme(), typeExpr, false, ty);
+          final var newParam = new Hir.Parameter(new Hir.Lexeme(id.name()), typeAnnotation, false, ty);
 
           newParameters[parameters.length + i] = newParam;
-          newParametersTy[parameters.length + i] = new TyParam(id.lexeme().name(), ty);
+          newParametersTy[parameters.length + i] = new TyParam(id.name(), ty);
           captures.add(new Capture(id.target(), newParam));
           captureBindings.put(id.target(), newParam);
         }
@@ -312,14 +312,14 @@ public class HirLambdaLiftingTransformerPass {
         final var randomName = UUID.randomUUID().toString();
 
         final var newIdentifier = new Hir.Identifier(
-          new Hir.Lexeme(randomName),
+          randomName,
           transformed
         );
 
         final var newDec = new Hir.Dec(
           new Hir.Lexeme(randomName),
           Hir.MutabilityKind.CONSTANT,
-          new Hir.TyExpr(transformed.ty()),
+          new Hir.DynamicTy(transformed.ty()),
           transformed.ty()
         );
 
@@ -359,7 +359,7 @@ public class HirLambdaLiftingTransformerPass {
         }
 
         @Override
-        public void visitFunctionSignatureReturnType(Hir.Expression expression) {
+        public void visitFunctionSignatureReturnType(Hir.DynamicTy annotation) {
         }
 
         @Override
@@ -375,7 +375,7 @@ public class HirLambdaLiftingTransformerPass {
         @Override
         public void visitNewByBlock(Hir.NewByBlock creation) {
           for (final var field : creation.fields()) {
-            field.rhs().visit(this);
+            visitChild(field);
           }
         }
 
@@ -386,17 +386,6 @@ public class HirLambdaLiftingTransformerPass {
           }
         }
 
-        @Override
-        public void visitPath(Hir.Path path) {
-          if (path.elements().length > 0) {
-            path.elements()[0].visit(this);
-          }
-          for (var i = 1; i < path.elements().length; i++) {
-            if (path.elements()[i] instanceof Hir.Call call) {
-              visitCallArguments(call.arguments());
-            }
-          }
-        }
       };
       function.signature().visit(visitor);
       function.body().visit(visitor);

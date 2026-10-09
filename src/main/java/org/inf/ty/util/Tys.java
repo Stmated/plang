@@ -2,12 +2,14 @@ package org.inf.ty.util;
 
 import jakarta.annotation.Nullable;
 import lombok.experimental.UtilityClass;
+import org.inf.exceptions.UnexpectedExpressionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirCallableSignatureVisitor;
 import org.inf.hir.HirIndexingTypeVisitor;
 import org.inf.hir.HirStructLayoutVisitor;
 import org.inf.ty.*;
 import org.inf.util.ArrayUtils;
+import org.inf.util.ResolvedField;
 
 import java.util.*;
 import java.util.function.Function;
@@ -376,8 +378,8 @@ public class Tys {
     if (expression instanceof Hir.Parameter parameter) {
       return parameter.resolvedTy();
     }
-    if (expression instanceof Hir.Path path) {
-      return getMemberTy(path);
+    if (expression instanceof Hir.DotAccess access) {
+      return getMemberTy(access);
     }
     if (expression instanceof Hir.ArrayAccess access) {
       return getIndexedTy(access);
@@ -388,8 +390,7 @@ public class Tys {
   /// Declaration initializers use source constraints, including omitted array element types, never inferred bindings.
   public static Ty getAssignmentContextTy(final Hir.Expression target) {
     if (target instanceof final Hir.Dec declaration) {
-      final var annotation = declaration.typeAnnotation();
-      final var constraint = annotation == null ? null : annotation.ty();
+      final var constraint = declaration.typeAnnotation().ty();
       return isInferred(constraint) ? null : constraint;
     }
     return getBindingTy(target);
@@ -402,8 +403,7 @@ public class Tys {
 
   /// A use-site context supplies missing return information; validation still enforces source constraints.
   public static Ty getFunctionReturnContextTy(final Hir.FunctionSignature signature, final Ty inferredReturn) {
-    final var annotation = signature.returnTypeAnnotation();
-    final var constraint = annotation == null ? null : annotation.ty();
+    final var constraint = signature.returnTypeAnnotation().ty();
     if (isInferred(constraint) || containsInferred(constraint) && inferredReturn != null) {
       return inferredReturn;
     }
@@ -441,10 +441,37 @@ public class Tys {
     return HirStructLayoutVisitor.find(receiver);
   }
 
-  /// Reads the selected member independently of receiver completion.
   @Nullable
-  public static Ty getMemberTy(final Hir.Path path) {
-    return path.memberTy();
+  public static ResolvedField getMemberField(final Hir.DotAccess access) {
+    return getField(getMemberReceiverTy(access.target()), access.name());
+  }
+
+  @Nullable
+  public static ResolvedField getInitializerField(final Hir.NewByBlock construction, final Hir.Assignment initializer) {
+    if (!(initializer.lhs() instanceof Hir.Lexeme name)) {
+      throw new UnexpectedExpressionException(initializer.lhs());
+    }
+    return getField(getConstructionTargetTy(construction.target()), name.name());
+  }
+
+  /// Looks up a name in the current layout without retaining the result on an expression.
+  @Nullable
+  public static ResolvedField getField(final TyStruct owner, final String name) {
+    if (owner != null) {
+      final var fields = owner.fields();
+      for (var i = 0; i < fields.length; i++) {
+        if (name.equals(fields[i].name())) {
+          return new ResolvedField(owner, i);
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Reads the selected member independently of receiver completion.
+  public static Ty getMemberTy(final Hir.DotAccess access) {
+    final var field = getMemberField(access);
+    return field == null ? Ty.INFER : field.ty();
   }
 
   /// Reads the resolved indexing receiver, retaining inferred and invalid types for diagnostics.
@@ -465,14 +492,5 @@ public class Tys {
     return access.indexedTy();
   }
 
-  @Nullable
-  public static Ty getStructFieldTy(final TyStruct struct, final String name) {
-    for (final var field : struct.fields()) {
-      if (name.equals(field.name())) {
-        return field.ty();
-      }
-    }
-    return null;
-  }
 
 }

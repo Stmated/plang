@@ -22,35 +22,29 @@ test-method: given__composite_types__when__rendered__then__full_record_metadata_
         (Local
           (id 1)
           (name "type")
-          (ty
-            (TyIdentifier
-              (name "Named"))))
+          (ty (TyOpaque)))
         (Local
           (id 2)
           (name "type")
-          (ty (TyOpaque)))
+          (ty BOOLEAN))
         (Local
           (id 3)
           (name "type")
-          (ty BOOLEAN))
+          (ty STRING))
         (Local
           (id 4)
           (name "type")
-          (ty STRING))
+          (ty INTEGER_BINARY))
         (Local
           (id 5)
           (name "type")
-          (ty INTEGER_BINARY))
+          (ty FLOAT))
         (Local
           (id 6)
           (name "type")
-          (ty FLOAT))
-        (Local
-          (id 7)
-          (name "type")
           (ty DECIMAL))
         (Local
-          (id 8)
+          (id 7)
           (name "type")
           (ty
             (TyValueNumberInteger !signed
@@ -58,47 +52,47 @@ test-method: given__composite_types__when__rendered__then__full_record_metadata_
               (width EXPLICIT_32)
               (flags CONSTANT IMMUTABLE))))
         (Local
-          (id 9)
+          (id 8)
           (name "type")
           (ty
             (TyValueArray
               (elementType INTEGER)
               (size null))))
         (Local
-          (id 10)
+          (id 9)
           (name "type")
           (ty
             (TyValueArray
               (elementType INTEGER)
               (size 0))))
         (Local
-          (id 11)
+          (id 10)
           (name "type")
           (ty
             (TyUninitialized
               (inner INTEGER))))
         (Local
-          (id 12)
+          (id 11)
           (name "type")
           (ty
             (TyPointer
               (inner INTEGER)
               (addressSpace CUDA_GLOBAL))))
         (Local
-          (id 13)
+          (id 12)
           (name "type")
           (ty
             (TyPointerExplicit
               (inner INTEGER)
               (addressSpace CPU))))
         (Local
-          (id 14)
+          (id 13)
           (name "type")
           (ty
             (TyUnion
               (types INTEGER STRING))))
         (Local
-          (id 15)
+          (id 14)
           (name "type")
           (ty
             (TyFn vararg
@@ -108,7 +102,7 @@ test-method: given__composite_types__when__rendered__then__full_record_metadata_
                   (ty INTEGER)))
               (returnTy VOID))))
         (Local
-          (id 16)
+          (id 15)
           (name "type")
           (ty
             (TyStruct !tuple
@@ -117,7 +111,7 @@ test-method: given__composite_types__when__rendered__then__full_record_metadata_
                   (name "field")
                   (ty STRING))))))
         (Local
-          (id 17)
+          (id 16)
           (name "type")
           (ty
             (TyStruct tuple

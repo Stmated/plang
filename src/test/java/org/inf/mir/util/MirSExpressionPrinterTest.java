@@ -404,7 +404,7 @@ class MirSExpressionPrinterTest {
   ) {
     final var function = function("types", Ty.VOID, false);
     final Ty[] types = {
-      Ty.UNKNOWN, new TyIdentifier("Named"), new TyOpaque(), Ty.BOOLEAN, Ty.STRING,
+      Ty.UNKNOWN, new TyOpaque(), Ty.BOOLEAN, Ty.STRING,
       Ty.INTEGER_BINARY, Ty.FLOAT, Ty.DECIMAL,
       new TyValueNumberInteger((byte) 10, new BitWidth(32, true), false, EnumSet.of(TyFlags.CONSTANT, TyFlags.IMMUTABLE)),
       new TyValueArray(Ty.INTEGER, null), new TyValueArray(Ty.INTEGER, 0),

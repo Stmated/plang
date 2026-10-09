@@ -35,7 +35,7 @@ Keep the AST abstract and agnostic. It groups a lexed stream into a tree describ
 
 HIR represents logical structures such as predicates, loops, and lambda functions. HIR and THIR currently use the same tree node classes; THIR is the typed form of HIR.
 
-## Feature implementation
+## implementation rules
 
 * Prefer an isolated transformer/pass class over adding feature logic to a main lowerer/raiser. Each pass should perform a limited job over tree nodes.
 * Prefer an isolated transformer/pass class over adding code to another transformer/pass that is closely related but deals with another area of responsibility. For example a "Handle spread visitor" should not have "Handle return type inference" code inside of it.
@@ -47,6 +47,7 @@ HIR represents logical structures such as predicates, loops, and lambda function
   * Focus on solving the narrow scope of the pass, and leave any requirement of validation to a separate pass.
   * It is still allowed to fail early if something is obviously wrong, but do not spend resources heavily validating early something that will fail later.
 * It is better to separate a large feature into smaller, localized steps to be aded to `todo.md`. If a feature grows large, ask to split it up.
+* Never introduce a new expression node class, or a field to an existing node, without being extremely explicit, and explaining why it is fully required.
 
 In the project the word `Ty` is used for its internal representation of a type, to not clash with the Java `Type` class.
 
@@ -78,6 +79,8 @@ It is however allowed to manually call two different THIR passes, if the purpose
 * Prefer `final` for parameters, fields, and local variables where possible.
 * Never nest ternary expressions. Use explicit if-conditions instead.
 * Avoid `.forEach` and instead use a regular for-loop.
+* Never write heavy logic inside a constructor. Simple one-liners are allowed.
+* Prefer word `expr` over `expression`.
 
 Prefer `ArrayUtils` (`src\main\java\org\inf\util\ArrayUtils.java`) for array operations. For example:
 

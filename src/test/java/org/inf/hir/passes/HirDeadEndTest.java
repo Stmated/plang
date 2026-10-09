@@ -28,14 +28,14 @@ class HirDeadEndTest {
 
   private Hir.Function function(Hir.Expression body) {
     return new Hir.Function(
-      new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.TyExpr(Ty.INFER), null),
+      new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.DynamicTy(Ty.INFER), null),
       body
     );
   }
 
   private Hir.ArrayAccess arrayAccess(Hir.Expression index) {
     return new Hir.ArrayAccess(
-      new Hir.Array(new Hir.Expression[]{integer()}, new Hir.TyExpr(Ty.INTEGER), null, null, null),
+      new Hir.Array(new Hir.Expression[]{integer()}, new Hir.DynamicTy(Ty.INTEGER), null, null, null),
       index,
       null,
       null
@@ -211,14 +211,14 @@ class HirDeadEndTest {
     final var declaration = new Hir.Dec(
       new Hir.Lexeme("value"),
       Hir.MutabilityKind.IMMUTABLE,
-      new Hir.TyExpr(Ty.INFER)
+      new Hir.DynamicTy(Ty.INFER)
     );
     final var fn = function(new Hir.Expressions(new Hir.Expression[]{
       new Hir.Assignment(
         declaration,
         new Hir.Conditional(literal_true(), new Hir.Return(string()), integer(), null)
       ),
-      new Hir.Return(new Hir.Identifier(declaration.lexeme(), declaration))
+      new Hir.Return(new Hir.Identifier(declaration.lexeme().name(), declaration))
     }));
 
     HirTyCommonVisitorPass.pass(fn);

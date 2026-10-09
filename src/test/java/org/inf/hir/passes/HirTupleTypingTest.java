@@ -6,6 +6,7 @@ import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
 import org.inf.ty.TyStruct;
+import org.inf.ty.TyValueArray;
 import org.inf.ty.util.TypeComparison;
 import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
@@ -15,6 +16,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.Arguments;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,21 +67,31 @@ class HirTupleTypingTest {
     return new TyStruct(Arrays.stream(elements).map(type -> new TyField(null, type)).toArray(TyField[]::new));
   }
 
-  static Stream<Ty> memberTypes() {
+  static Stream<Arguments> memberTypes() {
     return Stream.of(
-      Ty.INTEGER,
-      Ty.INFER,
-      Ty.VOID,
-      tuple(Ty.INTEGER, Ty.INFER)
+      Arguments.of("(7,)", Ty.INTEGER),
+      Arguments.of("({ var n = 1; },)", Ty.VOID),
+      Arguments.of("([;1],)", new TyValueArray(Ty.INFER, 1)),
+      Arguments.of("((7, [;1]),)", tuple(Ty.INTEGER, new TyValueArray(Ty.INFER, 1)))
     );
   }
 
   @ParameterizedTest
   @MethodSource("memberTypes")
-  void given__member_type__when__tuple_type_is_built__then__member_type_is_preserved_without_validation(final Ty memberType) {
-    final var expression = new Hir.Tuple(new Hir.TupleEntry[]{
-      new Hir.TupleEntry(null, new Hir.TyExpr(memberType))
-    }, null);
+  void given__source_member__when__tuple_type_is_built__then__member_type_is_preserved_without_validation(
+    final String code, final Ty memberType
+  ) {
+    final var tuples = new ArrayList<Hir.Tuple>();
+    Inf.codeToHir(code).visit(new HirVisitor() {
+      @Override
+      public void visitTuple(final Hir.Tuple tuple) {
+        tuples.add(tuple);
+        HirVisitor.super.visitTuple(tuple);
+      }
+    });
+    final var expression = tuples.getFirst();
+    Assertions.assertEquals(1, expression.children().length);
+    HirTyCommonVisitorPass.resolveAvailableTypes(expression.children()[0].value());
     HirTupleTyping.resolve(expression);
     Assertions.assertEquals(tuple(memberType), expression.ty());
   }

@@ -26,8 +26,7 @@ public class HirFnTyVisitorPass {
       parameterTys[i] = new TyParam(parameterName, paramTy);
     }
 
-    final var annotation = signature.returnTypeAnnotation();
-    var returnTy = annotation == null ? null : annotation.ty();
+    var returnTy = signature.returnTypeAnnotation().ty();
     if (Tys.containsInferred(returnTy) && signature.ty() != null) {
       returnTy = signature.ty().returnTy();
     }

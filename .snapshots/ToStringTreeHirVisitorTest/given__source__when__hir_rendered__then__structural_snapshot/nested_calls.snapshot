@@ -15,10 +15,7 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
           (ty null)
           (target
             (Identifier
-              (lexeme
-                (Lexeme
-                  (name "f")
-                  (ty null)))
+              (name "f")
               (target null)))
           (arguments
             (Argument
@@ -30,10 +27,7 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                   (ty null)
                   (target
                     (Identifier
-                      (lexeme
-                        (Lexeme
-                          (name "g")
-                          (ty null)))
+                      (name "g")
                       (target null)))
                   (arguments
                     (Argument

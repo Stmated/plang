@@ -367,7 +367,7 @@ class MirVerifierTest {
   @Test
   void rejectsUnresolvedTypesRecursivelyAndVoidValues() {
     for (final var type : List.of(Ty.UNKNOWN, Ty.INFER, Ty.INVALID, Ty.DEADEND,
-      new TyIdentifier("Unresolved"), new TyPointer<>(Ty.UNKNOWN), Ty.VOID)) {
+      new TyPointer<>(Ty.UNKNOWN), Ty.VOID)) {
       final var function = function(Ty.VOID);
       function.newLocal("bad", type);
       done(function.entry());

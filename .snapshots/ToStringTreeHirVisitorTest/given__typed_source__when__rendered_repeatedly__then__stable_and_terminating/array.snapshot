@@ -21,17 +21,19 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
               (lexeme
                 (Lexeme
                   (name "a")
-                  (ty null)))
+                  (ty (named "VOID"))))
               (typeAnnotation
-                (TyExpr
-                  (ty (named "INFER"))))))
+                (DynamicTy
+                  (ty (named "INFER"))
+                  (expression null)))))
           (rhs
             (Array
               (ty (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
               (arrayTy (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
               (elementType
-                (TyExpr
-                  (ty (named "INFER"))))
+                (DynamicTy
+                  (ty (named "INFER"))
+                  (expression null)))
               (length
                 (Literal
                   (content "2")
@@ -51,10 +53,7 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
               (indexedTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
               (target
                 (Identifier
-                  (lexeme
-                    (Lexeme
-                      (name "a")
-                      (ty null)))
+                  (name "a")
                   (target (reference "a"))))
               (accessor
                 (Literal
@@ -72,10 +71,7 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
               (indexedTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
               (target
                 (Identifier
-                  (lexeme
-                    (Lexeme
-                      (name "a")
-                      (ty null)))
+                  (name "a")
                   (target (reference "a"))))
               (accessor
                 (Literal

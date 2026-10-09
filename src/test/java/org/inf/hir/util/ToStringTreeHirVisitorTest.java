@@ -7,6 +7,7 @@ import org.inf.ast.util.SnapshotTestUtils;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.*;
+import org.inf.ty.util.MachineTarget;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
@@ -64,10 +65,10 @@ class ToStringTreeHirVisitorTest {
             (children
               (Lexeme
                 (name "first")
-                (ty null))
+                (ty (named "VOID")))
               (Lexeme
                 (name "second")
-                (ty null))))))""", printer.render(expression));
+                (ty (named "VOID")))))))""", printer.render(expression));
   }
 
   @Test
@@ -82,7 +83,7 @@ class ToStringTreeHirVisitorTest {
   @Test
   void given__missing_and_empty_values__when__rendered__then__distinguished() {
     assertAll(
-      () -> assertEquals("null", printer.render(null)),
+      () -> assertEquals("null", printer.render((Hir.Expression) null)),
       () -> assertEquals("""
         (Expressions
           (generated false)
@@ -101,7 +102,7 @@ class ToStringTreeHirVisitorTest {
           (target
             (Lexeme
               (name "f")
-              (ty null)))
+              (ty (named "VOID"))))
           (arguments))""", printer.render(new Hir.Call(new Hir.Lexeme("f"), new Hir.Argument[0]))),
       () -> assertNotEquals(printer.render(new Hir.Conditional(new Hir.Lexeme("p"), new Hir.Lexeme("yes"), null)),
         printer.render(new Hir.Conditional(new Hir.Lexeme("p"), new Hir.Lexeme("yes"), new Hir.Expressions(new Hir.Expression[0]))))
@@ -116,7 +117,7 @@ class ToStringTreeHirVisitorTest {
   void given__call_flags_and_labels__when__rendered__then__preserved(
     final boolean partial, final TestInfo testInfo, final Snapshot snapshot
   ) {
-    final var call = new Hir.Call(new Hir.Identifier(new Hir.Lexeme("f"), null), new Hir.Argument[] {
+    final var call = new Hir.Call(new Hir.Identifier("f", null), new Hir.Argument[] {
       new Hir.Argument(new Hir.Lexeme("label"), new Hir.Literal("1", Ty.INTEGER)),
       new Hir.Argument(null, new Hir.Literal("2", Ty.INTEGER))
     }, partial, null);
@@ -138,11 +139,11 @@ class ToStringTreeHirVisitorTest {
           (lhs
             (Lexeme
               (name "left")
-              (ty null)))
+              (ty (named "VOID"))))
           (rhs
             (Lexeme
               (name "right")
-              (ty null))))""".formatted(kind), printer.render(new Hir.BinaryOperation(left, kind, right))),
+              (ty (named "VOID")))))""".formatted(kind), printer.render(new Hir.BinaryOperation(left, kind, right))),
       () -> assertEquals("""
         (CompoundAssignment
           (kind %s)
@@ -150,11 +151,11 @@ class ToStringTreeHirVisitorTest {
           (target
             (Lexeme
               (name "left")
-              (ty null)))
+              (ty (named "VOID"))))
           (rhs
             (Lexeme
               (name "right")
-              (ty null))))""".formatted(kind), printer.render(new Hir.CompoundAssignment(left, kind, right)))
+              (ty (named "VOID")))))""".formatted(kind), printer.render(new Hir.CompoundAssignment(left, kind, right)))
     );
   }
 
@@ -164,7 +165,7 @@ class ToStringTreeHirVisitorTest {
     final Hir.MutabilityKind kind, final TestInfo testInfo, final Snapshot snapshot
   ) {
     SnapshotTestUtils.assertMatches(testInfo, snapshot, kind.name(),
-      printer.render(new Hir.Dec(new Hir.Lexeme("value"), kind, new Hir.TyExpr(Ty.INTEGER))));
+      printer.render(new Hir.Dec(new Hir.Lexeme("value"), kind, new Hir.DynamicTy(Ty.INTEGER))));
   }
 
   @ParameterizedTest
@@ -175,10 +176,10 @@ class ToStringTreeHirVisitorTest {
   void given__varargs_and_generated_sequence_flags__when__rendered__then__preserved(
     final boolean flag, final TestInfo testInfo, final Snapshot snapshot
   ) {
-    final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), new Hir.TyExpr(Ty.INTEGER), flag, Ty.INTEGER);
-    final var signature = new Hir.FunctionSignature(new Hir.Parameter[] { parameter }, flag, null);
+    final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), new Hir.DynamicTy(Ty.INTEGER), flag, Ty.INTEGER);
+    final var signature = new Hir.FunctionSignature(new Hir.Parameter[] { parameter }, flag, new Hir.DynamicTy(Ty.INFER));
     final var expressions = new Hir.Expressions(new Hir.Expression[] {
-      new Hir.Function(signature, new Hir.Return(new Hir.Identifier(parameter.lexeme(), parameter)))
+      new Hir.Function(signature, new Hir.Return(new Hir.Identifier(parameter.lexeme().name(), parameter)))
     }, null, flag);
 
     SnapshotTestUtils.assertMatches(testInfo, snapshot, Boolean.toString(flag), printer.render(expressions));
@@ -221,8 +222,8 @@ class ToStringTreeHirVisitorTest {
 
   @Test
   void given__resolved_declaration_cycle__when__rendered__then__symbolic_reference_without_following_target() {
-    final var identifier = new Hir.Identifier(new Hir.Lexeme("self"), null);
-    final var declaration = new Hir.Dec(identifier.lexeme(), Hir.MutabilityKind.IMMUTABLE, identifier);
+    final var identifier = new Hir.Identifier("self", null);
+    final var declaration = new Hir.Dec(new Hir.Lexeme(identifier.name()), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(identifier));
     identifier.target(declaration);
 
     final var actual = assertTimeout(Duration.ofSeconds(1), () -> printer.render(declaration));
@@ -234,14 +235,14 @@ class ToStringTreeHirVisitorTest {
         (lexeme
           (Lexeme
             (name "self")
-            (ty null)))
+            (ty (named "VOID"))))
         (typeAnnotation
-          (Identifier
-            (lexeme
-              (Lexeme
+          (DynamicTy
+            (ty (named "INFER"))
+            (expression
+              (Identifier
                 (name "self")
-                (ty null)))
-            (target (reference "self")))))""", actual);
+                (target (reference "self")))))))""", actual);
   }
 
   @Test
@@ -251,9 +252,22 @@ class ToStringTreeHirVisitorTest {
     fields[0] = new TyField("next", new TyPointer<>(type));
 
     assertEquals("""
-      (TyExpr
-        (ty (struct ("next" (pointer CPU (recursive))))))""",
-      assertTimeout(Duration.ofSeconds(1), () -> printer.render(new Hir.TyExpr(type))));
+      (DynamicTy
+        (ty (struct ("next" (pointer CPU (recursive)))))
+        (expression null))""",
+      assertTimeout(Duration.ofSeconds(1), () -> printer.render(new Hir.DynamicTy(type))));
+  }
+
+  @Test
+  void given__resolved_alias_constraint__when__rendered__then__cached_type_and_source_expression_are_both_visible() {
+    final var source = new Hir.Identifier("Alias", null);
+    assertEquals("""
+      (DynamicTy
+        (ty (boolean))
+        (expression
+          (Identifier
+            (name "Alias")
+            (target null))))""", printer.render(new Hir.DynamicTy(Ty.BOOLEAN, source)));
   }
 
   @Test
@@ -281,7 +295,7 @@ class ToStringTreeHirVisitorTest {
     assertAll(
       () -> assertTrue(binding.contains("(ty (named \"VOID\"))")),
       () -> assertTrue(binding.contains("(resolvedTy (number INTEGER")),
-      () -> assertTrue(binding.contains("(typeAnnotation\n    (TyExpr\n      (ty (named \"INFER\"))))")),
+      () -> assertTrue(binding.contains("(typeAnnotation\n    (DynamicTy\n      (ty (named \"INFER\"))\n      (expression null)))")),
       () -> assertTrue(tuple.contains("(contextualType (struct (\"value\" (number INTEGER width=8")),
       () -> assertFalse(binding.contains("valueTy")),
       () -> assertFalse(tuple.contains("valueTy"))
@@ -296,7 +310,7 @@ class ToStringTreeHirVisitorTest {
       integer = new TyPointer<>(integer);
       string = new TyPointer<>(string);
     }
-    assertNotEquals(printer.render(new Hir.TyExpr(integer)), printer.render(new Hir.TyExpr(string)));
+    assertNotEquals(printer.render(integer), printer.render(string));
   }
 
   @Test
@@ -304,11 +318,11 @@ class ToStringTreeHirVisitorTest {
     final TestInfo testInfo, final Snapshot snapshot
   ) {
     final var name = new Hir.Lexeme("name");
-    final var identifier = new Hir.Identifier(name, null);
+    final var identifier = new Hir.Identifier(name.name(), null);
     final var value = new Hir.Literal("7", Ty.INTEGER);
-    final var declaration = new Hir.Dec(name, Hir.MutabilityKind.CONSTANT, new Hir.TyExpr(Ty.INTEGER));
-    final var assignment = new Hir.Assignment(declaration, value);
-    final var array = new Hir.Array(new Hir.Expression[] { value }, new Hir.TyExpr(Ty.INTEGER), value,
+    final var declaration = new Hir.Dec(name, Hir.MutabilityKind.CONSTANT, new Hir.DynamicTy(Ty.INTEGER));
+    final var initializer = new Hir.Assignment(name, value);
+    final var array = new Hir.Array(new Hir.Expression[] { value }, new Hir.DynamicTy(Ty.INTEGER), value,
       Ty.VOID, new TyValueArray(Ty.INTEGER, 1));
     final var nodes = new Hir.Expression[] {
       array,
@@ -316,10 +330,10 @@ class ToStringTreeHirVisitorTest {
       new Hir.Labeling(name, value, Ty.INTEGER),
       new Hir.Loop(new Hir.Block(new Hir.LoopBreak(value), Ty.DEADEND)),
       new Hir.LoopContinue(),
-      new Hir.NewByBlock(identifier, identifier, new Hir.Assignment[] { assignment }, Ty.VOID),
+      new Hir.NewByBlock(identifier, identifier, new Hir.Assignment[] { initializer }, Ty.VOID),
       new Hir.NewByCtor(identifier, null, new Hir.Tuple(new Hir.TupleEntry[0], null), null),
       new Hir.Not(value, Ty.BOOLEAN),
-      new Hir.Path(new Hir.Expression[] { identifier, name }, null, Ty.INTEGER),
+      new Hir.DotAccess(identifier, name.name()),
       new Hir.Range(value, new Hir.Literal("9", Ty.INTEGER)),
       new Hir.DeadEnd(new Hir.Return(value)),
       new Hir.Struct(new Hir.Dec[] { declaration }, null),
@@ -327,18 +341,17 @@ class ToStringTreeHirVisitorTest {
       new Hir.Tuple(new Hir.TupleEntry[] {
         new Hir.TupleEntry(name, value),
         new Hir.TupleEntry(null, value)
-      }, null)
+      }, null),
+      Hir.BuiltInTy.fromString("int", new MachineTarget(64))
     };
 
     SnapshotTestUtils.assertMatches(testInfo, snapshot, null, printer.render(new Hir.Program(new Hir.Expressions(nodes))));
   }
 
   @Test
-  void given__composite_type_metadata__when__rendered__then__stable_structural_types(
-    final TestInfo testInfo, final Snapshot snapshot
-  ) {
+  void given__composite_type_metadata__when__rendered__then__stable_structural_types() {
     final Ty[] types = {
-      Ty.UNKNOWN, new TyIdentifier("Named"), new TyOpaque(),
+      Ty.UNKNOWN, new TyOpaque(),
       Ty.INTEGER_BINARY, Ty.FLOAT, Ty.DECIMAL, Ty.BOOLEAN, Ty.STRING,
       new TyValueArray(Ty.INTEGER, null), new TyValueArray(Ty.INTEGER, 0),
       new TyUninitialized<>(Ty.INTEGER), new TyPointerExplicit(Ty.INTEGER),
@@ -346,11 +359,24 @@ class ToStringTreeHirVisitorTest {
       new TyFn(new TyParam[] { new TyParam("p", Ty.INTEGER) }, true, Ty.VOID),
       new TyStruct(new TyField[] { new TyField("field", Ty.STRING) })
     };
-    final var expressions = new Hir.Expression[types.length];
+    final String[] expected = {
+      "(ty (named \"UNKNOWN\"))",
+      "(ty (opaque))",
+      "(ty (number INTEGER width=32 explicit=false signed=true radix=2 flags=[]))",
+      "(ty (number FLOAT width=32 explicit=false signed=true radix=10 flags=[] precision=7))",
+      "(ty (number DECIMAL width=128 explicit=false signed=true radix=10 flags=[] scale=10))",
+      "(ty (boolean))",
+      "(ty (string))",
+      "(ty (array size=null (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))",
+      "(ty (array size=0 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))",
+      "(ty (uninitialized (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))",
+      "(ty (explicit-pointer CPU (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))",
+      "(ty (union (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]) (string)))",
+      "(ty (function vararg=true (parameters (\"p\" (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))) (returns (named \"VOID\"))))",
+      "(ty (struct (\"field\" (string))))"
+    };
     for (int i = 0; i < types.length; i++) {
-      expressions[i] = new Hir.TyExpr(types[i]);
+      assertEquals(expected[i], printer.render(types[i]));
     }
-
-    SnapshotTestUtils.assertMatches(testInfo, snapshot, null, printer.render(new Hir.Expressions(expressions)));
   }
 }

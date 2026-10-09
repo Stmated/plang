@@ -50,26 +50,15 @@ public class HirFunctionValidationVisitorPass {
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
-      if (!(expression.lhs() instanceof Hir.Lexeme)) {
-        check(expression.rhs(), Tys.getBindingTy(expression.lhs()), "assignment");
-      }
+      check(expression.rhs(), Tys.getBindingTy(expression.lhs()), "assignment");
     }
 
     @Override
-    public void visitNewByBlock(final Hir.NewByBlock expression) {
-      HirVisitor.super.visitNewByBlock(expression);
-      final var struct = Tys.getConstructionTargetTy(expression.target());
-      if (struct != null) {
-        for (final var assignment : expression.fields()) {
-          if (assignment.lhs() instanceof Hir.Lexeme name) {
-            final var fieldTy = Tys.getStructFieldTy(struct, name.name());
-            if (fieldTy != null) {
-              check(assignment.rhs(), fieldTy, "field %s".formatted(name.name()));
-            } else if (Tys.getCallableValueTy(assignment.rhs()) != null) {
-              throw new IllegalArgumentException("Unknown struct field: %s".formatted(name.name()));
-            }
-          }
-        }
+    public void visitNewByBlockField(final Hir.NewByBlock construction, final Hir.Assignment expression) {
+      HirVisitor.super.visitAssignment(expression);
+      final var field = Tys.getInitializerField(construction, expression);
+      if (field != null) {
+        check(expression.rhs(), field.ty(), "field %s".formatted(expression.lhs()));
       }
     }
 

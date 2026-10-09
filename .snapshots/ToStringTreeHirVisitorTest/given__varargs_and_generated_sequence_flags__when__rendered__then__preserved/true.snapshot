@@ -21,18 +21,19 @@ test-method: given__varargs_and_generated_sequence_flags__when__rendered__then__
               (lexeme
                 (Lexeme
                   (name "p")
-                  (ty null)))
+                  (ty (named "VOID"))))
               (typeAnnotation
-                (TyExpr
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))))
-          (returnType null)))
+                (DynamicTy
+                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+                  (expression null)))))
+          (returnType
+            (DynamicTy
+              (ty (named "INFER"))
+              (expression null)))))
       (body
         (Return
           (ty (named "DEADEND"))
           (expression
             (Identifier
-              (lexeme
-                (Lexeme
-                  (name "p")
-                  (ty null)))
+              (name "p")
               (target (reference "p")))))))))

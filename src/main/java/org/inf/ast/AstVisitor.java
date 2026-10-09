@@ -2,9 +2,13 @@ package org.inf.ast;
 
 public interface AstVisitor<T> {
 
-  T aggregate(T a, T b);
+  default T aggregate(T a, T b) {
+    return noValue();
+  }
 
-  T noValue();
+  default T noValue() {
+    return null;
+  }
 
   default T aggregate(final T a, final T b, final T c) {
     return aggregate(aggregate(a, b), c);

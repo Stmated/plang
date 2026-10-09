@@ -1,0 +1,69 @@
+dynamic-directory: true
+snapshot-name: valid_array.inf
+snapshot-number: 0
+test-class: org.inf.ast.raising.TokenToAstSnapshotTest
+test-method: testAllFiles
+
+(Program
+  (Expressions
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array1")
+        Immutable
+        false)
+      (Bracket
+        (Literal "0")
+        (Comma)
+        (Literal "1")
+        (Comma)
+        (Literal "2")))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array2")
+        Immutable
+        false)
+      (Bracket
+        (Literal "0u8")
+        (NoOp)
+        (Literal "500")))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array2")
+        Immutable
+        false)
+      (Bracket
+        (Literal "0")
+        (NoOp)
+        (Lexeme "uint8")
+        (NoOp)
+        (Literal "500")))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array3")
+        Immutable
+        false)
+      (Bracket
+        (NoOp)
+        (Lexeme "uint8")
+        (NoOp)
+        (Literal "500")))
+    (NoOp)
+    (Assignment
+      (VariableDeclaration
+        (Lexeme "array4")
+        Immutable
+        false)
+      (Bracket
+        (Literal "1")
+        (Comma)
+        (Literal "2")
+        (Comma)
+        (Literal "3")
+        (NoOp)
+        (Lexeme "uint8")
+        (NoOp)
+        (Literal "500")))
+    (NoOp)))

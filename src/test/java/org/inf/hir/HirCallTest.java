@@ -3,6 +3,7 @@ package org.inf.hir;
 import org.inf.Inf;
 import org.inf.ty.Ty;
 import org.inf.ty.TyValueArray;
+import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -242,19 +243,32 @@ class HirCallTest {
     expression.transform(new HirTransformer() {});
     Assertions.assertAll(
       () -> Assertions.assertEquals(1, expression.arguments().length),
-      () -> Assertions.assertEquals("args", reference.lexeme().name()),
+      () -> Assertions.assertEquals("args", reference.name()),
       () -> Assertions.assertSame(reference, expression.arguments()[0].value())
     );
   }
 
   @Test
   void given__non_returning_argument_value__when__queried__then__completion_and_syntactic_indexing_type_are_distinct() {
-    final var array = new TyValueArray(Ty.INTEGER, 1);
-    final var value = new Hir.Block(new Hir.TyExpr(array), Ty.DEADEND);
-    final var argument = new Hir.Argument(null, value);
+    final var calls = new ArrayList<Hir.Call>();
+    Inf.codeToThir("""
+      val take = (a: [;int;1]) => 0;
+      take({ return true; [7i32]; })
+      """).root().visit(new HirVisitor() {
+      @Override
+      public void visitCall(final Hir.Call expression) {
+        calls.add(expression);
+        HirVisitor.super.visitCall(expression);
+      }
+    });
+    Assertions.assertEquals(1, calls.size());
+    final var argument = calls.getFirst().arguments()[0];
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.DEADEND, argument.ty()),
-      () -> Assertions.assertSame(array, Tys.getIndexingAccessorTy(argument))
+      () -> Assertions.assertEquals(
+        new TyValueArray(Tys.fromString("int", new MachineTarget(64)), 1),
+        Tys.getIndexingAccessorTy(argument)
+      )
     );
   }
 }

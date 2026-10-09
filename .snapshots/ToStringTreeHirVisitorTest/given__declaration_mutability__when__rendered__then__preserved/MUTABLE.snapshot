@@ -11,7 +11,8 @@ test-method: given__declaration_mutability__when__rendered__then__preserved
   (lexeme
     (Lexeme
       (name "value")
-      (ty null)))
+      (ty (named "VOID"))))
   (typeAnnotation
-    (TyExpr
-      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+    (DynamicTy
+      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+      (expression null))))

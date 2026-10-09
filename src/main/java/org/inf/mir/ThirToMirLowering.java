@@ -190,10 +190,9 @@ public final class ThirToMirLowering {
       case Hir.Not not -> not(not);
       case Hir.Array array -> array(array);
       case Hir.ArrayAccess access -> arrayAccess(access);
-      case Hir.Path path -> path(path);
+      case Hir.DotAccess access -> dotAccess(access);
       case Hir.NewByBlock instance -> instance(instance);
       case Hir.Struct _ -> UNIT;
-      case Hir.TyExpr _ -> UNIT;
       case Hir.NewByCtor _ -> throw new NotImplementedException("Constructor calls are not yet normalized by THIR");
       case Hir.Tuple tuple -> tuple(tuple);
       default -> throw new NotImplementedException("Unsupported typed expression: " + expression.getClass().getSimpleName());
@@ -205,7 +204,7 @@ public final class ThirToMirLowering {
     for (final var expression : expressions) {
       if (current == null && expression instanceof Hir.Assignment assignment
         && assignment.lhs() instanceof Hir.Dec declaration
-        && (module.staticBindings.containsKey(declaration) || assignment.rhs() instanceof Hir.Struct || assignment.rhs() instanceof Hir.TyExpr)) {
+        && (module.staticBindings.containsKey(declaration) || assignment.rhs() instanceof Hir.Struct)) {
         continue;
       }
       flow = lower(expression);
@@ -252,7 +251,7 @@ public final class ThirToMirLowering {
     }
     final var local = locals.get(declaration);
     if (local == null) {
-      throw new IllegalArgumentException("No local for resolved declaration of '" + identifier.lexeme().name()
+      throw new IllegalArgumentException("No local for resolved declaration of '" + identifier.name()
         + "'; nonlocal captures must be lowered to parameters before MIR");
     }
     return new Continues(load(local));
@@ -266,7 +265,7 @@ public final class ThirToMirLowering {
 
   private Flow assignment(Hir.Assignment assignment) {
     if (assignment.lhs() instanceof Hir.Dec declaration) {
-      if (assignment.rhs() instanceof Hir.Struct || assignment.rhs() instanceof Hir.TyExpr) {
+      if (assignment.rhs() instanceof Hir.Struct) {
         return UNIT;
       }
       final var rhs = lower(assignment.rhs());
@@ -305,7 +304,7 @@ public final class ThirToMirLowering {
         }
         yield local;
       }
-      case Hir.Path path -> pathPlace(path);
+      case Hir.DotAccess access -> fieldPlace(access);
       case Hir.ArrayAccess access -> {
         final var target = lower(access.target());
         if (target instanceof Diverges) {
@@ -341,52 +340,18 @@ public final class ThirToMirLowering {
     return UNIT;
   }
 
-  private Flow path(Hir.Path path) {
-    final var place = pathPlace(path);
+  private Flow dotAccess(final Hir.DotAccess access) {
+    final var place = fieldPlace(access);
     return current == null ? Diverges.INSTANCE : new Continues(load(place));
   }
 
-  private Mir.Place pathPlace(Hir.Path path) {
-    final var elements = path.elements();
-    if (elements.length < 2) {
-      throw new IllegalArgumentException("A field path requires a target and a field");
-    }
-    final var target = lower(elements[0]);
+  private Mir.Place fieldPlace(final Hir.DotAccess access) {
+    final var target = lower(access.target());
     if (target instanceof Diverges) {
       return null;
     }
-    var operand = ((Continues) target).value();
-    Mir.Place place = null;
-    for (var i = 1; i < elements.length; i++) {
-      final var aggregate = MirTypes.pointee(operand.ty());
-      if (!(aggregate instanceof TyStruct struct)) {
-        throw new IllegalArgumentException("Field access requires a struct reference: " + aggregate);
-      }
-      final var index = fieldIndex(struct, fieldName(elements[i]));
-      place = new Mir.Field(operand, index, MirTypes.valueType(struct.fields()[index].ty()));
-      if (i < elements.length - 1) {
-        operand = load(place);
-      }
-    }
-    return place;
-  }
-
-  private static String fieldName(Hir.Expression expression) {
-    return switch (expression) {
-      case Hir.Identifier identifier -> identifier.lexeme().name();
-      case Hir.Lexeme lexeme -> lexeme.name();
-      default -> throw new IllegalArgumentException("Expected field name: " + expression);
-    };
-  }
-
-  private static int fieldIndex(TyStruct struct, String name) {
-    final var fields = struct.fields();
-    for (var i = 0; i < fields.length; i++) {
-      if (name.equals(fields[i].name())) {
-        return i;
-      }
-    }
-    throw new IllegalArgumentException("Unknown struct field: " + name);
+    final var field = Objects.requireNonNull(Tys.getMemberField(access), "Field access requires a resolved receiver field");
+    return new Mir.Field(((Continues) target).value(), field.index(), MirTypes.valueType(field.ty()));
   }
 
   private Flow conditional(Hir.Conditional conditional) {
@@ -642,16 +607,17 @@ public final class ThirToMirLowering {
       throw new IllegalArgumentException("Struct construction requires a resolved target layout");
     }
     final var fields = new Mir.Operand[type.fields().length];
-    for (final var assignment : instance.fields()) {
-      final var index = fieldIndex(type, fieldName(assignment.lhs()));
+    for (final var initializer : instance.fields()) {
+      final var field = Objects.requireNonNull(Tys.getInitializerField(instance, initializer), "Field initializer requires a resolved target field");
+      final var index = field.index();
       if (fields[index] != null) {
         throw new IllegalArgumentException("Duplicate initializer for field " + type.fields()[index].name());
       }
-      final var flow = lower(assignment.rhs());
+      final var flow = lower(initializer.rhs());
       if (flow instanceof Diverges) {
         return flow;
       }
-      fields[index] = convert(((Continues) flow).value(), MirTypes.valueType(type.fields()[index].ty()));
+      fields[index] = convert(((Continues) flow).value(), MirTypes.valueType(field.ty()));
     }
     if (Arrays.stream(fields).anyMatch(Objects::isNull)) {
       throw new IllegalArgumentException("Every struct field must be initialized");

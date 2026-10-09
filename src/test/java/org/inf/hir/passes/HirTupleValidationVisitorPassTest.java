@@ -183,12 +183,11 @@ class HirTupleValidationVisitorPassTest {
     "val t: ([1], bool) = ([1], true)",
     "val x = 1; val t: ([;x;1], bool) = ([1], true)"
   })
-  void given__value_expression_in_tuple_annotation__when__validated_after_inference__then__rejected(String code) {
-    final var hir = infer(code);
+  void given__value_expression_in_tuple_annotation__when__full_typing_runs__then__rejected(String code) {
     final var error = Assertions.assertThrows(
-      IllegalArgumentException.class, () -> HirTupleValidationVisitorPass.pass(hir)
+      IllegalArgumentException.class, () -> Inf.codeToThir(code)
     );
-    Assertions.assertEquals("Tuple annotations require types, not value expressions", error.getMessage());
+    Assertions.assertEquals("Type annotations require types, not value expressions", error.getMessage());
   }
 
   @ParameterizedTest
@@ -236,7 +235,6 @@ class HirTupleValidationVisitorPassTest {
     "val t: (int, bool) = ((1,), true)",
     "val t: int = (1,)",
     "val t: (int,) = 1",
-    "val t: (int, ()) = (1, 2)",
     "var t = (1, true); t = (false, 2)",
     "val f = (t: (int, bool)) => 1; f((1, 2))",
     "val f = (t: (int, bool)) => 1; f((1,))",

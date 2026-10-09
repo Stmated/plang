@@ -44,7 +44,7 @@ public class Inf {
 
   public static Hir.Expression codeToHir(String code) {
     final var ast = Inf.codeToAst(code);
-    return AstToHirRaising.lower_program(ast, InfCompileOptions.builder().build().machineTarget());
+    return AstToHirRaising.lower_program(ast);
   }
 
   public static ThirRaiseResult codeToThir(String code) {
@@ -57,7 +57,7 @@ public class Inf {
 
     final var options = InfCompileOptions.builder().build();
     final var ast = Inf.codeToAst(code);
-    final var hir = AstToHirRaising.lower_program(ast, options.machineTarget());
+    final var hir = AstToHirRaising.lower_program(ast);
     final var thir = new HirToThirRaising(options.machineTarget()).raise(hir);
     return ThirToMirLowering.lower(thir);
   }
@@ -69,7 +69,7 @@ public class Inf {
   public static <T> Result<T> codeToResult(String code, InfRunOptions options) {
 
     final var ast = Inf.codeToAst(code);
-    final var hir = AstToHirRaising.lower_program(ast, options.machineTarget());
+    final var hir = AstToHirRaising.lower_program(ast);
     return hirToResult(hir, options);
   }
 

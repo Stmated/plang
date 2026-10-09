@@ -16,6 +16,14 @@ public final class ToStringTreeHirVisitor {
     return new Printer().print(expression);
   }
 
+  public String render(final Hir.DynamicTy annotation) {
+    return new Printer().print(annotation);
+  }
+
+  public String render(final Ty ty) {
+    return type("ty", ty);
+  }
+
   private static final class Printer implements HirVisitor {
 
     private String result;
@@ -34,6 +42,14 @@ public final class ToStringTreeHirVisitor {
 
     private String child(final String role, final Hir.Expression expression) {
       return expression == null ? atom(role, "null") : node(role, print(expression));
+    }
+
+    private String print(final Hir.DynamicTy annotation) {
+      return node("DynamicTy", type("ty", annotation.ty()), child("expression", annotation.expression()));
+    }
+
+    private String child(final String role, final Hir.DynamicTy annotation) {
+      return node(role, print(annotation));
     }
 
     private String children(final String role, final Hir.Expression[] expressions) {
@@ -114,8 +130,13 @@ public final class ToStringTreeHirVisitor {
     @Override
     public void visitIdentifier(final Hir.Identifier expr) {
       // Type queries can follow unresolved identifier targets recursively.
-      result = node("Identifier", child("lexeme", expr.lexeme()),
-        atom("target", expr.target() == null ? "null" : "(reference " + quote(expr.lexeme().name()) + ")"));
+      result = node("Identifier", atom("name", quote(expr.name())),
+        atom("target", expr.target() == null ? "null" : "(reference " + quote(expr.name()) + ")"));
+    }
+
+    @Override
+    public void visitBuiltInTy(final Hir.BuiltInTy expr) {
+      result = node("BuiltInTy", atom("name", quote(expr.name())), type("ty", expr.ty()));
     }
 
     @Override
@@ -167,8 +188,9 @@ public final class ToStringTreeHirVisitor {
     }
 
     @Override
-    public void visitPath(final Hir.Path expr) {
-      result = node("Path", type("ty", expr.ty()), type("memberTy", expr.memberTy()), children("elements", expr.elements()));
+    public void visitDotAccess(final Hir.DotAccess expr) {
+      result = node("DotAccess", atom("name", quote(expr.name())), type("ty", expr.ty()),
+        child("target", expr.target()));
     }
 
     @Override
@@ -215,11 +237,6 @@ public final class ToStringTreeHirVisitor {
     }
 
     @Override
-    public void visitTyExpr(final Hir.TyExpr expr) {
-      result = node("TyExpr", type("ty", expr.ty()));
-    }
-
-    @Override
     public void visitDec(final Hir.Dec expr) {
       result = node("Dec", atom("mutability", expr.mutabilityKind()), type("ty", expr.ty()),
         type("resolvedTy", expr.resolvedTy()), child("lexeme", expr.lexeme()), child("typeAnnotation", expr.typeAnnotation()));
@@ -258,7 +275,6 @@ public final class ToStringTreeHirVisitor {
     try {
       return switch (ty) {
         case Ty.TyNamed named -> "(named " + quote(named.name()) + ")";
-        case TyIdentifier identifier -> "(identifier " + quote(identifier.name()) + ")";
         case TyValueNumber number -> {
           final var flags = switch (number) {
             case TyValueNumberInteger integer -> integer.flags();

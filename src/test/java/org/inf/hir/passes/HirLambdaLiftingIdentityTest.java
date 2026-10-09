@@ -102,13 +102,14 @@ class HirLambdaLiftingIdentityTest {
     HirTyCommonVisitorPass.pass(root);
     assertLocalBindings(lifted);
     assertAll(
-      () -> assertSame(annotation, signature.returnTypeAnnotation()),
+      () -> assertSame(annotation.expression(), signature.returnTypeAnnotation().expression()),
+      () -> assertEquals(annotation.ty(), signature.returnTypeAnnotation().ty()),
       () -> assertEquals(resolved, signature.ty()),
       () -> assertEquals(root.ty(), signature.ty().returnTy()),
       () -> assertFalse(Tys.containsInferred(signature.ty()))
     );
     if (code.contains("(): Pair")) {
-      assertInstanceOf(Hir.Identifier.class, annotation);
+      assertInstanceOf(Hir.Identifier.class, annotation.expression());
     } else {
       assertEquals(Ty.INFER, annotation.ty());
     }
@@ -144,8 +145,8 @@ class HirLambdaLiftingIdentityTest {
         assertAll(
           () -> assertEquals(lifted.ty(), Tys.getCallableSignature(call.target())),
           () -> assertEquals(2, arguments.length),
-          () -> assertEquals("argument", assertInstanceOf(Hir.Identifier.class, arguments[0].value()).lexeme().name()),
-          () -> assertEquals("captured", assertInstanceOf(Hir.Identifier.class, arguments[1].value()).lexeme().name())
+          () -> assertEquals("argument", assertInstanceOf(Hir.Identifier.class, arguments[0].value()).name()),
+          () -> assertEquals("captured", assertInstanceOf(Hir.Identifier.class, arguments[1].value()).name())
         );
         HirVisitor.super.visitCall(call);
       }
@@ -184,7 +185,7 @@ class HirLambdaLiftingIdentityTest {
     final var references = new ArrayList<Hir.Identifier>();
     function.visit(new HirVisitor() {
       @Override
-      public void visitFunctionSignatureReturnType(final Hir.Expression annotation) {
+      public void visitFunctionSignatureReturnType(final Hir.DynamicTy annotation) {
       }
 
       @Override
@@ -211,7 +212,7 @@ class HirLambdaLiftingIdentityTest {
     });
     assertFalse(references.isEmpty());
     for (final var reference : references) {
-      assertTrue(locals.contains(reference.target()), "Nonlocal binding remains: " + reference.lexeme().name());
+      assertTrue(locals.contains(reference.target()), "Nonlocal binding remains: " + reference.name());
       if (reference.target() instanceof Hir.Parameter parameter) {
         assertSame(parameter.resolvedTy(), reference.ty());
       }
@@ -275,11 +276,11 @@ class HirLambdaLiftingIdentityTest {
   @Test
   void inlineLiftedCallReceivesItsCapture() {
     final var declaration = new Hir.Dec(
-      new Hir.Lexeme("x"), Hir.MutabilityKind.IMMUTABLE, new Hir.TyExpr(Ty.INTEGER)
+      new Hir.Lexeme("x"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(Ty.INTEGER)
     );
     final var function = new Hir.Function(
-      new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.TyExpr(Ty.INFER), null),
-      new Hir.Return(new Hir.Identifier(declaration.lexeme(), declaration))
+      new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.DynamicTy(Ty.INFER), null),
+      new Hir.Return(new Hir.Identifier(declaration.lexeme().name(), declaration))
     );
     final var program = new Hir.Program(new Hir.Expressions(new Hir.Expression[]{
       new Hir.Assignment(declaration, new Hir.Literal("7", Ty.INTEGER)),
@@ -359,7 +360,7 @@ class HirLambdaLiftingIdentityTest {
     assertSame(capture, fieldValue.target());
     final var typeName = assertInstanceOf(Hir.Identifier.class, creations.getFirst().target());
     assertInstanceOf(Hir.Dec.class, typeName.target());
-    assertEquals("S", typeName.lexeme().name());
+    assertEquals("S", typeName.name());
   }
 
   @Test

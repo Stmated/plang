@@ -21,10 +21,11 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
               (lexeme
                 (Lexeme
                   (name "f")
-                  (ty null)))
+                  (ty (named "VOID"))))
               (typeAnnotation
-                (TyExpr
-                  (ty (named "INFER"))))))
+                (DynamicTy
+                  (ty (named "INFER"))
+                  (expression null)))))
           (rhs
             (Function
               (signature
@@ -39,17 +40,18 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                       (lexeme
                         (Lexeme
                           (name "x")
-                          (ty null)))
+                          (ty (named "VOID"))))
                       (typeAnnotation
-                        (Identifier
-                          (lexeme
-                            (Lexeme
+                        (DynamicTy
+                          (ty (named "INFER"))
+                          (expression
+                            (Identifier
                               (name "int")
-                              (ty null)))
-                          (target null)))))
+                              (target null)))))))
                   (returnType
-                    (TyExpr
-                      (ty (named "INFER"))))))
+                    (DynamicTy
+                      (ty (named "INFER"))
+                      (expression null)))))
               (body
                 (Return
                   (ty (named "DEADEND"))
@@ -59,10 +61,7 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                       (ty null)
                       (lhs
                         (Identifier
-                          (lexeme
-                            (Lexeme
-                              (name "x")
-                              (ty null)))
+                          (name "x")
                           (target null)))
                       (rhs
                         (Literal
@@ -76,10 +75,7 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
               (ty null)
               (target
                 (Identifier
-                  (lexeme
-                    (Lexeme
-                      (name "f")
-                      (ty null)))
+                  (name "f")
                   (target null)))
               (arguments
                 (Argument

@@ -5,7 +5,6 @@ import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
 import org.inf.ty.util.MachineTarget;
-import org.inf.ty.util.Tys;
 
 @UtilityClass
 public class HirTyIdentifierToTyTransformerPass {
@@ -23,40 +22,33 @@ public class HirTyIdentifierToTyTransformerPass {
     private int typeModeCounter;
 
     @Override
-    public Hir.Expression transformDecType(Hir.Expression expr) {
-      try {
-        typeModeCounter++;
-        return HirTransformer.super.transformDecType(expr);
-      } finally {
-        typeModeCounter--;
-      }
+    public Hir.DynamicTy transformDecType(Hir.DynamicTy expr) {
+      return transformAnnotation(expr);
     }
 
     @Override
-    public Hir.Expression transformParameterType(Hir.Expression expr) {
-      try {
-        typeModeCounter++;
-        return HirTransformer.super.transformParameterType(expr);
-      } finally {
-        typeModeCounter--;
-      }
+    public Hir.DynamicTy transformParameterType(Hir.DynamicTy expr) {
+      return transformAnnotation(expr);
     }
 
     @Override
-    public Hir.Expression transformFunctionSignatureReturnType(Hir.Expression expr) {
-      try {
-        typeModeCounter++;
-        return HirTransformer.super.transformFunctionSignatureReturnType(expr);
-      } finally {
-        typeModeCounter--;
-      }
+    public Hir.DynamicTy transformFunctionSignatureReturnType(Hir.DynamicTy expr) {
+      return transformAnnotation(expr);
     }
 
     @Override
-    public Hir.Expression transformArrayElementType(Hir.Expression expr) {
+    public Hir.DynamicTy transformArrayElementType(Hir.DynamicTy expr) {
+      return transformAnnotation(expr);
+    }
+
+    private Hir.DynamicTy transformAnnotation(final Hir.DynamicTy annotation) {
       try {
         typeModeCounter++;
-        return HirTransformer.super.transformArrayElementType(expr);
+        final var transformed = annotation.transform(this);
+        if (transformed.expression() instanceof Hir.BuiltInTy builtIn) {
+          return new Hir.DynamicTy(builtIn.ty());
+        }
+        return transformed;
       } finally {
         typeModeCounter--;
       }
@@ -67,9 +59,9 @@ public class HirTyIdentifierToTyTransformerPass {
 
       if (typeModeCounter > 0 && expr.ty() == null) {
 
-        final var ty = Tys.fromString(expr.lexeme().name(), machineTarget);
-        if (ty != null) {
-          return new Hir.TyExpr(ty);
+        final var builtIn = Hir.BuiltInTy.fromString(expr.name(), machineTarget);
+        if (builtIn != null) {
+          return builtIn;
         }
       }
 

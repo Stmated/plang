@@ -25,8 +25,8 @@ public interface HirVisitor {
     }
   }
 
-  default void visitArrayElementType(Hir.Expression expr) {
-    visitChild(expr);
+  default void visitArrayElementType(Hir.DynamicTy annotation) {
+    annotation.visit(this);
   }
 
   default void visitArrayLength(Hir.Expression expr) {
@@ -91,13 +91,11 @@ public interface HirVisitor {
       visitChild(parameter);
     }
 
-    if (expr.returnTypeAnnotation() != null) {
-      visitFunctionSignatureReturnType(expr.returnTypeAnnotation());
-    }
+    visitFunctionSignatureReturnType(expr.returnTypeAnnotation());
   }
 
-  default void visitFunctionSignatureReturnType(Hir.Expression expr) {
-    visitChild(expr);
+  default void visitFunctionSignatureReturnType(Hir.DynamicTy annotation) {
+    annotation.visit(this);
   }
 
   default void visitFunctionBody(Hir.Expression expr) {
@@ -105,6 +103,9 @@ public interface HirVisitor {
   }
 
   default void visitIdentifier(Hir.Identifier expr) {
+  }
+
+  default void visitBuiltInTy(Hir.BuiltInTy expr) {
   }
 
   default void visitLabeling(Hir.Labeling expr) {
@@ -135,8 +136,12 @@ public interface HirVisitor {
     visitAllocator(expr.allocator());
 
     for (final var field : expr.fields()) {
-      visitChild(field);
+      visitNewByBlockField(expr, field);
     }
+  }
+
+  default void visitNewByBlockField(Hir.NewByBlock construction, Hir.Assignment expr) {
+    visitChild(expr);
   }
 
   default void visitNewByCtor(Hir.NewByCtor expr) {
@@ -167,18 +172,12 @@ public interface HirVisitor {
     visitChild(expr);
   }
 
-  default void visitParameterType(Hir.Expression expr) {
-    visitChild(expr);
+  default void visitParameterType(Hir.DynamicTy annotation) {
+    annotation.visit(this);
   }
 
-  default void visitPath(Hir.Path expr) {
-    for (final var element : expr.elements()) {
-      visitPathElement(element);
-    }
-  }
-
-  default void visitPathElement(Hir.Expression expr) {
-    visitChild(expr);
+  default void visitDotAccess(Hir.DotAccess expr) {
+    visitChild(expr.target());
   }
 
   default void visitRange(Hir.Range expr) {
@@ -220,10 +219,6 @@ public interface HirVisitor {
     visitChild(expr.value());
   }
 
-  default void visitTyExpr(Hir.TyExpr expr) {
-
-  }
-
   default void visitDec(Hir.Dec expr) {
     visitDecName(expr.lexeme());
     visitDecType(expr.typeAnnotation());
@@ -233,8 +228,8 @@ public interface HirVisitor {
     visitChild(expr);
   }
 
-  default void visitDecType(Hir.Expression expr) {
-    visitChild(expr);
+  default void visitDecType(Hir.DynamicTy annotation) {
+    annotation.visit(this);
   }
 
   default void visitCall(Hir.Call expr) {

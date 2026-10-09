@@ -95,23 +95,17 @@ final class HirFunctionContextVisitor {
 
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
-      if (!(expression.lhs() instanceof Hir.Lexeme)) {
-        visitContext(expression.rhs(), Tys.getAssignmentContextTy(expression.lhs()));
-      }
+      visitContext(expression.rhs(), Tys.getAssignmentContextTy(expression.lhs()));
       HirVisitor.super.visitAssignment(expression);
     }
 
     @Override
-    public void visitNewByBlock(final Hir.NewByBlock expression) {
-      final var struct = Tys.getConstructionTargetTy(expression.target());
-      if (struct != null) {
-        for (final var assignment : expression.fields()) {
-          if (assignment.lhs() instanceof final Hir.Lexeme name) {
-            visitContext(assignment.rhs(), Tys.getStructFieldTy(struct, name.name()));
-          }
-        }
+    public void visitNewByBlockField(final Hir.NewByBlock construction, final Hir.Assignment expression) {
+      final var field = Tys.getInitializerField(construction, expression);
+      if (field != null) {
+        visitContext(expression.rhs(), field.ty());
       }
-      HirVisitor.super.visitNewByBlock(expression);
+      HirVisitor.super.visitAssignment(expression);
     }
 
     @Override

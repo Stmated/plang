@@ -63,7 +63,7 @@ public interface HirTransformer {
     return expr;
   }
 
-  default Hir.Expression transformArrayElementType(final Hir.Expression expr) {
+  default Hir.DynamicTy transformArrayElementType(final Hir.DynamicTy expr) {
     return expr.transform(this);
   }
 
@@ -141,15 +141,15 @@ public interface HirTransformer {
     return batch(expr, Hir.Parameter.class);
   }
 
-  default Hir.Expression transformFunctionSignatureReturnType(final Hir.Expression expr) {
-    if (expr == null) {
-      return null;
-    }
-
+  default Hir.DynamicTy transformFunctionSignatureReturnType(final Hir.DynamicTy expr) {
     return expr.transform(this);
   }
 
   default Hir.Expression transformIdentifier(final Hir.Identifier expr) {
+    return expr;
+  }
+
+  default Hir.Expression transformBuiltInTy(final Hir.BuiltInTy expr) {
     return expr;
   }
 
@@ -196,19 +196,7 @@ public interface HirTransformer {
   }
 
   default Hir.Assignment[] transformNewByBlockFields(final Hir.Assignment[] fields) {
-    final var list = new ArrayList<Hir.Assignment>(fields.length);
-    for (final var child : fields) {
-      final var transformed = transformNewByBlockField(child);
-      if (transformed != null) {
-        list.add(transformed);
-      }
-    }
-
-    return list.toArray(new Hir.Assignment[0]);
-  }
-
-  default Hir.Assignment transformNewByBlockField(final Hir.Assignment field) {
-    return expect(field.transform(this), Hir.Assignment.class);
+    return batch(fields, Hir.Assignment.class);
   }
 
   default Hir.Expression transformNewByCtor(final Hir.NewByCtor expr) {
@@ -237,12 +225,12 @@ public interface HirTransformer {
     return expect(expr.transform(this), Hir.Lexeme.class);
   }
 
-  default Hir.Expression transformParameterType(final Hir.Expression expr) {
+  default Hir.DynamicTy transformParameterType(final Hir.DynamicTy expr) {
     return expr.transform(this);
   }
 
-  default Hir.Expression transformPath(final Hir.Path expr) {
-    expr.elements(batch(expr.elements(), Hir.Expression.class));
+  default Hir.Expression transformDotAccess(final Hir.DotAccess expr) {
+    expr.target(expr.target().transform(this));
     return expr;
   }
 
@@ -287,10 +275,6 @@ public interface HirTransformer {
     return expr;
   }
 
-  default Hir.Expression transformTyExpr(final Hir.TyExpr expr) {
-    return expr;
-  }
-
   default Hir.Expression transformDec(final Hir.Dec expr) {
     expr.lexeme(transformDecName(expr.lexeme));
     expr.typeAnnotation(transformDecType(expr.typeAnnotation()));
@@ -301,7 +285,7 @@ public interface HirTransformer {
     return expect(expr.transform(this), Hir.Lexeme.class);
   }
 
-  default Hir.Expression transformDecType(final Hir.Expression expr) {
+  default Hir.DynamicTy transformDecType(final Hir.DynamicTy expr) {
     return expr.transform(this);
   }
 
