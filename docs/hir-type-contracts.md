@@ -53,6 +53,8 @@ val f: Fn = (v) => v; // v's source constraint remains INFER
 Annotations denote supported type syntax or named type definitions, not the result type of an arbitrary runtime expression.
 Comptime type evaluation is deferred.
 
+`Hir.Union` retains type-member expressions and caches their represented type in `unionTy`, independently of its `VOID` completion. Annotation resolution follows union alias definitions rather than their runtime binding types. Union aliases have no runtime storage or closure captures. See [Union types](unions.md) for syntax and the distinction from integer bitwise OR.
+
 ```inf
 val sample = 1;
 val n: sample = 2;    // error: a runtime binding is not a type definition

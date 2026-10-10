@@ -77,6 +77,12 @@ public final class ToStringTreeHirVisitor {
     }
 
     @Override
+    public void visitUnion(final Hir.Union expr) {
+      result = node("Union", type("ty", expr.ty()), type("unionTy", expr.unionTy()),
+        children("elements", expr.elements()));
+    }
+
+    @Override
     public void visitArrayAccess(final Hir.ArrayAccess expr) {
       result = node("ArrayAccess", type("ty", expr.ty()), type("indexedTy", expr.indexedTy()),
         child("target", expr.target()), child("accessor", expr.accessor()));

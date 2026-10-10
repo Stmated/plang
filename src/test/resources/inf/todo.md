@@ -4,9 +4,16 @@
 
 # TODO
 
-### Support for union syntax
-* Lexer and Token -> AST raising: done. `val v: A | B = other` keeps the union inside the declaration's type.
-* Raise union annotations to `Ty.union` in later compiler stages, then replace manually constructed union fixtures with source-driven tests.
+### Better separation of "ty()"
+Currently for example a `Hir.Union` will always have `ty()` `Ty.VOID`, but it essentially gives back a `TyUnion` when "ran" (since types are never ran).
+So it feels a bit weird to have `Hir.Union` state that it gives `Ty.VOID` since it will never be ran.
+Same thing goes for `Hir.Array` where it acts a bit weird since if no elements given then it is a "type" but otherwise a "value"
+I think the existence of `ty()` on all expressions is what confuses things.
+Perhaps it would be better to not have `ty` on the interface, and let each expression class only contain the required fields for its metadata,
+then we have a set of resolvers which acts differently depending on the context of the usage of the expression.
+For example `TyResolverForResult`, `TyResolverForReturn`, `TyResolverForBreak`, `TyResolverForTypeAnnotation`, etc.
+Then each of them will have different rules depending on context, if it should adhere to DEADEND or not, et cetera.
+Because as things stand, it feels weird to have a `ty()` on the interface, since one form of Ty is not more *right* than the other, it's all context-based.
 
 ### Updated test cases, thorough rework of how tests are done
 
@@ -145,7 +152,7 @@ Seems like the element ty can be fetched from the array ty, and that the Array e
 
 ### Pointer and union annotation inference: deferred
 
-* Defer speculative pointer/union inference until source syntax makes it reachable.
+* Pointer syntax remains deferred. Union syntax is supported; inference for incomplete union members and contextual selection among numeric alternatives remains deferred.
 
 ### Partial and generic tuple annotations: investigation
 

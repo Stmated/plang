@@ -71,6 +71,10 @@ abstract class HirExecutionVisitor implements HirVisitor {
   }
 
   @Override
+  public void visitUnion(Hir.Union expression) {
+  }
+
+  @Override
   public void visitDec(Hir.Dec expression) {
   }
 

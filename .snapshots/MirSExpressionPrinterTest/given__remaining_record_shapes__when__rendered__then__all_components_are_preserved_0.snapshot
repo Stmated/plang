@@ -9,17 +9,103 @@ test-method: given__remaining_record_shapes__when__rendered__then__all_component
   (functions
     (MirFunction
       (id f0)
-      (name "union")
+      (name "main")
+      (signature
+        (MirFnSignature !vararg
+          (parameters)
+          (returnType
+            (TyUnion
+              (types
+                (TyValueNumberInteger signed
+                  (radix 10)
+                  (width EXPLICIT_32)
+                  (flags)) STRING)))))
+      (locals)
+      (blocks
+        (MirNode
+          (id b0)
+          (name "entry_0")
+          (instructions
+            (Call
+              (result
+                (Value
+                  (id 0)
+                  (ty
+                    (TyUnion
+                      (types
+                        (TyValueNumberInteger signed
+                          (radix 10)
+                          (width EXPLICIT_32)
+                          (flags)) STRING)))))
+              (target
+                (FunctionRef
+                  (function (function-ref f1))))
+              (signature
+                (MirFnSignature !vararg
+                  (parameters
+                    (MirFnParameter
+                      (name "value")
+                      (ty
+                        (TyValueNumberInteger signed
+                          (radix 10)
+                          (width EXPLICIT_32)
+                          (flags)))))
+                  (returnType
+                    (TyUnion
+                      (types
+                        (TyValueNumberInteger signed
+                          (radix 10)
+                          (width EXPLICIT_32)
+                          (flags)) STRING)))))
+              (arguments
+                (Constant
+                  (content "7")
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width EXPLICIT_32)
+                      (flags)))))))
+          (terminator
+            (Return
+              (value
+                (Value
+                  (id 0)
+                  (ty
+                    (TyUnion
+                      (types
+                        (TyValueNumberInteger signed
+                          (radix 10)
+                          (width EXPLICIT_32)
+                          (flags)) STRING))))))))))
+    (MirFunction
+      (id f1)
+      (name "union$0")
       (signature
         (MirFnSignature !vararg
           (parameters
             (MirFnParameter
-              (name null)
-              (ty INTEGER)))
+              (name "value")
+              (ty
+                (TyValueNumberInteger signed
+                  (radix 10)
+                  (width EXPLICIT_32)
+                  (flags)))))
           (returnType
             (TyUnion
-              (types INTEGER STRING)))))
-      (locals)
+              (types
+                (TyValueNumberInteger signed
+                  (radix 10)
+                  (width EXPLICIT_32)
+                  (flags)) STRING)))))
+      (locals
+        (Local
+          (id 0)
+          (name "value")
+          (ty
+            (TyValueNumberInteger signed
+              (radix 10)
+              (width EXPLICIT_32)
+              (flags)))))
       (blocks
         (MirNode
           (id b0)
@@ -29,25 +115,77 @@ test-method: given__remaining_record_shapes__when__rendered__then__all_component
               (result
                 (Value
                   (id 0)
-                  (ty INTEGER)))
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width EXPLICIT_32)
+                      (flags)))))
               (index 0))
-            (UnionVariant
+            (Store
+              (place
+                (Local
+                  (id 0)
+                  (name "value")
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width EXPLICIT_32)
+                      (flags)))))
+              (value
+                (Value
+                  (id 0)
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width EXPLICIT_32)
+                      (flags))))))
+            (Load
               (result
                 (Value
                   (id 1)
                   (ty
-                    (TyUnion
-                      (types INTEGER STRING)))))
-              (variant 0)
-              (value
-                (Value
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width EXPLICIT_32)
+                      (flags)))))
+              (place
+                (Local
                   (id 0)
-                  (ty INTEGER)))))
-          (terminator
-            (Return
+                  (name "value")
+                  (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width EXPLICIT_32)
+                      (flags))))))
+            (UnionVariant
+              (result
+                (Value
+                  (id 2)
+                  (ty
+                    (TyUnion
+                      (types
+                        (TyValueNumberInteger signed
+                          (radix 10)
+                          (width EXPLICIT_32)
+                          (flags)) STRING)))))
+              (variant 0)
               (value
                 (Value
                   (id 1)
                   (ty
+                    (TyValueNumberInteger signed
+                      (radix 10)
+                      (width EXPLICIT_32)
+                      (flags)))))))
+          (terminator
+            (Return
+              (value
+                (Value
+                  (id 2)
+                  (ty
                     (TyUnion
-                      (types INTEGER STRING))))))))))))
+                      (types
+                        (TyValueNumberInteger signed
+                          (radix 10)
+                          (width EXPLICIT_32)
+                          (flags)) STRING))))))))))))

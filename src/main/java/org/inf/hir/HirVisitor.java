@@ -25,6 +25,12 @@ public interface HirVisitor {
     }
   }
 
+  default void visitUnion(Hir.Union expr) {
+    for (final var element : expr.elements()) {
+      visitChild(element);
+    }
+  }
+
   default void visitArrayElementType(Hir.DynamicTy annotation) {
     annotation.visit(this);
   }

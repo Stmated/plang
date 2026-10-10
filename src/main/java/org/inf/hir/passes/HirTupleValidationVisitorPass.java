@@ -5,14 +5,14 @@ import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
 import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
+import org.inf.hir.HirTypeDefinitions;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyStruct;
-import org.inf.ty.TyUnion;
 import org.inf.ty.util.TupleTypes;
-import org.inf.ty.util.TypeComparison;
 import org.inf.ty.util.Tys;
+import org.inf.ty.util.UnionTypes;
 
 import org.inf.util.ArrayUtils;
 
@@ -23,7 +23,7 @@ public final class HirTupleValidationVisitorPass {
   }
 
   public static void pass(Hir.Expression expression) {
-    expression.visit(new Visitor());
+    expression.visit(new Visitor(expression));
   }
 
   /**
@@ -33,10 +33,7 @@ public final class HirTupleValidationVisitorPass {
     if (actual == Ty.DEADEND || !(TupleTypes.containsTuple(actual) || TupleTypes.containsTuple(expected))) {
       return;
     }
-    if (TypeComparison.sameValueType(actual, expected)) {
-      return;
-    }
-    if (expected instanceof TyUnion union && !(actual instanceof TyUnion) && ArrayUtils.any(union.types(), t -> TypeComparison.sameValueType(actual, t))) {
+    if (UnionTypes.compatible(actual, expected)) {
       return;
     }
     throw new InvalidTypeConversionException("Incompatible tuple shape or slot type in " + context, actual, expected);
@@ -44,11 +41,29 @@ public final class HirTupleValidationVisitorPass {
 
   private static final class Visitor implements HirVisitor {
 
+    private final HirTypeDefinitions definitions;
+    private final HirTypeAnnotationResolver annotations;
     private Ty returnType;
 
     /// HIR uses the same tuple node for `(int, bool)` annotations and `(1, true)` values.
     /// Only annotation entries must denote types; their enclosing type position supplies that distinction.
     private boolean inAnnotation;
+
+    private Visitor(final Hir.Expression root) {
+      this.definitions = new HirTypeDefinitions(root);
+      this.annotations = new HirTypeAnnotationResolver(root);
+    }
+
+    @Override
+    public void visitUnion(final Hir.Union expr) {
+      final var outerAnnotation = inAnnotation;
+      try {
+        inAnnotation = true;
+        HirVisitor.super.visitUnion(expr);
+      } finally {
+        inAnnotation = outerAnnotation;
+      }
+    }
 
     private void visitAnnotation(Hir.DynamicTy annotation) {
       final var outerAnnotation = inAnnotation;
@@ -84,10 +99,11 @@ public final class HirTupleValidationVisitorPass {
     public void visitTupleEntry(Hir.TupleEntry expression) {
       final var value = expression.value();
       if (inAnnotation) {
-        if (!isTypeExpression(value)) {
+        if (!isTypeExpression(value) && !definitions.isUnionDefinition(value)) {
           throw new IllegalArgumentException("Tuple annotations require types, not value expressions");
         }
-        TupleTypes.requireElementType(value.ty(), true);
+        final var type = definitions.isUnionDefinition(value) ? annotations.resolve(value) : value.ty();
+        TupleTypes.requireElementType(type, true);
       } else if (value.ty() != Ty.DEADEND) {
         TupleTypes.requireElementType(value.ty());
       }

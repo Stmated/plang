@@ -22,7 +22,7 @@ public class HirToThirRaising {
 
     HirTupleSyntaxValidationVisitorPass.pass(e);
     e = HirTyIdentifierToTyTransformerPass.pass(e, machineTarget);
-    HirIdentifierResolverVisitorPass.pass(e, Hir.Identifier::target);
+    e = HirUnionSyntaxTransformerPass.pass(e, machineTarget);
     HirTyCommonVisitorPass.resolveAvailableTypes(e);
     HirFunctionSignatureValidationVisitorPass.passStandalone(e);
     HirFunctionContextualTypingVisitorPass.pass(e);
@@ -37,6 +37,7 @@ public class HirToThirRaising {
     HirFunctionValidationVisitorPass.pass(e);
     HirTupleValidationVisitorPass.pass(e);
     HirArrayValidationVisitorPass.pass(e);
+    HirUnionValidationVisitorPass.pass(e);
     e = HirGeneratedSequenceTransformerPass.pass(e);
     e = HirLambdaLiftingTransformerPass.pass(e);
     e = HirDependencyReorderingTransformerPass.pass(e);

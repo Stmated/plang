@@ -12,6 +12,7 @@ import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
 
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Objects;
 
 @UtilityClass
@@ -202,6 +203,57 @@ public class Hir {
     @Override
     public Expression transform(final HirTransformer transformer) {
       return transformer.transformArray(this);
+    }
+  }
+
+  @Data
+  public static class Union implements Expression {
+
+    @Nonnull
+    Expression[] elements;
+    @Nonnull
+    Ty unionTy = Ty.INFER;
+
+    public Union(final Expression[] elements) {
+      this.elements = Objects.requireNonNull(elements);
+    }
+
+    public static Union of(final Expression... elements) {
+      final var flattened = new ArrayList<Expression>();
+      final var visitor = new HirVisitor() {
+        @Override
+        public void visitChild(final Expression expr) {
+          if (expr instanceof Union) {
+            expr.visit(this);
+          } else {
+            flattened.add(expr);
+          }
+        }
+      };
+      for (final var element : elements) {
+        visitor.visitChild(element);
+      }
+      return new Union(flattened.toArray(new Expression[0]));
+    }
+
+    @Override
+    public Ty ty() {
+      return Ty.VOID;
+    }
+
+    @Override
+    public String toString() {
+      return "(%s)".formatted(String.join(" | ", Arrays.stream(elements).map(Object::toString).toList()));
+    }
+
+    @Override
+    public void visit(final HirVisitor visitor) {
+      visitor.visitUnion(this);
+    }
+
+    @Override
+    public Expression transform(final HirTransformer transformer) {
+      return transformer.transformUnion(this);
     }
   }
 

@@ -39,6 +39,12 @@ public class HirTyCommonVisitorPass {
     }
 
     @Override
+    public void visitUnion(final Hir.Union expr) {
+      HirVisitor.super.visitUnion(expr);
+      annotations.resolve(expr);
+    }
+
+    @Override
     public void visitParameter(Hir.Parameter expr) {
       HirVisitor.super.visitParameter(expr);
       expr.typeAnnotation(expr.typeAnnotation().resolve(annotations::resolve));
@@ -93,11 +99,12 @@ public class HirTyCommonVisitorPass {
         }
         if (Tys.isInferred(arrayElementTy)) {
           arrayElementTy = elementTy;
-        } else if (!availableOnly && (TupleTypes.containsTuple(arrayElementTy) || TupleTypes.containsTuple(elementTy))) {
+        } else if (!availableOnly && !(arrayElementTy instanceof TyUnion)
+          && (TupleTypes.containsTuple(arrayElementTy) || TupleTypes.containsTuple(elementTy))) {
           if (!TypeComparison.sameValueType(elementTy, arrayElementTy)) {
             throw new InvalidTypeConversionException("Array tuple elements must have matching shapes and slot types", elementTy, arrayElementTy);
           }
-        } else if (!availableOnly) {
+        } else if (!availableOnly && !(arrayElementTy instanceof TyUnion)) {
 
           final var common = Tys.getCommonDenominator(arrayElementTy, elementTy);
           final var diffs = common.diffs();

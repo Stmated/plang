@@ -10,6 +10,7 @@ import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
 import org.inf.ty.TyValueNumberInteger;
 import org.inf.ty.util.TypeComparison;
+import org.inf.ty.util.UnionTypes;
 
 /// Inserts slot conversions into fresh tuples with resolved contextual types.
 @UtilityClass
@@ -53,7 +54,7 @@ public class HirTupleSlotConversionVisitorPass {
   }
 
   private static void requireSlotConversion(final Ty actual, final Ty expected) {
-    if (actual == Ty.DEADEND || TypeComparison.sameValueType(actual, expected)) {
+    if (UnionTypes.compatible(actual, expected)) {
       return;
     }
     if (actual instanceof TyValueNumberInteger source && expected instanceof TyValueNumberInteger target

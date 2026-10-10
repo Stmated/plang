@@ -6,6 +6,7 @@ import org.inf.mir.model.MirNode;
 import org.inf.ty.*;
 import org.inf.ty.util.TupleTypes;
 import org.inf.ty.util.TypeComparison;
+import org.inf.ty.util.UnionTypes;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -198,8 +199,7 @@ public final class MirVerifier {
         final var to = convert.result().ty();
         final boolean allowed;
         if (from instanceof TyUnion source && to instanceof TyUnion target) {
-          allowed = Arrays.stream(source.types()).allMatch(type ->
-            Arrays.stream(target.types()).anyMatch(candidate -> sameType(type, candidate)));
+          allowed = UnionTypes.compatible(source, target);
         } else {
           allowed = sameType(from, to)
             || numericConversion(from, to)

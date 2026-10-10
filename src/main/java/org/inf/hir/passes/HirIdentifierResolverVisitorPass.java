@@ -36,17 +36,21 @@ public class HirIdentifierResolverVisitorPass {
       this.scopes.push(new Scope(new HashMap<>()));
     }
 
-    private Hir.Expression find(Hir.Identifier id) {
-
-      final var name = id.name();
-
+    protected Hir.Expression findInScope(final String name) {
       for (final var scope : scopes) {
         final var expr = scope.map().get(name);
         if (expr != null) {
           return expr;
         }
       }
+      return null;
+    }
 
+    private Hir.Expression find(Hir.Identifier id) {
+      final var found = findInScope(id.name());
+      if (found != null) {
+        return found;
+      }
       notFound.add(id);
       return null;
     }

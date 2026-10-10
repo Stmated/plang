@@ -63,6 +63,11 @@ public interface HirTransformer {
     return expr;
   }
 
+  default Hir.Expression transformUnion(final Hir.Union expr) {
+    expr.elements(batch(expr.elements(), Hir.Expression.class));
+    return expr;
+  }
+
   default Hir.DynamicTy transformArrayElementType(final Hir.DynamicTy expr) {
     return expr.transform(this);
   }

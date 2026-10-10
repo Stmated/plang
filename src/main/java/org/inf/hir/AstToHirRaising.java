@@ -6,6 +6,7 @@ import org.inf.exceptions.UnexpectedExpressionException;
 import org.inf.hir.passes.HirLexemeToIdentifierTransformerPass;
 import org.inf.hir.passes.HirSimplifyTransformerPass;
 import org.inf.ty.Ty;
+import org.inf.util.ArrayUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,6 +20,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /// The AST is rather a very high-level representation of the flow of the code, and not its meaning. For example an array access is an expression of some sort
 /// followed by a bracket syntax. It is up to this AST -> HIR raising to notice the contextual significance of those brackets and turn it into an array access.
 public class AstToHirRaising {
+
+  private boolean typePosition;
+
+  private Hir.Expression raiseType(final Ast.Expression expr) {
+    final var outer = typePosition;
+    try {
+      typePosition = true;
+      return raise(expr);
+    } finally {
+      typePosition = outer;
+    }
+  }
+
+  private Hir.Expression raiseValue(final Ast.Expression expr) {
+    final var outer = typePosition;
+    try {
+      typePosition = false;
+      return raise(expr);
+    } finally {
+      typePosition = outer;
+    }
+  }
 
   public static Hir.Expression lower_program(final Ast.Program astProgram) {
 
@@ -230,6 +253,7 @@ public class AstToHirRaising {
     var section = 0;
 
     final var sections = new Hir.Expression[3];
+    final var hasElementType = ArrayUtils.count(ast.children(), entry -> entry instanceof Ast.NoOp) == 2;
 
     for (final var entry : ast.children()) {
 
@@ -238,7 +262,7 @@ public class AstToHirRaising {
         continue;
       }
 
-      final var lowered = raise(entry);
+      final var lowered = section == 1 && hasElementType ? raiseType(entry) : raiseValue(entry);
 
       if (section == 0) {
         elements.add(lowered);
@@ -303,11 +327,9 @@ public class AstToHirRaising {
 
   private Hir.Expression lower_labeling(final Ast.Labeling ast) {
 
-    if (ast.lhs() instanceof final Ast.Paren lparen && ast.rhs() instanceof final Ast.Lexeme rid) {
+    if (ast.lhs() instanceof Ast.Paren) {
 
       // If this is true, then it is a callable function signature.
-      // NOTE: This might not always be true, but we'll go for it for now.
-      // TODO: The rhs must be more permissive than just "identifier", and lhs should be more restrictive (needs to be tuple)
       return find_and_lower_parameters(ast);
     }
 
@@ -320,7 +342,7 @@ public class AstToHirRaising {
   private Hir.Expression lower_callable(final Ast.Callable ast) {
 
     final var signature = find_and_lower_parameters(ast.lhs());
-    final var body = implicit_return(raise(ast.rhs()), false);
+    final var body = implicit_return(raiseValue(ast.rhs()), false);
 
     return new Hir.Function(signature, body);
   }
@@ -331,7 +353,7 @@ public class AstToHirRaising {
       case final Ast.Labeling labeling -> {
 
         final var signature = find_and_lower_parameters(labeling.lhs());
-        final var returnTypeAnnotation = new Hir.DynamicTy(raise(labeling.rhs()));
+        final var returnTypeAnnotation = new Hir.DynamicTy(raiseType(labeling.rhs()));
 
         yield new Hir.FunctionSignature(signature.parameters(), signature.vararg(), returnTypeAnnotation, null);
       }
@@ -380,7 +402,7 @@ public class AstToHirRaising {
       }
       case final Ast.Labeling labeling -> {
         final var labelingLhs = lower_parameter(labeling.lhs(), restVararg);
-        final var labelingRhs = new Hir.DynamicTy(raise(labeling.rhs()));
+        final var labelingRhs = new Hir.DynamicTy(raiseType(labeling.rhs()));
         yield new Hir.Parameter(labelingLhs.lexeme(), labelingRhs, labelingLhs.vararg(), null);
       }
       default -> new Hir.Parameter(asLexeme(expr), new Hir.DynamicTy(Ty.INFER), false, null);
@@ -402,7 +424,7 @@ public class AstToHirRaising {
         case Immutable -> Hir.MutabilityKind.IMMUTABLE;
         case Mutable -> Hir.MutabilityKind.MUTABLE;
       },
-      ast.type() == null ? new Hir.DynamicTy(Ty.INFER) : new Hir.DynamicTy(raise(ast.type()))
+      ast.type() == null ? new Hir.DynamicTy(Ty.INFER) : new Hir.DynamicTy(raiseType(ast.type()))
     );
   }
 
@@ -495,6 +517,10 @@ public class AstToHirRaising {
   }
 
   private Hir.Expression lower_binary_operation(final Ast.BinaryOperation ast) {
+
+    if (typePosition && ast.kind() == Ast.BinaryOperationKind.BIT_OR) {
+      return Hir.Union.of(raiseType(ast.lhs()), raiseType(ast.rhs()));
+    }
 
     final Ast.BinaryOperationKind expandedKind = switch (ast.kind()) {
       case ADDITION_ASSIGNMENT -> Ast.BinaryOperationKind.ADD;

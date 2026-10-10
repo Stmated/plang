@@ -10,6 +10,7 @@ import org.inf.mir.MirTypes;
 import org.inf.mir.model.MirFunction;
 import org.inf.mir.model.MirNode;
 import org.inf.ty.*;
+import org.inf.ty.util.UnionTypes;
 import org.inf.util.IntegerLiterals;
 
 import java.util.*;
@@ -337,13 +338,14 @@ final class LLVMFunctionLowering {
       var converted = LLVM.LLVMConstNull(types.resolve(target));
       for (var i = 0; i < source.types().length; i++) {
         final var variant = source.types()[i];
-        final var targetIndex = Arrays.asList(target.types()).indexOf(variant);
+        final var targetIndex = UnionTypes.memberIndex(variant, target);
         if (targetIndex < 0) {
           throw new IllegalArgumentException("Union widening loses variant " + variant);
         }
         final var payload = variant.equals(Ty.VOID) ? null :
           LLVM.LLVMBuildExtractValue(builder, value, payloadIndex(source, i), "union.payload");
-        final var injected = unionVariant(target, targetIndex, payload);
+        final var convertedPayload = payload == null ? null : convert(payload, variant, target.types()[targetIndex]);
+        final var injected = unionVariant(target, targetIndex, convertedPayload);
         final var active = LLVM.LLVMBuildICmp(builder, LLVM.LLVMIntEQ, tag,
           LLVM.LLVMConstInt(types.resolve(Ty.INTEGER), i, 0), "union.active");
         converted = LLVM.LLVMBuildSelect(builder, active, injected, converted, "union.widen");

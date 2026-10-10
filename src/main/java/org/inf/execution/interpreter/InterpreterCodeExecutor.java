@@ -7,6 +7,7 @@ import org.inf.mir.MirUnionValue;
 import org.inf.mir.model.MirFunction;
 import org.inf.mir.model.MirNode;
 import org.inf.ty.*;
+import org.inf.ty.util.UnionTypes;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -125,10 +126,9 @@ public class InterpreterCodeExecutor implements CodeExecutor {
   private Object convert(Object value, Ty expected) {
     if (expected instanceof TyUnion union && value instanceof MirUnionValue old) {
       final var variantType = old.type().types()[old.variant()];
-      for (var i = 0; i < union.types().length; i++) {
-        if (variantType.equals(union.types()[i])) {
-          return new MirUnionValue(union, i, old.payload());
-        }
+      final var index = UnionTypes.memberIndex(variantType, union);
+      if (index >= 0) {
+        return new MirUnionValue(union, index, convert(old.payload(), union.types()[index]));
       }
       throw new IllegalArgumentException("Union conversion loses variant " + variantType);
     }

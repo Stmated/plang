@@ -8,6 +8,7 @@ import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirTupleAccess;
 import org.inf.hir.HirTupleMatching;
+import org.inf.hir.HirTypeDefinitions;
 import org.inf.hir.HirVisitor;
 import org.inf.mir.model.*;
 import org.inf.thir.raising.ThirRaiseResult;
@@ -15,6 +16,7 @@ import org.inf.ty.*;
 import org.inf.ty.util.Tys;
 import org.inf.ty.util.TupleTypes;
 import org.inf.ty.util.TypeComparison;
+import org.inf.ty.util.UnionTypes;
 
 import java.util.*;
 
@@ -40,11 +42,16 @@ public final class ThirToMirLowering {
     final Map<Hir.FunctionSignature, MirFunction> functions = new IdentityHashMap<>();
     final Map<Hir.Expression, Hir.FunctionSignature> staticBindings = new IdentityHashMap<>();
     final List<MirFunction> module = new ArrayList<>();
+    HirTypeDefinitions typeDefinitions;
 
     void collect(Hir.Expression root) {
+      typeDefinitions = new HirTypeDefinitions(root);
       root.visit(new HirVisitor() {
         @Override
         public void visitAssignment(Hir.Assignment assignment) {
+          if (typeDefinitions.isUnionDefinition(assignment.rhs())) {
+            return;
+          }
           if (assignment.lhs() instanceof Hir.Dec declaration) {
             final var signature = switch (assignment.rhs()) {
               case Hir.Function function -> function.signature();
@@ -72,6 +79,10 @@ public final class ThirToMirLowering {
           if (signatures.stream().noneMatch(existing -> existing == signature)) {
             signatures.add(signature);
           }
+        }
+
+        @Override
+        public void visitUnion(Hir.Union union) {
         }
       });
 
@@ -265,7 +276,7 @@ public final class ThirToMirLowering {
 
   private Flow assignment(Hir.Assignment assignment) {
     if (assignment.lhs() instanceof Hir.Dec declaration) {
-      if (assignment.rhs() instanceof Hir.Struct) {
+      if (assignment.rhs() instanceof Hir.Struct || module.typeDefinitions.isUnionDefinition(assignment.rhs())) {
         return UNIT;
       }
       final var rhs = lower(assignment.rhs());
@@ -633,12 +644,10 @@ public final class ThirToMirLowering {
     }
     final var result = function.newValue(expected);
     if (expected instanceof TyUnion union && !(operand.ty() instanceof TyUnion)) {
-      for (var i = 0; i < union.types().length; i++) {
-        final var variant = union.types()[i];
-        if (variant.equals(operand.ty()) || TypeComparison.sameValueType(variant, operand.ty())) {
-          emit(new Mir.UnionVariant(result, i, convert(operand, variant)));
-          return result;
-        }
+      final var index = UnionTypes.memberIndex(operand.ty(), union);
+      if (index >= 0) {
+        emit(new Mir.UnionVariant(result, index, convert(operand, union.types()[index])));
+        return result;
       }
       throw new IllegalArgumentException("Value " + operand.ty() + " is not a variant of " + expected);
     }
@@ -652,7 +661,7 @@ public final class ThirToMirLowering {
       }
     }
     if ((TupleTypes.containsTuple(operand.ty()) || TupleTypes.containsTuple(expected))
-      && !TypeComparison.sameValueType(operand.ty(), expected)) {
+      && !UnionTypes.compatible(operand.ty(), expected)) {
       throw new IllegalArgumentException("Cannot reinterpret incompatible tuple layouts: " + operand.ty() + " to " + expected);
     }
     emit(new Mir.Convert(result, operand));

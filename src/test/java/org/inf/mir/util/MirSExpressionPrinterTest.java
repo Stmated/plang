@@ -10,7 +10,6 @@ import org.inf.mir.model.MirBinaryOperationKind;
 import org.inf.mir.model.MirFnParameter;
 import org.inf.mir.model.MirFnSignature;
 import org.inf.mir.model.MirFunction;
-import org.inf.mir.model.MirNode;
 import org.inf.ty.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -386,16 +385,12 @@ class MirSExpressionPrinterTest {
   void given__remaining_record_shapes__when__rendered__then__all_components_are_preserved(
     final TestInfo testInfo, final Snapshot snapshot
   ) {
-    final var union = new TyUnion(new Ty[] { Ty.INTEGER, Ty.STRING });
-    final var function = new MirFunction("union", new MirFnSignature(
-      new MirFnParameter[] { new MirFnParameter(null, Ty.INTEGER) }, false, union), false);
-    final var parameter = function.newValue(Ty.INTEGER);
-    final var result = function.newValue(union);
-    function.entry().append(new Mir.Parameter(parameter, 0));
-    function.entry().append(new Mir.UnionVariant(result, 0, parameter));
-    function.entry().terminate(new Mir.Return(result));
+    final var module = Inf.codeToMir("""
+      val union = (value: int): int | string => value;
+      union(7)
+      """);
 
-    SnapshotTestUtils.assertMatches(testInfo, snapshot, null, printer.render(module(function)));
+    SnapshotTestUtils.assertMatches(testInfo, snapshot, null, printer.render(module));
   }
 
   @Test

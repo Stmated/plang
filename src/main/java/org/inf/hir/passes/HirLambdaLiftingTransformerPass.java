@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
+import org.inf.hir.HirTypeDefinitions;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyParam;
@@ -42,13 +43,15 @@ public class HirLambdaLiftingTransformerPass {
 
   public static Hir.Expression pass(Hir.Expression expr) {
 
+    final var definitions = new HirTypeDefinitions(expr);
     final Set<Hir.Expression> staticFunctions = Collections.newSetFromMap(new IdentityHashMap<>());
     expr.visit(new HirVisitor() {
       @Override
       public void visitAssignment(Hir.Assignment assignment) {
         if (assignment.lhs() instanceof Hir.Dec declaration
-          && declaration.mutabilityKind() != Hir.MutabilityKind.MUTABLE
-          && (assignment.rhs() instanceof Hir.Function || assignment.rhs() instanceof Hir.FunctionSignature)) {
+          && (definitions.isUnionDefinition(assignment.rhs())
+            || declaration.mutabilityKind() != Hir.MutabilityKind.MUTABLE
+              && (assignment.rhs() instanceof Hir.Function || assignment.rhs() instanceof Hir.FunctionSignature))) {
           staticFunctions.add(declaration);
         }
         HirVisitor.super.visitAssignment(assignment);
@@ -360,6 +363,10 @@ public class HirLambdaLiftingTransformerPass {
 
         @Override
         public void visitFunctionSignatureReturnType(Hir.DynamicTy annotation) {
+        }
+
+        @Override
+        public void visitUnion(Hir.Union union) {
         }
 
         @Override

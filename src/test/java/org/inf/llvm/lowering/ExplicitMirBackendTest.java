@@ -1,10 +1,13 @@
 package org.inf.llvm.lowering;
 
 import org.bytedeco.llvm.global.LLVM;
+import org.inf.Inf;
 import org.inf.InfRunOptions;
 import org.inf.mir.*;
 import org.inf.mir.model.*;
 import org.inf.ty.*;
+import org.inf.ty.util.MachineTarget;
+import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -42,25 +45,28 @@ class ExplicitMirBackendTest {
 
   @Test
   void unionWideningRetagsInsteadOfReinterpretingPayload() {
-    final var source = new TyUnion(new Ty[]{Ty.INTEGER, Ty.VOID});
-    final var target = new TyUnion(new Ty[]{Ty.BOOLEAN, Ty.VOID, Ty.INTEGER});
-    final var script = function("script", target);
-    final var narrow = script.newValue(source);
-    final var wide = script.newValue(target);
-    script.entry().append(new Mir.UnionVariant(narrow, 0, new Mir.Constant("42", Ty.INTEGER)));
-    script.entry().append(new Mir.Convert(wide, narrow));
-    script.entry().terminate(new Mir.Return(wide));
-    assertEquals(new MirUnionValue(target, 2, 42), run(script, List.of(script)));
+    final var result = assertInstanceOf(MirUnionValue.class, Inf.codeToResult("""
+      val narrow: int | bool = 42;
+      val wide: string | bool | int = narrow;
+      wide
+      """, InfRunOptions.builder().optLevel(2).build()).resultValue());
+    assertAll(
+      () -> assertArrayEquals(new Ty[]{Ty.STRING, Ty.BOOLEAN, Tys.fromString("int", new MachineTarget(64))},
+        result.type().types()),
+      () -> assertEquals(2, result.variant()),
+      () -> assertEquals(42, result.payload())
+    );
   }
 
   @Test
   void voidUnionVariantHasNoPayload() {
-    final var union = new TyUnion(new Ty[]{Ty.INTEGER, Ty.VOID});
-    final var script = function("script", union);
-    final var value = script.newValue(union);
-    script.entry().append(new Mir.UnionVariant(value, 1, Mir.Unit.INSTANCE));
-    script.entry().terminate(new Mir.Return(value));
-    assertEquals(new MirUnionValue(union, 1, null), run(script, List.of(script)));
+    final var result = assertInstanceOf(MirUnionValue.class,
+      Inf.codeToResult("if (false) 42", InfRunOptions.builder().optLevel(2).build()).resultValue());
+    assertAll(
+      () -> assertArrayEquals(new Ty[]{Ty.INTEGER, Ty.VOID}, result.type().types()),
+      () -> assertEquals(1, result.variant()),
+      () -> assertNull(result.payload())
+    );
   }
 
   @Test

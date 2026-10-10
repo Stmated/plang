@@ -176,14 +176,14 @@ public class Tys {
       }
 
       if (current instanceof TyUnion union) {
-        remaining.addAll(Arrays.asList(union.types()));
+        remaining.addAll(0, Arrays.asList(union.types()));
       } else {
 
         boolean found = false;
         Ty foundCommon = null;
         Ty toRemove = null;
         for (final var existing : newUnionMembers) {
-          if (existing.equals(current)) {
+          if (existing.equals(current) || equivalentUnionMember(existing, current)) {
             found = true;
             break;
           }
@@ -213,6 +213,11 @@ public class Tys {
     }
 
     return new TyUnion(newUnionMembers.toArray(new Ty[0]));
+  }
+
+  private static boolean equivalentUnionMember(final Ty a, final Ty b) {
+    // Numeric members still use common-denominator resolution to retain explicit widths.
+    return !(a instanceof TyValueNumber) && !(b instanceof TyValueNumber) && TypeComparison.sameValueType(a, b);
   }
 
   public boolean isGenerallyCompatible(TyDiffKind[] diffs) {

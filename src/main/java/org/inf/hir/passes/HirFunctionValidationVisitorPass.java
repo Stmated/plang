@@ -9,9 +9,8 @@ import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyParam;
-import org.inf.ty.TyUnion;
-import org.inf.ty.util.TypeComparison;
 import org.inf.ty.util.Tys;
+import org.inf.ty.util.UnionTypes;
 import org.inf.util.ArrayUtils;
 
 /// Checks function-valued use sites after type resolution without inferring or propagating expected types.
@@ -31,11 +30,7 @@ public class HirFunctionValidationVisitorPass {
     if (actual == Ty.DEADEND || !(Tys.containsFunction(actual) || Tys.containsFunction(expected))) {
       return;
     }
-    if (TypeComparison.sameValueType(actual, expected)) {
-      return;
-    }
-    if (expected instanceof TyUnion union && !(actual instanceof TyUnion)
-      && ArrayUtils.any(union.types(), member -> TypeComparison.sameValueType(actual, member))) {
+    if (UnionTypes.compatible(actual, expected)) {
       return;
     }
     throw new InvalidTypeConversionException(
