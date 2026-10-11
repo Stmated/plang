@@ -4,12 +4,6 @@
 
 # TODO
 
-### Better type resolving
-Check `given__tuple_with_union__when__parsed__then__source_and_constraint_are_preserved`
-The RHS tuple becomes a struct with first field as `int32 | bool`
-It should be `int32` since the literal is known, so it should not take the type from the LHS.
-But they should still match (which they should, since int32 is part of the union)
-
 ### Better separation of "ty()"
 The new `DynamicTy` is still not a good ideas -- since it allows us to create types which are not actually syntactically supported
   We can create a `DynamicTy` that contains a `ty` that can only be created through code
@@ -300,6 +294,9 @@ I am well aware that the feature can make some syntax ambiguous
 * HirTyIdentifierToTyTransformerPass feels wrong. It converts from Identifier to BuiltInTy
   * It should not be "Identifier" at this stage, since it is not actually pointing to something (which means it should have been replaced earlier)
   * We should not keep the "Identifier" anyway, since in essence it will mean an unresolved Identifier in the tree, which should not be allowed
+
+* See `// TODO: WRONG "explicit", needs context` comments. The explicitness of built-in types can be wrong (I think)
+  * Right now is is not consistent. `1uint8` should be "explicit" for the literal, `uint8` should be explicit, `int` is explicit (default 32), `1` is NOT explicit
 
 * Should `"val f = (t: (uint8, uint8)) => t; f({ (1, 2) })"` actually be valid? What does it actually MEAN/DO?
 

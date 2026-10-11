@@ -1100,8 +1100,12 @@ public class Hir {
 
     TupleEntry[] children;
     Ty ty;
-    Ty resolvedTy;
+    /// Resolved type from its fields, will not contain `Ty.DEADEND`
+    TyStruct resolvedTy;
     /// Destination layout of a fresh contextual construction; children remain in source order.
+    /// For example: `val t: (uint8, uint8) = (1, 2)` where `1` and `2` then gets implicit type `uint8``
+    /// TODO: Could likely be removed or handled some other way in the VERY few locations it is (or should be) used
+    ///         Should likely instead be a "isContextual" on a new form of Ty flags, like for probable new "isDeadend" instead of having `Ty.DEADEND` type.
     TyStruct contextualType;
 
     public Tuple(final TupleEntry[] children) {

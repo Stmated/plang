@@ -28,12 +28,11 @@ class HirDeclarationTypingTest {
     return Stream.of(
       Arguments.of("val v: uint8 = 10; v", Ty.CHAR, Ty.CHAR),
       Arguments.of("val num: uint8 = 10; val v = (num, true); v", Ty.INFER, tuple(Ty.CHAR, Ty.BOOLEAN)),
-      Arguments.of("val v: (uint8, bool) = (10, true); v",
-        tuple(Ty.CHAR, Ty.BOOLEAN), tuple(Ty.CHAR, Ty.BOOLEAN)),
-      Arguments.of("val v: [;2] = [10, 20]; v",
-        new TyValueArray(Ty.INFER, 2), new TyValueArray(Ty.INTEGER, 2)),
+      Arguments.of("val v: (uint8, bool) = (10, true); v", tuple(Ty.CHAR, Ty.BOOLEAN), tuple(Ty.CHAR, Ty.BOOLEAN)),
+      Arguments.of("val v: [;2] = [10, 20]; v", new TyValueArray(Ty.INFER, 2), new TyValueArray(Ty.INTEGER, 2)),
       Arguments.of("val v: (uint8, [;2]) = (10, [true, false]); v",
-        tuple(Ty.CHAR, new TyValueArray(Ty.INFER, 2)), tuple(Ty.CHAR, new TyValueArray(Ty.BOOLEAN, 2))),
+        tuple(Ty.CHAR, new TyValueArray(Ty.INFER, 2)),
+        tuple(Ty.CHAR, new TyValueArray(Ty.BOOLEAN, 2))),
       Arguments.of("val v: [;(uint8, [;2]);1] = [(10, [true, false])]; v",
         new TyValueArray(tuple(Ty.CHAR, new TyValueArray(Ty.INFER, 2)), 1),
         new TyValueArray(tuple(Ty.CHAR, new TyValueArray(Ty.BOOLEAN, 2)), 1)),
@@ -50,15 +49,16 @@ class HirDeclarationTypingTest {
         namedTuple("right", new TyValueArray(Ty.INFER, 2), "left", Ty.CHAR),
         namedTuple("right", new TyValueArray(Ty.BOOLEAN, 2), "left", Ty.CHAR)),
       Arguments.of("val v: (uint16, [;2]) = (255u8, [true, false]); v",
-        tuple(Ty.USHORT, new TyValueArray(Ty.INFER, 2)), tuple(Ty.USHORT, new TyValueArray(Ty.BOOLEAN, 2))),
+        tuple(Ty.USHORT, new TyValueArray(Ty.INFER, 2)),
+        tuple(Ty.USHORT, new TyValueArray(Ty.BOOLEAN, 2))),
       Arguments.of("val v: (uint8, [;2]) = { val unused = false; (10, [true, false]) }; v",
-        tuple(Ty.CHAR, new TyValueArray(Ty.INFER, 2)), tuple(Ty.CHAR, new TyValueArray(Ty.BOOLEAN, 2))),
+        tuple(Ty.CHAR, new TyValueArray(Ty.INFER, 2)),
+        tuple(Ty.CHAR, new TyValueArray(Ty.BOOLEAN, 2))),
       Arguments.of("val v: (uint8, [;2]) = if (true) { (10, [true, false]) } else { (20, [false, true]) }; v",
-        tuple(Ty.CHAR, new TyValueArray(Ty.INFER, 2)), tuple(Ty.CHAR, new TyValueArray(Ty.BOOLEAN, 2))),
-      Arguments.of("val v: [;2] = if (true) { [10, 20] } else { [30, 40] }; v",
-        new TyValueArray(Ty.INFER, 2), new TyValueArray(Ty.INTEGER, 2)),
-      Arguments.of("val v: (uint8, bool) = if (true) { (10, true) } else { (20, false) }; v",
-        tuple(Ty.CHAR, Ty.BOOLEAN), tuple(Ty.CHAR, Ty.BOOLEAN))
+        tuple(Ty.CHAR, new TyValueArray(Ty.INFER, 2)),
+        tuple(Ty.CHAR, new TyValueArray(Ty.BOOLEAN, 2))),
+      Arguments.of("val v: [;2] = if (true) { [10, 20] } else { [30, 40] }; v", new TyValueArray(Ty.INFER, 2), new TyValueArray(Ty.INTEGER, 2)),
+      Arguments.of("val v: (uint8, bool) = if (true) { (10, true) } else { (20, false) }; v", tuple(Ty.CHAR, Ty.BOOLEAN), tuple(Ty.CHAR, Ty.BOOLEAN))
     );
   }
 

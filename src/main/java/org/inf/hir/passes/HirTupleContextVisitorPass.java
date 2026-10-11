@@ -41,9 +41,13 @@ public class HirTupleContextVisitorPass {
     public void visitTuple(final Hir.Tuple expression) {
       if (expected instanceof final TyStruct expectedStruct && expectedStruct.tuple()) {
         final var slots = HirTupleMatching.match(expression, expectedStruct);
-        expression.contextualType(slots == null ? null : expectedStruct);
         if (slots != null) {
+
+          // Replace the resolved type, since the expected is likely to be more accurate.
+          expression.contextualType(expectedStruct);
           expression.visit(new EntryVisitor(expectedStruct, slots));
+        } else {
+          expression.contextualType(expression.resolvedTy());
         }
       }
     }
@@ -101,6 +105,7 @@ public class HirTupleContextVisitorPass {
     }
   }
 
+  /// TODO: Can likely be removed, since the children will always be tuple entries, so the visitor is superfluous
   @RequiredArgsConstructor
   private static final class EntryVisitor implements HirVisitor {
 

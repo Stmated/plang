@@ -321,18 +321,21 @@ public class Tys {
   private static Ty fromStringInner(String name, MachineTarget machineTarget) {
     if (name.startsWith("int") || name.startsWith("sint")) {
 
-      final var width = getWidthFromName(name, Ty.INTEGER.width().value());
-      return Ty.INTEGER.toBuilder().width(new BitWidth(width, true)).signed(true).build().intern();
+      final var possibleWidth = getWidthFromName(name);
+      final var width = Objects.requireNonNullElse(possibleWidth, Ty.INTEGER.width().value());
+      return Ty.INTEGER.toBuilder().width(new BitWidth(width, true)).signed(true).build().intern(); // TODO: WRONG "explicit", needs context
 
     } else if (name.startsWith("uint")) {
 
-      final var width = getWidthFromName(name, Ty.INTEGER.width().value());
-      return Ty.INTEGER.toBuilder().width(new BitWidth(width, false)).signed(false).build().intern();
+      final var possibleWidth = getWidthFromName(name);
+      final var width = Objects.requireNonNullElse(possibleWidth, Ty.INTEGER.width().value());
+      return Ty.INTEGER.toBuilder().width(new BitWidth(width, false)).signed(false).build().intern(); // TODO: WRONG "explicit", needs context
 
     } else if (name.startsWith("float")) {
 
-      final var width = getWidthFromName(name, Ty.FLOAT.width().value());
-      return Ty.FLOAT.toBuilder().width(new BitWidth(width, true)).build().intern();
+      final var possibleWidth = getWidthFromName(name);
+      final var width = Objects.requireNonNullElse(possibleWidth, Ty.FLOAT.width().value());
+      return Ty.FLOAT.toBuilder().width(new BitWidth(width, true)).build().intern(); // TODO: WRONG "explicit", needs context
     }
 
     return switch (name) {
@@ -354,7 +357,7 @@ public class Tys {
     };
   }
 
-  private int getWidthFromName(String name, int defaultWidth) {
+  private Integer getWidthFromName(String name) {
 
     final var lastIndex = (name.length() - 1);
     var numberIndex = lastIndex;
@@ -362,7 +365,13 @@ public class Tys {
       numberIndex--;
     }
 
-    return (numberIndex != lastIndex) ? Integer.parseInt(name.substring(numberIndex + 1, lastIndex + 1)) : defaultWidth;
+    return (numberIndex != lastIndex) ? Integer.parseInt(name.substring(numberIndex + 1, lastIndex + 1)) : null;
+  }
+
+  private int getWidthFromName(String name, int defaultWidth) {
+
+    final var width = Tys.getWidthFromName(name);
+    return Objects.requireNonNullElse(width, defaultWidth);
   }
 
   public static boolean isDeadEnd(Hir.Expression... children) {

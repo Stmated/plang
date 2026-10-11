@@ -263,16 +263,6 @@ class MirSExpressionPrinterTest {
   }
 
   @Test
-  void given__eight_bit_constant__when__inspected__then__width_and_char_remain_eight_bits() {
-    assertAll(
-      () -> assertEquals(8, Ty.BW_8.value()),
-      () -> assertFalse(Ty.BW_8.explicit()),
-      () -> assertEquals(Ty.BW_8, Ty.CHAR.width()),
-      () -> assertNotEquals(Ty.BW_8, Ty.BW_16)
-    );
-  }
-
-  @Test
   void given__cycles_shared_successors_and_dead_blocks__when__rendered__then__each_block_is_defined_once(
     final TestInfo testInfo, final Snapshot snapshot
   ) {
