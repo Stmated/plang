@@ -4,6 +4,10 @@ public record TyField(String name, Ty ty) {
 
   @Override
   public String toString() {
-    return name == null ? ty.toString() : name + ": " + ty;
+    if (name == null) {
+      return ty.toString();
+    }
+
+    return "%s: %s".formatted(name, ty);
   }
 }

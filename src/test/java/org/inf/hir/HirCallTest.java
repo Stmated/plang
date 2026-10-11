@@ -266,7 +266,7 @@ class HirCallTest {
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.DEADEND, argument.ty()),
       () -> Assertions.assertEquals(
-        new TyValueArray(Tys.fromString("int", new MachineTarget(64)), 1),
+        new TyValueArray(Tys.fromString("int", MachineTarget.T64), 1),
         Tys.getIndexingAccessorTy(argument)
       )
     );

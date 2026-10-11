@@ -149,7 +149,7 @@ class HirFunctionValidationVisitorPassTest {
   @Test
   void given__missing_parameter_annotation__when__final_validation_runs_alone__then__it_does_not_infer_or_resolve_types() {
     final var root = HirTyIdentifierToTyTransformerPass.pass(
-      Inf.codeToHir("val Fn = (v: int): int; val f: Fn = (v) => v; f"), new MachineTarget(64)
+      Inf.codeToHir("val Fn = (v: int): int; val f: Fn = (v) => v; f"), MachineTarget.T64
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
@@ -178,7 +178,7 @@ class HirFunctionValidationVisitorPassTest {
   }
 
   private static Hir.Expression prepare(final String code) {
-    final var root = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), new MachineTarget(64));
+    final var root = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), MachineTarget.T64);
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
     HirFunctionContextualTypingVisitorPass.pass(root);

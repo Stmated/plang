@@ -1,14 +1,13 @@
 package org.inf.ty.util;
 
+import lombok.experimental.UtilityClass;
 import org.inf.ty.*;
 
 import java.util.Objects;
 
 /// Value-type equivalence without conversions or temporary types.
+@UtilityClass
 public final class TypeComparison {
-
-  private TypeComparison() {
-  }
 
   /// Ignores numeric width explicitness, function parameter names, and aggregate source syntax.
   /// Aggregate labels, slot order, numeric flags, and all other value-type properties must match.

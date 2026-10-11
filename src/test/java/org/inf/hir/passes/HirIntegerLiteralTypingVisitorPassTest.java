@@ -38,7 +38,7 @@ class HirIntegerLiteralTypingVisitorPassTest {
     final var values = literals(root).stream().filter(literal -> literal.content().equals("17")).toList();
     Assertions.assertEquals(1, values.size());
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Tys.fromString("uint8", new MachineTarget(64)), values.getFirst().ty()),
+      () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), values.getFirst().ty()),
       () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty())
     );
   }
@@ -61,7 +61,7 @@ class HirIntegerLiteralTypingVisitorPassTest {
       use()
       """.formatted(expression)).root();
     final var values = literals(root).stream().filter(literal -> literal.content().matches("17|18")).toList();
-    final var uint8 = Tys.fromString("uint8", new MachineTarget(64));
+    final var uint8 = Tys.fromString("uint8", MachineTarget.T64);
     Assertions.assertAll(
       () -> Assertions.assertFalse(values.isEmpty()),
       () -> Assertions.assertTrue(values.stream().allMatch(literal -> literal.ty().equals(uint8))),
@@ -82,7 +82,7 @@ class HirIntegerLiteralTypingVisitorPassTest {
     root.visit(new HirVisitor() {
       @Override
       public void visitDec(final Hir.Dec declaration) {
-        declaration.resolvedTy(new TyValueArray(Tys.fromString("uint8", new MachineTarget(64)), 1));
+        declaration.resolvedTy(new TyValueArray(Tys.fromString("uint8", MachineTarget.T64), 1));
       }
     });
     Assertions.assertDoesNotThrow(() -> HirIntegerLiteralTypingVisitorPass.pass(root));
@@ -127,7 +127,7 @@ class HirIntegerLiteralTypingVisitorPassTest {
     final var root = Inf.codeToThir(code).root();
     final var literals = literals(root);
     final var results = literals.stream().filter(literal -> literal.content().matches("17|18")).toList();
-    final var uint8 = Tys.fromString("uint8", new MachineTarget(64));
+    final var uint8 = Tys.fromString("uint8", MachineTarget.T64);
     Assertions.assertAll(
       () -> Assertions.assertFalse(results.isEmpty()),
       () -> Assertions.assertTrue(results.stream().allMatch(literal -> TypeComparison.sameValueType(literal.ty(), uint8))),
@@ -182,7 +182,7 @@ class HirIntegerLiteralTypingVisitorPassTest {
     final var values = literals(Inf.codeToThir(code).root());
     Assertions.assertEquals(1, values.size());
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Tys.fromString(destination, new MachineTarget(64)), values.getFirst().ty()),
+      () -> Assertions.assertEquals(Tys.fromString(destination, MachineTarget.T64), values.getFirst().ty()),
       () -> Assertions.assertEquals(content, values.getFirst().content()),
       () -> Assertions.assertDoesNotThrow(() -> Inf.codeToMir(code))
     );
@@ -213,8 +213,8 @@ class HirIntegerLiteralTypingVisitorPassTest {
     final var values = literals(root);
     Assertions.assertEquals(2, values.size());
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Tys.fromString("uint16", new MachineTarget(64)), values.getFirst().ty()),
-      () -> Assertions.assertEquals(Tys.fromString("uint8", new MachineTarget(64)), values.getLast().ty())
+      () -> Assertions.assertEquals(Tys.fromString("uint16", MachineTarget.T64), values.getFirst().ty()),
+      () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), values.getLast().ty())
     );
   }
 
@@ -261,7 +261,7 @@ class HirIntegerLiteralTypingVisitorPassTest {
         Assertions.fail("Literal adaptation must not insert conversions");
       }
     });
-    final var uint8 = Tys.fromString("uint8", new MachineTarget(64));
+    final var uint8 = Tys.fromString("uint8", MachineTarget.T64);
     Assertions.assertAll(
       () -> Assertions.assertEquals(beforeRoot, root.ty()),
       () -> Assertions.assertEquals(beforeTypes, tuples.stream().map(Hir.Tuple::ty).toList()),
@@ -313,7 +313,7 @@ class HirIntegerLiteralTypingVisitorPassTest {
       Assertions.assertAll(
         () -> Assertions.assertSame(beforeType, value.ty()),
         () -> Assertions.assertEquals(beforeContent, value.content()),
-        () -> Assertions.assertTrue(TypeComparison.sameValueType(Tys.fromString(source, new MachineTarget(64)), value.ty()))
+        () -> Assertions.assertTrue(TypeComparison.sameValueType(Tys.fromString(source, MachineTarget.T64), value.ty()))
       );
     }
   }
@@ -345,7 +345,7 @@ class HirIntegerLiteralTypingVisitorPassTest {
   }
 
   private static Hir.Expression prepare(final String code) {
-    final var root = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), new MachineTarget(64));
+    final var root = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), MachineTarget.T64);
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
     HirFunctionContextualTypingVisitorPass.pass(root);

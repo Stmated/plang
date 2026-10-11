@@ -201,7 +201,7 @@ public final class MirVerifier {
         if (from instanceof TyUnion source && to instanceof TyUnion target) {
           allowed = UnionTypes.compatible(source, target);
         } else {
-          allowed = sameType(from, to)
+          allowed = TypeComparison.sameValueType(to, from)
             || numericConversion(from, to)
             || from instanceof TyValueString && characterReference(to)
             || characterReference(from) && to instanceof TyValueString
@@ -351,7 +351,7 @@ public final class MirVerifier {
           final var variant = union.types()[i];
           concrete(variant, visited);
           for (var j = 0; j < i; j++) {
-            require(!sameType(variant, union.types()[j]), "Duplicate union variant");
+            require(!TypeComparison.sameValueType(union.types()[j], variant), "Duplicate union variant");
           }
         }
       }
@@ -379,46 +379,8 @@ public final class MirVerifier {
   }
 
   private static void same(Ty expected, Ty actual, String context) {
-    require(sameType(expected, actual), context + " type mismatch: expected " + expected + ", got " + actual);
-  }
-
-  private static boolean sameType(Ty a, Ty b) {
-    if (a == b) {
-      return true;
-    }
-    if (a instanceof TyUnion left && b instanceof TyUnion right) {
-      return sameTypes(left.types(), right.types());
-    }
-    if (a instanceof TyPointer<?> left && b instanceof TyPointer<?> right) {
-      return left.addressSpace() == right.addressSpace() && sameType(left.inner(), right.inner());
-    }
-    if (a instanceof TyFn left && b instanceof TyFn right) {
-      return left.vararg() == right.vararg() && sameType(left.returnTy(), right.returnTy())
-        && sameTypes(Arrays.stream(left.parameters()).map(TyParam::ty).toArray(Ty[]::new),
-        Arrays.stream(right.parameters()).map(TyParam::ty).toArray(Ty[]::new));
-    }
-    if (a instanceof TyStruct left && b instanceof TyStruct right) {
-      return Arrays.equals(Arrays.stream(left.fields()).map(TyField::name).toArray(),
-        Arrays.stream(right.fields()).map(TyField::name).toArray())
-        && sameTypes(Arrays.stream(left.fields()).map(TyField::ty).toArray(Ty[]::new),
-        Arrays.stream(right.fields()).map(TyField::ty).toArray(Ty[]::new));
-    }
-    if (a instanceof TyValueArray left && b instanceof TyValueArray right) {
-      return Objects.equals(left.size(), right.size()) && sameType(left.elementType(), right.elementType());
-    }
-    return Objects.equals(a, b);
-  }
-
-  private static boolean sameTypes(Ty[] left, Ty[] right) {
-    if (left.length != right.length) {
-      return false;
-    }
-    for (var i = 0; i < left.length; i++) {
-      if (!sameType(left[i], right[i])) {
-        return false;
-      }
-    }
-    return true;
+    final var isSame = TypeComparison.sameValueType(actual, expected);
+    require(isSame, context + " type mismatch: expected " + expected + ", got " + actual);
   }
 
   private static Set<MirNode> reachable(MirNode entry) {

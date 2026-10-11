@@ -2,6 +2,7 @@ package org.inf.hir.passes;
 
 import org.inf.Inf;
 import org.inf.exceptions.InvalidTypeConversionException;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.thir.raising.HirToThirRaising;
@@ -35,7 +36,7 @@ class HirFunctionReturnTypingTest {
     final var root = Inf.codeToHir("val make = (): [;2] => %s; make".formatted(body));
     final var function = functions(root).getFirst();
     final var annotation = function.signature().returnTypeAnnotation();
-    assertThrows(InvalidTypeConversionException.class, () -> new HirToThirRaising(new MachineTarget(64)).raise(root));
+    assertThrows(InvalidTypeConversionException.class, () -> new HirToThirRaising(MachineTarget.T64).raise(root));
     assertAll(
       () -> assertSame(annotation.expression(), function.signature().returnTypeAnnotation().expression()),
       () -> assertTrue(TypeComparison.sameValueType(new TyValueArray(Ty.INTEGER, 2), function.signature().ty().returnTy())),
@@ -113,7 +114,7 @@ class HirFunctionReturnTypingTest {
     final Hir.Expression body, final Ty expected
   ) {
     final var function = new Hir.Function(
-      new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.DynamicTy(Ty.INFER)), body
+      new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTy()), body
     );
     HirTyCommonVisitorPass.pass(function);
     assertEquals(expected, function.signature().ty().returnTy());

@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class UnionTypesTest {
 
   static Stream<Arguments> memberCompatibility() {
-    final var integer = Tys.fromString("int", new MachineTarget(64));
+    final var integer = Tys.fromString("int", MachineTarget.T64);
     final var destination = Tys.union(integer, Ty.BOOLEAN);
     final var array = new TyValueArray(integer, null);
     return Stream.of(

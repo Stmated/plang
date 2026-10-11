@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class HirUnionExecutionTest {
 
-  private static final Ty INT = Tys.fromString("int", new MachineTarget(64));
+  private static final Ty INT = Tys.fromString("int", MachineTarget.T64);
 
   static Stream<Arguments> unionPrograms() {
     return Stream.of(

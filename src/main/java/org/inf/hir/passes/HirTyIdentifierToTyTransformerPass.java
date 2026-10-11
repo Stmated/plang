@@ -2,6 +2,7 @@ package org.inf.hir.passes;
 
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
 import org.inf.ty.util.MachineTarget;
@@ -22,31 +23,31 @@ public class HirTyIdentifierToTyTransformerPass {
     private int typeModeCounter;
 
     @Override
-    public Hir.DynamicTy transformDecType(Hir.DynamicTy expr) {
+    public DynamicTy transformDecType(DynamicTy expr) {
       return transformAnnotation(expr);
     }
 
     @Override
-    public Hir.DynamicTy transformParameterType(Hir.DynamicTy expr) {
+    public DynamicTy transformParameterType(DynamicTy expr) {
       return transformAnnotation(expr);
     }
 
     @Override
-    public Hir.DynamicTy transformFunctionSignatureReturnType(Hir.DynamicTy expr) {
+    public DynamicTy transformFunctionSignatureReturnType(DynamicTy expr) {
       return transformAnnotation(expr);
     }
 
     @Override
-    public Hir.DynamicTy transformArrayElementType(Hir.DynamicTy expr) {
+    public DynamicTy transformArrayElementType(DynamicTy expr) {
       return transformAnnotation(expr);
     }
 
-    private Hir.DynamicTy transformAnnotation(final Hir.DynamicTy annotation) {
+    private DynamicTy transformAnnotation(final DynamicTy annotation) {
       try {
         typeModeCounter++;
         final var transformed = annotation.transform(this);
         if (transformed.expression() instanceof Hir.BuiltInTy builtIn) {
-          return new Hir.DynamicTy(builtIn.ty());
+          return new DynamicTy(builtIn.ty());
         }
         return transformed;
       } finally {

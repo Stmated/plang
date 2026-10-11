@@ -2,6 +2,7 @@ package org.inf.hir.passes;
 
 import lombok.experimental.UtilityClass;
 import org.inf.exceptions.InvalidTypeConversionException;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
 import org.inf.hir.HirCallArguments;
@@ -50,29 +51,29 @@ public class HirUnionValidationVisitorPass {
       }
     }
 
-    private void visitAnnotation(final Hir.DynamicTy annotation) {
+    private void visitAnnotation(final DynamicTy annotation) {
       if (annotation.expression() != null) {
         visitType(annotation.expression());
       }
     }
 
     @Override
-    public void visitDecType(final Hir.DynamicTy annotation) {
+    public void visitDecType(final DynamicTy annotation) {
       visitAnnotation(annotation);
     }
 
     @Override
-    public void visitParameterType(final Hir.DynamicTy annotation) {
+    public void visitParameterType(final DynamicTy annotation) {
       visitAnnotation(annotation);
     }
 
     @Override
-    public void visitFunctionSignatureReturnType(final Hir.DynamicTy annotation) {
+    public void visitFunctionSignatureReturnType(final DynamicTy annotation) {
       visitAnnotation(annotation);
     }
 
     @Override
-    public void visitArrayElementType(final Hir.DynamicTy annotation) {
+    public void visitArrayElementType(final DynamicTy annotation) {
       visitAnnotation(annotation);
     }
 

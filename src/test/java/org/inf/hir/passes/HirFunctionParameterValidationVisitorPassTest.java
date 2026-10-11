@@ -115,7 +115,7 @@ class HirFunctionParameterValidationVisitorPassTest {
     HirFunctionParameterValidationVisitorPass.pass(root);
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
-      () -> Assertions.assertEquals(Tys.fromString("int", new MachineTarget(64)), parameter.resolvedTy()),
+      () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), parameter.resolvedTy()),
       () -> Assertions.assertEquals(before, printer.render(root))
     );
   }
@@ -141,7 +141,7 @@ class HirFunctionParameterValidationVisitorPassTest {
   @Test
   void given__unresolved_parameters__when__validation_runs_without_inference__then__it_rejects_without_resolving_them() {
     final var root = HirTyIdentifierToTyTransformerPass.pass(
-      Inf.codeToHir("val Fn = (v: int): int; val f: Fn = (v) => v; f"), new MachineTarget(64)
+      Inf.codeToHir("val Fn = (v: int): int; val f: Fn = (v) => v; f"), MachineTarget.T64
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
@@ -196,7 +196,7 @@ class HirFunctionParameterValidationVisitorPassTest {
   }
 
   private static Hir.Expression prepare(final String code) {
-    final var root = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), new MachineTarget(64));
+    final var root = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), MachineTarget.T64);
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
     HirFunctionContextualTypingVisitorPass.pass(root);

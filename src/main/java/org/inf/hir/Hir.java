@@ -26,50 +26,6 @@ public class Hir {
     Hir.Expression transform(HirTransformer transformer);
   }
 
-  /// A source type constraint, not a runtime expression or an inferred binding type.
-  public record DynamicTy(@Nonnull Ty ty, Expression expression) {
-
-    public DynamicTy {
-      Objects.requireNonNull(ty);
-    }
-
-    public DynamicTy(final Ty ty) {
-      this(ty, null);
-    }
-
-    public DynamicTy(final Expression expression) {
-      this(Ty.INFER, Objects.requireNonNull(expression));
-    }
-
-    /// Refresh expression-backed constraints; static constraints need no resolution.
-    public DynamicTy resolve(final java.util.function.Function<Expression, Ty> resolver) {
-      if (expression == null) {
-        return this;
-      }
-      final var resolved = Objects.requireNonNullElse(resolver.apply(expression), Ty.INFER);
-      return resolved == ty ? this : new DynamicTy(resolved, expression);
-    }
-
-    public void visit(final HirVisitor visitor) {
-      if (expression != null) {
-        visitor.visitChild(expression);
-      }
-    }
-
-    public DynamicTy transform(final HirTransformer transformer) {
-      if (expression == null) {
-        return this;
-      }
-      final var transformed = Objects.requireNonNull(expression.transform(transformer));
-      return transformed == expression ? this : new DynamicTy(ty, transformed);
-    }
-
-    @Override
-    public String toString() {
-      return expression == null ? ty.toShortString() : expression.toString();
-    }
-  }
-
   public interface ExpressionsOwner<Self extends Expression> {
     Expression[] children();
 
@@ -661,6 +617,7 @@ public class Hir {
     final String name;
     Expression target;
 
+    /// TODO: This is likely wrong and untrustworthy -- we need to resolve it all the way using something like HirTypeAnnotationResolver
     @Override
     public Ty ty() {
       return (this.target != null) ? Tys.getBindingTy(this.target) : null;
@@ -1143,11 +1100,16 @@ public class Hir {
 
     TupleEntry[] children;
     Ty ty;
+    Ty resolvedTy;
     /// Destination layout of a fresh contextual construction; children remain in source order.
     TyStruct contextualType;
 
+    public Tuple(final TupleEntry[] children) {
+      this(children, null, null, null);
+    }
+
     public Tuple(final TupleEntry[] children, final Ty ty) {
-      this(children, ty, null);
+      this(children, ty, null, null);
     }
 
     @Override

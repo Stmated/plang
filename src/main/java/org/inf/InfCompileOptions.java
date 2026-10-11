@@ -15,7 +15,7 @@ public class InfCompileOptions {
 
   MachineTarget machineTarget() {
     if (machineTarget == null) {
-      machineTarget = new MachineTarget(64);
+      machineTarget = MachineTarget.T64;
     }
 
     return machineTarget;

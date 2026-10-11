@@ -3,6 +3,7 @@ package org.inf.ty;
 import java.util.Arrays;
 
 /// `tuple` preserves source syntax for access checks; it does not affect structural compatibility.
+/// TODO: Should remove [#tuple()] since in theory the two should not be considered differently
 public record TyStruct(
   TyField[] fields,
   boolean tuple

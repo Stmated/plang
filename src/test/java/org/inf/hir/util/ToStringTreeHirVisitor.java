@@ -1,5 +1,6 @@
 package org.inf.hir.util;
 
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.*;
@@ -16,7 +17,7 @@ public final class ToStringTreeHirVisitor {
     return new Printer().print(expression);
   }
 
-  public String render(final Hir.DynamicTy annotation) {
+  public String render(final DynamicTy annotation) {
     return new Printer().print(annotation);
   }
 
@@ -44,11 +45,11 @@ public final class ToStringTreeHirVisitor {
       return expression == null ? atom(role, "null") : node(role, print(expression));
     }
 
-    private String print(final Hir.DynamicTy annotation) {
+    private String print(final DynamicTy annotation) {
       return node("DynamicTy", type("ty", annotation.ty()), child("expression", annotation.expression()));
     }
 
-    private String child(final String role, final Hir.DynamicTy annotation) {
+    private String child(final String role, final DynamicTy annotation) {
       return node(role, print(annotation));
     }
 

@@ -1,6 +1,7 @@
 package org.inf.hir.passes;
 
 import org.inf.Inf;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.ty.Ty;
 import org.inf.ty.util.Tys;
@@ -70,10 +71,10 @@ class HirBodyResultTypingTest {
   private static Stream<Arguments> generatedBodies() {
     return Stream.of(
       Arguments.of(new Hir.Literal("7", Ty.INTEGER), Ty.INTEGER, Ty.INTEGER),
-      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.MUTABLE, new Hir.DynamicTy(Ty.INTEGER)),
+      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.MUTABLE, new DynamicTy(Ty.INTEGER)),
         Ty.VOID, Ty.VOID),
       Arguments.of(new Hir.Assignment(
-        new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.MUTABLE, new Hir.DynamicTy(Ty.INFER)),
+        new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.MUTABLE, new DynamicTy()),
         new Hir.Literal("7", Ty.INTEGER)
       ), Ty.VOID, Ty.VOID),
       Arguments.of(new Hir.Conditional(

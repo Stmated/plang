@@ -1,6 +1,8 @@
 package org.inf.hir.passes;
 
+import lombok.experimental.UtilityClass;
 import org.inf.exceptions.InvalidTypeConversionException;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
 import org.inf.hir.HirCallArguments;
@@ -17,17 +19,15 @@ import org.inf.ty.util.UnionTypes;
 import org.inf.util.ArrayUtils;
 
 /// Check tuple boundaries after inference, including expressions that cannot execute.
+@UtilityClass
 public final class HirTupleValidationVisitorPass {
-
-  private HirTupleValidationVisitorPass() {
-  }
 
   public static void pass(Hir.Expression expression) {
     expression.visit(new Visitor(expression));
   }
 
   /**
-   * TODO: This should likely be a more general check for all return types of functions, just just for tuples.
+   * TODO: This should likely be a more general check for all return types of functions, not just for tuples.
    */
   private static void check(Ty actual, Ty expected, String context) {
     if (actual == Ty.DEADEND || !(TupleTypes.containsTuple(actual) || TupleTypes.containsTuple(expected))) {
@@ -51,7 +51,7 @@ public final class HirTupleValidationVisitorPass {
 
     private Visitor(final Hir.Expression root) {
       this.definitions = new HirTypeDefinitions(root);
-      this.annotations = new HirTypeAnnotationResolver(root);
+      this.annotations = new HirTypeAnnotationResolver(root); // TODO: Should not need to create a new one here, it needs to be smarter than that
     }
 
     @Override
@@ -65,7 +65,7 @@ public final class HirTupleValidationVisitorPass {
       }
     }
 
-    private void visitAnnotation(Hir.DynamicTy annotation) {
+    private void visitAnnotation(DynamicTy annotation) {
       final var outerAnnotation = inAnnotation;
       try {
         inAnnotation = true;
@@ -76,22 +76,22 @@ public final class HirTupleValidationVisitorPass {
     }
 
     @Override
-    public void visitDecType(Hir.DynamicTy expression) {
+    public void visitDecType(DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitParameterType(Hir.DynamicTy expression) {
+    public void visitParameterType(DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitFunctionSignatureReturnType(Hir.DynamicTy expression) {
+    public void visitFunctionSignatureReturnType(DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitArrayElementType(Hir.DynamicTy expression) {
+    public void visitArrayElementType(DynamicTy expression) {
       visitAnnotation(expression);
     }
 

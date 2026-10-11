@@ -31,7 +31,7 @@ public interface HirVisitor {
     }
   }
 
-  default void visitArrayElementType(Hir.DynamicTy annotation) {
+  default void visitArrayElementType(DynamicTy annotation) {
     annotation.visit(this);
   }
 
@@ -100,7 +100,7 @@ public interface HirVisitor {
     visitFunctionSignatureReturnType(expr.returnTypeAnnotation());
   }
 
-  default void visitFunctionSignatureReturnType(Hir.DynamicTy annotation) {
+  default void visitFunctionSignatureReturnType(DynamicTy annotation) {
     annotation.visit(this);
   }
 
@@ -178,7 +178,7 @@ public interface HirVisitor {
     visitChild(expr);
   }
 
-  default void visitParameterType(Hir.DynamicTy annotation) {
+  default void visitParameterType(DynamicTy annotation) {
     annotation.visit(this);
   }
 
@@ -234,7 +234,7 @@ public interface HirVisitor {
     visitChild(expr);
   }
 
-  default void visitDecType(Hir.DynamicTy annotation) {
+  default void visitDecType(DynamicTy annotation) {
     annotation.visit(this);
   }
 

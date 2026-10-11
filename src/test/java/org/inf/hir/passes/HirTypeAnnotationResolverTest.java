@@ -1,6 +1,7 @@
 package org.inf.hir.passes;
 
 import org.inf.Inf;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.thir.raising.HirToThirRaising;
@@ -55,7 +56,7 @@ class HirTypeAnnotationResolverTest {
     final var original = constraint.get();
     final var source = assertInstanceOf(Hir.Identifier.class, original.expression());
     assertSame(Ty.INFER, original.ty());
-    final var raising = new HirToThirRaising(new MachineTarget(64));
+    final var raising = new HirToThirRaising(MachineTarget.T64);
     for (int i = 0; i < 2; i++) {
       root = raising.raise(root).root();
       final var resolved = constraint.get();
@@ -131,14 +132,14 @@ class HirTypeAnnotationResolverTest {
     assertAll(
       () -> assertEquals(expectedSize, resolved.size()),
       () -> assertSame(source.arrayTy(), resolved),
-      () -> assertEquals(Tys.fromString("int", new MachineTarget(64)), resolved.elementType())
+      () -> assertEquals(Tys.fromString("int", MachineTarget.T64), resolved.elementType())
     );
   }
 
   @Test
   void given__builtin_and_omitted_annotations__when__typed__then__constraints_are_direct_and_non_null() {
     final var root = Inf.codeToThir("val v: int = 7; val use = (p: bool, q: int) => p; [7;int;1]; [7]").root();
-    final var constraints = new ArrayList<Hir.DynamicTy>();
+    final var constraints = new ArrayList<DynamicTy>();
     root.visit(new HirVisitor() {
       @Override
       public void visitDec(final Hir.Dec declaration) {
@@ -153,13 +154,13 @@ class HirTypeAnnotationResolverTest {
       }
 
       @Override
-      public void visitFunctionSignatureReturnType(final Hir.DynamicTy annotation) {
+      public void visitFunctionSignatureReturnType(final DynamicTy annotation) {
         constraints.add(annotation);
         HirVisitor.super.visitFunctionSignatureReturnType(annotation);
       }
 
       @Override
-      public void visitArrayElementType(final Hir.DynamicTy annotation) {
+      public void visitArrayElementType(final DynamicTy annotation) {
         constraints.add(annotation);
         HirVisitor.super.visitArrayElementType(annotation);
       }
@@ -167,7 +168,7 @@ class HirTypeAnnotationResolverTest {
     assertEquals(7, constraints.size());
     assertAll(
       () -> assertEquals(3, constraints.stream()
-        .filter(it -> it.ty().equals(Tys.fromString("int", new MachineTarget(64)))).count()),
+        .filter(it -> it.ty().equals(Tys.fromString("int", MachineTarget.T64))).count()),
       () -> assertEquals(1, constraints.stream().filter(it -> it.ty().equals(Ty.BOOLEAN)).count()),
       () -> assertEquals(3, constraints.stream().filter(it -> it.ty() == Ty.INFER).count()),
       () -> assertTrue(constraints.stream().allMatch(it -> it.expression() == null))
@@ -210,12 +211,12 @@ class HirTypeAnnotationResolverTest {
       () -> assertEquals(1, parameters.size())
     );
     switch (definitions.getFirst()) {
-      case Hir.Struct struct -> struct.declarations()[0].typeAnnotation(new Hir.DynamicTy(Ty.BOOLEAN));
+      case Hir.Struct struct -> struct.declarations()[0].typeAnnotation(new DynamicTy(Ty.BOOLEAN));
       case Hir.FunctionSignature signature -> {
-        signature.parameters()[0].typeAnnotation(new Hir.DynamicTy(Ty.BOOLEAN));
-        signature.returnTypeAnnotation(new Hir.DynamicTy(Ty.BOOLEAN));
+        signature.parameters()[0].typeAnnotation(new DynamicTy(Ty.BOOLEAN));
+        signature.returnTypeAnnotation(new DynamicTy(Ty.BOOLEAN));
       }
-      case Hir.Array array -> array.elementType(new Hir.DynamicTy(Ty.BOOLEAN));
+      case Hir.Array array -> array.elementType(new DynamicTy(Ty.BOOLEAN));
       default -> fail("Expected an alias source definition");
     }
     for (int i = 0; i < 2; i++) {
@@ -238,8 +239,8 @@ class HirTypeAnnotationResolverTest {
     }
   }
 
-  private static Supplier<Hir.DynamicTy> annotation(final Hir.Expression root, final String role) {
-    final var found = new ArrayList<Supplier<Hir.DynamicTy>>();
+  private static Supplier<DynamicTy> annotation(final Hir.Expression root, final String role) {
+    final var found = new ArrayList<Supplier<DynamicTy>>();
     root.visit(new HirVisitor() {
       @Override
       public void visitDec(final Hir.Dec declaration) {

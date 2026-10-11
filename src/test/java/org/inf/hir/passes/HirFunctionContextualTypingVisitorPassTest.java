@@ -51,7 +51,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     Assertions.assertEquals(1, parameters.size());
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.INFER, parameters.getFirst().typeAnnotation().ty()),
-      () -> Assertions.assertEquals(Tys.fromString("uint8", new MachineTarget(64)), parameters.getFirst().resolvedTy()),
+      () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), parameters.getFirst().resolvedTy()),
       () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty())
     );
   }
@@ -86,7 +86,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     final var parameter = parameters.getFirst();
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
-      () -> Assertions.assertEquals(Tys.fromString("uint8", new MachineTarget(64)), parameter.resolvedTy())
+      () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), parameter.resolvedTy())
     );
   }
 
@@ -115,7 +115,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     Assertions.assertEquals(1, parameters.size());
     final var parameter = parameters.getFirst();
     final var annotation = parameter.typeAnnotation();
-    final var root = new HirToThirRaising(new MachineTarget(64)).raise(hir).root();
+    final var root = new HirToThirRaising(MachineTarget.T64).raise(hir).root();
     final var signature = Assertions.assertInstanceOf(TyFn.class, root.ty());
     Assertions.assertAll(
       () -> Assertions.assertSame(annotation.expression(), parameter.typeAnnotation().expression()),
@@ -224,8 +224,8 @@ class HirFunctionContextualTypingVisitorPassTest {
       """).root();
     final var function = Assertions.assertInstanceOf(TyFn.class, root.ty());
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Tys.fromString("int", new MachineTarget(64)), function.parameters()[0].ty()),
-      () -> Assertions.assertEquals(Tys.fromString("bool", new MachineTarget(64)), function.parameters()[1].ty())
+      () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), function.parameters()[0].ty()),
+      () -> Assertions.assertEquals(Tys.fromString("bool", MachineTarget.T64), function.parameters()[1].ty())
     );
   }
 
@@ -239,7 +239,7 @@ class HirFunctionContextualTypingVisitorPassTest {
   void given__repeated_contextual_typing__when__parameter_types_are_resolved__then__result_is_stable() {
     final var root = HirTyIdentifierToTyTransformerPass.pass(
       Inf.codeToHir("val Fn = (v: int): int; val S = struct { val fn: Fn; }; val s = new heap S { fn = (v) => v * 2; }; s.fn(5)"),
-      new MachineTarget(64)
+      MachineTarget.T64
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
@@ -253,7 +253,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     HirTyCommonVisitorPass.pass(root);
     HirFunctionValidationVisitorPass.pass(root);
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Tys.fromString("int", new MachineTarget(64)), expected),
+      () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), expected),
       () -> Assertions.assertEquals(expected, root.ty())
     );
   }
@@ -289,7 +289,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     final var parameter = functions.getFirst().signature().parameters()[0];
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
-      () -> Assertions.assertEquals(Tys.fromString("int", new MachineTarget(64)), parameter.resolvedTy()),
+      () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), parameter.resolvedTy()),
       () -> Assertions.assertEquals(beforeRootType, root.ty()),
       () -> Assertions.assertEquals(beforeTupleTypes, tuples.stream().map(Hir.Tuple::ty).toList()),
       () -> Assertions.assertTrue(tuples.stream().allMatch(tuple -> tuple.contextualType() == null)),
@@ -322,7 +322,7 @@ class HirFunctionContextualTypingVisitorPassTest {
   void given__general_types_are_not_prepared__when__lambda_pass_runs__then__it_does_not_resolve_aliases_or_receivers() {
     final var root = HirTyIdentifierToTyTransformerPass.pass(
       Inf.codeToHir("val Fn = (value: int): int; val S = struct { val fn: Fn; }; new heap S { fn = (v) => v; }"),
-      new MachineTarget(64)
+      MachineTarget.T64
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     final var printer = new ToStringTreeHirVisitor();
@@ -356,7 +356,7 @@ class HirFunctionContextualTypingVisitorPassTest {
       () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].typeAnnotation().ty())),
       () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].resolvedTy())),
       () -> Assertions.assertEquals(Ty.INFER, functions.getLast().signature().parameters()[0].typeAnnotation().ty()),
-      () -> Assertions.assertEquals(Tys.fromString("int", new MachineTarget(64)),
+      () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64),
         functions.getLast().signature().parameters()[0].resolvedTy())
     );
   }
@@ -404,7 +404,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     declaration.resolvedTy(null);
     Assertions.assertNull(Tys.getConstructionTargetTy(target));
     HirFunctionContextualTypingVisitorPass.pass(root);
-    Assertions.assertEquals(Tys.fromString("int", new MachineTarget(64)),
+    Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64),
       functions.getFirst().signature().parameters()[0].resolvedTy(),
       () -> new ToStringTreeHirVisitor().render(root));
   }
@@ -440,7 +440,7 @@ class HirFunctionContextualTypingVisitorPassTest {
   }
 
   private static Hir.Expression prepare(final String code) {
-    final var root = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), new MachineTarget(64));
+    final var root = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), MachineTarget.T64);
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
     return root;

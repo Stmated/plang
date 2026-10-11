@@ -4,7 +4,18 @@
 
 # TODO
 
+### Better type resolving
+Check `given__tuple_with_union__when__parsed__then__source_and_constraint_are_preserved`
+The RHS tuple becomes a struct with first field as `int32 | bool`
+It should be `int32` since the literal is known, so it should not take the type from the LHS.
+But they should still match (which they should, since int32 is part of the union)
+
 ### Better separation of "ty()"
+The new `DynamicTy` is still not a good ideas -- since it allows us to create types which are not actually syntactically supported
+  We can create a `DynamicTy` that contains a `ty` that can only be created through code
+  This create problems in test cases where we create situations that are not actually yet needed to be supported, or cases that actually cannot happen.
+  Need to run an investigation to find all locations where a `DynamicTy` is created as a workaround, and then work to remove all of them.
+  Likely this means that we should remove `DynamicTy` and instead keep new fields in the specific expressions for differentiating what dev set and what is resolved.
 Currently for example a `Hir.Union` will always have `ty()` `Ty.VOID`, but it essentially gives back a `TyUnion` when "ran" (since types are never ran).
 So it feels a bit weird to have `Hir.Union` state that it gives `Ty.VOID` since it will never be ran.
 Same thing goes for `Hir.Array` where it acts a bit weird since if no elements given then it is a "type" but otherwise a "value"
@@ -14,6 +25,9 @@ then we have a set of resolvers which acts differently depending on the context 
 For example `TyResolverForResult`, `TyResolverForReturn`, `TyResolverForBreak`, `TyResolverForTypeAnnotation`, etc.
 Then each of them will have different rules depending on context, if it should adhere to DEADEND or not, et cetera.
 Because as things stand, it feels weird to have a `ty()` on the interface, since one form of Ty is not more *right* than the other, it's all context-based.
+
+See if DEADEND can be improved, so there is no need for two separate fields in an Expr.
+  So instead we can say "this is the ty of the expr, but it is DEADEND. So you can use one for guessed typing, but it ain't gonna happen in runtime"
 
 ### Updated test cases, thorough rework of how tests are done
 
@@ -283,7 +297,9 @@ I am well aware that the feature can make some syntax ambiguous
 
 ## Other
 
-* Replace `new MachineTarget(64)` with `MachineTarget.T64`
+* HirTyIdentifierToTyTransformerPass feels wrong. It converts from Identifier to BuiltInTy
+  * It should not be "Identifier" at this stage, since it is not actually pointing to something (which means it should have been replaced earlier)
+  * We should not keep the "Identifier" anyway, since in essence it will mean an unresolved Identifier in the tree, which should not be allowed
 
 * Should `"val f = (t: (uint8, uint8)) => t; f({ (1, 2) })"` actually be valid? What does it actually MEAN/DO?
 

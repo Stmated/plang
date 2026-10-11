@@ -26,8 +26,11 @@ public class HirTyCommonVisitorPass {
     return expr;
   }
 
-  public static void resolveAvailableTypes(final Hir.Expression expression) {
-    expression.visit(new Visitor(true, new HirTypeAnnotationResolver(expression)));
+  /// TODO: Delete the return from here! It is temporary while I try to figure out the tuple+union+identifire-resolved types
+  public static HirTypeAnnotationResolver resolveAvailableTypes(final Hir.Expression expr) {
+    final var annotationResolver = new HirTypeAnnotationResolver(expr);
+    expr.visit(new Visitor(true, annotationResolver));
+    return annotationResolver;
   }
 
   private record Visitor(boolean availableOnly, HirTypeAnnotationResolver annotations) implements HirVisitor {
@@ -35,13 +38,19 @@ public class HirTyCommonVisitorPass {
     @Override
     public void visitTuple(Hir.Tuple expr) {
       HirVisitor.super.visitTuple(expr);
-      HirTupleTyping.resolve(expr, availableOnly);
+      HirTupleTyping.resolve(expr, availableOnly, annotations);
     }
 
     @Override
     public void visitUnion(final Hir.Union expr) {
       HirVisitor.super.visitUnion(expr);
-      annotations.resolve(expr);
+
+      final var types = new Ty[expr.elements().length];
+      for (var i = 0; i < types.length; i++) {
+        types[i] = annotations.resolve(expr.elements()[i]);
+      }
+      final var unionType = Tys.union(types);
+      expr.unionTy(unionType);
     }
 
     @Override
@@ -75,9 +84,15 @@ public class HirTyCommonVisitorPass {
     }
 
     @Override
-    public void visitArray(Hir.Array expr) {
+    public void visitArray(final Hir.Array expr) {
       HirVisitor.super.visitArray(expr);
+
       expr.elementType(expr.elementType().resolve(annotations::resolve));
+//      expr.elementType(expr.elementType().resolve(e -> expr.arrayTy()));
+
+      // TODO: Why keep this if they are basically the same (I guess unless otherwise set by something else).
+      //        Feels like something can be simolified/changed
+      //expr.elementType(expr.elementType().computeIfAbsent(expr::arrayTy));
 
       var arrayElementTy = expr.elementType().ty();
       for (final var element : expr.elements()) {
@@ -121,15 +136,6 @@ public class HirTyCommonVisitorPass {
         final var literalValue = HirJavaUtil.resolveLiteralValue(expr.length());
         arrayLength = (literalValue == null) ? null : ((Number) literalValue).intValue();
       }
-
-        /*
-        if (arrayElementTy instanceof TyValueNumber vn) {
-          final var elementArray = expr.elements();
-          for (var i = 0; i < elementArray.length; i++) {
-            final var element = elementArray[i];
-          }
-        }
-        */
 
       // The element ty can still be INFER -- it will be used for late type decisions.
       final var arrayTy = new TyValueArray(arrayElementTy, arrayLength).intern();

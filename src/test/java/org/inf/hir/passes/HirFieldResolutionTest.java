@@ -45,7 +45,7 @@ class HirFieldResolutionTest {
       () -> assertEquals(valueField.ty(), value.rhs().ty()),
       () -> assertSame(Ty.VOID, value.ty()),
       () -> assertSame(Ty.BOOLEAN, flagField.ty()),
-      () -> assertEquals(Tys.fromString("uint8", new MachineTarget(64)), root.ty())
+      () -> assertEquals(Tys.fromString("uint8", MachineTarget.T64), root.ty())
     );
   }
 
@@ -137,8 +137,8 @@ class HirFieldResolutionTest {
     final var constructions = nodes(root, Hir.NewByBlock.class);
     final var outer = constructions.getFirst();
     final var inner = constructions.getLast();
-    final var uint8 = Tys.fromString("uint8", new MachineTarget(64));
-    final var uint16 = Tys.fromString("uint16", new MachineTarget(64));
+    final var uint8 = Tys.fromString("uint8", MachineTarget.T64);
+    final var uint16 = Tys.fromString("uint16", MachineTarget.T64);
     assertAll(
       () -> assertEquals(uint8, inner.fields()[0].rhs().ty()),
       () -> assertEquals(uint16, outer.fields()[1].rhs().ty()),

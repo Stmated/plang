@@ -3,6 +3,7 @@ package org.inf.hir.passes;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
 import org.inf.hir.HirTypeDefinitions;
@@ -204,7 +205,7 @@ public class HirLambdaLiftingTransformerPass {
             if (entry.toIdentifier() == transformedRhs) {
               entry.fromAssignment(expr);
               entry.fromDec(ass_lhs_dec);
-              ass_lhs_dec.typeAnnotation(new Hir.DynamicTy(transformedRhs.ty()));
+              ass_lhs_dec.typeAnnotation(new DynamicTy(transformedRhs.ty()));
               ass_lhs_dec.resolvedTy(transformedRhs.ty());
               break;
             }
@@ -279,7 +280,7 @@ public class HirLambdaLiftingTransformerPass {
 
           final var id = needsClosure.get(i);
           final var ty = id.ty();
-          final var typeAnnotation = new Hir.DynamicTy(ty);
+          final var typeAnnotation = new DynamicTy(ty);
 
           final var newParam = new Hir.Parameter(new Hir.Lexeme(id.name()), typeAnnotation, false, ty);
 
@@ -322,7 +323,7 @@ public class HirLambdaLiftingTransformerPass {
         final var newDec = new Hir.Dec(
           new Hir.Lexeme(randomName),
           Hir.MutabilityKind.CONSTANT,
-          new Hir.DynamicTy(transformed.ty()),
+          new DynamicTy(transformed.ty()),
           transformed.ty()
         );
 
@@ -362,7 +363,7 @@ public class HirLambdaLiftingTransformerPass {
         }
 
         @Override
-        public void visitFunctionSignatureReturnType(Hir.DynamicTy annotation) {
+        public void visitFunctionSignatureReturnType(DynamicTy annotation) {
         }
 
         @Override

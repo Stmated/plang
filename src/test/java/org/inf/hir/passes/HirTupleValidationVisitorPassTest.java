@@ -165,7 +165,7 @@ class HirTupleValidationVisitorPassTest {
   }
 
   private static Hir.Expression infer(String code) {
-    final var hir = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), new MachineTarget(64));
+    final var hir = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), MachineTarget.T64);
     HirIdentifierResolverVisitorPass.pass(hir, Hir.Identifier::target);
     return HirTyCommonVisitorPass.pass(hir);
   }

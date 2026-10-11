@@ -89,7 +89,7 @@ class HirTupleContextualTypingVisitorPassTest {
   void given__untyped_lambda_in_a_function_field__when__only_tuple_pass_runs__then__lambda_parameters_are_not_inferred() {
     final var root = HirTyIdentifierToTyTransformerPass.pass(
       Inf.codeToHir("val Fn = (value: int): int; val S = struct { val fn: Fn; }; new heap S { fn = (v) => v; }"),
-      new MachineTarget(64)
+      MachineTarget.T64
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     HirTupleSlotConversionVisitorPass.pass(root);
@@ -125,7 +125,7 @@ class HirTupleContextualTypingVisitorPassTest {
     "val t: (p1: uint8, p2: uint8) = if (true) then (1, 2) else { (2, p1 = 1) }; t"
   })
   void given__fresh_tuple_context__when__matched__then__destination_labels_and_integer_types_are_used(final String code) {
-    final var uint8 = Tys.fromString("uint8", new MachineTarget(64));
+    final var uint8 = Tys.fromString("uint8", MachineTarget.T64);
     final var expected = new TyStruct(new TyField[]{
       new TyField("p1", uint8),
       new TyField("p2", uint8)
@@ -136,7 +136,7 @@ class HirTupleContextualTypingVisitorPassTest {
   @Test
   void given__reordered_context__when__inference_is_repeated__then__source_entries_and_destination_layout_are_preserved() {
     final var root = HirTyIdentifierToTyTransformerPass.pass(
-      Inf.codeToHir("val t: (a: uint8, bool, b: uint16) = (true, b = 255u8, a = 1); t"), new MachineTarget(64)
+      Inf.codeToHir("val t: (a: uint8, bool, b: uint16) = (true, b = 255u8, a = 1); t"), MachineTarget.T64
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     prepareTupleEntries(root);
@@ -173,14 +173,14 @@ class HirTupleContextualTypingVisitorPassTest {
       () -> Assertions.assertEquals("b", tuple.children()[1].label().name()),
       () -> Assertions.assertEquals("a", tuple.children()[2].label().name()),
       () -> Assertions.assertEquals(1, conversions.size()),
-      () -> Assertions.assertEquals(Tys.fromString("uint16", new MachineTarget(64)), conversions.getFirst().targetTy())
+      () -> Assertions.assertEquals(Tys.fromString("uint16", MachineTarget.T64), conversions.getFirst().targetTy())
     );
   }
 
   @Test
   void given__prepared_tuple_entries__when__conversion_pass_runs__then__explicit_widening_is_preserved() {
     final var root = HirTyIdentifierToTyTransformerPass.pass(
-      Inf.codeToHir("val t: (int16, (uint8,)) = (255u8, (1,)); t"), new MachineTarget(64)
+      Inf.codeToHir("val t: (int16, (uint8,)) = (255u8, (1,)); t"), MachineTarget.T64
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     prepareTupleEntries(root);
@@ -207,7 +207,7 @@ class HirTupleContextualTypingVisitorPassTest {
     final var sourceType = Assertions.assertInstanceOf(TyValueNumberInteger.class, source.ty());
     Assertions.assertAll(
       () -> Assertions.assertEquals(expected, root.ty()),
-      () -> Assertions.assertEquals(Tys.fromString("int16", new MachineTarget(64)), conversion.targetTy()),
+      () -> Assertions.assertEquals(Tys.fromString("int16", MachineTarget.T64), conversion.targetTy()),
       () -> Assertions.assertEquals(8, sourceType.width().value()),
       () -> Assertions.assertEquals("255u8", source.content())
     );
@@ -233,7 +233,7 @@ class HirTupleContextualTypingVisitorPassTest {
     "val x = (255u8,); val t: (uint8, uint8) = (x[0], 2); t"
   })
   void given__tuple_context__when__fresh_pair_is_typed__then__expected_slots_are_used(String code) {
-    final var uint8 = Tys.fromString("uint8", new MachineTarget(64));
+    final var uint8 = Tys.fromString("uint8", MachineTarget.T64);
     final var expected = new TyStruct(new TyField[]{
       new TyField(null, uint8),
       new TyField(null, uint8)
@@ -260,7 +260,7 @@ class HirTupleContextualTypingVisitorPassTest {
     "int64 | 1 + 2"
   })
   void given__fitting_literal_or_lossless_widening__when__typed__then__destination_layout(String destination, String source) {
-    final var expected = Tys.fromString(destination, new MachineTarget(64));
+    final var expected = Tys.fromString(destination, MachineTarget.T64);
     Assertions.assertEquals(
       new TyStruct(new TyField[]{new TyField(null, expected)}),
       Inf.codeToThir("val t: (%s,) = (%s,); t".formatted(destination, source)).root().ty()
@@ -275,7 +275,7 @@ class HirTupleContextualTypingVisitorPassTest {
     "val f = (t: ((uint8, uint8), int16)) => t; f(((1, 2), 255u8))"
   })
   void given__nested_construction__when__typed__then__context_reaches_each_fresh_tuple(String code) {
-    final var target = new MachineTarget(64);
+    final var target = MachineTarget.T64;
     final var uint8 = Tys.fromString("uint8", target);
     Assertions.assertEquals(new TyStruct(new TyField[]{
       new TyField(null, new TyStruct(new TyField[]{
@@ -390,7 +390,7 @@ class HirTupleContextualTypingVisitorPassTest {
     "val t: (int16,) = ({ 255u8 },); t"
   })
   void given__resolved_tuple_entries__when__only_conversions_run__then__enclosing_types_are_not_resolved(final String code) {
-    final var root = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), new MachineTarget(64));
+    final var root = HirTyIdentifierToTyTransformerPass.pass(Inf.codeToHir(code), MachineTarget.T64);
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     prepareTupleEntries(root);
     Assertions.assertInstanceOf(Hir.Program.class, root).ty(Ty.BOOLEAN);
@@ -416,14 +416,14 @@ class HirTupleContextualTypingVisitorPassTest {
       () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty()),
       () -> Assertions.assertEquals(before, tuples.stream().map(Hir.Tuple::ty).toList()),
       () -> Assertions.assertEquals(1, conversions.size()),
-      () -> Assertions.assertEquals(Tys.fromString("int16", new MachineTarget(64)), conversions.getFirst().targetTy())
+      () -> Assertions.assertEquals(Tys.fromString("int16", MachineTarget.T64), conversions.getFirst().targetTy())
     );
   }
 
   @Test
   void given__unlinked_tuple__when__only_conversions_run__then__context_and_literals_are_unchanged() {
     final var root = HirTyIdentifierToTyTransformerPass.pass(
-      Inf.codeToHir("val t: (uint8,) = (1,); t"), new MachineTarget(64)
+      Inf.codeToHir("val t: (uint8,) = (1,); t"), MachineTarget.T64
     );
     HirIdentifierResolverVisitorPass.pass(root, Hir.Identifier::target);
     HirTyCommonVisitorPass.resolveAvailableTypes(root);

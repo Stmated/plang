@@ -1,6 +1,7 @@
 package org.inf.hir.passes;
 
 import org.inf.Inf;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.thir.raising.HirToThirRaising;
@@ -28,14 +29,14 @@ class HirDeadEndTest {
 
   private Hir.Function function(Hir.Expression body) {
     return new Hir.Function(
-      new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.DynamicTy(Ty.INFER), null),
+      new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTy(), null),
       body
     );
   }
 
   private Hir.ArrayAccess arrayAccess(Hir.Expression index) {
     return new Hir.ArrayAccess(
-      new Hir.Array(new Hir.Expression[]{integer()}, new Hir.DynamicTy(Ty.INTEGER), null, null, null),
+      new Hir.Array(new Hir.Expression[]{integer()}, new DynamicTy(Ty.INTEGER), null, null, null),
       index,
       null,
       null
@@ -211,7 +212,7 @@ class HirDeadEndTest {
     final var declaration = new Hir.Dec(
       new Hir.Lexeme("value"),
       Hir.MutabilityKind.IMMUTABLE,
-      new Hir.DynamicTy(Ty.INFER)
+      new DynamicTy()
     );
     final var fn = function(new Hir.Expressions(new Hir.Expression[]{
       new Hir.Assignment(
@@ -340,7 +341,7 @@ class HirDeadEndTest {
     assertEquals(2, iteration.children().length);
     assertInstanceOf(Hir.CompoundAssignment.class, iteration.children()[1]);
 
-    new HirToThirRaising(new MachineTarget(64)).raise(hir);
+    new HirToThirRaising(MachineTarget.T64).raise(hir);
 
     assertEquals(1, iteration.children().length);
     assertEquals(Ty.DEADEND, iteration.children()[0].ty());

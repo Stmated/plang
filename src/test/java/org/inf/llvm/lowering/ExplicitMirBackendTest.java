@@ -51,7 +51,7 @@ class ExplicitMirBackendTest {
       wide
       """, InfRunOptions.builder().optLevel(2).build()).resultValue());
     assertAll(
-      () -> assertArrayEquals(new Ty[]{Ty.STRING, Ty.BOOLEAN, Tys.fromString("int", new MachineTarget(64))},
+      () -> assertArrayEquals(new Ty[]{Ty.STRING, Ty.BOOLEAN, Tys.fromString("int", MachineTarget.T64)},
         result.type().types()),
       () -> assertEquals(2, result.variant()),
       () -> assertEquals(42, result.payload())

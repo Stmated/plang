@@ -2,6 +2,7 @@ package org.inf.hir.passes;
 
 import org.inf.Inf;
 import org.inf.exceptions.InvalidTypeConversionException;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.thir.raising.HirToThirRaising;
@@ -97,7 +98,7 @@ class HirGeneratedSequenceTransformerPassTest {
         source, new Hir.Literal("9", Ty.INTEGER)
       }, null, true);
 
-      var raised = new HirToThirRaising(new MachineTarget(64)).raise(new Hir.Program(generated)).root();
+      var raised = new HirToThirRaising(MachineTarget.T64).raise(new Hir.Program(generated)).root();
       HirTyCommonVisitorPass.pass(raised);
       raised = HirGeneratedSequenceTransformerPass.pass(raised);
 
@@ -111,11 +112,11 @@ class HirGeneratedSequenceTransformerPassTest {
   @Test
   void resolvedNonReturningCallStopsGeneratedSequencingEvenInsideAssignment() {
     final var signature = new Hir.FunctionSignature(
-      new Hir.Parameter[0], false, new Hir.DynamicTy(Ty.DEADEND), null
+      new Hir.Parameter[0], false, new DynamicTy(Ty.DEADEND), null
     );
     final var call = new Hir.Call(signature, new Hir.Argument[0], false, null);
     final var declaration = new Hir.Dec(
-      new Hir.Lexeme("value"), Hir.MutabilityKind.MUTABLE, new Hir.DynamicTy(Ty.INTEGER)
+      new Hir.Lexeme("value"), Hir.MutabilityKind.MUTABLE, new DynamicTy(Ty.INTEGER)
     );
     final var assignment = new Hir.Assignment(declaration, call);
     final var literal = new Hir.Literal("9", Ty.INTEGER);
@@ -123,7 +124,7 @@ class HirGeneratedSequenceTransformerPassTest {
       assignment, literal
     }, null, true);
 
-    final var thir = new HirToThirRaising(new MachineTarget(64)).raise(new Hir.Program(generated));
+    final var thir = new HirToThirRaising(MachineTarget.T64).raise(new Hir.Program(generated));
 
     assertAll(
       () -> assertEquals(Ty.DEADEND, call.ty()),

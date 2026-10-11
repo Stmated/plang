@@ -68,7 +68,7 @@ class ThirToMirLoweringTest {
   @Test
   void given__noncontinuing_script_without_returns__when__lowered__then__no_normal_return_is_emitted() {
     final var root = new Hir.Program(new Hir.Loop(new Hir.LoopContinue()));
-    final var thir = new HirToThirRaising(new MachineTarget(64)).raise(root);
+    final var thir = new HirToThirRaising(MachineTarget.T64).raise(root);
     final var module = ThirToMirLowering.lower(thir);
     assertAll(
       () -> assertEquals(Ty.DEADEND, root.ty()),
@@ -622,7 +622,7 @@ class ThirToMirLoweringTest {
   void given__conversion_operand_exits__when__lowered__then__conversion_is_not_emitted() {
     final var hir = assertInstanceOf(Hir.Program.class, Inf.codeToHir("return 7"));
     hir.expressions(new Hir.Convert(hir.expressions(), Ty.LONG));
-    final var typed = new HirToThirRaising(new MachineTarget(64)).raise(hir);
+    final var typed = new HirToThirRaising(MachineTarget.T64).raise(hir);
     final var module = ThirToMirLowering.lower(typed);
     assertAll(
       () -> assertEquals(Ty.INTEGER, module.script().signature().returnType()),
@@ -836,7 +836,7 @@ class ThirToMirLoweringTest {
     final var root = new Hir.Program(new Hir.Expressions(new Hir.Expression[]{
       loop, new Hir.Return(new Hir.Literal("7", Ty.INTEGER))
     }, Ty.INTEGER));
-    final var thir = new HirToThirRaising(new MachineTarget(64)).raise(root);
+    final var thir = new HirToThirRaising(MachineTarget.T64).raise(root);
     final var module = ThirToMirLowering.lower(thir);
     assertEquals(7, new InterpreterCodeExecutor().execute(module.initNode()));
     assertEquals(1, module.script().blocks().stream().filter(block -> block.terminator() instanceof Mir.Branch).count());
@@ -856,7 +856,7 @@ class ThirToMirLoweringTest {
     final var root = new Hir.Program(new Hir.Expressions(new Hir.Expression[]{
       new Hir.Loop(tuple, Ty.VOID), new Hir.Return(new Hir.Literal("7", Ty.INTEGER))
     }, Ty.INTEGER));
-    final var thir = new HirToThirRaising(new MachineTarget(64)).raise(root);
+    final var thir = new HirToThirRaising(MachineTarget.T64).raise(root);
     final var module = ThirToMirLowering.lower(thir);
     assertAll(
       () -> assertEquals(7, new InterpreterCodeExecutor().execute(module.initNode())),
@@ -869,7 +869,7 @@ class ThirToMirLoweringTest {
     for (final var transfer : List.of(new Hir.LoopBreak(null), new Hir.LoopContinue())) {
       final var body = new Hir.Expressions(new Hir.Expression[]{transfer, new Hir.Literal("1", Ty.INTEGER)}, Ty.INTEGER);
       final var root = new Hir.Program(new Hir.Loop(body, Ty.VOID));
-      final var thir = new HirToThirRaising(new MachineTarget(64)).raise(root);
+      final var thir = new HirToThirRaising(MachineTarget.T64).raise(root);
       assertThrows(UnreachableCodeException.class, () -> ThirToMirLowering.lower(thir));
     }
   }

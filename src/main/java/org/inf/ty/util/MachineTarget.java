@@ -4,5 +4,5 @@ public record MachineTarget(
   int pointerBitSize
 ) {
 
-  public static final MachineTarget T64 = new MachineTarget(64);
+  public static final MachineTarget T64 = MachineTarget.T64;
 }

@@ -1,6 +1,7 @@
 package org.inf.ty.util;
 
 import org.inf.Inf;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.hir.passes.HirTyCommonVisitorPass;
@@ -19,7 +20,7 @@ import java.util.stream.Stream;
 class TysTest {
 
   static Stream<Arguments> callableTargets() {
-    final var integer = Tys.fromString("int", new MachineTarget(64));
+    final var integer = Tys.fromString("int", MachineTarget.T64);
     final var function = new TyFn(new TyParam[]{new TyParam("value", integer)}, false, integer);
     final var prefix = """
       val fn = (value: int): int => value;
@@ -159,18 +160,18 @@ class TysTest {
 
   static Stream<Arguments> bindingTargets() {
     final var declaration = new Hir.Dec(
-      new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(Ty.LONG), Ty.INTEGER
+      new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new DynamicTy(Ty.LONG), Ty.INTEGER
     );
-    final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), new Hir.DynamicTy(Ty.LONG), false, Ty.INTEGER);
+    final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), new DynamicTy(Ty.LONG), false, Ty.INTEGER);
     final var function = new TyFn(new TyParam[0], false, Ty.INTEGER);
     return Stream.of(
       Arguments.of(declaration, Ty.INTEGER),
-      Arguments.of(new Hir.Dec(new Hir.Lexeme("unresolved"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(Ty.INTEGER)), null),
+      Arguments.of(new Hir.Dec(new Hir.Lexeme("unresolved"), Hir.MutabilityKind.IMMUTABLE, new DynamicTy(Ty.INTEGER)), null),
       Arguments.of(new Hir.Identifier(declaration.lexeme().name(), declaration), Ty.INTEGER),
       Arguments.of(parameter, Ty.INTEGER),
       Arguments.of(new Hir.Identifier(parameter.lexeme().name(), parameter), Ty.INTEGER),
-      Arguments.of(new Hir.Parameter(new Hir.Lexeme("unresolved"), new Hir.DynamicTy(Ty.INTEGER), false, null), null),
-      Arguments.of(new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.DynamicTy(Ty.INTEGER), function), function),
+      Arguments.of(new Hir.Parameter(new Hir.Lexeme("unresolved"), new DynamicTy(Ty.INTEGER), false, null), null),
+      Arguments.of(new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTy(Ty.INTEGER), function), function),
       Arguments.of(noncontinuingMember(), Ty.LONG)
     );
   }
@@ -207,17 +208,17 @@ class TysTest {
 
   static Stream<Arguments> assignmentContexts() {
     final var declaration = new Hir.Dec(
-      new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(Ty.LONG), Ty.INTEGER
+      new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new DynamicTy(Ty.LONG), Ty.INTEGER
     );
     final var partial = new TyValueArray(Ty.INFER, 2);
     return Stream.of(
       Arguments.of(declaration, Ty.LONG),
-      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(Ty.INFER), Ty.INTEGER), null),
-      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(partial),
+      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new DynamicTy(), Ty.INTEGER), null),
+      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new DynamicTy(partial),
         new TyValueArray(Ty.INTEGER, 2)), partial),
-      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(Ty.INFER), Ty.INTEGER), null),
+      Arguments.of(new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new DynamicTy(), Ty.INTEGER), null),
       Arguments.of(new Hir.Identifier(declaration.lexeme().name(), declaration), Ty.INTEGER),
-      Arguments.of(new Hir.Parameter(new Hir.Lexeme("p"), new Hir.DynamicTy(Ty.INFER), false, Ty.INTEGER), Ty.INTEGER),
+      Arguments.of(new Hir.Parameter(new Hir.Lexeme("p"), new DynamicTy(), false, Ty.INTEGER), Ty.INTEGER),
       Arguments.of(noncontinuingMember(), Ty.LONG)
     );
   }
@@ -264,7 +265,7 @@ class TysTest {
   void given__return_context__when__queried__then__declared_constraints_and_inferred_types_are_selected_separately(
     final Ty declared, final Ty resolved, final Ty expected, final Ty useSiteContext, final Ty useSiteExpected
   ) {
-    final var annotation = new Hir.DynamicTy(declared == null ? Ty.INFER : declared);
+    final var annotation = new DynamicTy(declared == null ? Ty.INFER : declared);
     final var signature = new Hir.FunctionSignature(
       new Hir.Parameter[0], false, annotation, resolved == null ? null : new TyFn(new TyParam[0], false, resolved)
     );

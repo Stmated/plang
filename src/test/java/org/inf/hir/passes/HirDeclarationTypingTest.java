@@ -70,7 +70,7 @@ class HirDeclarationTypingTest {
     var root = Inf.codeToThir(code).root();
     final var declaration = declaration(root);
     final var annotation = declaration.typeAnnotation();
-    final var raising = new HirToThirRaising(new MachineTarget(64));
+    final var raising = new HirToThirRaising(MachineTarget.T64);
     for (var i = 0; i < 3; i++) {
       final var result = root;
       Assertions.assertAll(
@@ -150,7 +150,7 @@ class HirDeclarationTypingTest {
     );
     final var literal = literals.getFirst();
     literal.ty(Ty.SHORT);
-    final var raising = new HirToThirRaising(new MachineTarget(64));
+    final var raising = new HirToThirRaising(MachineTarget.T64);
     for (var i = 0; i < 2; i++) {
       root = raising.raise(root).root();
       final var result = root;
@@ -181,7 +181,7 @@ class HirDeclarationTypingTest {
     final var array = Assertions.assertInstanceOf(Hir.Array.class, annotation.children()[1].value());
     final var elementAnnotation = array.elementType();
 
-    new HirToThirRaising(new MachineTarget(64)).raise(root);
+    new HirToThirRaising(MachineTarget.T64).raise(root);
 
     Assertions.assertAll(
       () -> Assertions.assertSame(annotation, declaration.typeAnnotation().expression()),

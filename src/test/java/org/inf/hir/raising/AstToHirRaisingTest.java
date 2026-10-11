@@ -13,6 +13,7 @@ import org.inf.ast.Ast.Literal;
 import org.inf.ast.Ast.Return;
 import org.inf.hir.AstToHirRaising;
 import org.inf.exceptions.UnexpectedExpressionException;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.Hir.Call;
 import org.inf.hir.Hir.Function;
@@ -146,7 +147,7 @@ class AstToHirRaisingTest {
   @Test
   void given__explicit_and_omitted_annotations__when__raised__then__source_syntax_is_preserved_without_type_resolution() {
     final var root = Inf.codeToHir("val v: int = 7; val use = (p: bool, q): bool => p; [7;int;1]; [7]");
-    final var annotations = new ArrayList<Hir.DynamicTy>();
+    final var annotations = new ArrayList<DynamicTy>();
     root.visit(new HirVisitor() {
       @Override
       public void visitDec(final Hir.Dec declaration) {
@@ -161,13 +162,13 @@ class AstToHirRaisingTest {
       }
 
       @Override
-      public void visitFunctionSignatureReturnType(final Hir.DynamicTy annotation) {
+      public void visitFunctionSignatureReturnType(final DynamicTy annotation) {
         annotations.add(annotation);
         HirVisitor.super.visitFunctionSignatureReturnType(annotation);
       }
 
       @Override
-      public void visitArrayElementType(final Hir.DynamicTy annotation) {
+      public void visitArrayElementType(final DynamicTy annotation) {
         annotations.add(annotation);
         HirVisitor.super.visitArrayElementType(annotation);
       }

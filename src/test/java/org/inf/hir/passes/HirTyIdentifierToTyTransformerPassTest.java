@@ -1,6 +1,7 @@
 package org.inf.hir.passes;
 
 import org.inf.Inf;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.thir.raising.HirToThirRaising;
@@ -36,20 +37,19 @@ class HirTyIdentifierToTyTransformerPassTest {
     final var root = Inf.codeToHir(code);
     final var annotation = sourceAnnotation(root);
     final var source = assertInstanceOf(Hir.Identifier.class, annotation.get().expression());
-    final var target = new MachineTarget(64);
     assertAll(
       () -> assertSame(Ty.INFER, annotation.get().ty()),
       () -> assertEquals(name, source.name()),
       () -> assertNull(source.ty())
     );
 
-    HirTyIdentifierToTyTransformerPass.pass(root, target);
+    HirTyIdentifierToTyTransformerPass.pass(root, MachineTarget.T64);
 
     assertAll(
-      () -> assertEquals(Tys.fromString(name, target), annotation.get().ty()),
-      () -> assertNull(annotation.get().expression()),
-      () -> assertEquals(name, source.name()),
-      () -> assertNull(source.target())
+      () -> assertEquals(Tys.fromString(name, MachineTarget.T64), annotation.get().ty(), "Should be %s".formatted(name)),
+      () -> assertNull(annotation.get().expression(), "Should not keep expression"),
+      () -> assertEquals(name, source.name(), "Identifier name should be parameterized input"),
+      () -> assertNull(source.target(), "Identifier target should be null")
     );
   }
 
@@ -68,7 +68,7 @@ class HirTyIdentifierToTyTransformerPassTest {
     final var tuple = assertInstanceOf(Hir.Tuple.class, annotation.get().expression());
     final var integer = assertInstanceOf(Hir.Identifier.class, tuple.children()[0].value());
     final var booleanType = assertInstanceOf(Hir.Identifier.class, tuple.children()[1].value());
-    final var target = new MachineTarget(64);
+    final var target = MachineTarget.T64;
 
     HirTyIdentifierToTyTransformerPass.pass(root, target);
 
@@ -130,7 +130,7 @@ class HirTyIdentifierToTyTransformerPassTest {
     final var typeReference = references.getFirst();
     final var valueReference = references.getLast();
 
-    final var typed = new HirToThirRaising(new MachineTarget(64)).raise(root).root();
+    final var typed = new HirToThirRaising(MachineTarget.T64).raise(root).root();
 
     final var declaration = assertInstanceOf(Hir.Dec.class, valueReference.target());
     assertAll(
@@ -143,10 +143,10 @@ class HirTyIdentifierToTyTransformerPassTest {
     );
   }
 
-  private static Supplier<Hir.DynamicTy> sourceAnnotation(final Hir.Expression root) {
-    final var found = new ArrayList<Supplier<Hir.DynamicTy>>();
+  private static Supplier<DynamicTy> sourceAnnotation(final Hir.Expression root) {
+    final var found = new ArrayList<Supplier<DynamicTy>>();
     root.visit(new HirVisitor() {
-      private void add(final Supplier<Hir.DynamicTy> annotation) {
+      private void add(final Supplier<DynamicTy> annotation) {
         if (annotation.get().expression() != null) {
           found.add(annotation);
         }

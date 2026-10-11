@@ -39,11 +39,11 @@ public class HirTupleContextVisitorPass {
 
     @Override
     public void visitTuple(final Hir.Tuple expression) {
-      if (expected instanceof final TyStruct tuple && tuple.tuple()) {
-        final var slots = HirTupleMatching.match(expression, tuple);
-        expression.contextualType(slots == null ? null : tuple);
+      if (expected instanceof final TyStruct expectedStruct && expectedStruct.tuple()) {
+        final var slots = HirTupleMatching.match(expression, expectedStruct);
+        expression.contextualType(slots == null ? null : expectedStruct);
         if (slots != null) {
-          expression.visit(new EntryVisitor(tuple, slots));
+          expression.visit(new EntryVisitor(expectedStruct, slots));
         }
       }
     }

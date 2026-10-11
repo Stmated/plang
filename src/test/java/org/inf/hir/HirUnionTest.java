@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class HirUnionTest {
 
-  private static final Ty INT = Tys.fromString("int", new MachineTarget(64));
+  private static final Ty INT = Tys.fromString("int", MachineTarget.T64);
 
   @Test
   void given__equivalent_function_alias_members__when__typed__then__the_union_simplifies_without_losing_source_members() {
@@ -211,6 +211,19 @@ class HirUnionTest {
       () -> assertEquals(expectedFunctions, functions.size()),
       () -> assertTrue(functions.stream().allMatch(function -> function.signature().parameters().length == 0)),
       () -> assertEquals(Tys.union(INT, Ty.BOOLEAN), root.ty())
+    );
+  }
+
+  @Test
+  void given__tuple_with_union__when__parsed__then__source_and_constraint_are_preserved() {
+
+    final var root = Inf.codeToThir("val v: (int | bool, string) = (7, \"label\"); v").root();
+    final var constraint = assertInstanceOf(TyStruct.class, declaration(root, "v").typeAnnotation().ty()).fields()[0].ty();
+    final var union = nodes(root, Hir.Union.class).getFirst();
+
+    assertAll(
+      () -> assertEquals(Tys.union(INT, Ty.BOOLEAN), constraint),
+      () -> assertSame(Ty.VOID, union.ty())
     );
   }
 

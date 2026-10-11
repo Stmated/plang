@@ -59,7 +59,7 @@ class HirTupleTypingTest {
   })
   void given__tuple_read__when__typed__then__named_and_positional_access_resolve_slots(final String code, final String type) {
     Assertions.assertTrue(TypeComparison.sameValueType(
-      Inf.codeToThir(code).root().ty(), Tys.fromString(type, new MachineTarget(64))
+      Inf.codeToThir(code).root().ty(), Tys.fromString(type, MachineTarget.T64)
     ));
   }
 
@@ -91,8 +91,8 @@ class HirTupleTypingTest {
     });
     final var expression = tuples.getFirst();
     Assertions.assertEquals(1, expression.children().length);
-    HirTyCommonVisitorPass.resolveAvailableTypes(expression.children()[0].value());
-    HirTupleTyping.resolve(expression);
+    final var annotationResolver = HirTyCommonVisitorPass.resolveAvailableTypes(expression.children()[0].value());
+    HirTupleTyping.resolve(expression, false, annotationResolver);
     Assertions.assertEquals(tuple(memberType), expression.ty());
   }
 
@@ -125,7 +125,7 @@ class HirTupleTypingTest {
     "val f = (t: (int, bool)): (int, bool) => t; f(t = (1, true))"
   })
   void given__matching_annotations__when__typed__then__same_layout_metadata_is_accepted(String code) {
-    final var intType = Tys.fromString("int", new MachineTarget(64));
+    final var intType = Tys.fromString("int", MachineTarget.T64);
     Assertions.assertEquals(tuple(intType, Ty.BOOLEAN), Inf.codeToThir(code).root().ty());
   }
 

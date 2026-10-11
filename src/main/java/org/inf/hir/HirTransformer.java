@@ -68,7 +68,7 @@ public interface HirTransformer {
     return expr;
   }
 
-  default Hir.DynamicTy transformArrayElementType(final Hir.DynamicTy expr) {
+  default DynamicTy transformArrayElementType(final DynamicTy expr) {
     return expr.transform(this);
   }
 
@@ -146,7 +146,7 @@ public interface HirTransformer {
     return batch(expr, Hir.Parameter.class);
   }
 
-  default Hir.DynamicTy transformFunctionSignatureReturnType(final Hir.DynamicTy expr) {
+  default DynamicTy transformFunctionSignatureReturnType(final DynamicTy expr) {
     return expr.transform(this);
   }
 
@@ -230,7 +230,7 @@ public interface HirTransformer {
     return expect(expr.transform(this), Hir.Lexeme.class);
   }
 
-  default Hir.DynamicTy transformParameterType(final Hir.DynamicTy expr) {
+  default DynamicTy transformParameterType(final DynamicTy expr) {
     return expr.transform(this);
   }
 
@@ -290,7 +290,7 @@ public interface HirTransformer {
     return expect(expr.transform(this), Hir.Lexeme.class);
   }
 
-  default Hir.DynamicTy transformDecType(final Hir.DynamicTy expr) {
+  default DynamicTy transformDecType(final DynamicTy expr) {
     return expr.transform(this);
   }
 

@@ -1,6 +1,7 @@
 package org.inf.hir.passes;
 
 import org.inf.Inf;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
@@ -185,7 +186,7 @@ class HirLambdaLiftingIdentityTest {
     final var references = new ArrayList<Hir.Identifier>();
     function.visit(new HirVisitor() {
       @Override
-      public void visitFunctionSignatureReturnType(final Hir.DynamicTy annotation) {
+      public void visitFunctionSignatureReturnType(final DynamicTy annotation) {
       }
 
       @Override
@@ -276,10 +277,10 @@ class HirLambdaLiftingIdentityTest {
   @Test
   void inlineLiftedCallReceivesItsCapture() {
     final var declaration = new Hir.Dec(
-      new Hir.Lexeme("x"), Hir.MutabilityKind.IMMUTABLE, new Hir.DynamicTy(Ty.INTEGER)
+      new Hir.Lexeme("x"), Hir.MutabilityKind.IMMUTABLE, new DynamicTy(Ty.INTEGER)
     );
     final var function = new Hir.Function(
-      new Hir.FunctionSignature(new Hir.Parameter[0], false, new Hir.DynamicTy(Ty.INFER), null),
+      new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTy(), null),
       new Hir.Return(new Hir.Identifier(declaration.lexeme().name(), declaration))
     );
     final var program = new Hir.Program(new Hir.Expressions(new Hir.Expression[]{

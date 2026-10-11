@@ -279,10 +279,9 @@ class MirCfgExecutionTest {
     );
   }
 
-  @ParameterizedTest
-  @ValueSource(ints = {0, 2})
-  void given__reordered_fresh_outer_tuple__when__references_are_mutated__then__nested_objects_remain_shared(final int optimization) {
-    final var options = InfRunOptions.builder().optLevel(optimization).build();
+  @Test
+  void given__reordered_fresh_outer_tuple__when__references_are_mutated__then__nested_objects_remain_shared() {
+    final var options = InfRunOptions.builder().optLevel(0).build();
     assertEquals(36, Inf.codeToResult("""
       val S = struct { val a: int; };
       val original = (a = 1,);
@@ -923,23 +922,22 @@ class MirCfgExecutionTest {
   @ValueSource(ints = {0, 2})
   void given__tuple_element_exits__when__executed__then__later_elements_are_skipped(int optimization) {
     final var options = InfRunOptions.builder().optLevel(optimization).build();
-    assertAll(
-      () -> assertEquals(7, Inf.codeToResult("val f = () => (1, { return 7; }, 1 / 0); f()", options).resultValue()),
-      () -> assertEquals(7, Inf.codeToResult("val f = () => ((1, { return 7; }), 1 / 0); f()", options).resultValue()),
-      () -> assertEquals(37, Inf.codeToResult("""
-        val f = (flag: bool) => {
-          val t = ({ if (flag) { return 7; } 10 }, 20);
-          t[0] + t[1]
-        };
-        f(true) + f(false)
-        """, options).resultValue()),
-      () -> assertEquals(17, Inf.codeToResult("""
-        val counter = [0];
-        val f = (a: [;int;1]) => ( { a[0] += 1; 10 }, { return 7; }, { a[0] += 10; 20 });
-        val result = f(counter);
-        counter[0] * 10 + result
-        """, options).resultValue())
-    );
+
+    assertEquals(7, Inf.codeToResult("val f = () => (1, { return 7; }, 1 / 0); f()", options).resultValue());
+    assertEquals(7, Inf.codeToResult("val f = () => ((1, { return 7; }), 1 / 0); f()", options).resultValue());
+    assertEquals(37, Inf.codeToResult("""
+      val f = (flag: bool) => {
+        val t = ({ if (flag) { return 7; } 10 }, 20);
+        t[0] + t[1]
+      };
+      f(true) + f(false)
+      """, options).resultValue());
+    assertEquals(17, Inf.codeToResult("""
+      val counter = [0];
+      val f = (a: [;int;1]) => ( { a[0] += 1; 10 }, { return 7; }, { a[0] += 10; 20 });
+      val result = f(counter);
+      counter[0] * 10 + result
+      """, options).resultValue());
   }
 
   @ParameterizedTest

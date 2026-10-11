@@ -1,6 +1,7 @@
 package org.inf.hir.passes;
 
 import lombok.experimental.UtilityClass;
+import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 
@@ -17,7 +18,7 @@ public class HirTupleSyntaxValidationVisitorPass {
     private boolean inAnnotation;
     private boolean inTuple;
 
-    private void visitAnnotation(final Hir.DynamicTy annotation) {
+    private void visitAnnotation(final DynamicTy annotation) {
       final var outer = inAnnotation;
       try {
         inAnnotation = true;
@@ -28,22 +29,22 @@ public class HirTupleSyntaxValidationVisitorPass {
     }
 
     @Override
-    public void visitDecType(final Hir.DynamicTy expression) {
+    public void visitDecType(final DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitParameterType(final Hir.DynamicTy expression) {
+    public void visitParameterType(final DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitFunctionSignatureReturnType(final Hir.DynamicTy expression) {
+    public void visitFunctionSignatureReturnType(final DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitArrayElementType(final Hir.DynamicTy expression) {
+    public void visitArrayElementType(final DynamicTy expression) {
       visitAnnotation(expression);
     }
 

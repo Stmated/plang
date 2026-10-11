@@ -10,6 +10,7 @@ import org.inf.util.ArrayUtils;
 
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /// Resolves source type syntax without treating arbitrary value expressions as types.
 final class HirTypeAnnotationResolver {
@@ -28,6 +29,10 @@ final class HirTypeAnnotationResolver {
     return resolvedType(expr);
   }
 
+  Ty resolveSilently(final Hir.Expression expr) {
+    return resolvedType(expr);
+  }
+
   private Ty resolvedType(final Hir.Expression expr) {
     final var cached = resolved.get(expr);
     if (cached != null) {
@@ -36,28 +41,17 @@ final class HirTypeAnnotationResolver {
     final var type = switch (expr) {
       case Hir.Identifier identifier -> resolvedType(definitions.definition(identifier.target()));
       case Hir.Array array -> array.arrayTy();
-      case Hir.Union union -> {
-        final var types = new Ty[union.elements().length];
-        for (var i = 0; i < types.length; i++) {
-          types[i] = resolvedType(union.elements()[i]);
-        }
-        final var unionType = ArrayUtils.any(types, Tys::containsInferred) ? Ty.INFER : Tys.union(types);
-        union.unionTy(unionType);
-        yield unionType;
-      }
-      case Hir.Tuple tuple -> {
-        final var entries = tuple.children();
-        final var fields = new TyField[entries.length];
-        for (var i = 0; i < fields.length; i++) {
-          final var entry = entries[i];
-          fields[i] = new TyField(entry.label() == null ? null : entry.label().name(), resolvedType(entry.value()));
-        }
-        final var tupleType = new TyStruct(fields, true).intern();
-        tuple.ty(tupleType);
-        yield tupleType;
-      }
+      case Hir.Union union -> union.unionTy();
+      case Hir.Tuple tuple -> tuple.resolvedTy();
+      case Hir.Dec dec -> dec.resolvedTy();
+      case Hir.Struct s -> s.ty();
+      case Hir.Parameter param -> param.resolvedTy();
+      case Hir.Block block -> resolvedType(block.children());
+      case Hir.Return ret -> resolvedType(ret.expression());
       default -> expr.ty();
     };
+
+    // TODO: Replace the "containsInferred"? We should remove the whole cache anyway....
     if (!Tys.containsInferred(type)) {
       resolved.put(expr, type);
     }

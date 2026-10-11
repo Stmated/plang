@@ -45,13 +45,13 @@ class HirBuiltInTyTest {
     "missing"
   })
   void given__unrecognized_name__when__resolved__then__no_builtin_node_is_created(final String name) {
-    assertNull(Hir.BuiltInTy.fromString(name, new MachineTarget(64)));
+    assertNull(Hir.BuiltInTy.fromString(name, MachineTarget.T64));
   }
 
   @Test
   void given__builtin_leaf__when__visited_and_transformed__then__its_specialized_hooks_are_used() {
-    final var expression = Hir.BuiltInTy.fromString("bool", new MachineTarget(64));
-    final var replacement = Hir.BuiltInTy.fromString("int", new MachineTarget(64));
+    final var expression = Hir.BuiltInTy.fromString("bool", MachineTarget.T64);
+    final var replacement = Hir.BuiltInTy.fromString("int", MachineTarget.T64);
     final var visited = new ArrayList<Hir.Expression>();
     expression.visit(new HirVisitor() {
       @Override

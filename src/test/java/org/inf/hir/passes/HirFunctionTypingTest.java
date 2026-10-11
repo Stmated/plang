@@ -28,7 +28,7 @@ class HirFunctionTypingTest {
     final var signature = signature("val Fn = (value: %s): %s; val f: Fn = (p) => p; f".formatted(type, type));
     final var parameter = signature.parameters()[0];
     final var annotation = parameter.typeAnnotation();
-    final var destination = Tys.fromString(type, new MachineTarget(64));
+    final var destination = Tys.fromString(type, MachineTarget.T64);
     final var expected = new TyFn(new TyParam[]{new TyParam("value", destination)}, false, destination);
 
     HirFunctionTyping.contextualize(signature, expected);
