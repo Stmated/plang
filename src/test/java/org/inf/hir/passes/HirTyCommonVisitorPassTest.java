@@ -99,8 +99,8 @@ class HirTyCommonVisitorPassTest {
     final var root = HirTyCommonVisitorPass.pass(new Hir.Program(range));
     Assertions.assertAll(
       () -> Assertions.assertSame(Ty.DEADEND, range.ty().completionTy()),
-      () -> Assertions.assertEquals(new TyValueArray(Ty.INVALID, null), range.rangeTy()),
-      () -> Assertions.assertEquals(range.rangeTy(), HirExprs.getIndexingAccessorTy(range)),
+      () -> Assertions.assertEquals(new TyValueArray(Ty.INVALID, null), Tys.structuralTy(range.ty())),
+      () -> Assertions.assertEquals(Tys.structuralTy(range.ty()), HirExprs.getIndexingAccessorTy(range)),
       () -> Assertions.assertSame(Ty.INTEGER, root.ty())
     );
   }
@@ -145,7 +145,7 @@ class HirTyCommonVisitorPassTest {
       () -> Assertions.assertTrue(TypeComparison.same(deadEnd ? Ty.DEADEND : uint8, access.ty().completionTy())),
       () -> Assertions.assertTrue(TypeComparison.same(uint8, HirExprs.getIndexedTy(access))),
       () -> Assertions.assertSame(HirExprs.getIndexedTy(access), HirExprs.getBindingTy(access)),
-      () -> Assertions.assertSame(HirExprs.getIndexedTy(access), access.indexedTy())
+      () -> Assertions.assertSame(HirExprs.getIndexedTy(access), Tys.structuralTy(access.ty()))
     );
   }
 

@@ -40,7 +40,7 @@ public final class HirTypeAnnotationResolver {
     }
     final var type = switch (expr) {
       case Hir.Identifier identifier -> resolvedType(definitions.definition(identifier.target()));
-      case Hir.Array array -> array.arrayTy();
+      case Hir.Array array -> Tys.structuralTy(array.ty());
       case Hir.Union union -> union.unionTy();
       case Hir.Tuple tuple -> tuple.resolvedTy();
       case Hir.Dec dec -> dec.resolvedTy();

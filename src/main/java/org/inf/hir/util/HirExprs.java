@@ -127,7 +127,7 @@ public class HirExprs {
   /// Reads the selected element or slice independently of receiver/accessor completion.
   @Nullable
   public static Ty getIndexedTy(final Hir.ArrayAccess access) {
-    return access.indexedTy();
+    return Tys.structuralTy(access.ty());
   }
 
   /// Looks up a name in the current layout without retaining the result on an expression.

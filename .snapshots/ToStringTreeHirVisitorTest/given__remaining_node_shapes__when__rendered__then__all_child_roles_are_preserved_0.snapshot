@@ -12,8 +12,7 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
       (ty null)
       (children
         (Array
-          (ty VOID)
-          (arrayTy (array size=1 INTEGER))
+          (ty (completion VOID structural (array size=1 INTEGER)))
           (elementType
             (DynamicTy
               (ty INTEGER)
@@ -27,8 +26,7 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
               (content "7")
               (ty INTEGER))))
         (ArrayAccess
-          (ty VOID)
-          (indexedTy INTEGER)
+          (ty (completion VOID structural INTEGER))
           (target
             (Identifier
               (name "name")
@@ -109,7 +107,6 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
               (target null))))
         (Range
           (ty null)
-          (rangeTy null)
           (lower
             (Literal
               (content "7")

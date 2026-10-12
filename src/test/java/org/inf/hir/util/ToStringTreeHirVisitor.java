@@ -5,10 +5,10 @@ import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.*;
 import org.inf.ty.util.TyNamedConstants;
-import org.inf.ty.util.Tys;
 
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
 
@@ -74,7 +74,7 @@ public final class ToStringTreeHirVisitor {
 
     @Override
     public void visitArray(final Hir.Array expr) {
-      result = node("Array", type("ty", Tys.completionTy(expr.ty())), type("arrayTy", expr.arrayTy()),
+      result = node("Array", type("ty", expr.ty()),
         child("elementType", expr.elementType()), child("length", expr.length()),
         children("elements", expr.elements()));
     }
@@ -87,7 +87,7 @@ public final class ToStringTreeHirVisitor {
 
     @Override
     public void visitArrayAccess(final Hir.ArrayAccess expr) {
-      result = node("ArrayAccess", type("ty", Tys.completionTy(expr.ty())), type("indexedTy", expr.indexedTy()),
+      result = node("ArrayAccess", type("ty", expr.ty()),
         child("target", expr.target()), child("accessor", expr.accessor()));
     }
 
@@ -204,7 +204,7 @@ public final class ToStringTreeHirVisitor {
 
     @Override
     public void visitRange(final Hir.Range expr) {
-      result = node("Range", type("ty", Tys.completionTy(expr.ty())), type("rangeTy", expr.rangeTy()),
+      result = node("Range", type("ty", expr.ty()),
         child("lower", expr.lower()), child("higher", expr.higher()));
     }
 
@@ -289,8 +289,13 @@ public final class ToStringTreeHirVisitor {
     active.add(ty);
     try {
       return switch (ty) {
-        case TyCompletion pair -> "(completion %s structural %s)".formatted(
-          formatType(pair.completionTy(), active), formatType(pair.structuralTy(), active));
+        case TyCompletion pair -> {
+          if (Objects.equals(pair.completionTy(), pair.structuralTy())) {
+            yield formatType(pair.completionTy(), active);
+          }
+          yield "(completion %s structural %s)".formatted(
+            formatType(pair.completionTy(), active), formatType(pair.structuralTy(), active));
+        }
         case Ty.TyNamed named -> "(named %s)".formatted(quote(named.name()));
         case TyValueNumber number -> {
           final var flags = switch (number) {

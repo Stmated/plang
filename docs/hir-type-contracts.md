@@ -11,7 +11,7 @@ HIR separates expression completion, binding types, source constraints, and cont
 | Source-declared constraint | `Dec.typeAnnotation`, `Parameter.typeAnnotation`, `FunctionSignature.returnTypeAnnotation`, and `Array.elementType` use non-expression `Hir.DynamicTy` containers. Their `ty` values retain source constraints, including inference placeholders; optional source expressions preserve aliases and composite type syntax. |
 | Callable signature | The resolved `TyFn` supplies parameter types and `returnTy()`. `FunctionSignature.ty()` is authoritative; no duplicate return-type cache is needed. Creating a function value does not execute its body. |
 | Aggregate/member shape | Construction-target, member, indexing, and spread-field queries expose the specific resolved layout or selected type required by the consumer. They do not infer types or provide a universal structural fallback. |
-| Resolved structural type | `Tuple.resolvedTy()`, `Array.arrayTy()`, `Range.rangeTy()`, and `ArrayAccess.indexedTy()` project retained typing information from the same `ty` storage. A tuple's retained structure is not automatically an available runtime layout. |
+| Resolved structural type | `Tys.structuralTy(expression.ty())` projects retained typing information from the same `ty` storage; typed inspection uses `Tys.asStructural`. A tuple's retained structure is not automatically an available runtime layout. |
 | Expected type | `Tuple.contextualType` is a destination supplied by contextual typing, including its slot order and labels. It is an input to resolution, not a duplicate of the resolved structural type or a flag on it. |
 | Return/break collection | Execution-aware collectors use reachable payload completion types, respecting evaluation order and transfer scope. A nominal result or structural type does not establish that execution reaches a return or break. |
 
@@ -204,9 +204,9 @@ The construction still supplies `S`'s layout, and the path selects `uint8`. Both
 
 `Tys.getIndexingReceiverTy` reads the resolved receiver for array or literal tuple indexing. `Tys.getIndexingAccessorTy` distinguishes element indices from array/range slices, including noncontinuing accessors. These queries follow result wrappers, bindings, conversion destinations, resolved call returns, selected members/indexed types, and conditional branches. They consume existing types without entering transfer payloads or manufacturing layouts for diverging tuples.
 
-`Array.arrayTy` and `Range.rangeTy` retain resolved array/slice information independently of completion. Range bounds use completion types, not return payloads or unreachable sequence tails. Incompatible bound types produce an `INVALID` element type; a transfer makes the range `DEADEND` without losing its slice identity.
+The structural projection of `Array.ty()` and `Range.ty()` retains resolved array/slice information independently of completion. Range bounds use completion types, not return payloads or unreachable sequence tails. Incompatible bound types produce an `INVALID` element type; a transfer makes the range `DEADEND` without losing its slice identity.
 
-`ArrayAccess.indexedTy` retains the selected element or slice type independently of completion. Common typing refreshes it after receiver refinement; `Tys.getIndexedTy` supplies binding, callable, and member queries. Tuple indices use the literal's direct `ty()` and value; computed, noninteger, negative, and out-of-range indices remain errors.
+The structural projection of `ArrayAccess.ty()` retains the selected element or slice type independently of completion. Common typing refreshes it after receiver refinement; `HirExprs.getIndexedTy` supplies binding, callable, and member queries. Tuple indices use the literal's direct `ty()` and value; computed, noninteger, negative, and out-of-range indices remain errors.
 
 ```inf
 val values = [7u8];

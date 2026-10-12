@@ -29,7 +29,6 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
           (rhs
             (Array
               (ty null)
-              (arrayTy null)
               (elementType
                 (DynamicTy
                   (ty INFER)
@@ -50,7 +49,6 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
           (expression
             (ArrayAccess
               (ty null)
-              (indexedTy null)
               (target
                 (Identifier
                   (name "a")

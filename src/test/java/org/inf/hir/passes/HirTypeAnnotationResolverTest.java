@@ -131,7 +131,7 @@ class HirTypeAnnotationResolverTest {
     final var resolved = assertInstanceOf(TyValueArray.class, constraint.ty());
     assertAll(
       () -> assertEquals(expectedSize, resolved.size()),
-      () -> assertSame(source.arrayTy(), resolved),
+      () -> assertSame(Tys.structuralTy(source.ty()), resolved),
       () -> assertEquals(Tys.fromString("int", MachineTarget.T64), resolved.elementType())
     );
   }

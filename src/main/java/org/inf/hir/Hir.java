@@ -142,10 +142,6 @@ public class Hir {
     Expression length;
     Ty ty;
 
-    public Ty arrayTy() {
-      return Tys.structuralTy(ty);
-    }
-
     @Override
     public String toString() {
 
@@ -224,10 +220,6 @@ public class Hir {
     Expression target;
     Expression accessor;
     Ty ty;
-
-    public Ty indexedTy() {
-      return Tys.structuralTy(ty);
-    }
 
     @Override
     public String toString() {
@@ -983,10 +975,6 @@ public class Hir {
     Expression lower;
     Expression higher;
     Ty ty;
-
-    public Ty rangeTy() {
-      return Tys.structuralTy(ty);
-    }
 
     public Range(Expression lower, Expression higher) {
       this.lower = lower;

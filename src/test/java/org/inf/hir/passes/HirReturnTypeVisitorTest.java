@@ -127,7 +127,7 @@ class HirReturnTypeVisitorTest {
       () -> assertEquals(Ty.INTEGER, program.ty()),
       () -> assertEquals(Ty.DEADEND, ret.ty()),
       () -> assertEquals(Ty.DEADEND, array.ty().completionTy()),
-      () -> assertEquals(Ty.INTEGER, assertInstanceOf(TyValueArray.class, array.arrayTy()).elementType())
+      () -> assertEquals(Ty.INTEGER, assertInstanceOf(TyValueArray.class, Tys.structuralTy(array.ty())).elementType())
     );
   }
 
@@ -144,7 +144,7 @@ class HirReturnTypeVisitorTest {
     assertEquals(Ty.STRING, program.ty());
     assertEquals(Ty.DEADEND, ret.ty());
     assertEquals(Ty.DEADEND, array.ty().completionTy());
-    assertInstanceOf(TyValueArray.class, array.arrayTy());
+    assertInstanceOf(TyValueArray.class, Tys.structuralTy(array.ty()));
   }
 
   @Test
@@ -285,7 +285,7 @@ class HirReturnTypeVisitorTest {
     assertEquals(Ty.STRING, program.ty());
     assertEquals(Ty.DEADEND, ret.ty());
     assertEquals(Ty.DEADEND, access.ty().completionTy());
-    assertEquals(Ty.INTEGER, access.indexedTy());
+    assertEquals(Ty.INTEGER, Tys.structuralTy(access.ty()));
   }
 
   @Test
@@ -335,8 +335,8 @@ class HirReturnTypeVisitorTest {
       () -> assertEquals(Ty.INTEGER, program.ty()),
       () -> assertEquals(Ty.DEADEND, rangeTy.ty().completionTy()),
       () -> assertEquals(Ty.DEADEND, returnTy.ty(), "ret should be dead-end"),
-      () -> assertEquals(new TyValueArray(Ty.DEADEND, null), rangeTy.rangeTy()),
-      () -> assertEquals(rangeTy.rangeTy(), HirExprs.getIndexingAccessorTy(rangeTy))
+      () -> assertEquals(new TyValueArray(Ty.DEADEND, null), Tys.structuralTy(rangeTy.ty())),
+      () -> assertEquals(Tys.structuralTy(rangeTy.ty()), HirExprs.getIndexingAccessorTy(rangeTy))
     );
   }
 

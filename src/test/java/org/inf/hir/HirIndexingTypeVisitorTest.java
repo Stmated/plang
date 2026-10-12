@@ -8,6 +8,7 @@ import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyStruct;
 import org.inf.ty.TyValueArray;
+import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -60,10 +61,7 @@ class HirIndexingTypeVisitorTest {
     final var expression = nodes(root, nodeType).getLast();
     final Ty expected = switch (expectedSource) {
       case "completion" -> expression.ty().completionTy();
-      case "metadata" -> switch (expression) {
-        case Hir.Array array -> array.arrayTy();
-        default -> throw new AssertionError("Expected named indexing metadata");
-      };
+      case "metadata" -> Tys.structuralTy(expression.ty());
       default -> binding(root, expectedSource);
     };
     final var completion = expression.ty();
@@ -194,7 +192,7 @@ class HirIndexingTypeVisitorTest {
     final String code, final boolean diverges
   ) {
     final var access = nodes(Inf.codeToThir(code).root(), Hir.ArrayAccess.class).getLast();
-    final var selected = access.indexedTy();
+    final var selected = Tys.structuralTy(access.ty());
     assertNotNull(selected);
     assertAll(
       () -> assertSame(diverges ? Ty.DEADEND : selected, access.ty().completionTy()),
@@ -217,7 +215,7 @@ class HirIndexingTypeVisitorTest {
     final var root = Inf.codeToThir("if ({ return true; }) then [7] else [7]").root();
     final var conditional = nodes(root, Hir.Conditional.class).getFirst();
     final var arrays = nodes(root, Hir.Array.class);
-    final var original = arrays.getFirst().arrayTy();
+    final var original = Tys.structuralTy(arrays.getFirst().ty());
     final var replacement = nodes(Inf.codeToThir("[true, false]").root(), Hir.Array.class).getFirst();
     assertEquals(original, HirExprs.getIndexingReceiverTy(conditional));
 
@@ -227,7 +225,7 @@ class HirIndexingTypeVisitorTest {
     }
     HirTyCommonVisitorPass.pass(root);
 
-    final var refined = arrays.getFirst().arrayTy();
+    final var refined = Tys.structuralTy(arrays.getFirst().ty());
     assertAll(
       () -> assertNotEquals(original, refined),
       () -> assertEquals(refined, HirExprs.getIndexingReceiverTy(conditional)),

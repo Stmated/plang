@@ -40,14 +40,10 @@ Canonical terminology and contracts are in [Inf type contexts](../../../../CONTE
 * Keep syntactic result selection, live call/member metadata, conversion destinations, and tuple layout availability distinct from stored structural metadata.
 * Source-driven coverage includes completing/diverging indexed values, array metadata, and unresolved queries. Range queries retain HIR-level coverage pending range syntax raising.
 
-### Wrapper query accessor removal
-* Remove superfluous Hir.ArrayAccess.indexedTy()
-* Remove superfluous Hir.Array.arrayTy()
-* Remove superfluous Hir.Range.rangeTy()
+### Wrapper query accessor removal (done)
 
-Update snapshot tests accordingly.
-The S-Expression ToString visitor should take special heed TyCompletion, where it only prints both fields if they are different otherwise just one.
-Or if you deem it more idiomatic it can skip the deadend-propagation to parents and just print the structural ty; it is up to you for the accuracy of test cases.
+* Array, range, and indexed-result metadata use explicit structural projections rather than node-specific accessors.
+* HIR snapshots render one `ty`; `TyCompletion` prints both projections only when they differ. Propagated completion, including `DEADEND`, remains visible.
 
 ### Layout metadata versus available layouts (deferred investigation)
 

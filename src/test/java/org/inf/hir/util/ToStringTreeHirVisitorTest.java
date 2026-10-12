@@ -15,12 +15,15 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -205,12 +208,14 @@ class ToStringTreeHirVisitorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {
-    "val f = (x: int) => x + 1; f(2)",
-    "var a = [1, 2]; a[0] = 9; return a[0];"
+  @CsvSource(delimiter = '|', value = {
+    "function | val f = (x: int) => x + 1; f(2)",
+    "array | var a = [1, 2]; a[0] = 9; return a[0];",
+    "diverging_array | val use = () => [{ return true; }, 7]; use()",
+    "diverging_index | val use = () => [7][{ return true; }]; use()"
   })
   void given__typed_source__when__rendered_repeatedly__then__stable_and_terminating(
-    final String code, final TestInfo testInfo, final Snapshot snapshot
+    final String name, final String code, final TestInfo testInfo, final Snapshot snapshot
   ) {
     final var expression = Inf.codeToThir(code).root();
     final var actual = assertTimeout(Duration.ofSeconds(5), () -> printer.render(expression));
@@ -219,7 +224,31 @@ class ToStringTreeHirVisitorTest {
       () -> assertEquals(actual, printer.render(expression)),
       () -> assertEquals(actual, new ToStringTreeHirVisitor().render(expression))
     );
-    SnapshotTestUtils.assertMatches(testInfo, snapshot, code.startsWith("val") ? "function" : "array", actual);
+    SnapshotTestUtils.assertMatches(testInfo, snapshot, name, actual);
+  }
+
+  static Stream<Arguments> completionTypes() {
+    return Stream.of(
+      Arguments.of(Ty.INTEGER, "(ty INTEGER)"),
+      Arguments.of(new TyCompletion(Ty.INTEGER, Ty.INTEGER), "(ty INTEGER)"),
+      Arguments.of(new TyCompletion(new TyValueArray(Ty.INTEGER, 1), new TyValueArray(Ty.INTEGER, 1)),
+        "(ty (array size=1 INTEGER))"),
+      Arguments.of(new TyCompletion(null, null), "(ty null)"),
+      Arguments.of(new TyCompletion(null, Ty.INTEGER), "(ty (completion null structural INTEGER))"),
+      Arguments.of(new TyCompletion(Ty.INTEGER, null), "(ty (completion INTEGER structural null))"),
+      Arguments.of(new TyCompletion(Ty.INTEGER, Ty.LONG), "(ty (completion INTEGER structural LONG))"),
+      Arguments.of(Tys.withCompletion(Ty.DEADEND, new TyValueArray(Ty.INTEGER, 1)),
+        "(ty (completion DEADEND structural (array size=1 INTEGER)))"),
+      Arguments.of(Tys.withCompletion(Ty.DEADEND, null), "(ty DEADEND)")
+    );
+  }
+
+  @ParameterizedTest
+  @MethodSource("completionTypes")
+  void given__completion_projections__when__rendered__then__only_distinct_projections_are_printed(
+    final Ty type, final String expected
+  ) {
+    assertEquals(expected, printer.render(type));
   }
 
   @Test
