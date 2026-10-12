@@ -125,7 +125,8 @@ class HirSpreadShapeTest {
   @ValueSource(strings = {
     "({ return true; },)",
     "(1, { return true; })",
-    "({ return true; }, 2)"
+    "({ return true; }, 2)",
+    "({ return true; }, 7)"
   })
   void given__diverging_tuple_construction__when__spread_is_typed__then__no_layout_or_slots_are_manufactured(
     final String operand
@@ -141,8 +142,11 @@ class HirSpreadShapeTest {
     final var tuple = assertInstanceOf(Hir.Tuple.class, spread.value());
     assertAll(
       () -> assertEquals(Ty.DEADEND, tuple.ty().completionTy()),
+      () -> assertEquals(tuple.children().length, tuple.ty().asStructural(TyStruct.class).fields().length),
+      () -> assertNull(HirStructLayoutVisitor.findAvailableLayout(tuple)),
       () -> assertNull(tuple.contextualType()),
       () -> assertEquals(0, HirSpreadShape.fields(spread).length),
+      () -> assertEquals(0, HirSpreadShape.availableFields(spread).length),
       () -> assertEquals(Ty.BOOLEAN, root.ty())
     );
   }

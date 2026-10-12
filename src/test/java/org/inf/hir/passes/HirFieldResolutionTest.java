@@ -27,7 +27,7 @@ class HirFieldResolutionTest {
       """).root();
     final var construction = nodes(root, Hir.NewByBlock.class).getFirst();
     final var access = nodes(root, Hir.DotAccess.class).getFirst();
-    final var owner = HirExprs.getConstructionTargetTy(construction.target());
+    final var owner = HirExprs.getConstructionTargetLayout(construction.target());
     final var value = construction.fields()[0];
     final var flag = construction.fields()[1];
     final var memberField = HirExprs.getMemberField(access);

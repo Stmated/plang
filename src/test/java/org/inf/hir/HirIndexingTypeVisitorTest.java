@@ -202,9 +202,9 @@ class HirIndexingTypeVisitorTest {
       () -> assertSame(selected, HirExprs.getIndexingReceiverTy(access)),
       () -> assertSame(selected, HirExprs.getIndexingAccessorTy(access)),
       () -> assertSame(selected, HirIndexingTypeVisitor.find(access)),
-      () -> assertSame(selected instanceof TyStruct ? selected : null, HirExprs.getMemberReceiverTy(access)),
-      () -> assertSame(selected instanceof TyStruct ? selected : null, HirExprs.getConstructionTargetTy(access)),
-      () -> assertSame(selected instanceof TyStruct ? selected : null, HirStructLayoutVisitor.find(access)),
+      () -> assertSame(selected instanceof TyStruct ? selected : null, HirExprs.getMemberReceiverLayout(access)),
+      () -> assertSame(selected instanceof TyStruct ? selected : null, HirExprs.getConstructionTargetLayout(access)),
+      () -> assertSame(selected instanceof TyStruct ? selected : null, HirStructLayoutVisitor.findAvailableLayout(access)),
       () -> assertSame(selected instanceof TyFn ? selected : null, HirExprs.getCallableSignature(access)),
       () -> assertSame(selected instanceof TyFn ? selected : null, HirCallableSignatureVisitor.find(access))
     );

@@ -330,11 +330,11 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertEquals(1, constructions.size());
     final var creation = constructions.getFirst();
     final var target = creation.target();
-    final var layout = Assertions.assertInstanceOf(TyStruct.class, HirExprs.getConstructionTargetTy(target));
+    final var layout = Assertions.assertInstanceOf(TyStruct.class, HirExprs.getConstructionTargetLayout(target));
     Assertions.assertAll(
       () -> Assertions.assertEquals("value", layout.fields()[0].name()),
       () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), layout.fields()[0].ty()),
-      () -> Assertions.assertSame(layout, HirExprs.getMemberReceiverTy(creation)),
+      () -> Assertions.assertSame(layout, HirExprs.getMemberReceiverLayout(creation)),
       () -> Assertions.assertSame(Ty.DEADEND, target.ty()),
       () -> Assertions.assertSame(Ty.DEADEND, creation.ty()),
       () -> Assertions.assertSame(Ty.BOOLEAN, root.ty())
@@ -372,7 +372,7 @@ class HirTyCommonVisitorPassTest {
     });
     final var path = paths.getFirst();
     Assertions.assertAll(
-      () -> Assertions.assertNull(HirExprs.getMemberReceiverTy(path.target())),
+      () -> Assertions.assertNull(HirExprs.getMemberReceiverLayout(path.target())),
       () -> Assertions.assertSame(Ty.INFER, HirExprs.getMemberTy(path)),
       () -> Assertions.assertSame(Ty.DEADEND, path.ty()),
       () -> Assertions.assertSame(Ty.BOOLEAN, root.ty())

@@ -201,7 +201,7 @@ class HirTupleTypingTest {
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.DEADEND, expression.ty().completionTy()),
       () -> Assertions.assertNull(expression.contextualType()),
-      () -> Assertions.assertNull(HirExprs.getConstructionTargetTy(expression))
+      () -> Assertions.assertNull(HirExprs.getConstructionTargetLayout(expression))
     );
   }
 

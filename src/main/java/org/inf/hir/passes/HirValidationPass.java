@@ -16,7 +16,7 @@ public class HirValidationPass {
     public void visitNewByBlock(Hir.NewByBlock expr) {
       HirVisitor.super.visitNewByBlock(expr);
 
-      final var owner = HirExprs.getConstructionTargetTy(expr.target());
+      final var owner = HirExprs.getConstructionTargetLayout(expr.target());
       if (owner != null) {
         for (final var initializer : expr.fields()) {
           if (HirExprs.getInitializerField(expr, initializer) == null) {

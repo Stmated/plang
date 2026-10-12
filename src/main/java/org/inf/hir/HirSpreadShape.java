@@ -17,10 +17,11 @@ public class HirSpreadShape {
     throw new IllegalArgumentException("Spreading requires a statically known tuple or struct, not %s".formatted(spread.ty()));
   }
 
-  /// Preparation may encounter an unresolved operand; a noncontinuing operand without a layout has no slots.
+  /// Reads slots only from an available layout, never by reconstructing retained tuple fields.
+  /// Null defers preparation; a noncontinuing operand without a layout has no slots.
   @Nullable
   public static TyField[] availableFields(final Hir.Spread spread) {
-    final var struct = HirStructLayoutVisitor.find(spread.value());
+    final var struct = HirStructLayoutVisitor.findAvailableLayout(spread.value());
     if (struct != null) {
       return struct.fields();
     }

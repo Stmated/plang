@@ -74,6 +74,25 @@ The four aggregate/indexing nodes store one pair, not duplicate type fields. Bin
 
 MIR value types and LLVM type resolution select completion, so wrappers do not become runtime layouts or ABI types. Array lowering reads the structural array type before evaluating elements and emits no allocation if evaluation transfers.
 
+### Available layouts
+
+Use expression queries for layout-dependent operations, not `asStructural(TyStruct.class)` or `Tuple.resolvedTy()`. Those projections retain fields for typing and type syntax without establishing layout availability.
+
+| Query | Purpose |
+|---|---|
+| `HirExprs.getConstructionTargetLayout(target)` | Available tuple/struct layout for construction and initializer constraints. |
+| `HirExprs.getMemberReceiverLayout(receiver)` | Available layout for member lookup and write diagnostics. |
+| `HirStructLayoutVisitor.findAvailableLayout(expr)` | Shared availability policy, also used by `HirSpreadShape`. Null means no single resolved layout; callers do not need separate unresolved/nonaggregate states. |
+| `HirExprs.getIndexingReceiverTy(receiver)` | Diagnostic receiver type: a diverging tuple supplies `DEADEND`, not its retained fields; a call may supply its current return layout. |
+
+```inf
+({ return true; }, 7) // Retained tuple fields, but no available layout or spread slots.
+val make = (flag: bool) => (value = 7, true);
+make({ return true; }) // Known return layout for diagnostics, but no completing value.
+```
+
+Layout availability is not reachability. Calls, members, and indexing may expose known types after a transfer; lowering must still stop evaluation without emitting the unfinished allocation, call, or field load. Queries read current bindings/signatures and never reconstruct tuple layouts from entries. `Tuple.contextualType` remains a destination for contextual typing, not evidence that construction completes.
+
 ## Type annotations
 
 `Hir.DynamicTy` is not an expression. Annotation containers and their `ty` values are non-null; `Ty.INFER` represents an omitted or not-yet-resolved constraint.
@@ -179,10 +198,10 @@ use()
 
 The target still supplies `apply`'s signature for argument typing and diagnostics. The call completes with `DEADEND`; only `true`, not the nominal `uint8` call result, contributes to `use`'s return type.
 
-`Tys.getConstructionTargetTy` and `Tys.getMemberReceiverTy` expose only resolved struct/tuple layouts for their respective contexts. They follow result wrappers, resolved bindings, conversion destinations, call return signatures, construction targets, and selected members. They do not infer layouts, enter function bodies or transfer payloads, or reconstruct tuples from their entries. A diverging tuple construction has no layout.
+`HirExprs.getConstructionTargetLayout` and `HirExprs.getMemberReceiverLayout` expose only available struct/tuple layouts for their respective contexts. They follow result wrappers, resolved bindings, conversion destinations, call return signatures, construction targets, and selected members. They do not infer layouts, enter function bodies or transfer payloads, or reconstruct tuples from their entries. A diverging tuple construction has no layout.
 
-`Tys.getMemberField` looks up a `DotAccess` name in its receiver's current layout. `DotAccess.memberTy()` and `Tys.getMemberTy` read the selected type independently of completion. Field selections are query results, never cached on expressions.
-`HirFieldResolution` checks field names and resolves member completion during common typing. Preparation may defer unavailable layouts; final resolution reports unknown field names.
+`HirExprs.getMemberField` looks up a `DotAccess` name in its receiver's current layout. `DotAccess.memberTy()` and `HirExprs.getMemberTy` read the selected type independently of completion. Field selections are query results, never cached on expressions.
+Common typing checks field names and resolves member completion. Preparation may defer unavailable layouts; final resolution reports unknown field names.
 
 AST-to-HIR constructs `DotAccess` directly. Nested accesses each have their own receiver; calls and indexing operate on the complete accessed member.
 
@@ -191,7 +210,7 @@ s.inner.values[0] // indexing a DotAccess whose receiver is another DotAccess
 ```
 
 `NewByBlock.fields` contains `Assignment` nodes with `Lexeme` field names on the `lhs` and values on the `rhs`. Assignments complete with `VOID` or `DEADEND`; field value types come from the `rhs`.
-Contextual typing and validation receive the enclosing construction through `visitNewByBlockField`; `Tys.getInitializerField` looks up the expected field without a stored owner or parent reference.
+Contextual typing and validation receive the enclosing construction through `visitNewByBlockField`; `HirExprs.getInitializerField` looks up the expected field without a stored owner or parent reference.
 MIR lowering looks up field indices in the current layout while preserving initializer evaluation order. Only the constructor assignment's direct `lhs` is protected from identifier resolution; assignments nested in its `rhs` retain ordinary resolution and validation.
 
 ```inf
@@ -202,7 +221,7 @@ use()
 
 The construction still supplies `S`'s layout, and the path selects `uint8`. Both expressions complete with `DEADEND`; only `true` contributes to `use`'s return type.
 
-`Tys.getIndexingReceiverTy` reads the resolved receiver for array or literal tuple indexing. `Tys.getIndexingAccessorTy` distinguishes element indices from array/range slices, including noncontinuing accessors. These queries follow result wrappers, bindings, conversion destinations, resolved call returns, selected members/indexed types, and conditional branches. They consume existing types without entering transfer payloads or manufacturing layouts for diverging tuples.
+`HirExprs.getIndexingReceiverTy` reads the resolved receiver for array or literal tuple indexing. `HirExprs.getIndexingAccessorTy` distinguishes element indices from array/range slices, including noncontinuing accessors. These queries follow result wrappers, bindings, conversion destinations, resolved call returns, selected members/indexed types, and conditional branches. They consume existing types without entering transfer payloads or manufacturing layouts for diverging tuples.
 
 The structural projection of `Array.ty()` and `Range.ty()` retains resolved array/slice information independently of completion. Range bounds use completion types, not return payloads or unreachable sequence tails. Incompatible bound types produce an `INVALID` element type; a transfer makes the range `DEADEND` without losing its slice identity.
 
@@ -285,9 +304,9 @@ Annotation reads select source constraints or inference placeholders, never prev
 
 | Current consumer | Required information | Migration |
 |---|---|---|
-| `HirTyCommonVisitorPass.visitNewByCtor`, `visitNewByBlock`; initializer contexts and checks in function/integer/tuple/array passes | `Tys.getConstructionTargetTy` supplies construction layouts. `Tys.getInitializerField` selects the expected field independently of completion. | Ty 8 complete |
-| `HirTyCommonVisitorPass.visitDotAccess`; member-write checks in `HirTupleValidationVisitorPass.requireWritable`; callable member lookup | `Tys.getMemberField` selects members against `Tys.getMemberReceiverTy`. `Tys.getMemberTy` reads the selected type; write validation reads the receiver layout. | Ty 8 complete |
-| `HirTyCommonVisitorPass.visitArrayAccess`; array-access checks in tuple validation | `Tys.getIndexingReceiverTy`, `Tys.getIndexingAccessorTy`, and `Tys.getIndexedTy` separate receiver and element/slice types from completion. | Ty 9 complete |
+| `HirTyCommonVisitorPass.visitNewByCtor`, `visitNewByBlock`; initializer contexts and checks in function/integer/tuple/array passes | `HirExprs.getConstructionTargetLayout` supplies available construction layouts. `HirExprs.getInitializerField` selects the expected field independently of completion. | Ty 8 complete |
+| `HirTyCommonVisitorPass.visitDotAccess`; member-write checks in `HirTupleValidationVisitorPass.requireWritable`; callable member lookup | `HirExprs.getMemberField` selects members against `HirExprs.getMemberReceiverLayout`. `HirExprs.getMemberTy` reads the selected type; write validation reads the receiver layout. | Ty 8 complete |
+| `HirTyCommonVisitorPass.visitArrayAccess`; array-access checks in tuple validation | `HirExprs.getIndexingReceiverTy`, `HirExprs.getIndexingAccessorTy`, and `HirExprs.getIndexedTy` separate receiver and element/slice types from completion. | Ty 9 complete |
 | `HirTupleAccess.index`, `availableIndex` | The integer literal's direct type and value for tuple-index diagnostics. | Ty 9 complete |
 | `HirSpreadShape.fields`; spread precheck in `HirInferredFunctionSignatureVisitor` | Resolved static tuple/struct fields for spread arity, names, and binding, including known layouts after transfers. No layout for a diverging tuple construction. | Ty 10 complete |
 | `HirTupleTyping.resolve` | Tuple completion/layout produced by typing, not a new universal structural query. Contextual destination layout remains separate metadata. | Ty 14 complete |

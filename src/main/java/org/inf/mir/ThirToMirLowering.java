@@ -614,7 +614,7 @@ public final class ThirToMirLowering {
   }
 
   private Flow instance(Hir.NewByBlock instance) {
-    final var type = HirExprs.getConstructionTargetTy(instance.target());
+    final var type = HirExprs.getConstructionTargetLayout(instance.target());
     if (type == null) {
       throw new IllegalArgumentException("Struct construction requires a resolved target layout");
     }

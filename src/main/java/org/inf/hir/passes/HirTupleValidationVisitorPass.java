@@ -155,7 +155,7 @@ public final class HirTupleValidationVisitorPass {
         throw new IllegalArgumentException("Tuple element writes are not supported yet");
       }
       if (expression instanceof Hir.DotAccess access
-        && HirExprs.getMemberReceiverTy(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
+        && HirExprs.getMemberReceiverLayout(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
         throw new IllegalArgumentException("Tuple element writes are not supported yet");
       }
     }

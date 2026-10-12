@@ -251,12 +251,12 @@ class HirReturnTypeVisitorTest {
     });
     assertEquals(1, constructions.size());
     final var construction = constructions.getFirst();
-    final var layout = assertInstanceOf(TyStruct.class, HirExprs.getConstructionTargetTy(construction.target()));
+    final var layout = assertInstanceOf(TyStruct.class, HirExprs.getConstructionTargetLayout(construction.target()));
     assertAll(
       () -> assertEquals(Ty.BOOLEAN, program.ty()),
       () -> assertEquals(Ty.DEADEND, construction.ty()),
       () -> assertEquals("x", layout.fields()[0].name()),
-      () -> assertSame(layout, HirExprs.getConstructionTargetTy(construction))
+      () -> assertSame(layout, HirExprs.getConstructionTargetLayout(construction))
     );
   }
 

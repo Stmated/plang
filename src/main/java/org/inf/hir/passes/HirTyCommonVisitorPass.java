@@ -355,7 +355,7 @@ public class HirTyCommonVisitorPass {
     @Override
     public void visitNewByCtor(Hir.NewByCtor expr) {
       HirVisitor.super.visitNewByCtor(expr);
-      final Ty type = Objects.requireNonNullElse(HirExprs.getConstructionTargetTy(expr.target()), Ty.INFER);
+      final Ty type = Objects.requireNonNullElse(HirExprs.getConstructionTargetLayout(expr.target()), Ty.INFER);
       expr.ty(Tys.isDeadend(expr.target().ty()) || (expr.arguments() != null && Tys.isDeadend(expr.arguments().ty()))
         ? Ty.DEADEND : type);
     }
@@ -364,7 +364,7 @@ public class HirTyCommonVisitorPass {
     public void visitNewByBlock(Hir.NewByBlock expr) {
       HirVisitor.super.visitNewByBlock(expr);
 
-      final var type = Objects.requireNonNullElse(HirExprs.getConstructionTargetTy(expr.target()), Ty.INFER);
+      final var type = Objects.requireNonNullElse(HirExprs.getConstructionTargetLayout(expr.target()), Ty.INFER);
       expr.ty(Tys.isDeadend(expr.target().ty()) || HirExprs.isDeadEnd(expr.fields()) ? Ty.DEADEND : type);
     }
 
@@ -372,7 +372,7 @@ public class HirTyCommonVisitorPass {
     public void visitDotAccess(final Hir.DotAccess expr) {
       HirVisitor.super.visitDotAccess(expr);
 
-      final var owner = HirExprs.getMemberReceiverTy(expr.target());
+      final var owner = HirExprs.getMemberReceiverLayout(expr.target());
       final var field = HirExprs.getField(owner, expr.name());
       if (!availableOnly && owner != null && field == null) {
         throw new IllegalArgumentException("Unknown field: %s".formatted(expr.name()));

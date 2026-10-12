@@ -403,7 +403,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     final var target = Assertions.assertInstanceOf(Hir.Identifier.class, constructors.getFirst().target());
     final var declaration = Assertions.assertInstanceOf(Hir.Dec.class, target.target());
     declaration.resolvedTy(null);
-    Assertions.assertNull(HirExprs.getConstructionTargetTy(target));
+    Assertions.assertNull(HirExprs.getConstructionTargetLayout(target));
     HirFunctionContextualTypingVisitorPass.pass(root);
     Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64),
       functions.getFirst().signature().parameters()[0].resolvedTy(),

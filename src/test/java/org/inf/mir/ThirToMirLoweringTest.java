@@ -184,7 +184,38 @@ class ThirToMirLoweringTest {
       () -> assertEquals(Ty.BOOLEAN, module.script().signature().returnType()),
       () -> assertEquals(Ty.BOOLEAN, use.signature().returnType()),
       () -> assertEquals(0, instructions.stream().filter(Mir.Call.class::isInstance).count()),
-      () -> assertEquals(0, instructions.stream().filter(Mir.NewStruct.class::isInstance).count())
+      () -> assertEquals(0, instructions.stream().filter(Mir.NewStruct.class::isInstance).count()),
+      () -> assertTrue(instructions.stream().noneMatch(instruction ->
+        instruction instanceof Mir.Load load && load.place() instanceof Mir.Field))
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "({ return true; }, 7)[1]",
+    "(value = { return true; }, 7).value",
+    "(make({ return true; }))[1]",
+    "(make({ return true; })).value"
+  })
+  void given__noncompleting_tuple_or_factory_receiver__when__lowered__then__no_allocation_call_or_field_load_is_emitted(
+    final String receiver
+  ) {
+    final var code = """
+      val make = (flag: bool) => (value = 7, 9);
+      val use = () => %s;
+      use()
+      """.formatted(receiver);
+    final var module = Inf.codeToMir(code);
+    final var use = module.functions().stream()
+      .filter(function -> function != module.script() && function.signature().returnType() == Ty.BOOLEAN)
+      .findFirst().orElseThrow();
+    final var instructions = use.blocks().stream().flatMap(block -> block.instructions().stream()).toList();
+    assertAll(
+      () -> assertEquals(true, run(code)),
+      () -> assertTrue(instructions.stream().noneMatch(instruction ->
+        instruction instanceof Mir.NewStruct || instruction instanceof Mir.Call)),
+      () -> assertTrue(instructions.stream().noneMatch(instruction ->
+        instruction instanceof Mir.Load load && load.place() instanceof Mir.Field))
     );
   }
 

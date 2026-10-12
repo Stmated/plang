@@ -8,14 +8,18 @@ import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.Tys;
 
-/// Reads resolved layouts for construction targets and member receivers, not expression completion.
+/// Selects available tuple/struct layouts for construction, member access, and spreading.
+/// Retained tuple metadata is not an available layout when construction diverges.
+/// Other expressions may expose a known layout for diagnostics despite noncompletion.
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class HirStructLayoutVisitor implements HirVisitor {
 
   private Ty type;
 
+  /// Null means no single resolved layout is available, including unresolved and nonaggregate expressions.
+  /// A layout does not establish that evaluation completes; callers must still respect control flow.
   @Nullable
-  public static TyStruct find(final Hir.Expression expression) {
+  public static TyStruct findAvailableLayout(final Hir.Expression expression) {
     final var visitor = new HirStructLayoutVisitor();
     visitor.visitResult(expression);
     return Tys.asStructural(visitor.type, TyStruct.class);

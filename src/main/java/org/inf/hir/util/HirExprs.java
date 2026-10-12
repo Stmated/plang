@@ -81,21 +81,23 @@ public class HirExprs {
     return Tys.asStructural(type, TyFn.class);
   }
 
-  /// Selects the resolved layout to construct, even when evaluating the target cannot complete.
+  /// Selects an available construction layout, not merely retained structural metadata.
+  /// A diverging tuple has none; a call may supply its current return layout despite noncompletion.
   @Nullable
-  public static TyStruct getConstructionTargetTy(final Hir.Expression target) {
-    return HirStructLayoutVisitor.find(target);
+  public static TyStruct getConstructionTargetLayout(final Hir.Expression target) {
+    return HirStructLayoutVisitor.findAvailableLayout(target);
   }
 
-  /// Selects the resolved layout whose fields a member access inspects.
+  /// Selects an available member layout with the same policy as construction and spread queries.
+  /// Availability permits field diagnostics, not runtime field loads after a transfer.
   @Nullable
-  public static TyStruct getMemberReceiverTy(final Hir.Expression receiver) {
-    return HirStructLayoutVisitor.find(receiver);
+  public static TyStruct getMemberReceiverLayout(final Hir.Expression receiver) {
+    return HirStructLayoutVisitor.findAvailableLayout(receiver);
   }
 
   @Nullable
   public static ResolvedField getMemberField(final Hir.DotAccess access) {
-    return getField(getMemberReceiverTy(access.target()), access.name());
+    return getField(getMemberReceiverLayout(access.target()), access.name());
   }
 
   @Nullable
@@ -103,7 +105,7 @@ public class HirExprs {
     if (!(initializer.lhs() instanceof Hir.Lexeme name)) {
       throw new UnexpectedExpressionException(initializer.lhs());
     }
-    return getField(getConstructionTargetTy(construction.target()), name.name());
+    return getField(getConstructionTargetLayout(construction.target()), name.name());
   }
 
   /// Reads the selected member independently of receiver completion.
@@ -113,12 +115,14 @@ public class HirExprs {
   }
 
   /// Reads the resolved indexing receiver, retaining inferred and invalid types for diagnostics.
+  /// Diverging tuples supply `DEADEND`, not their retained fields; calls may supply a known return layout.
   @Nullable
   public static Ty getIndexingReceiverTy(final Hir.Expression receiver) {
     return HirIndexingTypeVisitor.find(receiver);
   }
 
   /// Distinguishes an element index from an array/range slice even after control transfers.
+  /// This is diagnostic type information, not permission to evaluate an accessor after a transfer.
   @Nullable
   public static Ty getIndexingAccessorTy(final Hir.Expression accessor) {
     return HirIndexingTypeVisitor.find(accessor);

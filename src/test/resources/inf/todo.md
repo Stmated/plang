@@ -45,13 +45,18 @@ Canonical terminology and contracts are in [Inf type contexts](../../../../CONTE
 * Array, range, and indexed-result metadata use explicit structural projections rather than node-specific accessors.
 * HIR snapshots render one `ty`; `TyCompletion` prints both projections only when they differ. Propagated completion, including `DEADEND`, remains visible.
 
-### Layout metadata versus available layouts (deferred investigation)
+### Layout metadata versus available layouts (done)
 
-* Purpose: make it harder to accidentally use `asStructural(TyStruct.class)` as permission to construct, access, or spread a tuple. This is an API clarity follow-up, not a known runtime regression.
-* Scope: audit layout reads in `HirStructLayoutVisitor`, `HirIndexingTypeVisitor`, `HirSpreadShape`, and their construction/member/indexing callers. Metadata-only reads may use typed projections; available-layout reads must use the existing expression-level queries.
-* First evaluate clearer query naming/documentation. Only introduce a query-result distinction for known layout, no layout, and unresolved layout if callers genuinely need those separate states; do not add a `Ty` reachability flag or expression cache.
-* Preserve the contrast: `({ return true; }, 7)` retains tuple field metadata but supplies no layout or spread slots. A call such as `make({ return true; })` may supply a known return layout for diagnostics despite noncompletion; a blanket DEADEND layout rejection would be wrong.
-* Completion criterion: layout-dependent callers consistently use the layout queries; source-driven cases cover both contrasts, including no allocation or field loads after a transfer. Do not reconstruct tuple layouts from entries.
+* `HirStructLayoutVisitor.findAvailableLayout`, `HirExprs.getConstructionTargetLayout`, and `getMemberReceiverLayout` explicitly select available layouts. Construction/member/spread callers use these queries; indexing retains diagnostic type queries.
+* `asStructural(TyStruct.class)` and `Tuple.resolvedTy()` expose retained typing metadata, not permission to construct, access, or spread a tuple. Contextual destinations and type syntax remain metadata-only uses.
+* `({ return true; }, 7)` retains tuple fields but supplies no layout or spread slots. `make({ return true; })` may supply its current return layout for diagnostics despite noncompletion.
+* Source-driven coverage preserves both contrasts, including no unfinished allocation, call, or field loads after a transfer. No tuple-layout reconstruction, result-state hierarchy, reachability flags, or expression caches are needed.
+* Goal is to make things easier to read/understand, not to invoke new/more complexity.
+
+### Layout query result selection (deferred investigation)
+
+* `HirStructLayoutVisitor` and `HirIndexingTypeVisitor` duplicate syntactic-result selection and current binding/call/member reads. Investigate sharing only that selection if it reduces maintenance without obscuring the separate layout and indexing policies.
+* Preserve tuple noncompletion, array/range indexing metadata, and current signature reads. Use existing visitors; do not add a universal structural fallback, cached query result, or separate result states without a concrete caller need.
 
 ### Shared function body-result validation (deferred investigation)
 
@@ -60,6 +65,7 @@ Canonical terminology and contracts are in [Inf type contexts](../../../../CONTE
 * Decide whether actual-result checks should consistently use `HirBodyResultTyping.resolve`, while keeping per-source return/implicit-result diagnostics separate. Do not replace callable diagnostics wholesale, drop validation of unreachable source expressions, or infer from a constrained signature's return type.
 * Preserve examples: `() => { return 7; true }` has DEADEND body completion but result `int`; `(flag: bool) => { if (flag) { return 7; }; true }` has result `int | bool`. Nested function returns and loop breaks remain scoped; unreachable tails contribute no result.
 * Completion criterion: every check advertised as comparing the actual function result uses the shared execution-aware collector, and source-driven cases cover tuple/function-valued returns mixed with fallthrough. Reuse existing visitors; do not add a body-result projection to `Ty` or a duplicate result cache.
+* Goal is to make things easier to read/understand, not to invoke new/more complexity.
 
 ### Additional coverage (deferred)
 
@@ -67,6 +73,7 @@ Canonical terminology and contracts are in [Inf type contexts](../../../../CONTE
 * Cover wrapper normalization, nesting, comparison/interning, and backend projection without losing explicit type properties.
 * Cover mixed `int`/transfer/`VOID` branches and ensure reachable return/break payloads remain separate from structural information.
 * Cover changing expected tuple layouts across repeated typing, and unresolved fields versus explicit `INFER` constraints.
+* Goal is to make things easier to read/understand, not to invoke new/more complexity.
 
 ### Original wrapper proposal
 

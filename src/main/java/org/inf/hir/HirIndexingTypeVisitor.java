@@ -7,7 +7,9 @@ import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.util.Tys;
 
-/// Reads resolved receiver and accessor types for indexing, independently of completion.
+/// Reads receiver/accessor types for indexing diagnostics, not runtime evaluation permission.
+/// Diverging tuples expose `DEADEND` instead of retained fields; calls expose current return types.
+/// Array/range metadata still identifies elements and slices even when evaluation cannot complete.
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class HirIndexingTypeVisitor implements HirVisitor {
 
