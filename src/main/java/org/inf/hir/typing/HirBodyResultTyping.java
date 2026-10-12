@@ -16,11 +16,11 @@ public final class HirBodyResultTyping {
     final var returns = new FindReturnTypesVisitor();
     body.visit(returns);
     if (returns.returnTypes().isEmpty()) {
-      return body.ty();
+      return Tys.completionTy(body.ty());
     }
 
     final var returnTypes = new ArrayList<>(returns.returnTypes());
-    returnTypes.add(body.ty());
+    returnTypes.add(Tys.completionTy(body.ty()));
 
     return Tys.union(returnTypes.toArray(new Ty[0]));
   }

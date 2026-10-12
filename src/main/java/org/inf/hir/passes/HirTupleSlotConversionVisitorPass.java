@@ -46,7 +46,7 @@ public class HirTupleSlotConversionVisitorPass {
       if (slots == null) {
         return;
       }
-      final var actual = expression.value().ty();
+      final var actual = Tys.completionTy(expression.value().ty());
       final var destinationField = destination.fields()[slots[index++]];
       final var expected = HirDeclarationTyping.resolve(destinationField.ty(), actual);
       requireSlotConversion(actual, expected);

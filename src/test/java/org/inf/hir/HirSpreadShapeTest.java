@@ -140,7 +140,7 @@ class HirSpreadShapeTest {
     final var spread = spreads.getFirst();
     final var tuple = assertInstanceOf(Hir.Tuple.class, spread.value());
     assertAll(
-      () -> assertEquals(Ty.DEADEND, tuple.ty()),
+      () -> assertEquals(Ty.DEADEND, tuple.ty().completionTy()),
       () -> assertNull(tuple.contextualType()),
       () -> assertEquals(0, HirSpreadShape.fields(spread).length),
       () -> assertEquals(Ty.BOOLEAN, root.ty())

@@ -28,12 +28,14 @@ public class HirArrayValidationPass {
   }
 
   private static boolean containsArray(final Ty type) {
-    return Tys.any(type, member -> Tys.is(member, TyValueArray.class));
+    return Tys.any(Tys.completionTy(type), member -> Tys.asCompletion(member, TyValueArray.class) != null);
   }
 
   /// TODO: Move to `TypeComparison` to a more general `compatible` or `isAssignableTo` function
   ///         One which we can use in other locations in the code without so much duplication
-  private static boolean compatible(final Ty actual, final Ty expected) {
+  private static boolean compatible(final Ty actualType, final Ty expectedType) {
+    final var actual = Tys.completionTy(actualType);
+    final var expected = Tys.completionTy(expectedType);
     if (Tys.isDeadend(actual) || TypeComparison.same(actual, expected)) {
       return true;
     }

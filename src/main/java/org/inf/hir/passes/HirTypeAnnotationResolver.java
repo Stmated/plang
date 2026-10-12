@@ -48,7 +48,7 @@ public final class HirTypeAnnotationResolver {
       case Hir.Parameter param -> param.resolvedTy();
       case Hir.Block block -> resolvedType(block.children());
       case Hir.Return ret -> resolvedType(ret.expression());
-      default -> expr.ty();
+      default -> Tys.completionTy(expr.ty());
     };
 
     // TODO: Replace the "containsInferred"? We should remove the whole cache anyway....

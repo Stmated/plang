@@ -171,7 +171,7 @@ class HirTupleTypingTest {
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty()),
       () -> Assertions.assertEquals(false, tuples.isEmpty()),
-      () -> Assertions.assertEquals(true, tuples.stream().allMatch(expression -> expression.ty() == Ty.DEADEND))
+      () -> Assertions.assertTrue(tuples.stream().allMatch(expression -> expression.ty().isDeadend()))
     );
   }
 
@@ -199,7 +199,7 @@ class HirTupleTypingTest {
     }, null);
     HirTyCommonVisitorPass.pass(expression);
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.DEADEND, expression.ty()),
+      () -> Assertions.assertEquals(Ty.DEADEND, expression.ty().completionTy()),
       () -> Assertions.assertNull(expression.contextualType()),
       () -> Assertions.assertNull(HirExprs.getConstructionTargetTy(expression))
     );

@@ -40,9 +40,9 @@ public final class HirTupleTyping {
         throw new IllegalArgumentException("Duplicate tuple label: " + name);
       }
       final var value = entry.value();
-      final var resultTy = value.ty(); // The "result" of the expression, not necessarily a value. Could be a DEADEND return inside.
-      final var type = annotationResolver.resolveSilently(value); // The dev typing ty.
-      if (Tys.isDeadend(resultTy)) {
+      final var completion = Tys.completionTy(value.ty());
+      final var type = annotationResolver.resolveSilently(value);
+      if (Tys.isDeadend(completion)) {
         diverges = true;
       }
 
@@ -58,13 +58,6 @@ public final class HirTupleTyping {
     }
 
     final var resolvedTy = Tys.intern(new TyStruct(fields, true));
-    tuple.resolvedTy(resolvedTy);
-
-    // A diverging construction has no aggregate value or layout, even if some entries have values.
-    if (diverges) {
-      tuple.ty(Ty.DEADEND);
-    } else {
-      tuple.ty(resolvedTy);
-    }
+    tuple.ty(Tys.withCompletion(diverges ? Ty.DEADEND : resolvedTy, resolvedTy));
   }
 }

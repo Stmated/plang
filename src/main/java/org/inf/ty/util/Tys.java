@@ -21,47 +21,53 @@ public class Tys {
     return (T) tyInternMap.computeIfAbsent(ty, Function.identity());
   }
 
-  public static boolean isDeadend(@Nullable final Ty ty) {
-    return ty == Ty.DEADEND;
+  @Nullable
+  public static Ty completionTy(@Nullable final Ty ty) {
+    return ty == null ? null : ty.completionTy();
   }
 
-  public static <T extends Ty> boolean is(@Nullable final Ty ty, @Nullable final Class<T> kind) {
-    if (kind == null) {
-      return false;
+  @Nullable
+  public static Ty structuralTy(@Nullable final Ty ty) {
+    return ty == null ? null : ty.structuralTy();
+  }
+
+  @Nullable
+  public static Ty withCompletion(@Nullable final Ty completion, @Nullable final Ty structural) {
+    final var completionType = completionTy(completion);
+    final var structuralType = structuralTy(structural);
+    if (Objects.equals(structuralTy(completionType), structuralType)) {
+      return completionType;
     }
-    return kind.isInstance(ty);
+    return intern(new TyCompletion(completionType, structuralType));
+  }
+
+  public static boolean isDeadend(@Nullable final Ty ty) {
+    return completionTy(ty) == Ty.DEADEND;
   }
 
   @Nullable
-  public static <T extends Ty> T as(@Nullable final Ty ty, final Class<T> kind) {
-    return is(ty, kind) ? kind.cast(ty) : null;
+  public static <T extends Ty> T asCompletion(@Nullable final Ty ty, final Class<T> kind) {
+    return asSelected(completionTy(ty), kind);
   }
 
   @Nullable
-  public static <T extends Ty, R> R ifIs(
-    @Nullable final Ty ty,
-    @Nullable final Class<T> kind,
-    final Function<? super T, ? extends R> mapper
-  ) {
-    return ifIs(ty, kind, mapper, null);
+  public static <T extends Ty> T asStructural(@Nullable final Ty ty, final Class<T> kind) {
+    return asSelected(structuralTy(ty), kind);
   }
 
-  public static <T extends Ty, R> R ifIs(
-    @Nullable final Ty ty,
-    @Nullable final Class<T> kind,
-    final Function<? super T, ? extends R> mapper,
-    @Nullable final R fallback
-  ) {
-    final var matched = as(ty, kind);
-    return matched == null ? fallback : mapper.apply(matched);
+  @Nullable
+  private static <T extends Ty> T asSelected(@Nullable final Ty ty, final Class<T> kind) {
+    return kind != null && kind.isInstance(ty) ? kind.cast(ty) : null;
   }
 
   public static TyResult<Ty> getCommonDenominator(Ty a, Ty b) {
 
+    a = completionTy(a);
+    b = completionTy(b);
     if (a == b) {
       return new TyResult<>(a);
     }
-    if (is(a, TyStruct.class) && is(b, TyStruct.class)
+    if (a instanceof TyStruct && b instanceof TyStruct
       && (TupleTypes.containsTuple(a) || TupleTypes.containsTuple(b)) && TypeComparison.same(a, b)) {
       return new TyResult<>(a);
     }
@@ -74,7 +80,7 @@ public class Tys {
       return new TyResult<>(Ty.UNKNOWN, TyDiffKind.UNKNOWN);
     }
 
-    if (is(a, TyOpaque.class) && is(b, TyOpaque.class)) {
+    if (a instanceof TyOpaque && b instanceof TyOpaque) {
       return new TyResult<>(a);
     }
 
@@ -200,12 +206,12 @@ public class Tys {
     final var newUnionMembers = new ArrayList<Ty>();
     final var remaining = new ArrayList<>(Arrays.asList(types));
     while (!remaining.isEmpty()) {
-      final var current = remaining.removeFirst();
+      final var current = completionTy(remaining.removeFirst());
       if (current == null || isDeadend(current)) {
         continue;
       }
 
-      final var union = current.as(TyUnion.class);
+      final var union = current.asCompletion(TyUnion.class);
       if (union != null) {
         remaining.addAll(0, Arrays.asList(union.types()));
       } else {
@@ -248,7 +254,7 @@ public class Tys {
 
   private static boolean equivalentUnionMember(final Ty a, final Ty b) {
     // Numeric members still use common-denominator resolution to retain explicit widths.
-    return !is(a, TyValueNumber.class) && !is(b, TyValueNumber.class) && TypeComparison.same(a, b);
+    return !(a instanceof TyValueNumber) && !(b instanceof TyValueNumber) && TypeComparison.same(a, b);
   }
 
   public boolean isGenerallyCompatible(TyDiffKind[] diffs) {
@@ -267,16 +273,19 @@ public class Tys {
   }
 
   public static boolean isUsable(Ty ty) {
+    ty = completionTy(ty);
     return ty != null && ty != Ty.INVALID;
   }
 
   public static boolean isInferred(Ty ty) {
+    ty = completionTy(ty);
     return ty == null || ty == Ty.INFER;
   }
 
   public static boolean containsInferred(final Ty ty) {
     return switch (ty) {
       case null -> true;
+      case TyCompletion pair -> containsInferred(pair.completion()) || containsInferred(pair.structural());
       case TyFn function -> containsInferred(function.returnTy())
         || ArrayUtils.any(function.parameters(), parameter -> containsInferred(parameter.ty()));
       case TyStruct struct -> ArrayUtils.any(struct.fields(), field -> containsInferred(field.ty()));
@@ -398,7 +407,7 @@ public class Tys {
   }
 
   public static boolean containsFunction(final Ty type) {
-    return Tys.any(type, member -> Tys.is(member, TyFn.class));
+    return Tys.any(structuralTy(type), member -> asStructural(member, TyFn.class) != null);
   }
 
   public static boolean any(final Ty type, final Predicate<Ty> predicate) {
@@ -406,8 +415,7 @@ public class Tys {
       return true;
     }
 
-    final var union = as(type, TyUnion.class);
-    if (union != null) {
+    if (type instanceof TyUnion union) {
       return ArrayUtils.any(union.types(), t -> Tys.any(t, predicate));
     }
 

@@ -288,19 +288,19 @@ public class AstToHirRaising {
       // TODO: Ty here should be "inferred" until THIR kicks in
       final var elementType = new DynamicTy();
       final var arrayLengthExpr = new Hir.Literal(Objects.toString(elementArray.length), Ty.INTEGER);
-      return new Hir.Array(elementArray, elementType, arrayLengthExpr, null, null);
+      return new Hir.Array(elementArray, elementType, arrayLengthExpr, null);
 
     } else if (section == 1) {
 
       final var elementType = new DynamicTy();
       final var size = sections[1];
-      return new Hir.Array(elementArray, elementType, size, null, null);
+      return new Hir.Array(elementArray, elementType, size, null);
 
     } else if (section == 2) {
 
       final var elementType = new DynamicTy(sections[1]);
       final var sizeExpr = sections[2];
-      return new Hir.Array(elementArray, elementType, sizeExpr, null, null);
+      return new Hir.Array(elementArray, elementType, sizeExpr, null);
 
     } else {
       throw new IllegalArgumentException("Unknown array syntax");
@@ -462,9 +462,9 @@ public class AstToHirRaising {
       if (hirAccessors.length == 0) {
         throw new IllegalArgumentException("Missing array access index");
       } else if (hirAccessors.length == 1) {
-        return new Hir.ArrayAccess(target, hirAccessors[0], null, null);
+        return new Hir.ArrayAccess(target, hirAccessors[0], null);
       } else {
-        return new Hir.ArrayAccess(target, new Hir.Expressions(hirAccessors), null, null);
+        return new Hir.ArrayAccess(target, new Hir.Expressions(hirAccessors), null);
       }
 
     } else if (ast.suffix() instanceof final Ast.Paren paren) {

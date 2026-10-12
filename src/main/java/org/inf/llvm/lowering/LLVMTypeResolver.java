@@ -18,6 +18,7 @@ public class LLVMTypeResolver {
 
   public LLVMTypeRef resolve(Ty ty) {
 
+    ty = Tys.completionTy(ty);
     final var cached = cache.get(ty);
     if (cached != null) {
       return cached;

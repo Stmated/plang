@@ -565,7 +565,7 @@ public final class ThirToMirLowering {
   }
 
   private Flow array(Hir.Array array) {
-    final var type = (TyValueArray) array.ty();
+    final var type = Objects.requireNonNull(Tys.asStructural(array.ty(), TyValueArray.class), "Unresolved array layout");
     final var elements = new ArrayList<Mir.Operand>();
     for (final var expression : array.elements()) {
       final var flow = lower(expression);

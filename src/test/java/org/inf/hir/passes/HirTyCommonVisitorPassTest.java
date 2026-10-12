@@ -45,7 +45,7 @@ class HirTyCommonVisitorPassTest {
       Arguments.of(new Hir.Conditional(new Hir.Literal("true", Ty.BOOLEAN), integer, returning), Ty.INTEGER),
       Arguments.of(new Hir.Not(returning, null), Ty.DEADEND),
       Arguments.of(new Hir.Assignment(declaration, integer), Ty.VOID),
-      Arguments.of(new Hir.Array(new Hir.Expression[]{integer}, new DynamicTy(), null, null, null), new TyValueArray(Ty.INTEGER, null)),
+      Arguments.of(new Hir.Array(new Hir.Expression[]{integer}, new DynamicTy(), null, null), new TyValueArray(Ty.INTEGER, null)),
       Arguments.of(sequence, Ty.DEADEND),
       Arguments.of(new Hir.Block(sequence, null), Ty.DEADEND),
       Arguments.of(new Hir.Argument(null, returning), Ty.DEADEND),
@@ -60,7 +60,7 @@ class HirTyCommonVisitorPassTest {
   ) {
     HirTyCommonVisitorPass.resolveAvailableTypes(expression);
     HirTyCommonVisitorPass.pass(expression);
-    Assertions.assertEquals(expected, expression.ty());
+    Assertions.assertEquals(expected, Tys.completionTy(expression.ty()));
   }
 
   @ParameterizedTest
@@ -98,7 +98,7 @@ class HirTyCommonVisitorPassTest {
     final var range = new Hir.Range(lowerTransfers ? returning : integer, lowerTransfers ? integer : returning);
     final var root = HirTyCommonVisitorPass.pass(new Hir.Program(range));
     Assertions.assertAll(
-      () -> Assertions.assertSame(Ty.DEADEND, range.ty()),
+      () -> Assertions.assertSame(Ty.DEADEND, range.ty().completionTy()),
       () -> Assertions.assertEquals(new TyValueArray(Ty.INVALID, null), range.rangeTy()),
       () -> Assertions.assertEquals(range.rangeTy(), HirExprs.getIndexingAccessorTy(range)),
       () -> Assertions.assertSame(Ty.INTEGER, root.ty())
@@ -142,7 +142,7 @@ class HirTyCommonVisitorPassTest {
     final var uint8 = Tys.fromString("uint8", MachineTarget.T64);
     Assertions.assertAll(
       () -> Assertions.assertTrue(TypeComparison.same(Tys.fromString(returnType, MachineTarget.T64), root.ty())),
-      () -> Assertions.assertTrue(TypeComparison.same(deadEnd ? Ty.DEADEND : uint8, access.ty())),
+      () -> Assertions.assertTrue(TypeComparison.same(deadEnd ? Ty.DEADEND : uint8, access.ty().completionTy())),
       () -> Assertions.assertTrue(TypeComparison.same(uint8, HirExprs.getIndexedTy(access))),
       () -> Assertions.assertSame(HirExprs.getIndexedTy(access), HirExprs.getBindingTy(access)),
       () -> Assertions.assertSame(HirExprs.getIndexedTy(access), access.indexedTy())
@@ -203,17 +203,17 @@ class HirTyCommonVisitorPassTest {
   @Test
   void given__noncontinuing_range_accessor__when__indexing_is_typed__then__the_slice_type_is_retained() {
     final var array = new Hir.Array(
-      new Hir.Expression[]{new Hir.Literal("7", Ty.INTEGER)}, new DynamicTy(Ty.INTEGER), null, null, null
+      new Hir.Expression[]{new Hir.Literal("7", Ty.INTEGER)}, new DynamicTy(Ty.INTEGER), null, null
     );
     final var lower = new Hir.Block(new Hir.Expressions(new Hir.Expression[]{
       new Hir.Return(new Hir.Literal("true", Ty.BOOLEAN)), new Hir.Literal("0", Ty.INTEGER)
     }), null);
     final var range = new Hir.Range(lower, new Hir.Literal("0", Ty.INTEGER));
-    final var access = new Hir.ArrayAccess(array, range, null, null);
+    final var access = new Hir.ArrayAccess(array, range, null);
     final var root = HirTyCommonVisitorPass.pass(new Hir.Program(access));
     Assertions.assertAll(
-      () -> Assertions.assertSame(Ty.DEADEND, access.ty()),
-      () -> Assertions.assertSame(Ty.DEADEND, access.accessor().ty()),
+      () -> Assertions.assertSame(Ty.DEADEND, access.ty().completionTy()),
+      () -> Assertions.assertSame(Ty.DEADEND, access.accessor().ty().completionTy()),
       () -> Assertions.assertInstanceOf(TyValueArray.class, HirExprs.getIndexingAccessorTy(access.accessor())),
       () -> Assertions.assertEquals(HirExprs.getIndexingReceiverTy(access.target()), HirExprs.getIndexedTy(access)),
       () -> Assertions.assertSame(Ty.BOOLEAN, root.ty())
@@ -234,7 +234,7 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertSame(Ty.DEADEND, HirExprs.getIndexingReceiverTy(access.target())),
       () -> Assertions.assertSame(Ty.INFER, HirExprs.getIndexedTy(access)),
-      () -> Assertions.assertSame(Ty.DEADEND, access.ty()),
+      () -> Assertions.assertSame(Ty.DEADEND, access.ty().completionTy()),
       () -> Assertions.assertSame(Ty.BOOLEAN, root.ty())
     );
   }

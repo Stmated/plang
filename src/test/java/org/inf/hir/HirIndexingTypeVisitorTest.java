@@ -57,7 +57,7 @@ class HirIndexingTypeVisitorTest {
     final var root = Inf.codeToThir(code).root();
     final var expression = nodes(root, nodeType).getLast();
     final Ty expected = switch (expectedSource) {
-      case "completion" -> expression.ty();
+      case "completion" -> expression.ty().completionTy();
       case "metadata" -> switch (expression) {
         case Hir.Array array -> array.arrayTy();
         default -> throw new AssertionError("Expected named indexing metadata");
@@ -148,7 +148,7 @@ class HirIndexingTypeVisitorTest {
     final var access = nodes(Inf.codeToThir(code).root(), Hir.ArrayAccess.class).getLast();
     final var selected = access.indexedTy();
     assertAll(
-      () -> assertSame(Ty.DEADEND, access.ty()),
+      () -> assertSame(Ty.DEADEND, access.ty().completionTy()),
       () -> assertSame(selected, HirExprs.getIndexedTy(access)),
       () -> assertSame(selected, HirExprs.getBindingTy(access)),
       () -> assertSame(selected, HirExprs.getAssignmentContextTy(access)),

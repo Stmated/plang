@@ -7,7 +7,6 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 
 public interface Ty {
 
@@ -53,22 +52,28 @@ public interface Ty {
 
   TyValueString STRING = Tys.intern(new TyValueString());
 
+  @Nullable
+  default Ty completionTy() {
+    return this;
+  }
+
+  @Nullable
+  default Ty structuralTy() {
+    return this == DEADEND ? null : this;
+  }
+
   default boolean isDeadend() {
     return Tys.isDeadend(this);
   }
 
-  default <T extends Ty> boolean is(final Class<T> kind) {
-    return Tys.is(this, kind);
+  @Nullable
+  default <T extends Ty> T asCompletion(final Class<T> kind) {
+    return Tys.asCompletion(this, kind);
   }
 
   @Nullable
-  default <T extends Ty> T as(final Class<T> kind) {
-    return Tys.as(this, kind);
-  }
-
-  @Nullable
-  default <T extends Ty, R> R ifIs(final Class<T> kind, final Function<? super T, ? extends R> mapper) {
-    return Tys.ifIs(this, kind, mapper);
+  default <T extends Ty> T asStructural(final Class<T> kind) {
+    return Tys.asStructural(this, kind);
   }
 
   default String toShortString() {

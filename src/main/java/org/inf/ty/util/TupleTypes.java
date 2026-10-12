@@ -10,6 +10,7 @@ import java.util.Arrays;
 public final class TupleTypes {
 
   public static boolean containsTuple(Ty ty) {
+    ty = Tys.completionTy(ty);
     return switch (ty) {
       case TyStruct struct -> struct.tuple()
         || Arrays.stream(struct.fields()).anyMatch(field -> containsTuple(field.ty()));
@@ -33,12 +34,13 @@ public final class TupleTypes {
   }
 
   private static boolean isElementType(final Ty ty, final boolean allowInferred) {
-    return switch (ty) {
+    return switch (Tys.completionTy(ty)) {
       case TyValueNumber number -> number.width().value() > 0;
       case TyValueBoolean _, TyValueString _ -> true;
       case TyStruct struct -> Arrays.stream(struct.fields()).allMatch(field -> isElementType(field.ty(), allowInferred));
       case TyValueArray array -> isElementType(array.elementType(), allowInferred) && (array.size() == null || array.size() >= 0);
-      case TyPointer<?> pointer -> Tys.is(pointer.inner(), TyOpaque.class) || isElementType(pointer.inner(), allowInferred);
+      case TyPointer<?> pointer -> Tys.asStructural(pointer.inner(), TyOpaque.class) != null
+        || isElementType(pointer.inner(), allowInferred);
       case TyUnion union -> Arrays.stream(union.types()).allMatch(type -> type == Ty.VOID || isElementType(type, allowInferred));
       case TyFn fn -> (fn.returnTy() == Ty.VOID || Tys.isDeadend(fn.returnTy()) || isElementType(fn.returnTy(), allowInferred))
         && Arrays.stream(fn.parameters()).allMatch(parameter -> isElementType(parameter.ty(), allowInferred));

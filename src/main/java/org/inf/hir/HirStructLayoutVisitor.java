@@ -18,12 +18,20 @@ public final class HirStructLayoutVisitor implements HirVisitor {
   public static TyStruct find(final Hir.Expression expression) {
     final var visitor = new HirStructLayoutVisitor();
     visitor.visitResult(expression);
-    return Tys.as(visitor.type, TyStruct.class);
+    return Tys.asStructural(visitor.type, TyStruct.class);
   }
 
   private void visitResult(final Hir.Expression expression) {
-    type = expression.ty();
+    type = Tys.structuralTy(expression.ty());
     expression.visit(this);
+  }
+
+  @Override
+  public void visitTuple(final Hir.Tuple expression) {
+    // Retained tuple fields are typing metadata, not a layout of a value that can be constructed.
+    if (Tys.isDeadend(expression.ty())) {
+      type = null;
+    }
   }
 
   @Override

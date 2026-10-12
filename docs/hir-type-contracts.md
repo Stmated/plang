@@ -6,12 +6,12 @@ HIR separates expression completion, binding types, source constraints, and cont
 
 | Concept | Contract |
 |---|---|
-| Expression completion | `Expression.ty()` describes normal completion. `VOID` means completion without a value; `DEADEND` means no normal completion. Neither is a missing type. |
+| Expression completion | `Expression.ty()` carries the resolved type; `Tys.completionTy(expression.ty())` selects normal completion. `VOID` means completion without a value; `DEADEND` means no normal completion. Neither is a missing type. |
 | Binding type | `Dec.resolvedTy` and `Parameter.resolvedTy` describe the bound value. Their own expression completion is `VOID`; identifiers read the binding type, not the declaration/parameter completion type. |
 | Source-declared constraint | `Dec.typeAnnotation`, `Parameter.typeAnnotation`, `FunctionSignature.returnTypeAnnotation`, and `Array.elementType` use non-expression `Hir.DynamicTy` containers. Their `ty` values retain source constraints, including inference placeholders; optional source expressions preserve aliases and composite type syntax. |
 | Callable signature | The resolved `TyFn` supplies parameter types and `returnTy()`. `FunctionSignature.ty()` is authoritative; no duplicate return-type cache is needed. Creating a function value does not execute its body. |
 | Aggregate/member shape | Construction-target, member, indexing, and spread-field queries expose the specific resolved layout or selected type required by the consumer. They do not infer types or provide a universal structural fallback. |
-| Resolved structural type | `Tuple.resolvedTy`, `Array.arrayTy`, `Range.rangeTy`, and `ArrayAccess.indexedTy` retain typing information independently of completion. A tuple's retained structure is not automatically an available runtime layout. |
+| Resolved structural type | `Tuple.resolvedTy()`, `Array.arrayTy()`, `Range.rangeTy()`, and `ArrayAccess.indexedTy()` project retained typing information from the same `ty` storage. A tuple's retained structure is not automatically an available runtime layout. |
 | Expected type | `Tuple.contextualType` is a destination supplied by contextual typing, including its slot order and labels. It is an input to resolution, not a duplicate of the resolved structural type or a flag on it. |
 | Return/break collection | Execution-aware collectors use reachable payload completion types, respecting evaluation order and transfer scope. A nominal result or structural type does not establish that execution reaches a return or break. |
 
@@ -39,19 +39,40 @@ Function return inference preserves `returnTypeAnnotation`, including inference 
 
 ## Type inspection
 
-Inspect an already-selected type with `Ty.is`, `Ty.as`, or `Ty.ifIs`. Use the corresponding `Tys` helpers when the type may be null.
-`as` returns null for a different kind; `ifIs` returns null without calling its mapper when the kind does not match. Mapper errors propagate.
-These helpers inspect the current representation; they do not select a type context, collect transfer payloads, or unwrap a future completion wrapper.
+`Ty.asCompletion` and `Ty.asStructural` select a projection before inspecting its kind; completion wrappers are transparent to callers.
+Both return null when the selected projection is unavailable or has a different kind. Use the corresponding `Tys` helpers when the type itself may be null.
+There are no public context-free `is`, `as`, or `ifIs` methods. Test a typed projection for null rather than adding a separate kind check.
 
 ```java
-final var function = Tys.as(type, TyFn.class);
-final var width = Ty.INTEGER.ifIs(TyValueNumber.class, TyValueNumber::width);
+final var function = Tys.asStructural(type, TyFn.class);
+final var number = type.asCompletion(TyValueNumber.class);
 final var diverges = Tys.isDeadend(expression.ty());
 ```
 
 `Tys.isDeadend(null)` is false. An unresolved type is not evidence of divergence.
 `Ty.INFER` is an explicit inference placeholder; null usually means resolution is unavailable or a pass has not populated a field yet. `Tys.isInferred` accepts both for existing inference decisions, but they remain distinct representations.
 Use `isDeadend` for completion decisions rather than comparing directly with the sentinel.
+
+### Completion and structural projections
+
+```java
+final var type = Tys.withCompletion(Ty.DEADEND, arrayType);
+type.completionTy();                     // DEADEND
+type.asCompletion(TyValueArray.class);    // null: no array value completes
+type.asStructural(TyValueArray.class);    // retained array shape
+Tys.withCompletion(arrayType, arrayType); // arrayType, without a wrapper
+Tys.withCompletion(Ty.DEADEND, null);     // DEADEND, without a structural value
+```
+
+`TyCompletion` retains distinct completion and structural projections. `Tys.withCompletion` flattens nested pairs and interns distinct pairs; equal projections keep the original type, including explicit widths and flags. Null remains unresolved; it is not replaced with `INFER`.
+
+Use the null-safe `Tys.completionTy` and `Tys.structuralTy` when resolution may be unavailable. `Tys.isDeadend`, common-denominator resolution, and branch unions consume completion. `TypeComparison.same` compares both projections when given a pair; value compatibility must select completion instead. A branch merge drops transferring arms without including their retained structures.
+
+The four aggregate/indexing nodes store one pair, not duplicate type fields. Binding types, declared constraints, and expected tuple layouts remain separate. Transfers retain `DEADEND` with no structure, never their return/break payloads.
+
+`asStructural(TyStruct.class)` exposes metadata, not an available layout: a diverging tuple may match while construction/member/spread queries still have no layout. Neither typed projection collects function body results; `HirBodyResultTyping.resolve(body)` combines reachable returns with normal completion.
+
+MIR value types and LLVM type resolution select completion, so wrappers do not become runtime layouts or ABI types. Array lowering reads the structural array type before evaluating elements and emits no allocation if evaluation transfers.
 
 ## Type annotations
 
@@ -278,13 +299,13 @@ Annotation reads select source constraints or inference placeholders, never prev
 | `HirFunctionReturnTyping`, called by `HirTyCommonVisitorPass.visitFunction` | Shared `HirBodyResultTyping` unions reachable returns with resolved body completion; terminal assignments/declarations contribute `VOID`. | Ty 11-12 complete |
 | `HirTyCommonVisitorPass.visitProgram` | Shared body-result policy for the external script result, distinct from body completion. | Ty 12 complete |
 | `HirTyCommonVisitorPass.visitLoop` | Reachable break payload types from `FindBreakTypesVisitor`; retain existing loop rules during migration. | Ty 13-14 complete |
-| `FindReturnTypesVisitor`, `FindBreakTypesVisitor` | Reachable payload completion via `ty()`, collected with execution-aware traversal. | Reuse in Ty 11-13 |
+| `FindReturnTypesVisitor`, `FindBreakTypesVisitor` | Reachable payload completion via `Tys.completionTy`, collected with execution-aware traversal. | Reuse in Ty 11-13 |
 
 `Hir.Program.ty()` is an external return type, not its body's completion type. `Hir.Return.ty()` and `Hir.LoopBreak.ty()` describe the transfer (`DEADEND`), not the payload.
 
 ## Type selection boundaries
 
-There are no universal value-type caches, setters, or forwarding adapters. Neither `Tys.getValueTy` nor `getStructuralTy` is a replacement: callers choose the specific type concept they require.
+There are no universal value-type caches or forwarding adapters. Type projections select existing information, not expression contexts: callable signatures, bindings, body results, and available layouts still require their specific queries.
 
 Named context-specific `Tys` helpers centralize type selection without performing inference. Production typing, queries, lowering, tree printing, and type assertions do not consume the universal accessor.
 

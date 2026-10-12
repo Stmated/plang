@@ -22,50 +22,71 @@ class TysTest {
 
   static Stream<Arguments> inspectedTypes() {
     return Stream.of(
-      Arguments.of(Ty.INTEGER, Ty.INTEGER),
-      Arguments.of(Ty.DOUBLE, Ty.DOUBLE),
-      Arguments.of(Ty.BOOLEAN, null),
-      Arguments.of(Ty.INFER, null),
-      Arguments.of(Ty.INVALID, null),
-      Arguments.of(Ty.UNKNOWN, null),
-      Arguments.of(Ty.VOID, null),
-      Arguments.of(Ty.DEADEND, null),
-      Arguments.of(null, null)
+      Arguments.of(Ty.INTEGER, Ty.INTEGER, Ty.INTEGER),
+      Arguments.of(Ty.DOUBLE, Ty.DOUBLE, Ty.DOUBLE),
+      Arguments.of(Ty.BOOLEAN, null, null),
+      Arguments.of(Ty.INFER, null, null),
+      Arguments.of(Ty.INVALID, null, null),
+      Arguments.of(Ty.UNKNOWN, null, null),
+      Arguments.of(Ty.VOID, null, null),
+      Arguments.of(Ty.DEADEND, null, null),
+      Arguments.of(Tys.withCompletion(Ty.DEADEND, Ty.INTEGER), null, Ty.INTEGER),
+      Arguments.of(Tys.withCompletion(null, Ty.INTEGER), null, Ty.INTEGER),
+      Arguments.of(Tys.withCompletion(Ty.INTEGER, Ty.DOUBLE), Ty.INTEGER, Ty.DOUBLE),
+      Arguments.of(null, null, null)
     );
   }
 
   @ParameterizedTest
   @MethodSource("inspectedTypes")
-  void given__type_or_missing_resolution__when__inspected__then__kind_and_completion_are_preserved(
-    final Ty type, final TyValueNumber expected
+  void given__type_or_missing_resolution__when__projected__then__the_requested_context_selects_the_kind(
+    final Ty type, final TyValueNumber completion, final TyValueNumber structural
   ) {
-    final var width = expected == null ? null : expected.width();
+    final var deadend = Tys.completionTy(type) == Ty.DEADEND;
     Assertions.assertAll(
-      () -> Assertions.assertEquals(expected != null, Tys.is(type, TyValueNumber.class)),
-      () -> Assertions.assertSame(expected, Tys.as(type, TyValueNumber.class)),
-      () -> Assertions.assertEquals(width, Tys.ifIs(type, TyValueNumber.class, TyValueNumber::width)),
-      () -> Assertions.assertEquals(type == Ty.DEADEND, Tys.isDeadend(type))
+      () -> Assertions.assertSame(completion, Tys.asCompletion(type, TyValueNumber.class)),
+      () -> Assertions.assertSame(structural, Tys.asStructural(type, TyValueNumber.class)),
+      () -> Assertions.assertEquals(deadend, Tys.isDeadend(type))
     );
     if (type != null) {
       Assertions.assertAll(
-        () -> Assertions.assertEquals(expected != null, type.is(TyValueNumber.class)),
-        () -> Assertions.assertSame(expected, type.as(TyValueNumber.class)),
-        () -> Assertions.assertEquals(width, type.ifIs(TyValueNumber.class, TyValueNumber::width)),
-        () -> Assertions.assertEquals(type == Ty.DEADEND, type.isDeadend())
+        () -> Assertions.assertSame(completion, type.asCompletion(TyValueNumber.class)),
+        () -> Assertions.assertSame(structural, type.asStructural(TyValueNumber.class)),
+        () -> Assertions.assertEquals(deadend, type.isDeadend())
       );
-    }
-    if (expected == null) {
-      Assertions.assertNull(Tys.ifIs(type, TyValueNumber.class, _ -> Assertions.fail("Nonmatching mapper was invoked")));
     }
   }
 
   @Test
-  void given__matching_type__when__projection_fails__then__the_error_is_propagated() {
-    final var failure = new IllegalStateException("Projection failed");
-    Assertions.assertSame(failure, Assertions.assertThrows(IllegalStateException.class,
-      () -> Ty.INTEGER.ifIs(TyValueNumber.class, _ -> {
-        throw failure;
-      })));
+  void given__completion_and_structure__when__paired__then__projections_are_explicit_and_normalized() {
+    final var pair = Tys.withCompletion(Ty.DEADEND, Ty.INTEGER);
+    final var unresolved = Tys.withCompletion(null, Ty.INFER);
+    final var explicit = Ty.INTEGER.toBuilder().width(Ty.BW_EXPLICIT_32).build();
+    final var constant = new TyValueNumberScaled(Ty.DECIMAL.width(), Ty.DECIMAL.scale(), Ty.DECIMAL.signed(),
+      EnumSet.of(TyFlags.CONSTANT));
+    Assertions.assertAll(
+      () -> Assertions.assertSame(Ty.INTEGER, Tys.withCompletion(Ty.INTEGER, Ty.INTEGER)),
+      () -> Assertions.assertSame(Ty.DEADEND, Tys.withCompletion(Ty.DEADEND, null)),
+      () -> Assertions.assertNull(Tys.withCompletion(null, null)),
+      () -> Assertions.assertSame(Ty.DEADEND, pair.completionTy()),
+      () -> Assertions.assertSame(Ty.INTEGER, pair.structuralTy()),
+      () -> Assertions.assertTrue(pair.isDeadend()),
+      () -> Assertions.assertNull(pair.asCompletion(TyValueNumberInteger.class)),
+      () -> Assertions.assertSame(Ty.INTEGER, pair.asStructural(TyValueNumberInteger.class)),
+      () -> Assertions.assertSame(Ty.DEADEND, Ty.DEADEND.asCompletion(Ty.TyNamed.class)),
+      () -> Assertions.assertNull(Ty.DEADEND.asStructural(Ty.TyNamed.class)),
+      () -> Assertions.assertSame(pair, Tys.withCompletion(pair, pair)),
+      () -> Assertions.assertSame(explicit, Tys.withCompletion(explicit, explicit)),
+      () -> Assertions.assertSame(explicit, Tys.withCompletion(Ty.INTEGER, explicit).structuralTy()),
+      () -> Assertions.assertSame(constant, Tys.withCompletion(Ty.DECIMAL, constant).structuralTy()),
+      () -> Assertions.assertNotEquals(Tys.withCompletion(Ty.DEADEND, Ty.DECIMAL),
+        Tys.withCompletion(Ty.DEADEND, constant)),
+      () -> Assertions.assertFalse(TypeComparison.same(pair, Ty.DEADEND)),
+      () -> Assertions.assertNull(unresolved.completionTy()),
+      () -> Assertions.assertSame(Ty.INFER, unresolved.structuralTy()),
+      () -> Assertions.assertTrue(Tys.containsInferred(unresolved)),
+      () -> Assertions.assertEquals(Tys.union(Ty.INTEGER, Ty.VOID), Tys.union(Ty.INTEGER, pair, Ty.VOID))
+    );
   }
 
   static Stream<Arguments> callableTargets() {

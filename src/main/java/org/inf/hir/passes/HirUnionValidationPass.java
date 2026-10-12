@@ -27,8 +27,10 @@ public class HirUnionValidationPass {
     root.visit(new Visitor(root));
   }
 
-  private static void check(final Ty actual, final Ty expected, final String context) {
-    if ((Tys.is(actual, TyUnion.class) || Tys.is(expected, TyUnion.class)) && !UnionTypes.compatible(actual, expected)) {
+  private static void check(final Ty actualType, final Ty expectedType, final String context) {
+    final var actual = Tys.completionTy(actualType);
+    final var expected = Tys.completionTy(expectedType);
+    if ((actual instanceof TyUnion || expected instanceof TyUnion) && !UnionTypes.compatible(actual, expected)) {
       throw new InvalidTypeConversionException("Value is not compatible with union in %s".formatted(context), actual, expected);
     }
   }
@@ -112,8 +114,8 @@ public class HirUnionValidationPass {
     public void visitBinaryOperation(final Hir.BinaryOperation expr) {
       HirVisitor.super.visitBinaryOperation(expr);
       if (expr.kind() == Hir.BinaryOperationKind.BIT_OR
-        && (!Tys.isDeadend(expr.lhs().ty()) && !Tys.is(expr.lhs().ty(), TyValueNumberInteger.class)
-          || !Tys.isDeadend(expr.rhs().ty()) && !Tys.is(expr.rhs().ty(), TyValueNumberInteger.class))) {
+        && (!Tys.isDeadend(expr.lhs().ty()) && Tys.asCompletion(expr.lhs().ty(), TyValueNumberInteger.class) == null
+          || !Tys.isDeadend(expr.rhs().ty()) && Tys.asCompletion(expr.rhs().ty(), TyValueNumberInteger.class) == null)) {
         throw new IllegalArgumentException("Bitwise '|' requires integer value operands");
       }
     }
@@ -177,8 +179,8 @@ public class HirUnionValidationPass {
         return;
       }
       final var arguments = expr.arguments();
-      if (ArrayUtils.none(function.parameters(), parameter -> Tys.is(parameter.ty(), TyUnion.class))
-        && ArrayUtils.none(arguments, argument -> Tys.is(argument.ty(), TyUnion.class))) {
+      if (ArrayUtils.none(function.parameters(), parameter -> Tys.asStructural(parameter.ty(), TyUnion.class) != null)
+        && ArrayUtils.none(arguments, argument -> Tys.asCompletion(argument.ty(), TyUnion.class) != null)) {
         return;
       }
       final var parameters = function.parameters();

@@ -37,9 +37,8 @@ class HirDeadEndTest {
 
   private Hir.ArrayAccess arrayAccess(Hir.Expression index) {
     return new Hir.ArrayAccess(
-      new Hir.Array(new Hir.Expression[]{integer()}, new DynamicTy(Ty.INTEGER), null, null, null),
+      new Hir.Array(new Hir.Expression[]{integer()}, new DynamicTy(Ty.INTEGER), null, null),
       index,
-      null,
       null
     );
   }

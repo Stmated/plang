@@ -141,7 +141,10 @@ public class Hir {
     DynamicTy elementType;
     Expression length;
     Ty ty;
-    Ty arrayTy;
+
+    public Ty arrayTy() {
+      return Tys.structuralTy(ty);
+    }
 
     @Override
     public String toString() {
@@ -221,7 +224,10 @@ public class Hir {
     Expression target;
     Expression accessor;
     Ty ty;
-    Ty indexedTy;
+
+    public Ty indexedTy() {
+      return Tys.structuralTy(ty);
+    }
 
     @Override
     public String toString() {
@@ -978,7 +984,10 @@ public class Hir {
     Expression lower;
     Expression higher;
     Ty ty;
-    Ty rangeTy;
+
+    public Ty rangeTy() {
+      return Tys.structuralTy(ty);
+    }
 
 //    @Override
 //    public Ty ty() {
@@ -1101,20 +1110,20 @@ public class Hir {
 
     TupleEntry[] children;
     Ty ty;
-    /// Resolved type from its fields, will not contain `Ty.DEADEND`
-    TyStruct resolvedTy;
     /// Destination layout of a fresh contextual construction; children remain in source order.
     /// For example: `val t: (uint8, uint8) = (1, 2)` where `1` and `2` then gets implicit type `uint8``
-    /// TODO: Could likely be removed or handled some other way in the VERY few locations it is (or should be) used
-    ///         Should likely instead be a "isContextual" on a new form of Ty flags, like for probable new "isDeadend" instead of having `Ty.DEADEND` type.
     TyStruct contextualType;
 
+    public TyStruct resolvedTy() {
+      return Tys.asStructural(ty, TyStruct.class);
+    }
+
     public Tuple(final TupleEntry[] children) {
-      this(children, null, null, null);
+      this(children, null, null);
     }
 
     public Tuple(final TupleEntry[] children, final Ty ty) {
-      this(children, ty, null, null);
+      this(children, ty, null);
     }
 
     @Override

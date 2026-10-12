@@ -41,7 +41,7 @@ public class HirExprs {
     if (expression instanceof Hir.ArrayAccess access) {
       return getIndexedTy(access);
     }
-    return expression.ty();
+    return Tys.completionTy(expression.ty());
   }
 
   /// Declaration initializers use source constraints, including omitted array element types, never inferred bindings.
@@ -78,7 +78,7 @@ public class HirExprs {
   @Nullable
   public static TyFn getCallableSignature(final Hir.Expression expression) {
     final var type = getCallableValueTy(expression);
-    return Tys.as(type, TyFn.class);
+    return Tys.asStructural(type, TyFn.class);
   }
 
   /// Selects the resolved layout to construct, even when evaluating the target cannot complete.

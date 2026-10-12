@@ -29,7 +29,7 @@ class HirStructLayoutVisitorTest {
   ) {
     final var root = Inf.codeToThir(code).root();
     final var tuple = nodes(root, Hir.Tuple.class).getLast();
-    final var completion = tuple.ty();
+    final var completion = tuple.ty().completionTy();
     final var contextual = tuple.contextualType();
     assertAll(
       () -> assertSame(diverges ? null : completion, HirExprs.getConstructionTargetTy(tuple)),
@@ -39,6 +39,9 @@ class HirStructLayoutVisitorTest {
     if (diverges) {
       assertAll(
         () -> assertSame(Ty.DEADEND, completion),
+        () -> assertNull(tuple.ty().asCompletion(TyStruct.class)),
+        () -> assertSame(tuple.resolvedTy(), tuple.ty().asStructural(TyStruct.class)),
+        () -> assertNotNull(tuple.ty().asStructural(TyStruct.class)),
         () -> assertNull(contextual)
       );
     } else {

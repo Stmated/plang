@@ -124,7 +124,7 @@ class TypeComparisonTest {
   @MethodSource("nestedDecimalFlags")
   void given__nested_decimal_flag_difference__when__compared__then__record_equality_does_not_bypass_flags(Ty a, Ty b) {
     Assertions.assertAll(
-      () -> Assertions.assertEquals(a, b),
+      () -> Assertions.assertNotEquals(a, b),
       () -> Assertions.assertEquals(false, TypeComparison.same(a, b)),
       () -> Assertions.assertEquals(false, TypeComparison.same(b, a))
     );

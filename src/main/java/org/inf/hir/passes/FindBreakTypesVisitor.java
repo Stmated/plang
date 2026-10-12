@@ -6,6 +6,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.inf.hir.Hir;
 import org.inf.ty.Ty;
+import org.inf.ty.util.Tys;
 
 @RequiredArgsConstructor
 class FindBreakTypesVisitor extends HirExecutionVisitor {
@@ -30,7 +31,7 @@ class FindBreakTypesVisitor extends HirExecutionVisitor {
     super.visitLoopBreak(expr);
 
     if (continuing) {
-      this.types.add(expr.value() == null ? Ty.VOID : expr.value().ty());
+      this.types.add(expr.value() == null ? Ty.VOID : Tys.completionTy(expr.value().ty()));
     }
     continuing = false;
   }

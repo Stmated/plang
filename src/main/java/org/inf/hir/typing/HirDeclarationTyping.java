@@ -32,7 +32,8 @@ public final class HirDeclarationTyping {
     return !Tys.isInferred(constraint) && Tys.containsInferred(constraint);
   }
 
-  public static Ty resolve(final Ty constraint, final Ty actual) {
+  public static Ty resolve(final Ty constraint, final Ty actualType) {
+    final var actual = Tys.completionTy(actualType);
     if (Tys.isInferred(constraint)) {
       return actual == null ? Ty.INFER : actual;
     }

@@ -74,8 +74,8 @@ public class HirTyCommonVisitorPass {
       // Go deeper first, and resolve any nested binary operations.
       HirVisitor.super.visitBinaryOperation(expr);
 
-      final var lhst = expr.lhs().ty();
-      final var rhst = expr.rhs().ty();
+      final var lhst = Tys.completionTy(expr.lhs().ty());
+      final var rhst = Tys.completionTy(expr.rhs().ty());
 
       if (Tys.isDeadend(lhst)) {
         expr.ty(Ty.DEADEND);
@@ -93,18 +93,13 @@ public class HirTyCommonVisitorPass {
       HirVisitor.super.visitArray(expr);
 
       expr.elementType(expr.elementType().resolve(annotations::resolve));
-//      expr.elementType(expr.elementType().resolve(e -> expr.arrayTy()));
-
-      // TODO: Why keep this if they are basically the same (I guess unless otherwise set by something else).
-      //        Feels like something can be simolified/changed
-      //expr.elementType(expr.elementType().computeIfAbsent(expr::arrayTy));
 
       var arrayElementTy = expr.elementType().ty();
       for (final var element : expr.elements()) {
 
         if (arrayElementTy instanceof TyValueNumber vn) {
           if (element instanceof Hir.Literal lit && lit.ty() instanceof TyValueNumber litTy_n
-            && !(vn.is(TyValueNumberInteger.class) && litTy_n.is(TyValueNumberInteger.class))) {
+            && !(vn instanceof TyValueNumberInteger && litTy_n instanceof TyValueNumberInteger)) {
             if (!litTy_n.width().explicit() && (litTy_n.width().value() != vn.width().value() || litTy_n.signed() != vn.signed())) {
 
               // Integer-to-integer typing is handled by HirIntegerLiteralTypingVisitorPass.
@@ -113,18 +108,18 @@ public class HirTyCommonVisitorPass {
           }
         }
 
-        final var elementTy = element.ty();
+        final var elementTy = Tys.completionTy(element.ty());
         if (Tys.isDeadend(elementTy)) {
           continue;
         }
         if (Tys.isInferred(arrayElementTy)) {
           arrayElementTy = elementTy;
-        } else if (!availableOnly && !Tys.is(arrayElementTy, TyUnion.class)
+        } else if (!availableOnly && Tys.asStructural(arrayElementTy, TyUnion.class) == null
           && (TupleTypes.containsTuple(arrayElementTy) || TupleTypes.containsTuple(elementTy))) {
           if (!TypeComparison.same(elementTy, arrayElementTy)) {
             throw new InvalidTypeConversionException("Array tuple elements must have matching shapes and slot types", elementTy, arrayElementTy);
           }
-        } else if (!availableOnly && !Tys.is(arrayElementTy, TyUnion.class)) {
+        } else if (!availableOnly && Tys.asStructural(arrayElementTy, TyUnion.class) == null) {
 
           final var common = Tys.getCommonDenominator(arrayElementTy, elementTy);
           final var diffs = common.diffs();
@@ -144,13 +139,9 @@ public class HirTyCommonVisitorPass {
 
       // The element ty can still be INFER -- it will be used for late type decisions.
       final var arrayTy = Tys.intern(new TyValueArray(arrayElementTy, arrayLength));
-      expr.arrayTy(arrayTy);
-
-      if (HirExprs.isDeadEnd(expr.elements()) || (expr.length() != null && Tys.isDeadend(expr.length().ty()))) {
-        expr.ty(Ty.DEADEND);
-      } else {
-        expr.ty(arrayTy);
-      }
+      final var diverges = HirExprs.isDeadEnd(expr.elements())
+        || (expr.length() != null && Tys.isDeadend(expr.length().ty()));
+      expr.ty(Tys.withCompletion(diverges ? Ty.DEADEND : arrayTy, arrayTy));
     }
 
     @Override
@@ -214,7 +205,7 @@ public class HirTyCommonVisitorPass {
 
       final var predicate = expr.predicate().ty();
       if (Tys.isDeadend(predicate)) {
-        expr.ty(predicate);
+        expr.ty(Ty.DEADEND);
       } else {
         final var pass = expr.pass() == null ? Ty.VOID : expr.pass().ty();
         final var fail = expr.fail() == null ? Ty.VOID : expr.fail().ty();
@@ -291,18 +282,17 @@ public class HirTyCommonVisitorPass {
       final var targetTy = HirExprs.getIndexingReceiverTy(expr.target());
 
       if (availableOnly && Tys.isInferred(targetTy)) {
-        expr.indexedTy(Ty.INFER);
-        expr.ty(HirExprs.isDeadEnd(expr.target(), expr.accessor()) ? Ty.DEADEND : Ty.INFER);
+        expr.ty(Tys.withCompletion(
+          HirExprs.isDeadEnd(expr.target(), expr.accessor()) ? Ty.DEADEND : Ty.INFER, Ty.INFER));
         return;
       }
 
       if ((Tys.isInferred(targetTy) || Tys.isDeadend(targetTy)) && Tys.isDeadend(expr.target().ty())) {
-        expr.indexedTy(Ty.INFER);
-        expr.ty(Ty.DEADEND);
+        expr.ty(Tys.withCompletion(Ty.DEADEND, Ty.INFER));
         return;
       }
 
-      final var isRange = Tys.is(accessorTy, TyValueArray.class);
+      final var isRange = Tys.asStructural(accessorTy, TyValueArray.class) != null;
 
       final var ty = switch (targetTy) {
         // The below should not return array type if is range, it should return a slice, which is different.
@@ -324,8 +314,7 @@ public class HirTyCommonVisitorPass {
         }
       };
 
-      expr.indexedTy(ty);
-      expr.ty(HirExprs.isDeadEnd(expr.target(), expr.accessor()) ? Ty.DEADEND : ty);
+      expr.ty(Tys.withCompletion(HirExprs.isDeadEnd(expr.target(), expr.accessor()) ? Ty.DEADEND : ty, ty));
     }
 
     @Override
@@ -342,12 +331,7 @@ public class HirTyCommonVisitorPass {
       final var common = Tys.getCommonDenominator(expr.lower().ty(), expr.higher().ty());
       final var commonTy = Objects.requireNonNullElse(common.ty(), Ty.INVALID);
       final var rangeTy = new TyValueArray(commonTy, null);
-      expr.rangeTy(rangeTy);
-      if (HirExprs.isDeadEnd(expr.lower(), expr.higher())) {
-        expr.ty(Ty.DEADEND);
-      } else {
-        expr.ty(rangeTy);
-      }
+      expr.ty(Tys.withCompletion(HirExprs.isDeadEnd(expr.lower(), expr.higher()) ? Ty.DEADEND : rangeTy, rangeTy));
     }
 
     @Override

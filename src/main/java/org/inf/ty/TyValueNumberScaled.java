@@ -25,11 +25,12 @@ public record TyValueNumberScaled(BitWidth width, int scale, boolean signed, Set
       return false;
     }
     final TyValueNumberScaled that = (TyValueNumberScaled) o;
-    return Objects.equals(width, that.width) && scale == that.scale && signed == that.signed;
+    return Objects.equals(width, that.width) && scale == that.scale && signed == that.signed
+      && Objects.equals(flags, that.flags);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(width, scale, signed);
+    return Objects.hash(width, scale, signed, flags);
   }
 }

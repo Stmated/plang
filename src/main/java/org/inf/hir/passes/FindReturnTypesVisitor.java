@@ -17,7 +17,7 @@ public final class FindReturnTypesVisitor extends HirExecutionVisitor {
   public void visitReturn(Hir.Return expression) {
     visitChild(expression.expression());
     if (continuing) {
-      returnTypes.add(expression.expression().ty());
+      returnTypes.add(Tys.completionTy(expression.expression().ty()));
     }
     continuing = false;
   }

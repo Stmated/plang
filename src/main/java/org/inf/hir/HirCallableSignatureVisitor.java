@@ -21,7 +21,7 @@ public final class HirCallableSignatureVisitor implements HirVisitor {
   }
 
   private void visitResult(final Hir.Expression expression) {
-    type = expression.ty();
+    type = Tys.structuralTy(expression.ty());
     expression.visit(this);
   }
 

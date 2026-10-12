@@ -21,8 +21,18 @@ public final class HirIndexingTypeVisitor implements HirVisitor {
   }
 
   private void visitResult(final Hir.Expression expression) {
-    type = expression.ty();
+    type = Tys.structuralTy(expression.ty());
+    if (type == null) {
+      type = Tys.completionTy(expression.ty());
+    }
     expression.visit(this);
+  }
+
+  @Override
+  public void visitTuple(final Hir.Tuple expression) {
+    if (Tys.isDeadend(expression.ty())) {
+      type = Ty.DEADEND;
+    }
   }
 
   @Override

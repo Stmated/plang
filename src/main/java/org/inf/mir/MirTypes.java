@@ -14,6 +14,7 @@ public final class MirTypes {
 
   /** Current source aggregates have reference semantics; their pointee retains the aggregate layout type. */
   public static Ty valueType(Ty type) {
+    type = Tys.completionTy(type);
     return switch (type) {
       case TyStruct struct -> new TyPointer<>(struct);
       case TyValueArray array -> new TyPointer<>(array);

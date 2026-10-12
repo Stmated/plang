@@ -116,7 +116,7 @@ class HirReturnTypeVisitorTest {
       new Hir.Expression[]{new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), new Hir.Return(new Hir.Literal("text", Ty.STRING))},
       new DynamicTy(Ty.INTEGER),
       new Hir.Return(new Hir.Literal("4", Ty.INTEGER)),
-      null, null
+      null
     );
     final var ret = new Hir.Return(array);
     final var program = new Hir.Program(ret);
@@ -126,7 +126,7 @@ class HirReturnTypeVisitorTest {
     assertAll(
       () -> assertEquals(Ty.INTEGER, program.ty()),
       () -> assertEquals(Ty.DEADEND, ret.ty()),
-      () -> assertEquals(Ty.DEADEND, array.ty()),
+      () -> assertEquals(Ty.DEADEND, array.ty().completionTy()),
       () -> assertEquals(Ty.INTEGER, assertInstanceOf(TyValueArray.class, array.arrayTy()).elementType())
     );
   }
@@ -136,14 +136,14 @@ class HirReturnTypeVisitorTest {
     final var array = new Hir.Array(
       new Hir.Expression[]{new Hir.Literal("1", Ty.INTEGER)},
       new DynamicTy(Ty.INTEGER), new Hir.Return(new Hir.Literal("text", Ty.STRING)),
-      null, null
+      null
     );
     final var ret = new Hir.Return(array);
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
 
     assertEquals(Ty.STRING, program.ty());
     assertEquals(Ty.DEADEND, ret.ty());
-    assertEquals(Ty.DEADEND, array.ty());
+    assertEquals(Ty.DEADEND, array.ty().completionTy());
     assertInstanceOf(TyValueArray.class, array.arrayTy());
   }
 
@@ -278,13 +278,13 @@ class HirReturnTypeVisitorTest {
   void arrayAccessPreservesElementTypeThroughNonContinuingReceiver() {
     final var arrayTy = new TyValueArray(Ty.INTEGER, 1);
     final var receiver = call(arrayTy, new Hir.Return(new Hir.Literal("text", Ty.STRING)));
-    final var access = new Hir.ArrayAccess(receiver, new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), null, null);
+    final var access = new Hir.ArrayAccess(receiver, new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), null);
     final var ret = new Hir.Return(access);
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(ret));
 
     assertEquals(Ty.STRING, program.ty());
     assertEquals(Ty.DEADEND, ret.ty());
-    assertEquals(Ty.DEADEND, access.ty());
+    assertEquals(Ty.DEADEND, access.ty().completionTy());
     assertEquals(Ty.INTEGER, access.indexedTy());
   }
 
@@ -333,7 +333,7 @@ class HirReturnTypeVisitorTest {
 
     assertAll(
       () -> assertEquals(Ty.INTEGER, program.ty()),
-      () -> assertEquals(Ty.DEADEND, rangeTy.ty()),
+      () -> assertEquals(Ty.DEADEND, rangeTy.ty().completionTy()),
       () -> assertEquals(Ty.DEADEND, returnTy.ty(), "ret should be dead-end"),
       () -> assertEquals(new TyValueArray(Ty.DEADEND, null), rangeTy.rangeTy()),
       () -> assertEquals(rangeTy.rangeTy(), HirExprs.getIndexingAccessorTy(rangeTy))

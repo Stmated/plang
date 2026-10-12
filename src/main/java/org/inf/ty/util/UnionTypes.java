@@ -11,20 +11,24 @@ import org.inf.util.ArrayUtils;
 @UtilityClass
 public class UnionTypes {
 
-  public static boolean compatible(final Ty actual, final Ty expected) {
+  public static boolean compatible(final Ty actualType, final Ty expectedType) {
+    final var actual = Tys.completionTy(actualType);
+    final var expected = Tys.completionTy(expectedType);
     if (Tys.isDeadend(actual) || TypeComparison.same(actual, expected)) {
       return true;
     }
-    final var source = Tys.as(actual, TyUnion.class);
+    final var source = Tys.asCompletion(actual, TyUnion.class);
     if (source != null) {
-      return Tys.is(expected, TyUnion.class)
+      return Tys.asCompletion(expected, TyUnion.class) != null
         && ArrayUtils.none(source.types(), type -> !compatible(type, expected));
     }
 
-    return Tys.ifIs(expected, TyUnion.class, u -> memberIndex(actual, u) >= 0, false);
+    final var destination = Tys.asCompletion(expected, TyUnion.class);
+    return destination != null && memberIndex(actual, destination) >= 0;
   }
 
-  public static int memberIndex(final Ty actual, final TyUnion expected) {
+  public static int memberIndex(final Ty actualType, final TyUnion expected) {
+    final var actual = Tys.completionTy(actualType);
     for (var i = 0; i < expected.types().length; i++) {
       if (memberCompatible(actual, expected.types()[i])) {
         return i;

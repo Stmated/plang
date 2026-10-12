@@ -598,15 +598,18 @@ class ThirToMirLoweringTest {
   @ParameterizedTest
   @ValueSource(strings = {
     "val f = () => (1, { return 7; }, 1 / 0); f()",
-    "val f = () => ((1, { return 7; }), 1 / 0); f()"
+    "val f = () => ((1, { return 7; }), 1 / 0); f()",
+    "val f = () => [1, { return 7; }, 1 / 0]; f()",
+    "val f = () => ([1, { return 7; }], 1 / 0); f()"
   })
-  void given__nonreturning_tuple_element__when__lowered__then__no_allocation_or_later_evaluation(String code) {
+  void given__nonreturning_aggregate_element__when__lowered__then__no_allocation_or_later_evaluation(String code) {
     final var module = Inf.codeToMir(code);
     final var instructions = module.functions().stream().flatMap(function -> function.blocks().stream())
       .flatMap(block -> block.instructions().stream()).toList();
     assertAll(
       () -> assertEquals(7, run(code)),
-      () -> assertTrue(instructions.stream().noneMatch(instruction -> instruction instanceof Mir.NewStruct || instruction instanceof Mir.Binary))
+      () -> assertTrue(instructions.stream().noneMatch(instruction ->
+        instruction instanceof Mir.NewStruct || instruction instanceof Mir.NewArray || instruction instanceof Mir.Binary))
     );
   }
 

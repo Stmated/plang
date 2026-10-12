@@ -15,6 +15,10 @@ public final class TypeComparison {
     if (actual == expected) {
       return true;
     }
+    if (actual instanceof TyCompletion || expected instanceof TyCompletion) {
+      return same(Tys.completionTy(actual), Tys.completionTy(expected))
+        && same(Tys.structuralTy(actual), Tys.structuralTy(expected));
+    }
     if (actual instanceof TyValueNumber a && expected instanceof TyValueNumber b) {
       return sameNumericValueType(a, b);
     }

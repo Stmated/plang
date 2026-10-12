@@ -16,25 +16,47 @@ Canonical terminology and contracts are in [Inf type contexts](../../../../CONTE
 * Expected type: contextual input; `Tuple.contextualType` determines destination layout and is not a duplicate result.
 * Binding type: resolved declaration/parameter value, separate from their `VOID` completion.
 * Exit payload type: a reachable return/break operand, separate from the transfer's `DEADEND` completion. Body results combine reachable return payloads with normal completion.
-* Added `Ty.is`, `Ty.as`, `Ty.ifIs`, `Ty.isDeadend` and null-safe `Tys` equivalents. Migrated production DEADEND comparisons and selected type inspection callers without changing the representation.
+* Migrated production DEADEND comparisons to `Ty.isDeadend` and null-safe `Tys.isDeadend`. Initial representation inspection helpers are superseded by the explicit typed projections below.
 * Retained `Ty.INFER`: null commonly means unresolved pass state or unavailable information, whereas annotation containers require a non-null inference placeholder.
 * No new expression fields: forwarding expressions already expose their child type; new caches would add synchronization without resolving a context distinction.
 
-### Completion/structural wrappers (deferred)
+### Completion/structural wrappers (done)
 
-* Decide whether a completion/structural pair simplifies the compiler before introducing it. Start with genuinely duplicate tuple/array/range/indexed fields, not declared constraints, expected layouts, or binding types.
-* Specify explicit completion and structural projections. Normalize identical pairs to their original type, preserving explicit widths, flags, and unresolved state.
-* Retain a representation for transfers with no structural value. A `TyDeadend` must not expose return/break payloads as expression values or invent layouts for diverging tuples.
-* Migrate remaining pattern-bound `instanceof`, type switches, comparisons, interning, and backend boundaries before introducing wrapped types. The preparatory inspection helpers do not make these callers wrapper-safe yet.
-* Preserve conditional merges: `int | DEADEND | VOID` completes with `int | VOID`; all-transferring branches have no normal value.
-* Consider simplifying context-specific callable/layout/indexing visitors only after wrappers actually retain the information each query needs.
-* Investigate the suitability of having`Tys.is` and `Tys.as` functions at all, since it does not signify the *context* of the `as` -- ie. is it for the completion type or the body result type?
-  * One alternative (of many, please investigate), is to have an enum with different type contexts and the caller needs to propagate the current context it is working in, that `Tys.as` can receive, to give back the proper contextual type.
-  * Do not blindly follow my recommendation/example, see if there are better alternatives.
+* `TyCompletion` replaces duplicate tuple/array/range/indexed storage; existing shape accessors project from `ty`. Declared constraints, expected layouts, and binding types stay separate.
+* Explicit `completionTy()` and `structuralTy()` projections use `Tys.withCompletion` to flatten and normalize pairs without losing widths, flags, or unresolved state. Scaled-number equality includes flags so interning preserves them.
+* Explicit projections avoid a context enum that conflates expression queries such as body results with stored type information.
+* Transfers have no structural value. Retained tuple metadata does not manufacture available layouts; callable, member, spread, and indexing queries preserve their context-specific rules.
+* Completion consumers and backend boundaries project explicitly. Branch unions discard transferring arms: `int | DEADEND | VOID` completes with `int | VOID`; all-transferring branches remain `DEADEND`.
+
+### Explicit typed projections (done)
+
+* `Ty.asCompletion(Class)` and `Ty.asStructural(Class)` select a view and inspect its kind without exposing completion wrappers. Null-safe `Tys` equivalents return null for unavailable or nonmatching projections.
+* Removed public context-free `is/as/ifIs`. Use typed projections for kind lookup and `completionTy()/structuralTy()` for merging, comparison, and switches. Keep `isDeadend()` for completion flow.
+* Structural inspection does not establish layout availability or collect body results; those expression-level queries retain their existing policies.
+
+### Wrapper query simplification (deferred)
+
+* Consider reducing callable/layout/indexing visitor special cases where projections now supply the needed information. Keep syntactic result selection and layout availability distinct from stored structural metadata.
+
+### Layout metadata versus available layouts (deferred investigation)
+
+* Purpose: make it harder to accidentally use `asStructural(TyStruct.class)` as permission to construct, access, or spread a tuple. This is an API clarity follow-up, not a known runtime regression.
+* Scope: audit layout reads in `HirStructLayoutVisitor`, `HirIndexingTypeVisitor`, `HirSpreadShape`, and their construction/member/indexing callers. Metadata-only reads may use typed projections; available-layout reads must use the existing expression-level queries.
+* First evaluate clearer query naming/documentation. Only introduce a query-result distinction for known layout, no layout, and unresolved layout if callers genuinely need those separate states; do not add a `Ty` reachability flag or expression cache.
+* Preserve the contrast: `({ return true; }, 7)` retains tuple field metadata but supplies no layout or spread slots. A call such as `make({ return true; })` may supply a known return layout for diagnostics despite noncompletion; a blanket DEADEND layout rejection would be wrong.
+* Completion criterion: layout-dependent callers consistently use the layout queries; source-driven cases cover both contrasts, including no allocation or field loads after a transfer. Do not reconstruct tuple layouts from entries.
+
+### Shared function body-result validation (deferred investigation)
+
+* Purpose: distinguish the actual combined body result from completion, callable diagnostics, and declared return constraints. Neither `asCompletion` nor `asStructural` can collect reachable return payloads.
+* Scope: compare `HirTupleValidationVisitorPass.visitFunction`'s body-completion check and `HirFunctionValidationVisitorPass.visitFunction`'s callable/implicit-return check with `HirArrayValidationPass`'s existing `HirBodyResultTyping.resolve(body)` check.
+* Decide whether actual-result checks should consistently use `HirBodyResultTyping.resolve`, while keeping per-source return/implicit-result diagnostics separate. Do not replace callable diagnostics wholesale, drop validation of unreachable source expressions, or infer from a constrained signature's return type.
+* Preserve examples: `() => { return 7; true }` has DEADEND body completion but result `int`; `(flag: bool) => { if (flag) { return 7; }; true }` has result `int | bool`. Nested function returns and loop breaks remain scoped; unreachable tails contribute no result.
+* Completion criterion: every check advertised as comparing the actual function result uses the shared execution-aware collector, and source-driven cases cover tuple/function-valued returns mixed with fallthrough. Reuse existing visitors; do not add a body-result projection to `Ty` or a duplicate result cache.
 
 ### Additional coverage (deferred)
 
-* Add source-driven completion/structural projection cases for diverging tuples, arrays, ranges, calls, and member/index accesses when wrappers are introduced.
+* Extend source-driven completion/structural projection coverage for diverging tuples, arrays, ranges, calls, and member/index accesses.
 * Cover wrapper normalization, nesting, comparison/interning, and backend projection without losing explicit type properties.
 * Cover mixed `int`/transfer/`VOID` branches and ensure reachable return/break payloads remain separate from structural information.
 * Cover changing expected tuple layouts across repeated typing, and unresolved fields versus explicit `INFER` constraints.

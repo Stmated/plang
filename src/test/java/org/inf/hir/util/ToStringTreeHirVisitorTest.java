@@ -9,6 +9,7 @@ import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.*;
 import org.inf.ty.util.MachineTarget;
+import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
@@ -322,10 +323,10 @@ class ToStringTreeHirVisitorTest {
     final var declaration = new Hir.Dec(name, Hir.MutabilityKind.CONSTANT, new DynamicTy(Ty.INTEGER));
     final var initializer = new Hir.Assignment(name, value);
     final var array = new Hir.Array(new Hir.Expression[] { value }, new DynamicTy(Ty.INTEGER), value,
-      Ty.VOID, new TyValueArray(Ty.INTEGER, 1));
+      Tys.withCompletion(Ty.VOID, new TyValueArray(Ty.INTEGER, 1)));
     final var nodes = new Hir.Expression[] {
       array,
-      new Hir.ArrayAccess(identifier, value, Ty.VOID, Ty.INTEGER),
+      new Hir.ArrayAccess(identifier, value, Tys.withCompletion(Ty.VOID, Ty.INTEGER)),
       new Hir.Labeling(name, value, Ty.INTEGER),
       new Hir.Loop(new Hir.Block(new Hir.LoopBreak(value), Ty.DEADEND)),
       new Hir.LoopContinue(),
