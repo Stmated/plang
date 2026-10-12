@@ -38,9 +38,9 @@ public final class TupleTypes {
       case TyValueBoolean _, TyValueString _ -> true;
       case TyStruct struct -> Arrays.stream(struct.fields()).allMatch(field -> isElementType(field.ty(), allowInferred));
       case TyValueArray array -> isElementType(array.elementType(), allowInferred) && (array.size() == null || array.size() >= 0);
-      case TyPointer<?> pointer -> pointer.inner() instanceof TyOpaque || isElementType(pointer.inner(), allowInferred);
+      case TyPointer<?> pointer -> Tys.is(pointer.inner(), TyOpaque.class) || isElementType(pointer.inner(), allowInferred);
       case TyUnion union -> Arrays.stream(union.types()).allMatch(type -> type == Ty.VOID || isElementType(type, allowInferred));
-      case TyFn fn -> (fn.returnTy() == Ty.VOID || fn.returnTy() == Ty.DEADEND || isElementType(fn.returnTy(), allowInferred))
+      case TyFn fn -> (fn.returnTy() == Ty.VOID || Tys.isDeadend(fn.returnTy()) || isElementType(fn.returnTy(), allowInferred))
         && Arrays.stream(fn.parameters()).allMatch(parameter -> isElementType(parameter.ty(), allowInferred));
       case null, default -> allowInferred && Tys.isInferred(ty);
     };

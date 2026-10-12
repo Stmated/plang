@@ -306,7 +306,7 @@ public class Hir {
 
     @Override
     public Ty ty() {
-      return expression.ty() == Ty.DEADEND ? Ty.DEADEND : targetTy;
+      return Tys.isDeadend(expression.ty()) ? Ty.DEADEND : targetTy;
     }
 
     @Override

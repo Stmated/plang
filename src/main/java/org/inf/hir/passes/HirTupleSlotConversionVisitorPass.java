@@ -11,6 +11,7 @@ import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
 import org.inf.ty.TyValueNumberInteger;
 import org.inf.ty.util.TypeComparison;
+import org.inf.ty.util.Tys;
 import org.inf.ty.util.UnionTypes;
 
 /// Inserts slot conversions into fresh tuples with resolved contextual types.
@@ -49,7 +50,7 @@ public class HirTupleSlotConversionVisitorPass {
       final var destinationField = destination.fields()[slots[index++]];
       final var expected = HirDeclarationTyping.resolve(destinationField.ty(), actual);
       requireSlotConversion(actual, expected);
-      if (actual != Ty.DEADEND && !TypeComparison.same(actual, expected)) {
+      if (!Tys.isDeadend(actual) && !TypeComparison.same(actual, expected)) {
         expression.value(new Hir.Convert(expression.value(), expected));
       }
     }

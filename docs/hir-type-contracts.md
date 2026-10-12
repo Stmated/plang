@@ -11,7 +11,11 @@ HIR separates expression completion, binding types, source constraints, and cont
 | Source-declared constraint | `Dec.typeAnnotation`, `Parameter.typeAnnotation`, `FunctionSignature.returnTypeAnnotation`, and `Array.elementType` use non-expression `Hir.DynamicTy` containers. Their `ty` values retain source constraints, including inference placeholders; optional source expressions preserve aliases and composite type syntax. |
 | Callable signature | The resolved `TyFn` supplies parameter types and `returnTy()`. `FunctionSignature.ty()` is authoritative; no duplicate return-type cache is needed. Creating a function value does not execute its body. |
 | Aggregate/member shape | Construction-target, member, indexing, and spread-field queries expose the specific resolved layout or selected type required by the consumer. They do not infer types or provide a universal structural fallback. |
+| Resolved structural type | `Tuple.resolvedTy`, `Array.arrayTy`, `Range.rangeTy`, and `ArrayAccess.indexedTy` retain typing information independently of completion. A tuple's retained structure is not automatically an available runtime layout. |
+| Expected type | `Tuple.contextualType` is a destination supplied by contextual typing, including its slot order and labels. It is an input to resolution, not a duplicate of the resolved structural type or a flag on it. |
 | Return/break collection | Execution-aware collectors use reachable payload completion types, respecting evaluation order and transfer scope. A nominal result or structural type does not establish that execution reaches a return or break. |
+
+The canonical context names are defined in [Inf type contexts](../CONTEXT.md).
 
 ```inf
 val n: int = 1;
@@ -32,6 +36,22 @@ Tuple typing constructs layouts without checking member validity. Tuple validati
 Declaration and parameter bindings store `resolvedTy`. Typing initializes explicit constraints and refreshes inferred bindings, and lambda lifting supplies resolved types for generated bindings. Declaration and parameter inference preserve `typeAnnotation`. Contextually inferred parameters retain their source placeholders; validation and resolved signatures read their binding types.
 
 Function return inference preserves `returnTypeAnnotation`, including inference placeholders and aliases. The resolved `FunctionSignature.ty().returnTy()` refreshes as the body is refined. Rebuilding or lifting a signature retains that return type and uses the current resolved parameters, including generated captures.
+
+## Type inspection
+
+Inspect an already-selected type with `Ty.is`, `Ty.as`, or `Ty.ifIs`. Use the corresponding `Tys` helpers when the type may be null.
+`as` returns null for a different kind; `ifIs` returns null without calling its mapper when the kind does not match. Mapper errors propagate.
+These helpers inspect the current representation; they do not select a type context, collect transfer payloads, or unwrap a future completion wrapper.
+
+```java
+final var function = Tys.as(type, TyFn.class);
+final var width = Ty.INTEGER.ifIs(TyValueNumber.class, TyValueNumber::width);
+final var diverges = Tys.isDeadend(expression.ty());
+```
+
+`Tys.isDeadend(null)` is false. An unresolved type is not evidence of divergence.
+`Ty.INFER` is an explicit inference placeholder; null usually means resolution is unavailable or a pass has not populated a field yet. `Tys.isInferred` accepts both for existing inference decisions, but they remain distinct representations.
+Use `isDeadend` for completion decisions rather than comparing directly with the sentinel.
 
 ## Type annotations
 
@@ -66,6 +86,8 @@ val n: (get()) = 2;   // error: calls are not evaluated as type annotations
 ## Function and program results
 
 Inferred function results and external program results union reachable return payloads with the body's normal completion type. `DEADEND` contributes no result; without reachable returns or normal completion, the result is `DEADEND`. Complete source function return annotations remain constraints, not inference targets.
+
+An `int | DEADEND | VOID` branch merge therefore completes with `int | VOID`, not a diverging wrapper. If every arm transfers, completion is `DEADEND`; reachable return and break payloads are collected separately for their own scopes.
 
 ```inf
 val choose = (flag: bool) => { if (flag) { return 7; }; true }; // int | bool

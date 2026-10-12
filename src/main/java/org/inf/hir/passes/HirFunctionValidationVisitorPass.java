@@ -28,7 +28,7 @@ public class HirFunctionValidationVisitorPass {
   }
 
   private static void check(final Ty actual, final Ty expected, final String context) {
-    if (actual == Ty.DEADEND || !(Tys.containsFunction(actual) || Tys.containsFunction(expected))) {
+    if (Tys.isDeadend(actual) || !(Tys.containsFunction(actual) || Tys.containsFunction(expected))) {
       return;
     }
     if (UnionTypes.compatible(actual, expected)) {
@@ -103,7 +103,7 @@ public class HirFunctionValidationVisitorPass {
           }
         }
       }
-      if (expression.ty() != Ty.DEADEND || ArrayUtils.none(arguments, argument -> argument.value() instanceof Hir.Spread)) {
+      if (!Tys.isDeadend(expression.ty()) || ArrayUtils.none(arguments, argument -> argument.value() instanceof Hir.Spread)) {
         binding.requireComplete();
       }
     }

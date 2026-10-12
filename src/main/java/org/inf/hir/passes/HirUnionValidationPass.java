@@ -28,7 +28,7 @@ public class HirUnionValidationPass {
   }
 
   private static void check(final Ty actual, final Ty expected, final String context) {
-    if ((actual instanceof TyUnion || expected instanceof TyUnion) && !UnionTypes.compatible(actual, expected)) {
+    if ((Tys.is(actual, TyUnion.class) || Tys.is(expected, TyUnion.class)) && !UnionTypes.compatible(actual, expected)) {
       throw new InvalidTypeConversionException("Value is not compatible with union in %s".formatted(context), actual, expected);
     }
   }
@@ -112,8 +112,8 @@ public class HirUnionValidationPass {
     public void visitBinaryOperation(final Hir.BinaryOperation expr) {
       HirVisitor.super.visitBinaryOperation(expr);
       if (expr.kind() == Hir.BinaryOperationKind.BIT_OR
-        && (expr.lhs().ty() != Ty.DEADEND && !(expr.lhs().ty() instanceof TyValueNumberInteger)
-          || expr.rhs().ty() != Ty.DEADEND && !(expr.rhs().ty() instanceof TyValueNumberInteger))) {
+        && (!Tys.isDeadend(expr.lhs().ty()) && !Tys.is(expr.lhs().ty(), TyValueNumberInteger.class)
+          || !Tys.isDeadend(expr.rhs().ty()) && !Tys.is(expr.rhs().ty(), TyValueNumberInteger.class))) {
         throw new IllegalArgumentException("Bitwise '|' requires integer value operands");
       }
     }
@@ -177,8 +177,8 @@ public class HirUnionValidationPass {
         return;
       }
       final var arguments = expr.arguments();
-      if (ArrayUtils.none(function.parameters(), parameter -> parameter.ty() instanceof TyUnion)
-        && ArrayUtils.none(arguments, argument -> argument.ty() instanceof TyUnion)) {
+      if (ArrayUtils.none(function.parameters(), parameter -> Tys.is(parameter.ty(), TyUnion.class))
+        && ArrayUtils.none(arguments, argument -> Tys.is(argument.ty(), TyUnion.class))) {
         return;
       }
       final var parameters = function.parameters();
@@ -195,7 +195,7 @@ public class HirUnionValidationPass {
           }
         }
       }
-      if (expr.ty() != Ty.DEADEND || ArrayUtils.none(arguments, argument -> argument.value() instanceof Hir.Spread)) {
+      if (!Tys.isDeadend(expr.ty()) || ArrayUtils.none(arguments, argument -> argument.value() instanceof Hir.Spread)) {
         binding.requireComplete();
       }
     }

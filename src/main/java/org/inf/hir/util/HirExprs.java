@@ -19,7 +19,7 @@ public class HirExprs {
 
   public static boolean isDeadEnd(Hir.Expression... children) {
     for (final var child : children) {
-      if (child.ty() == Ty.DEADEND) {
+      if (Tys.isDeadend(child.ty())) {
         return true;
       }
     }
@@ -78,7 +78,7 @@ public class HirExprs {
   @Nullable
   public static TyFn getCallableSignature(final Hir.Expression expression) {
     final var type = getCallableValueTy(expression);
-    return type instanceof TyFn function ? function : null;
+    return Tys.as(type, TyFn.class);
   }
 
   /// Selects the resolved layout to construct, even when evaluating the target cannot complete.

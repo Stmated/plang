@@ -547,7 +547,7 @@ public final class ThirToMirLowering {
     binding.requireComplete();
     final var result = signature.returnType() == Ty.VOID ? null : function.newValue(signature.returnType());
     emit(new Mir.Call(result, target, signature, Arrays.asList(arguments).subList(0, binding.argumentCount())));
-    if (call.ty() == Ty.DEADEND) {
+    if (Tys.isDeadend(call.ty())) {
       terminate(new Mir.Unreachable());
       return Diverges.INSTANCE;
     }
@@ -652,7 +652,7 @@ public final class ThirToMirLowering {
       }
       throw new IllegalArgumentException("Value " + operand.ty() + " is not a variant of " + expected);
     }
-    if (operand.ty() == Ty.VOID || expected == Ty.VOID || expected == Ty.DEADEND) {
+    if (operand.ty() == Ty.VOID || expected == Ty.VOID || Tys.isDeadend(expected)) {
       throw new IllegalArgumentException("Cannot convert " + operand.ty() + " to " + expected);
     }
     if (operand.ty() instanceof TyPointer<?> actualPointer && actualPointer.inner() instanceof TyFn actualFunction

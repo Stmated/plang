@@ -18,7 +18,7 @@ public final class HirStructLayoutVisitor implements HirVisitor {
   public static TyStruct find(final Hir.Expression expression) {
     final var visitor = new HirStructLayoutVisitor();
     visitor.visitResult(expression);
-    return visitor.type instanceof TyStruct struct ? struct : null;
+    return Tys.as(visitor.type, TyStruct.class);
   }
 
   private void visitResult(final Hir.Expression expression) {

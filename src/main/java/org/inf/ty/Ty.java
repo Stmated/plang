@@ -1,11 +1,13 @@
 package org.inf.ty;
 
+import jakarta.annotation.Nullable;
 import org.inf.ty.util.Tys;
 
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 public interface Ty {
 
@@ -50,6 +52,24 @@ public interface Ty {
   TyValueBoolean BOOLEAN = Tys.intern(new TyValueBoolean());
 
   TyValueString STRING = Tys.intern(new TyValueString());
+
+  default boolean isDeadend() {
+    return Tys.isDeadend(this);
+  }
+
+  default <T extends Ty> boolean is(final Class<T> kind) {
+    return Tys.is(this, kind);
+  }
+
+  @Nullable
+  default <T extends Ty> T as(final Class<T> kind) {
+    return Tys.as(this, kind);
+  }
+
+  @Nullable
+  default <T extends Ty, R> R ifIs(final Class<T> kind, final Function<? super T, ? extends R> mapper) {
+    return Tys.ifIs(this, kind, mapper);
+  }
 
   default String toShortString() {
     return this.toString();

@@ -2,7 +2,7 @@ package org.inf.hir.passes;
 
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
-import org.inf.ty.Ty;
+import org.inf.ty.util.Tys;
 
 /** Traverses potentially executed expressions using their already-resolved flow types. */
 abstract class HirExecutionVisitor implements HirVisitor {
@@ -13,7 +13,7 @@ abstract class HirExecutionVisitor implements HirVisitor {
   public void visitChild(Hir.Expression expression) {
     if (continuing) {
       expression.visit(this);
-      continuing &= expression.ty() != Ty.DEADEND;
+      continuing &= !Tys.isDeadend(expression.ty());
     }
   }
 
@@ -30,7 +30,7 @@ abstract class HirExecutionVisitor implements HirVisitor {
     if (expression.fail() != null) {
       visitChild(expression.fail());
     }
-    continuing = expression.ty() != Ty.DEADEND;
+    continuing = !Tys.isDeadend(expression.ty());
   }
 
   @Override
@@ -41,14 +41,14 @@ abstract class HirExecutionVisitor implements HirVisitor {
     }
     visitChild(expression.rhs());
     // AND/OR can bypass a noncontinuing right operand.
-    continuing = expression.ty() != Ty.DEADEND;
+    continuing = !Tys.isDeadend(expression.ty());
   }
 
   @Override
   public void visitLoop(Hir.Loop expression) {
     visitChild(expression.body());
     // A break ends the body, not the enclosing function's continuation.
-    continuing = expression.ty() != Ty.DEADEND;
+    continuing = !Tys.isDeadend(expression.ty());
   }
 
   @Override

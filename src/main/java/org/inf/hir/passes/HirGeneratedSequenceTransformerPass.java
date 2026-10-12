@@ -3,7 +3,7 @@ package org.inf.hir.passes;
 import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
-import org.inf.ty.Ty;
+import org.inf.ty.util.Tys;
 
 import java.util.Arrays;
 
@@ -24,7 +24,7 @@ public class HirGeneratedSequenceTransformerPass {
         final var children = expression.children();
         for (var i = 0; i + 1 < children.length; i++) {
 
-          if (children[i].ty() == Ty.DEADEND) {
+          if (Tys.isDeadend(children[i].ty())) {
             expression.children(Arrays.copyOf(children, i + 1));
             break;
           }

@@ -28,13 +28,13 @@ public class HirArrayValidationPass {
   }
 
   private static boolean containsArray(final Ty type) {
-    return Tys.any(type, TyValueArray.class::isInstance);
+    return Tys.any(type, member -> Tys.is(member, TyValueArray.class));
   }
 
   /// TODO: Move to `TypeComparison` to a more general `compatible` or `isAssignableTo` function
   ///         One which we can use in other locations in the code without so much duplication
   private static boolean compatible(final Ty actual, final Ty expected) {
-    if (actual == Ty.DEADEND || TypeComparison.same(actual, expected)) {
+    if (Tys.isDeadend(actual) || TypeComparison.same(actual, expected)) {
       return true;
     }
     if (actual instanceof TyUnion union) {
@@ -101,7 +101,7 @@ public class HirArrayValidationPass {
           }
         }
       }
-      if (expression.ty() != Ty.DEADEND || ArrayUtils.none(arguments, argument -> argument.value() instanceof Hir.Spread)) {
+      if (!Tys.isDeadend(expression.ty()) || ArrayUtils.none(arguments, argument -> argument.value() instanceof Hir.Spread)) {
         binding.requireComplete();
       }
     }

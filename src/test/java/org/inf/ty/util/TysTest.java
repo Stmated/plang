@@ -20,6 +20,54 @@ import java.util.stream.Stream;
 
 class TysTest {
 
+  static Stream<Arguments> inspectedTypes() {
+    return Stream.of(
+      Arguments.of(Ty.INTEGER, Ty.INTEGER),
+      Arguments.of(Ty.DOUBLE, Ty.DOUBLE),
+      Arguments.of(Ty.BOOLEAN, null),
+      Arguments.of(Ty.INFER, null),
+      Arguments.of(Ty.INVALID, null),
+      Arguments.of(Ty.UNKNOWN, null),
+      Arguments.of(Ty.VOID, null),
+      Arguments.of(Ty.DEADEND, null),
+      Arguments.of(null, null)
+    );
+  }
+
+  @ParameterizedTest
+  @MethodSource("inspectedTypes")
+  void given__type_or_missing_resolution__when__inspected__then__kind_and_completion_are_preserved(
+    final Ty type, final TyValueNumber expected
+  ) {
+    final var width = expected == null ? null : expected.width();
+    Assertions.assertAll(
+      () -> Assertions.assertEquals(expected != null, Tys.is(type, TyValueNumber.class)),
+      () -> Assertions.assertSame(expected, Tys.as(type, TyValueNumber.class)),
+      () -> Assertions.assertEquals(width, Tys.ifIs(type, TyValueNumber.class, TyValueNumber::width)),
+      () -> Assertions.assertEquals(type == Ty.DEADEND, Tys.isDeadend(type))
+    );
+    if (type != null) {
+      Assertions.assertAll(
+        () -> Assertions.assertEquals(expected != null, type.is(TyValueNumber.class)),
+        () -> Assertions.assertSame(expected, type.as(TyValueNumber.class)),
+        () -> Assertions.assertEquals(width, type.ifIs(TyValueNumber.class, TyValueNumber::width)),
+        () -> Assertions.assertEquals(type == Ty.DEADEND, type.isDeadend())
+      );
+    }
+    if (expected == null) {
+      Assertions.assertNull(Tys.ifIs(type, TyValueNumber.class, _ -> Assertions.fail("Nonmatching mapper was invoked")));
+    }
+  }
+
+  @Test
+  void given__matching_type__when__projection_fails__then__the_error_is_propagated() {
+    final var failure = new IllegalStateException("Projection failed");
+    Assertions.assertSame(failure, Assertions.assertThrows(IllegalStateException.class,
+      () -> Ty.INTEGER.ifIs(TyValueNumber.class, _ -> {
+        throw failure;
+      })));
+  }
+
   static Stream<Arguments> callableTargets() {
     final var integer = Tys.fromString("int", MachineTarget.T64);
     final var function = new TyFn(new TyParam[]{new TyParam("value", integer)}, false, integer);

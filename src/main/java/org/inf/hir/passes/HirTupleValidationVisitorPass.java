@@ -14,6 +14,7 @@ import org.inf.ty.Ty;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.TupleTypes;
+import org.inf.ty.util.Tys;
 import org.inf.ty.util.UnionTypes;
 
 import org.inf.util.ArrayUtils;
@@ -30,7 +31,7 @@ public final class HirTupleValidationVisitorPass {
    * TODO: This should likely be a more general check for all return types of functions, not just for tuples.
    */
   private static void check(Ty actual, Ty expected, String context) {
-    if (actual == Ty.DEADEND || !(TupleTypes.containsTuple(actual) || TupleTypes.containsTuple(expected))) {
+    if (Tys.isDeadend(actual) || !(TupleTypes.containsTuple(actual) || TupleTypes.containsTuple(expected))) {
       return;
     }
     if (UnionTypes.compatible(actual, expected)) {
@@ -104,7 +105,7 @@ public final class HirTupleValidationVisitorPass {
         }
         final var type = definitions.isUnionDefinition(value) ? annotations.resolve(value) : value.ty();
         TupleTypes.requireElementType(type, true);
-      } else if (value.ty() != Ty.DEADEND) {
+      } else if (!Tys.isDeadend(value.ty())) {
         TupleTypes.requireElementType(value.ty());
       }
       HirVisitor.super.visitTupleEntry(expression);
@@ -196,7 +197,7 @@ public final class HirTupleValidationVisitorPass {
           }
         }
       }
-      if (expression.ty() != Ty.DEADEND || ArrayUtils.none(arguments, argument -> argument.value() instanceof Hir.Spread)) {
+      if (!Tys.isDeadend(expression.ty()) || ArrayUtils.none(arguments, argument -> argument.value() instanceof Hir.Spread)) {
         binding.requireComplete();
       }
     }

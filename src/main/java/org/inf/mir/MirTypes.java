@@ -31,7 +31,7 @@ public final class MirTypes {
   }
 
   public static Ty returnType(Ty type) {
-    return type == Ty.DEADEND ? Ty.VOID : valueType(type);
+    return Tys.isDeadend(type) ? Ty.VOID : valueType(type);
   }
 
   public static TyFn functionType(MirFnSignature signature) {

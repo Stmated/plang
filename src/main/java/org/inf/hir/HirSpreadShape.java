@@ -2,8 +2,8 @@ package org.inf.hir;
 
 import jakarta.annotation.Nullable;
 import lombok.experimental.UtilityClass;
-import org.inf.ty.Ty;
 import org.inf.ty.TyField;
+import org.inf.ty.util.Tys;
 
 /// Static aggregate slots shared by spread consumers; does not evaluate the operand.
 @UtilityClass
@@ -24,7 +24,7 @@ public class HirSpreadShape {
     if (struct != null) {
       return struct.fields();
     }
-    if (spread.ty() == Ty.DEADEND) {
+    if (Tys.isDeadend(spread.ty())) {
       return new TyField[0];
     }
     return null;

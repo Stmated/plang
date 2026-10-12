@@ -12,14 +12,16 @@ import org.inf.util.ArrayUtils;
 public class UnionTypes {
 
   public static boolean compatible(final Ty actual, final Ty expected) {
-    if (actual == Ty.DEADEND || TypeComparison.same(actual, expected)) {
+    if (Tys.isDeadend(actual) || TypeComparison.same(actual, expected)) {
       return true;
     }
-    if (actual instanceof TyUnion source) {
-      return expected instanceof TyUnion
+    final var source = Tys.as(actual, TyUnion.class);
+    if (source != null) {
+      return Tys.is(expected, TyUnion.class)
         && ArrayUtils.none(source.types(), type -> !compatible(type, expected));
     }
-    return expected instanceof TyUnion destination && memberIndex(actual, destination) >= 0;
+
+    return Tys.ifIs(expected, TyUnion.class, u -> memberIndex(actual, u) >= 0, false);
   }
 
   public static int memberIndex(final Ty actual, final TyUnion expected) {

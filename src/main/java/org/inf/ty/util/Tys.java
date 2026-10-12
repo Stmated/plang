@@ -21,12 +21,47 @@ public class Tys {
     return (T) tyInternMap.computeIfAbsent(ty, Function.identity());
   }
 
+  public static boolean isDeadend(@Nullable final Ty ty) {
+    return ty == Ty.DEADEND;
+  }
+
+  public static <T extends Ty> boolean is(@Nullable final Ty ty, @Nullable final Class<T> kind) {
+    if (kind == null) {
+      return false;
+    }
+    return kind.isInstance(ty);
+  }
+
+  @Nullable
+  public static <T extends Ty> T as(@Nullable final Ty ty, final Class<T> kind) {
+    return is(ty, kind) ? kind.cast(ty) : null;
+  }
+
+  @Nullable
+  public static <T extends Ty, R> R ifIs(
+    @Nullable final Ty ty,
+    @Nullable final Class<T> kind,
+    final Function<? super T, ? extends R> mapper
+  ) {
+    return ifIs(ty, kind, mapper, null);
+  }
+
+  public static <T extends Ty, R> R ifIs(
+    @Nullable final Ty ty,
+    @Nullable final Class<T> kind,
+    final Function<? super T, ? extends R> mapper,
+    @Nullable final R fallback
+  ) {
+    final var matched = as(ty, kind);
+    return matched == null ? fallback : mapper.apply(matched);
+  }
+
   public static TyResult<Ty> getCommonDenominator(Ty a, Ty b) {
 
     if (a == b) {
       return new TyResult<>(a);
     }
-    if (a instanceof TyStruct && b instanceof TyStruct
+    if (is(a, TyStruct.class) && is(b, TyStruct.class)
       && (TupleTypes.containsTuple(a) || TupleTypes.containsTuple(b)) && TypeComparison.same(a, b)) {
       return new TyResult<>(a);
     }
@@ -39,7 +74,7 @@ public class Tys {
       return new TyResult<>(Ty.UNKNOWN, TyDiffKind.UNKNOWN);
     }
 
-    if (a instanceof TyOpaque && b instanceof TyOpaque) {
+    if (is(a, TyOpaque.class) && is(b, TyOpaque.class)) {
       return new TyResult<>(a);
     }
 
@@ -166,11 +201,12 @@ public class Tys {
     final var remaining = new ArrayList<>(Arrays.asList(types));
     while (!remaining.isEmpty()) {
       final var current = remaining.removeFirst();
-      if (current == null || current == Ty.DEADEND) {
+      if (current == null || isDeadend(current)) {
         continue;
       }
 
-      if (current instanceof TyUnion union) {
+      final var union = current.as(TyUnion.class);
+      if (union != null) {
         remaining.addAll(0, Arrays.asList(union.types()));
       } else {
 
@@ -212,7 +248,7 @@ public class Tys {
 
   private static boolean equivalentUnionMember(final Ty a, final Ty b) {
     // Numeric members still use common-denominator resolution to retain explicit widths.
-    return !(a instanceof TyValueNumber) && !(b instanceof TyValueNumber) && TypeComparison.same(a, b);
+    return !is(a, TyValueNumber.class) && !is(b, TyValueNumber.class) && TypeComparison.same(a, b);
   }
 
   public boolean isGenerallyCompatible(TyDiffKind[] diffs) {
@@ -362,7 +398,7 @@ public class Tys {
   }
 
   public static boolean containsFunction(final Ty type) {
-    return Tys.any(type, TyFn.class::isInstance);
+    return Tys.any(type, member -> Tys.is(member, TyFn.class));
   }
 
   public static boolean any(final Ty type, final Predicate<Ty> predicate) {
@@ -370,7 +406,8 @@ public class Tys {
       return true;
     }
 
-    if (type instanceof TyUnion union) {
+    final var union = as(type, TyUnion.class);
+    if (union != null) {
       return ArrayUtils.any(union.types(), t -> Tys.any(t, predicate));
     }
 

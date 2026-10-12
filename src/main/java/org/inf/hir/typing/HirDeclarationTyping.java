@@ -20,7 +20,7 @@ public final class HirDeclarationTyping {
     final var constraint = declaration.typeAnnotation().ty();
     final var resolved = resolve(constraint, actual);
     declaration.resolvedTy(resolved);
-    if (availableOnly || actual == Ty.DEADEND || !requiresMemberValidation(constraint)) {
+    if (availableOnly || Tys.isDeadend(actual) || !requiresMemberValidation(constraint)) {
       return;
     }
     if (Tys.containsInferred(resolved) || !TypeComparison.same(actual, resolved)) {

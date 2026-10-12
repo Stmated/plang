@@ -42,7 +42,7 @@ public final class HirTupleTyping {
       final var value = entry.value();
       final var resultTy = value.ty(); // The "result" of the expression, not necessarily a value. Could be a DEADEND return inside.
       final var type = annotationResolver.resolveSilently(value); // The dev typing ty.
-      if (resultTy == Ty.DEADEND) {
+      if (Tys.isDeadend(resultTy)) {
         diverges = true;
       }
 

@@ -5,6 +5,42 @@
 # TODO
 
 ## Smarter incorporation of DEADEND/ty contexts
+
+### Investigation and inspection helpers (done)
+
+Canonical terminology and contracts are in [Inf type contexts](../../../../CONTEXT.md) and [HIR type contracts](../../../../docs/hir-type-contracts.md).
+
+* Completion type: normal expression completion; `VOID` completes without a value, `DEADEND` does not complete.
+* Resolved structural type: aggregate/selected type retained for typing, not proof that its runtime value or layout exists.
+* Declared constraint: source annotations and their explicit `INFER` placeholders.
+* Expected type: contextual input; `Tuple.contextualType` determines destination layout and is not a duplicate result.
+* Binding type: resolved declaration/parameter value, separate from their `VOID` completion.
+* Exit payload type: a reachable return/break operand, separate from the transfer's `DEADEND` completion. Body results combine reachable return payloads with normal completion.
+* Added `Ty.is`, `Ty.as`, `Ty.ifIs`, `Ty.isDeadend` and null-safe `Tys` equivalents. Migrated production DEADEND comparisons and selected type inspection callers without changing the representation.
+* Retained `Ty.INFER`: null commonly means unresolved pass state or unavailable information, whereas annotation containers require a non-null inference placeholder.
+* No new expression fields: forwarding expressions already expose their child type; new caches would add synchronization without resolving a context distinction.
+
+### Completion/structural wrappers (deferred)
+
+* Decide whether a completion/structural pair simplifies the compiler before introducing it. Start with genuinely duplicate tuple/array/range/indexed fields, not declared constraints, expected layouts, or binding types.
+* Specify explicit completion and structural projections. Normalize identical pairs to their original type, preserving explicit widths, flags, and unresolved state.
+* Retain a representation for transfers with no structural value. A `TyDeadend` must not expose return/break payloads as expression values or invent layouts for diverging tuples.
+* Migrate remaining pattern-bound `instanceof`, type switches, comparisons, interning, and backend boundaries before introducing wrapped types. The preparatory inspection helpers do not make these callers wrapper-safe yet.
+* Preserve conditional merges: `int | DEADEND | VOID` completes with `int | VOID`; all-transferring branches have no normal value.
+* Consider simplifying context-specific callable/layout/indexing visitors only after wrappers actually retain the information each query needs.
+* Investigate the suitability of having`Tys.is` and `Tys.as` functions at all, since it does not signify the *context* of the `as` -- ie. is it for the completion type or the body result type?
+  * One alternative (of many, please investigate), is to have an enum with different type contexts and the caller needs to propagate the current context it is working in, that `Tys.as` can receive, to give back the proper contextual type.
+  * Do not blindly follow my recommendation/example, see if there are better alternatives.
+
+### Additional coverage (deferred)
+
+* Add source-driven completion/structural projection cases for diverging tuples, arrays, ranges, calls, and member/index accesses when wrappers are introduced.
+* Cover wrapper normalization, nesting, comparison/interning, and backend projection without losing explicit type properties.
+* Cover mixed `int`/transfer/`VOID` branches and ensure reachable return/break payloads remain separate from structural information.
+* Cover changing expected tuple layouts across repeated typing, and unresolved fields versus explicit `INFER` constraints.
+
+### Original wrapper proposal
+
 Currently for most elements that can give back a result type, it has two different `Ty`,
 one for what it could give as runtime, and one which is what the expressions could potentially give if they comleted.
 
@@ -63,9 +99,16 @@ If it would help, it might be a good idea to before that make it easier to expec
 Or in cases where it could be null, it could use `Tys#isDeadend(Ty)` which `Ty#isDeadend` would delegate to anyway.
 Perhaps it would be safe to say that a null `ty` is what means `INFER` and that `Ty.INFER` can be deleted. Investigate this as part of it.
 
-## Better terminology for types
-Need to investigate what kind of "types" of types there are, what different contexts there are.
-We should then have one resolver for each context, where it takes an expression and finds what type it would "give back".
+Part of this is also to investigate if it would help to add a specific `ty` field to some `Hir.Expression` sub-types that currently do not have them.
+If that would help in how easy it is to investigate a result/return/runtime type from a certain node.
+It is NOT worth it to add an additional `ty` to an expression if all it would mean is that it copies it from its `this.expression.ty()`
+
+All this implies that you should decide if it is a good idea, and only implement it if it makes the compiler EASIER to understand/write.
+If you have similar ideas other than this, that would simplify the `Ty` handling, then propose those instead.
+
+## Better terminology for types (done)
+The context glossary and contracts are documented under "Smarter incorporation of DEADEND/ty contexts".
+Further context-specific resolver design remains deferred under "Different resolvers"; naming a context does not make its type interchangeable with completion or transfer payloads.
 
 ## Better separation of "ty()"
 The new `DynamicTy` is still not a good ideas -- since it allows us to create types which are not actually syntactically supported
