@@ -49,7 +49,7 @@ public final class HirDeclarationTyping {
     return switch (constraint) {
       case TyStruct struct when actual instanceof TyStruct source -> resolveStruct(struct, source);
       case TyValueArray array when actual instanceof TyValueArray source ->
-        new TyValueArray(resolve(array.elementType(), source.elementType()), array.size()).intern();
+        Tys.intern(new TyValueArray(resolve(array.elementType(), source.elementType()), array.size()));
       default -> constraint;
     };
   }
@@ -65,6 +65,6 @@ public final class HirDeclarationTyping {
       final var field = constraint.fields()[index];
       fields[index] = new TyField(field.name(), resolve(field.ty(), actual.fields()[i].ty()));
     }
-    return new TyStruct(fields, constraint.tuple()).intern();
+    return Tys.intern(new TyStruct(fields, constraint.tuple()));
   }
 }

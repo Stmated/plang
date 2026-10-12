@@ -51,10 +51,6 @@ public interface Ty {
 
   TyValueString STRING = Tys.intern(new TyValueString());
 
-  default Ty intern() {
-    return Tys.intern(this);
-  }
-
   default String toShortString() {
     return this.toString();
   }

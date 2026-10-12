@@ -14,6 +14,7 @@ import org.inf.ty.TyParam;
 import org.inf.ty.TyUnion;
 import org.inf.ty.TyValueArray;
 import org.inf.ty.util.TypeComparison;
+import org.inf.ty.util.Tys;
 import org.inf.util.ArrayUtils;
 
 import java.util.Objects;
@@ -27,8 +28,7 @@ public class HirArrayValidationPass {
   }
 
   private static boolean containsArray(final Ty type) {
-    return type instanceof TyValueArray
-      || type instanceof TyUnion union && ArrayUtils.any(union.types(), HirArrayValidationPass::containsArray);
+    return Tys.any(type, TyValueArray.class::isInstance);
   }
 
   /// TODO: Move to `TypeComparison` to a more general `compatible` or `isAssignableTo` function

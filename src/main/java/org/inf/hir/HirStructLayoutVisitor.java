@@ -1,18 +1,18 @@
 package org.inf.hir;
 
 import jakarta.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.Tys;
 
 /// Reads resolved layouts for construction targets and member receivers, not expression completion.
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class HirStructLayoutVisitor implements HirVisitor {
 
   private Ty type;
-
-  private HirStructLayoutVisitor() {
-  }
 
   @Nullable
   public static TyStruct find(final Hir.Expression expression) {

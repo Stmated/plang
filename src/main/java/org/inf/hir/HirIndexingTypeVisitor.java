@@ -1,17 +1,17 @@
 package org.inf.hir;
 
 import jakarta.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.util.Tys;
 
 /// Reads resolved receiver and accessor types for indexing, independently of completion.
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class HirIndexingTypeVisitor implements HirVisitor {
 
   private Ty type;
-
-  private HirIndexingTypeVisitor() {
-  }
 
   @Nullable
   public static Ty find(final Hir.Expression expression) {

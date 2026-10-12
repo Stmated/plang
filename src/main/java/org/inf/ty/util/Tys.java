@@ -7,6 +7,7 @@ import org.inf.util.ArrayUtils;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 @UtilityClass
@@ -315,19 +316,19 @@ public class Tys {
 
       final var possibleWidth = getWidthFromName(name);
       final var width = Objects.requireNonNullElse(possibleWidth, Ty.INTEGER.width().value());
-      return Ty.INTEGER.toBuilder().width(new BitWidth(width, true)).signed(true).build().intern(); // TODO: WRONG "explicit", needs context
+      return intern(Ty.INTEGER.toBuilder().width(new BitWidth(width, true)).signed(true).build()); // TODO: WRONG "explicit", needs context
 
     } else if (name.startsWith("uint")) {
 
       final var possibleWidth = getWidthFromName(name);
       final var width = Objects.requireNonNullElse(possibleWidth, Ty.INTEGER.width().value());
-      return Ty.INTEGER.toBuilder().width(new BitWidth(width, false)).signed(false).build().intern(); // TODO: WRONG "explicit", needs context
+      return intern(Ty.INTEGER.toBuilder().width(new BitWidth(width, false)).signed(false).build()); // TODO: WRONG "explicit", needs context
 
     } else if (name.startsWith("float")) {
 
       final var possibleWidth = getWidthFromName(name);
       final var width = Objects.requireNonNullElse(possibleWidth, Ty.FLOAT.width().value());
-      return Ty.FLOAT.toBuilder().width(new BitWidth(width, true)).build().intern(); // TODO: WRONG "explicit", needs context
+      return intern(Ty.FLOAT.toBuilder().width(new BitWidth(width, true)).build()); // TODO: WRONG "explicit", needs context
     }
 
     return switch (name) {
@@ -361,7 +362,18 @@ public class Tys {
   }
 
   public static boolean containsFunction(final Ty type) {
-    return type instanceof TyFn
-      || type instanceof TyUnion union && ArrayUtils.any(union.types(), Tys::containsFunction);
+    return Tys.any(type, TyFn.class::isInstance);
+  }
+
+  public static boolean any(final Ty type, final Predicate<Ty> predicate) {
+    if (predicate.test(type)) {
+      return true;
+    }
+
+    if (type instanceof TyUnion union) {
+      return ArrayUtils.any(union.types(), t -> Tys.any(t, predicate));
+    }
+
+    return false;
   }
 }

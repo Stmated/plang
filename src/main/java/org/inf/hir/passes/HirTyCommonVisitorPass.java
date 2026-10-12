@@ -143,7 +143,7 @@ public class HirTyCommonVisitorPass {
       }
 
       // The element ty can still be INFER -- it will be used for late type decisions.
-      final var arrayTy = new TyValueArray(arrayElementTy, arrayLength).intern();
+      final var arrayTy = Tys.intern(new TyValueArray(arrayElementTy, arrayLength));
       expr.arrayTy(arrayTy);
 
       if (HirExprs.isDeadEnd(expr.elements()) || (expr.length() != null && expr.length().ty() == Ty.DEADEND)) {

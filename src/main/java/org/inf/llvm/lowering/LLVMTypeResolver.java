@@ -8,6 +8,7 @@ import org.bytedeco.llvm.global.LLVM;
 import org.inf.exceptions.NotImplementedException;
 import org.inf.mir.MirTypes;
 import org.inf.ty.*;
+import org.inf.ty.util.Tys;
 
 @RequiredArgsConstructor
 public class LLVMTypeResolver {
@@ -53,7 +54,7 @@ public class LLVMTypeResolver {
 
       case TyValueBoolean _ -> LLVM.LLVMInt1TypeInContext(context);
 
-      case Ty.TyNamed n when n.intern() == Ty.VOID -> LLVM.LLVMVoidTypeInContext(context);
+      case Ty.TyNamed n when Tys.intern(n) == Ty.VOID -> LLVM.LLVMVoidTypeInContext(context);
 
       case TyStruct s -> {
 

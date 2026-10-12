@@ -4,7 +4,70 @@
 
 # TODO
 
-### Better separation of "ty()"
+## Smarter incorporation of DEADEND/ty contexts
+Currently for most elements that can give back a result type, it has two different `Ty`,
+one for what it could give as runtime, and one which is what the expressions could potentially give if they comleted.
+
+Currently it seems like the only difference between for example a `Tuple#ty` and `Tuple#resolvedTy`,
+is that the first might be `Ty.DEADEND` and the second is not (instead it is the structural equivalence that *could* be intended).
+
+I feel like there could be great gains in simplicity if the `Ty` interface was changed.
+For example, instead of having `Ty.DEADEND` then there is a `TyDeadend` class.
+It wraps another `Ty` and returns `true` for a new `isDeadend()` method.
+Then to make all the other `ty instanceof TyUnion` or similar work properly, there would instead in `Ty` be default methods:
+* `<T extends Ty> boolean is(Class<T> c)`
+* `<T extends Ty> T as(Class<T> c)` (can give null)
+* `<T extends Ty, R> R ifIs(Class<T> c, Function<T, R> func)`
+* maybe something else if there is a noticeable need for something else.
+
+They would then unwrap the `Ty` if it is a `TyDeadend`.
+
+This would make it easier to store the `ty` for an expression since we wouldn't need the pretty much duplicate types on many expressions.
+
+The `Ty` could then also have other wrappers to signify other scenarios/contexts for the Ty, if it can differ depending on it.
+Need to separate types that are for:
+* Runtime (containing DEADEND, etc)
+* Dev intent
+* Resolved inference
+* et cetera. I need your help detecting different "contexts" for types, for example for a tuple what the differences between
+  fields `ty`, `resolvedTy` and `contextualType` actually is and what they are for/what they signify.
+
+I want better/idiomatic/accurate termionology for these different contexts.
+So that I can accurately have default interface methods on `Ty` for things like:
+* `asDevTypingTy()`
+* `asRuntimeTy()`
+* `asResultTy()`
+* et cetera
+
+Where none of these names are guidance, they are only examples. I want you to investigate what different contexts there are.
+For example the different type contexts when fetching the ty of conditional that has three different branches of: `int | DEADEND | void`
+Or whatever else kind of mixes there might be.
+
+This would mean there needs to be some simple normalization functions, so that if someone creates a theoretical:
+`final var newTy = Ty.typedVsRuntime(typedTy, runtimeTy)`
+Then if they are both the same, it would just return one of them, instead of creating a new `TyRuntimeWrapper`.
+Take heed that the names are only theoretical, I want you to investigate better names.
+
+I want this to be done as limited/narrow as possible, even though I understand it would change a whole lot of code.
+So focus first on making things just *functional*, find areas where code could be made easier because of it, and add it as deferred items in todo.
+
+Do not add lots of new test cases that test this new functionality, instead focus on getting current existing test cases to pass.
+Add new items to TODO for deferred test cases that are needed to get proper coverage.
+
+If you deem it worthwhile, you can split this feature into different milestones in this TODO file.
+For example, perhaps it is a good idea to move `ty instanceof TyUnion` and similar code (like those previously mentioned) over to use a helper function,
+before actually making any changes to any structures/logic.
+Just as one example, this would also conclude an `isDeadend()` method, rather than doing `ty == Ty.DEADEND` in code.
+
+If it would help, it might be a good idea to before that make it easier to expect ty to never be null, so `ty.isDeadend()` won't crash.
+Or in cases where it could be null, it could use `Tys#isDeadend(Ty)` which `Ty#isDeadend` would delegate to anyway.
+Perhaps it would be safe to say that a null `ty` is what means `INFER` and that `Ty.INFER` can be deleted. Investigate this as part of it.
+
+## Better terminology for types
+Need to investigate what kind of "types" of types there are, what different contexts there are.
+We should then have one resolver for each context, where it takes an expression and finds what type it would "give back".
+
+## Better separation of "ty()"
 The new `DynamicTy` is still not a good ideas -- since it allows us to create types which are not actually syntactically supported
   We can create a `DynamicTy` that contains a `ty` that can only be created through code
   This create problems in test cases where we create situations that are not actually yet needed to be supported, or cases that actually cannot happen.
@@ -15,15 +78,19 @@ So it feels a bit weird to have `Hir.Union` state that it gives `Ty.VOID` since 
 Same thing goes for `Hir.Array` where it acts a bit weird since if no elements given then it is a "type" but otherwise a "value"
 I think the existence of `ty()` on all expressions is what confuses things.
 Perhaps it would be better to not have `ty` on the interface, and let each expression class only contain the required fields for its metadata,
-then we have a set of resolvers which acts differently depending on the context of the usage of the expression.
-For example `TyResolverForResult`, `TyResolverForReturn`, `TyResolverForBreak`, `TyResolverForTypeAnnotation`, etc.
 Then each of them will have different rules depending on context, if it should adhere to DEADEND or not, et cetera.
 Because as things stand, it feels weird to have a `ty()` on the interface, since one form of Ty is not more *right* than the other, it's all context-based.
 
 See if DEADEND can be improved, so there is no need for two separate fields in an Expr.
   So instead we can say "this is the ty of the expr, but it is DEADEND. So you can use one for guessed typing, but it ain't gonna happen in runtime"
 
-### Updated test cases, thorough rework of how tests are done
+`Hir.Conditional` should likely have a `resolvedTy` which is what it would give if it completed, and not DEADEND
+
+## Different resolvers (requires 'Better separation of "ty()"'
+then we have a set of resolvers which acts differently depending on the context of the usage of the expression.
+For example `TyResolverForResult`, `TyResolverForReturn`, `TyResolverForBreak`, `TyResolverForTypeAnnotation`, etc.
+
+## Updated test cases, thorough rework of how tests are done
 
 * Find test cases that create invalid code structures. Type-only nodes in value positions were removed with `Hir.TyExpr`; review other synthetic fixtures separately.
 * Restore source-driven constructor layout and return-flow coverage when constructor-call syntax can be raised reliably. Unrepresentable constructor fixtures are deferred.
@@ -41,43 +108,43 @@ See if DEADEND can be improved, so there is no need for two separate fields in a
     spreading works with captured lambda lifting" (these are just examples, do not need to implement these specific ones)
 * Look into changing s-expression strings wrapped in ' so that inline test cases do not need to escape 
 
-### Updated passes
+## Updated passes
 * Go through each pass separately and try to simplify them, then at the end ask the agent to write findings that other agents can make use of for further passes.
 * Special consideration should be taken to the extremely ugly Hir.Call and Hir.Function visitors that do lots of special spread/tuple work
   * IFF there is need for this special lookup, I am sure it can be simplified into some outside visitor that can do things better.
   * It is just too extremely ugly to have all this structure-specific code inside the visitors
 
-### Change `allocator` fields to Expression
+## Change `allocator` fields to Expression
 The allocator expression should be just Hir.Expression.
 It should be a Hir.Lexeme at first, not Hir.Identifier.
 It is then up to later passes to properly find the proper allocator.
 Allocators themselves are not supported yet, support is deferred.
 So right now they will always stay Hir.Lexeme, and not be validated.
 
-### Constant array-length folding
+## Constant array-length folding
 * Fix integer addition in `JavaUtil.add`: `[;int;(1 + 1)]` currently gets length `0`. Keep arithmetic folding separate from annotation representation.
 
-### Standalone declaration references
+## Standalone declaration references
 * Register standalone declarations in identifier resolution: `var n: uint8; n = 7; n` currently fails to find `n`. Keep this separate from the Ty migration.
 
-### Indexing syntax: remaining work
+## Indexing syntax: remaining work
 
 * Support unparenthesized call-result indexing: `make()[0]`. Currently use `(make())[0]` to preserve the intended receiver.
 * Raise range accessors such as `values[0..1]` from AST to HIR. Keep slice syntax/lowering separate from the Ty migration's existing indexing type rules.
 
-### Construction-target evaluation
+## Construction-target evaluation
 
 * Evaluate runtime effects in construction-target wrappers during MIR lowering. Targets currently supply only layouts; lambda capture discovery also skips
   these expressions. Keep type-only identifiers distinct from runtime values.
 
-### Dynamically resolvable type annotations: deferred
+## Dynamically resolvable type annotations: deferred
 
 * Define comptime type values and resolve expressions that calculate or obtain a type from metadata.
 * Distinguish a type-valued result from an ordinary expression's value/completion type. Calls, literals, blocks, and runtime bindings are currently rejected as annotations.
 * Preserve source constraints separately from inferred bindings when adding dynamic resolution to `Hir.DynamicTy`.
 * Resolve dynamic array-length constraints explicitly; identifier lengths currently become unspecified, not evaluated constant lengths.
 
-### Stating function type for field inside struct
+## Stating function type for field inside struct
 
 Should support:
 
@@ -94,49 +161,49 @@ val S = struct { val fn: ((v: int): int) };
 Update test cases that uses a type alias like `val Fn = (v: int): int;` for struct fn fields with inline types.
 But keep some test case that still tests that both work, both alias and inline.
 
-### Stored closures
+## Stored closures
 
 * Preserve captured environments when functions are stored in fields or passed as values. Lambda lifting currently adds capture parameters only to directly
   resolved calls; incompatible stored signatures are rejected.
 
-### Conversion expressions: investigation
+## Conversion expressions: investigation
 
 * Investigate explicit conversion expressions; syntax is undecided, possibly `(uint8) 10` or `10 as uint8`. Neither is currently supported.
   Keep this separate from existing contextual literal typing (`val n: uint8 = 10`) and numeric literal suffixes (`10u8`).
 
-### Array length constraints: investigation
+## Array length constraints: investigation
 
 * Investigate minimum-length constraints separately from exact fixed sizes; no syntax is chosen. Fixed lengths are exact at binding/reassignment, argument,
   field, and return boundaries. Existing unspecified-length arrays such as `[;int;]` are supported, not minimum-length constraints.
 
-### Contextual lambda typing: remaining work
+## Contextual lambda typing: remaining work
 
 * Infer callback parameter types inside fresh spread tuples before validating their resolved parameter declarations and the spread shape.
 * Allow function-signature aliases inside tuple annotations, such as `val callbacks: (fn: Fn,)`.
 * Support tuple return types in function-signature declarations.
 
-### Calling function with spread arrays: remaining work
+## Calling function with spread arrays: remaining work
 
 * Support spreading arrays into calls: `val args = [1, 2]; add(...args)`. Only allow static array lengths, runtime array length is deferred until a later stage.
 
-### Tuple construction: remaining work
+## Tuple construction: remaining work
 
 * Replace repeated whole-tree preparation with dependency-aware type resolution, without moving resolution back into tuple context or conversion visitors.
 * Support spreading fields into a new tuple: `val args = (1, 2); val combined = (0, ...args);`, producing `(0, 1, 2)`. Call spreading does not yet support this
   construction syntax.
 * Support empty tuple values: `val args = ();`, allowing `f(...args)` to supply zero arguments.
 
-### Unification of "struct" and "tuple"
+## Unification of "struct" and "tuple"
 
 * A tuple should in essence just be a short-form of a struct declaration
 * They should be convertable to and from each other if they exactly match
 * It should be possible to "explode"/"unpack" a struct as well to a function call and other locations, just like with a tuple
 
-### Simplify `Hir.Array`
+## Simplify `Hir.Array`
 Look into the fields of Array, seems there is duplication of how the array ty and element ty and such are stored.
 Seems like the element ty can be fetched from the array ty, and that the Array expression can always give back `TyValueArray`
 
-### Unification of Array and Tuple
+## Unification of Array and Tuple
 
 * An array of unbounded size and a tuple with only positional rest parameters should be equivalent
 * Difference then being that a Tuple type should be able to be defined as `(bool, uint8...)`
@@ -145,47 +212,47 @@ Seems like the element ty can be fetched from the array ty, and that the Array e
     * This feature is absolutely not required and should only be supported if it can be "easily" done and would be considered idiomatic to the rest of the
       language
 
-### Unification of "named arguments"
+## Unification of "named arguments"
 
 * Function calls now use `=` for named arguments: `fn(a = 10)`. The old `:` spelling is rejected.
     * To be able to assign a value inside a nested expression, it must be done using new `:=` syntax like `fn(a = foo := 10)`
         * The main difference to `=` is that `=` returns `void` but `:=` returns RHS value.
 * Give feedback on viability of this change, if it is a good idea or not.
 
-### Incomplete function-signature aliases: investigation
+## Incomplete function-signature aliases: investigation
 
 * Investigate reusable incomplete function-signature aliases such as `val Fn = (value): bool`. Decide whether inference is independent per use or shared,
   and how it relates to generics. These declarations are currently invalid, even with a complete expected type on the left-hand side.
 
 
-### Pointer and union annotation inference: deferred
+## Pointer and union annotation inference: deferred
 
 * Pointer syntax remains deferred. Union syntax is supported; inference for incomplete union members and contextual selection among numeric alternatives remains deferred.
 
-### Partial and generic tuple annotations: investigation
+## Partial and generic tuple annotations: investigation
 
 * Investigate partial/generic tuple annotations, preferably named types such as `(uint8,$T)` so the inferred type can be referenced elsewhere.
   There is no `?` placeholder syntax; generic semantics and syntax remain undecided.
 
 
-### Change interpreter executor
+## Change interpreter executor
 
 ThirToMirLoweringTest should not execute InterpreterCodeExecutor.
 If the test is made for testing the interpreter, then it should be inside an interpreter test class
 
 * Normalize suffixed integer constant content before interpreter execution: `val args = (2u8,); args[0]` currently passes `2u8` to `BigInteger`.
 
-### Optional arguments, default values for parameters, named arguments
+## Optional arguments, default values for parameters, named arguments
 
-### Fixes regarding tuples and spread
+## Fixes regarding tuples and spread
 
 * Most uses of `instanceof Hir.Spread`  feels suspect; there is something fishy going on.
 
-### Partial functions, for currying/composition
+## Partial functions, for currying/composition
 
-### Allocators, to be able to specify stack vs heap, and if something is by-reference or by-value
+## Allocators, to be able to specify stack vs heap, and if something is by-reference or by-value
 
-### Universal function calls
+## Universal function calls
 
 * Decide whether `service call ...args` should mean `service.call ...args`. The space-separated spelling currently nests calls; it does not look up a member of
   `service`.
@@ -216,7 +283,7 @@ If you have warnings or problems with the idea, then tell me.
 I am well aware that the feature can make some syntax ambiguous
 ```
 
-### Type usage
+## Type usage
 
 * Model copying, moving, referencing, and child mutation metadata for types.
 * Needs investigation for how to best be represented, but likely as a modifier on the type of the expression, so the type contains its restrictions.
@@ -226,7 +293,7 @@ I am well aware that the feature can make some syntax ambiguous
 * Model immutable and non-copyable types.
 * Use counts only for linear or bounded resources; arbitrary quotas have no clear value.
 
-### THIR and comptime
+## THIR and comptime
 
 * Define the first supported THIR evaluator expressions.
 * Implement a THIR expression evaluator instead of using MIR.
@@ -238,11 +305,11 @@ I am well aware that the feature can make some syntax ambiguous
 * Replace transformed expressions before runtime compilation.
 * Test comptime expression transformations.
 
-### Comptime type expression transformations
+## Comptime type expression transformations
 
 * Expose type usage settings to comptime expression transformations.
 
-### Packages
+## Packages
 
 * Define the minimal package model and package metadata.
     * A "package" should be a directory with a package file (`package.inf`).
@@ -257,14 +324,14 @@ I am well aware that the feature can make some syntax ambiguous
 * Resolve package imports against linked packages.
 * Add a package resolver for external package references.
 
-### Package imports
+## Package imports
 
 * Bind imported symbols in the importing package.
 * Type-check calls to imported symbols.
 * Compile calls to imported package code.
 * Test package exports, imports, and cross-package calls.
 
-### Core library and bindings
+## Core library and bindings
 
 * Create a minimal core library package.
 * Export its public symbols.
@@ -272,7 +339,7 @@ I am well aware that the feature can make some syntax ambiguous
 * Import the core library from test code.
 * Call imported core-library functions from test code.
 
-### Core library comptime functions instead of reserved keywords
+## Core library comptime functions instead of reserved keywords
 
 * Implement comptime `val`, `var`, and `const` functions in the core library.
     * `val a = 10` where `val` is a function that takes a `Hir.Assignment` and returns a `Hir.Assignment` with immutable type for `a`.
@@ -281,7 +348,7 @@ I am well aware that the feature can make some syntax ambiguous
 * Remove reserved `val` and `var` keywords.
 * Test core-library `val`, `var`, and `const` bindings.
 
-### Type visibility and access control
+## Type visibility and access control
 
 * Able to specify visibility and access control for types, fields, and methods.
 * Implemented as comptime functions like "val", "var", et cetera. Takes an expression and return a modified expression with the visibility/access control

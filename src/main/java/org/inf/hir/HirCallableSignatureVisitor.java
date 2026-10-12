@@ -1,17 +1,17 @@
 package org.inf.hir;
 
 import jakarta.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.util.Tys;
 
 /// Reads resolved callable information from result wrappers without treating it as reachable completion.
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class HirCallableSignatureVisitor implements HirVisitor {
 
   private Ty type;
-
-  private HirCallableSignatureVisitor() {
-  }
 
   @Nullable
   public static Ty find(final Hir.Expression expression) {
