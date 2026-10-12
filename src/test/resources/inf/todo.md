@@ -34,9 +34,20 @@ Canonical terminology and contracts are in [Inf type contexts](../../../../CONTE
 * Removed public context-free `is/as/ifIs`. Use typed projections for kind lookup and `completionTy()/structuralTy()` for merging, comparison, and switches. Keep `isDeadend()` for completion flow.
 * Structural inspection does not establish layout availability or collect body results; those expression-level queries retain their existing policies.
 
-### Wrapper query simplification (deferred)
+### Wrapper query simplification (done)
 
-* Consider reducing callable/layout/indexing visitor special cases where projections now supply the needed information. Keep syntactic result selection and layout availability distinct from stored structural metadata.
+* Callable/layout/indexing queries read indexed results through structural projections; indexing queries also project array and range metadata without node-specific overrides.
+* Keep syntactic result selection, live call/member metadata, conversion destinations, and tuple layout availability distinct from stored structural metadata.
+* Source-driven coverage includes completing/diverging indexed values, array metadata, and unresolved queries. Range queries retain HIR-level coverage pending range syntax raising.
+
+### Wrapper query accessor removal
+* Remove superfluous Hir.ArrayAccess.indexedTy()
+* Remove superfluous Hir.Array.arrayTy()
+* Remove superfluous Hir.Range.rangeTy()
+
+Update snapshot tests accordingly.
+The S-Expression ToString visitor should take special heed TyCompletion, where it only prints both fields if they are different otherwise just one.
+Or if you deem it more idiomatic it can skip the deadend-propagation to parents and just print the structural ty; it is up to you for the accuracy of test cases.
 
 ### Layout metadata versus available layouts (deferred investigation)
 
@@ -195,7 +206,7 @@ So right now they will always stay Hir.Lexeme, and not be validated.
 ## Indexing syntax: remaining work
 
 * Support unparenthesized call-result indexing: `make()[0]`. Currently use `(make())[0]` to preserve the intended receiver.
-* Raise range accessors such as `values[0..1]` from AST to HIR. Keep slice syntax/lowering separate from the Ty migration's existing indexing type rules.
+* Raise ranges such as `1..7` and `values[0..1]` from AST to HIR; add source-driven query coverage for completing/diverging bounds and slices. Keep range/slice syntax lowering separate from the Ty migration's existing indexing type rules.
 
 ## Construction-target evaluation
 

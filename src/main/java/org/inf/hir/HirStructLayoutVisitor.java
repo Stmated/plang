@@ -120,9 +120,4 @@ public final class HirStructLayoutVisitor implements HirVisitor {
     }
     type = Tys.union(pass, type);
   }
-
-  @Override
-  public void visitArrayAccess(final Hir.ArrayAccess expression) {
-    type = HirExprs.getIndexedTy(expression);
-  }
 }

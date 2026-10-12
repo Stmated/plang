@@ -101,9 +101,4 @@ public final class HirCallableSignatureVisitor implements HirVisitor {
   public void visitDotAccess(final Hir.DotAccess expression) {
     type = HirExprs.getMemberTy(expression);
   }
-
-  @Override
-  public void visitArrayAccess(final Hir.ArrayAccess expression) {
-    type = HirExprs.getIndexedTy(expression);
-  }
 }

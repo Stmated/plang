@@ -7,11 +7,12 @@ import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyStruct;
+import org.inf.ty.TyValueArray;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +39,7 @@ class HirIndexingTypeVisitorTest {
       Arguments.of("val a = [7]; val holder = (items = a,); holder.items", Hir.DotAccess.class, "a"),
       Arguments.of("val a = [7]; [a][{ return true; }]", Hir.ArrayAccess.class, "a"),
       Arguments.of("val a = [7]; if ({ return true; }) then a else a", Hir.Conditional.class, "a"),
+      Arguments.of("[7]", Hir.Array.class, "metadata"),
       Arguments.of("[{ return true; }, 7]", Hir.Array.class, "metadata"),
       Arguments.of("(7,)", Hir.Tuple.class, "completion"),
       Arguments.of("({ return true; }, 7)", Hir.Tuple.class, "completion"),
@@ -81,7 +83,45 @@ class HirIndexingTypeVisitorTest {
       Arguments.of("val a: [;int;1]; a", Hir.Dec.class),
       Arguments.of("val read = (a: [;int;1]) => a; read", Hir.Parameter.class),
       Arguments.of("missing", Hir.Identifier.class),
-      Arguments.of("val make = () => [7]; make()", Hir.Call.class)
+      Arguments.of("val make = () => [7]; make()", Hir.Call.class),
+      Arguments.of("[7]", Hir.Array.class),
+      Arguments.of("[7][0]", Hir.ArrayAccess.class)
+    );
+  }
+
+  @ParameterizedTest
+  @CsvSource(delimiter = '|', value = {
+    "false | false",
+    "true | false",
+    "false | true",
+    "true | true"
+  })
+  void given__range_bounds__when__indexing_queries_run__then__structural_slice_information_is_preserved(
+    final boolean lowerTransfers, final boolean higherTransfers
+  ) {
+    // Range syntax is not yet raised from AST to HIR.
+    final var integer = new Hir.Literal("1", Ty.INTEGER);
+    final var returning = new Hir.Return(integer);
+    final var range = new Hir.Range(lowerTransfers ? returning : integer, higherTransfers ? returning : integer);
+    final var diverges = lowerTransfers || higherTransfers;
+    final Ty elementType;
+    if (lowerTransfers && higherTransfers) {
+      elementType = Ty.DEADEND;
+    } else if (diverges) {
+      elementType = Ty.INVALID;
+    } else {
+      elementType = Ty.INTEGER;
+    }
+    final var expected = new TyValueArray(elementType, null);
+    assertNull(HirIndexingTypeVisitor.find(range));
+
+    HirTyCommonVisitorPass.pass(range);
+
+    assertAll(
+      () -> assertEquals(diverges ? Ty.DEADEND : expected, range.ty().completionTy()),
+      () -> assertEquals(expected, HirIndexingTypeVisitor.find(range)),
+      () -> assertEquals(expected, HirExprs.getIndexingReceiverTy(range)),
+      () -> assertEquals(expected, HirExprs.getIndexingAccessorTy(range))
     );
   }
 
@@ -138,25 +178,37 @@ class HirIndexingTypeVisitorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {
-    "[7][{ return true; }]",
-    "[[7]][{ return true; }]",
-    "val S = struct { val value: int; }; [new heap S { value = 7; }][{ return true; }]",
-    "val f = () => 7; [f][{ return true; }]"
+  @CsvSource(delimiter = '|', value = {
+    "[7][0] | false",
+    "[[7]][0] | false",
+    "val S = struct { val value: int; }; [new heap S { value = 7; }][0] | false",
+    "val f = () => 7; [f][0] | false",
+    "[(7,)][0] | false",
+    "[7][{ return true; }] | true",
+    "[[7]][{ return true; }] | true",
+    "val S = struct { val value: int; }; [new heap S { value = 7; }][{ return true; }] | true",
+    "val f = () => 7; [f][{ return true; }] | true",
+    "[(7,)][{ return true; }] | true"
   })
-  void given__source_indexed_value__when__context_queries_run__then__the_resolved_selection_is_read(final String code) {
+  void given__source_indexed_value__when__context_queries_run__then__the_resolved_selection_is_read(
+    final String code, final boolean diverges
+  ) {
     final var access = nodes(Inf.codeToThir(code).root(), Hir.ArrayAccess.class).getLast();
     final var selected = access.indexedTy();
+    assertNotNull(selected);
     assertAll(
-      () -> assertSame(Ty.DEADEND, access.ty().completionTy()),
+      () -> assertSame(diverges ? Ty.DEADEND : selected, access.ty().completionTy()),
       () -> assertSame(selected, HirExprs.getIndexedTy(access)),
       () -> assertSame(selected, HirExprs.getBindingTy(access)),
       () -> assertSame(selected, HirExprs.getAssignmentContextTy(access)),
       () -> assertSame(selected, HirExprs.getIndexingReceiverTy(access)),
       () -> assertSame(selected, HirExprs.getIndexingAccessorTy(access)),
+      () -> assertSame(selected, HirIndexingTypeVisitor.find(access)),
       () -> assertSame(selected instanceof TyStruct ? selected : null, HirExprs.getMemberReceiverTy(access)),
       () -> assertSame(selected instanceof TyStruct ? selected : null, HirExprs.getConstructionTargetTy(access)),
-      () -> assertSame(selected instanceof TyFn ? selected : null, HirExprs.getCallableSignature(access))
+      () -> assertSame(selected instanceof TyStruct ? selected : null, HirStructLayoutVisitor.find(access)),
+      () -> assertSame(selected instanceof TyFn ? selected : null, HirExprs.getCallableSignature(access)),
+      () -> assertSame(selected instanceof TyFn ? selected : null, HirCallableSignatureVisitor.find(access))
     );
   }
 

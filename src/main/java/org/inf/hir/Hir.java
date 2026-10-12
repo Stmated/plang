@@ -979,7 +979,6 @@ public class Hir {
   }
 
   @Data
-  //@AllArgsConstructor
   public static class Range implements Expression {
     Expression lower;
     Expression higher;
@@ -988,11 +987,6 @@ public class Hir {
     public Ty rangeTy() {
       return Tys.structuralTy(ty);
     }
-
-//    @Override
-//    public Ty ty() {
-//      return null;
-//    }
 
     public Range(Expression lower, Expression higher) {
       this.lower = lower;

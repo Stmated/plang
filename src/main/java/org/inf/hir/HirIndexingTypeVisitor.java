@@ -97,21 +97,6 @@ public final class HirIndexingTypeVisitor implements HirVisitor {
   }
 
   @Override
-  public void visitArrayAccess(final Hir.ArrayAccess expression) {
-    type = HirExprs.getIndexedTy(expression);
-  }
-
-  @Override
-  public void visitArray(final Hir.Array expression) {
-    type = expression.arrayTy();
-  }
-
-  @Override
-  public void visitRange(final Hir.Range expression) {
-    type = expression.rangeTy();
-  }
-
-  @Override
   public void visitConditional(final Hir.Conditional expression) {
     if (expression.pass() == null) {
       type = Ty.VOID;
