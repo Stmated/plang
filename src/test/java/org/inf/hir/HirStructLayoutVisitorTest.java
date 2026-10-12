@@ -38,10 +38,7 @@ class HirStructLayoutVisitorTest {
       expression = tuple;
       layout = null;
       final var metadata = assertInstanceOf(TyStruct.class, tuple.ty().asStructural(TyStruct.class));
-      assertAll(
-        () -> assertSame(metadata, tuple.resolvedTy()),
-        () -> assertEquals(2, metadata.fields().length)
-      );
+      assertEquals(2, metadata.fields().length);
     }
     assertAll(
       () -> assertSame(Ty.DEADEND, expression.ty().completionTy()),
@@ -74,7 +71,6 @@ class HirStructLayoutVisitorTest {
       assertAll(
         () -> assertSame(Ty.DEADEND, completion),
         () -> assertNull(tuple.ty().asCompletion(TyStruct.class)),
-        () -> assertSame(tuple.resolvedTy(), tuple.ty().asStructural(TyStruct.class)),
         () -> assertNotNull(tuple.ty().asStructural(TyStruct.class)),
         () -> assertNull(contextual)
       );

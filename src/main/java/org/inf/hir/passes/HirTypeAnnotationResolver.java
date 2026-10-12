@@ -42,7 +42,7 @@ public final class HirTypeAnnotationResolver {
       case Hir.Identifier identifier -> resolvedType(definitions.definition(identifier.target()));
       case Hir.Array array -> Tys.structuralTy(array.ty());
       case Hir.Union union -> union.unionTy();
-      case Hir.Tuple tuple -> tuple.resolvedTy();
+      case Hir.Tuple tuple -> Tys.asStructural(tuple.ty(), TyStruct.class);
       case Hir.Dec dec -> dec.resolvedTy();
       case Hir.Struct s -> s.ty();
       case Hir.Parameter param -> param.resolvedTy();

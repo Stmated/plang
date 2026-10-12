@@ -1096,11 +1096,6 @@ public class Hir {
     /// For example: `val t: (uint8, uint8) = (1, 2)` where `1` and `2` then gets implicit type `uint8``
     TyStruct contextualType;
 
-    /// Retained field metadata for typing and type syntax, not proof of an available construction layout.
-    public TyStruct resolvedTy() {
-      return Tys.asStructural(ty, TyStruct.class);
-    }
-
     public Tuple(final TupleEntry[] children) {
       this(children, null, null);
     }

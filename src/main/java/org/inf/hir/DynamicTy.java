@@ -7,8 +7,8 @@ import java.util.Objects;
 
 /// A source type constraint, not a runtime expression or an inferred binding type.
 ///
-/// @param ty         By developer given
-/// @param expression
+/// @param ty         Resolved source constraint, retaining omitted types as `INFER`
+/// @param expression Source type syntax; null for omitted or static constraints
 public record DynamicTy(@Nonnull Ty ty, Hir.Expression expression) {
 
   public DynamicTy {

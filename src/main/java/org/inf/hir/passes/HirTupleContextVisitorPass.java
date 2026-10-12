@@ -14,6 +14,7 @@ import org.inf.ty.TyFn;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyStruct;
 import org.inf.ty.TyValueArray;
+import org.inf.ty.util.Tys;
 import org.inf.util.ArrayUtils;
 
 /// Links fresh tuple constructions to resolved destination layouts.
@@ -51,7 +52,7 @@ public class HirTupleContextVisitorPass {
             link(entry.value(), field.ty());
           }
         } else {
-          expression.contextualType(expression.resolvedTy());
+          expression.contextualType(Tys.asStructural(expression.ty(), TyStruct.class));
         }
       }
     }

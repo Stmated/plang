@@ -37,6 +37,20 @@ Declaration and parameter bindings store `resolvedTy`. Typing initializes explic
 
 Function return inference preserves `returnTypeAnnotation`, including inference placeholders and aliases. The resolved `FunctionSignature.ty().returnTy()` refreshes as the body is refined. Rebuilding or lifting a signature retains that return type and uses the current resolved parameters, including generated captures.
 
+### Binding storage and annotation resolution
+
+`resolvedTy` is the binding's current type, not constraint provenance. `DynamicTy.ty` currently resolves the source annotation only; it does not fill omissions from an initializer or use-site context.
+
+```inf
+val values: [;2] = [true, false]; // Annotation resolves to [;INFER;2]; binding resolves to [;bool;2].
+val Fn = (value: uint8): uint8;
+val f: Fn = (p) => p;            // p has no source annotation; its binding resolves to uint8.
+```
+
+Keeping these answers distinct lets passes infer again without mistaking an earlier inferred type for an explicit requirement. `typeAnnotation.expression` can preserve the source independently, so separate node fields are not inherently necessary: a redesign could store the binding type in `DynamicTy.ty` and derive source requirements from the syntax. It must also define how omitted annotations and static/generated annotations without source expressions retain their meaning. Array-element and function-return annotation containers have their own consumers and cannot silently adopt binding semantics.
+
+Adding a constraint projection to `TyCompletion` would move, not eliminate, the two answers. Its current normalization preserves completion and structure only; source requirements need a distinct contract if stored there. Prefer source-derived requirements if they avoid another stored projection without freezing inference or losing explicit restrictions.
+
 ## Type inspection
 
 `Ty.asCompletion` and `Ty.asStructural` select a projection before inspecting its kind; completion wrappers are transparent to callers.
@@ -76,7 +90,7 @@ MIR value types and LLVM type resolution select completion, so wrappers do not b
 
 ### Available layouts
 
-Use expression queries for layout-dependent operations, not `asStructural(TyStruct.class)` or `Tuple.resolvedTy()`. Those projections retain fields for typing and type syntax without establishing layout availability.
+Use expression queries for layout-dependent operations, not `asStructural(TyStruct.class)`. That projection retains fields for typing and type syntax without establishing layout availability.
 
 | Query | Purpose |
 |---|---|
@@ -98,7 +112,7 @@ Layout availability is not reachability. Calls, members, and indexing may expose
 `Hir.DynamicTy` is not an expression. Annotation containers and their `ty` values are non-null; `Ty.INFER` represents an omitted or not-yet-resolved constraint.
 AST-to-HIR preserves explicit annotation syntax without resolving types. HIR-to-THIR resolves builtins using the compilation target.
 `Lexeme` holds an unresolved word or syntactic name and always has `Ty.VOID`. `Identifier` owns its name and resolved target; it does not retain a lexeme.
-Built-in annotation leaves use `BuiltInTy`, whose type comes only from a recognized `Tys.fromString` name. Direct built-in annotations become static `DynamicTy` constraints; composite annotations retain these leaves, never typed lexemes.
+Built-in annotation leaves use `BuiltInTy`, whose type comes only from a recognized `Tys.fromString` name. Direct and composite annotations retain these leaves as source expressions, never typed lexemes.
 Member names are string metadata on `DotAccess`. Constructor assignments retain `Lexeme` field names on their `lhs`; these are metadata, not variable references.
 Static types need no source expression. Expression-backed annotations retain their source syntax and refresh the cached constraint during typing, including after an alias definition changes.
 `DynamicTy.resolve` centralizes this distinction. Contextual inference updates bindings and resolved signatures, never source placeholders.

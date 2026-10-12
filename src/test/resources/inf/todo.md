@@ -48,10 +48,29 @@ Canonical terminology and contracts are in [Inf type contexts](../../../../CONTE
 ### Layout metadata versus available layouts (done)
 
 * `HirStructLayoutVisitor.findAvailableLayout`, `HirExprs.getConstructionTargetLayout`, and `getMemberReceiverLayout` explicitly select available layouts. Construction/member/spread callers use these queries; indexing retains diagnostic type queries.
-* `asStructural(TyStruct.class)` and `Tuple.resolvedTy()` expose retained typing metadata, not permission to construct, access, or spread a tuple. Contextual destinations and type syntax remain metadata-only uses.
+* `asStructural(TyStruct.class)` exposes retained typing metadata, not permission to construct, access, or spread a tuple. Contextual destinations and type syntax remain metadata-only uses.
 * `({ return true; }, 7)` retains tuple fields but supplies no layout or spread slots. `make({ return true; })` may supply its current return layout for diagnostics despite noncompletion.
 * Source-driven coverage preserves both contrasts, including no unfinished allocation, call, or field loads after a transfer. No tuple-layout reconstruction, result-state hierarchy, reachability flags, or expression caches are needed.
 * Goal is to make things easier to read/understand, not to invoke new/more complexity.
+
+### Tuple structural accessor removal (done)
+
+* Tuple typing and type syntax use `Tys.asStructural(tuple.ty(), TyStruct.class)` directly; the redundant `Tuple.resolvedTy()` getter is removed.
+* Available-layout queries remain separate from retained tuple metadata.
+
+### Binding storage: source-requirement queries (deferred decision, step 1)
+
+* `Dec.resolvedTy` and `Parameter.resolvedTy` store the current binding type, not where its constraints came from. `DynamicTy.ty` currently resolves source requirements only: `val values: [;2] = [true, false]` retains `[;INFER;2]` there while the binding is `[;bool;2]`.
+* Investigate deriving source requirements from `DynamicTy.expression` through the existing annotation resolver, independently of a fully resolved binding cache. This could remove the need to store both answers on declaration/parameter nodes.
+* Define omitted versus explicit requirements when `expression` is null, including static constraints and generated capture/lifted bindings. Preserve supported partial annotations and current rejection of partially annotated lambda parameters.
+* Keep array-element and function-return annotation policies explicit. Proceed only if source-derived queries simplify the passes rather than duplicating inference.
+
+### Binding storage: consolidating resolved types (depends on step 1, deferred decision, step 2)
+
+* If step 1 establishes an independent source-requirement query, consider making declaration/parameter `DynamicTy.ty` the current binding type and removing their `resolvedTy` fields. Keep node completion `VOID`; let typing passes supply initializer/use-site information.
+* Update binding reads, contextual typing, signature rebuilding, generated bindings, and annotation refresh together. Earlier inferred answers must not become explicit restrictions when context, initializer types, or aliases change.
+* A third constraint projection in `TyCompletion` is an alternative storage design, not a requirement: it retains both answers and broadens normalization beyond completion/structure. Compare its complexity with deriving source requirements before choosing it.
+* Reuse existing repeated-typing, changed-context, partial-array, alias-refresh, and lambda-lifting coverage. Preserve source syntax and explicit restrictions without introducing a new cache or provenance field.
 
 ### Layout query result selection (deferred investigation)
 
