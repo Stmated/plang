@@ -14,15 +14,15 @@ test-method: given__call_flags_and_labels__when__rendered__then__preserved
   (arguments
     (Argument
       (label "label")
-      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+      (ty INTEGER)
       (value
         (Literal
           (content "1")
-          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+          (ty INTEGER))))
     (Argument
       (label null)
-      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+      (ty INTEGER)
       (value
         (Literal
           (content "2")
-          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+          (ty INTEGER))))))

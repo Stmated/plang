@@ -1,8 +1,9 @@
-package org.inf.hir.passes;
+package org.inf.hir.typing;
 
 import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTupleMatching;
+import org.inf.hir.passes.HirTypeAnnotationResolver;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
 import org.inf.ty.TyStruct;
@@ -11,9 +12,14 @@ import org.inf.ty.util.Tys;
 import java.util.HashSet;
 
 @UtilityClass
-final class HirTupleTyping {
+public final class HirTupleTyping {
 
-  static void resolve(final Hir.Tuple tuple, final boolean availableOnly, final HirTypeAnnotationResolver annotationResolver) {
+  public static void resolve(
+    final Hir.Tuple tuple,
+    final boolean availableOnly,
+    final HirTypeAnnotationResolver annotationResolver
+  ) {
+
     final var entries = tuple.children();
     if (entries.length == 0) {
       throw new IllegalArgumentException("Empty tuple types and values are not supported");

@@ -6,13 +6,13 @@ test-method: given__declaration_mutability__when__rendered__then__preserved
 
 (Dec
   (mutability IMMUTABLE)
-  (ty (named "VOID"))
+  (ty VOID)
   (resolvedTy null)
   (lexeme
     (Lexeme
       (name "value")
-      (ty (named "VOID"))))
+      (ty VOID)))
   (typeAnnotation
     (DynamicTy
-      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+      (ty INTEGER)
       (expression null))))

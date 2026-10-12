@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /// Resolves source type syntax without treating arbitrary value expressions as types.
-final class HirTypeAnnotationResolver {
+public final class HirTypeAnnotationResolver {
 
   private final HirTypeDefinitions definitions;
   private final Map<Hir.Expression, Ty> resolved = new IdentityHashMap<>();
@@ -29,7 +29,7 @@ final class HirTypeAnnotationResolver {
     return resolvedType(expr);
   }
 
-  Ty resolveSilently(final Hir.Expression expr) {
+  public Ty resolveSilently(final Hir.Expression expr) {
     return resolvedType(expr);
   }
 

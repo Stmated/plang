@@ -44,7 +44,7 @@ class HirTupleAccessTest {
     "val t = (false, 10); t[1u128]"
   })
   void given__literal_tuple_index__when__typed__then__selected_slot_type(String code) {
-    Assertions.assertTrue(TypeComparison.sameValueType(Ty.INTEGER, Inf.codeToThir(code).root().ty()));
+    Assertions.assertTrue(TypeComparison.same(Ty.INTEGER, Inf.codeToThir(code).root().ty()));
   }
 
   static Stream<Arguments> heterogeneousSlots() {

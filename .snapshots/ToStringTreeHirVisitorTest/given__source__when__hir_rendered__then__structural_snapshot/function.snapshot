@@ -16,15 +16,15 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
           (lhs
             (Dec
               (mutability IMMUTABLE)
-              (ty (named "VOID"))
+              (ty VOID)
               (resolvedTy null)
               (lexeme
                 (Lexeme
                   (name "f")
-                  (ty (named "VOID"))))
+                  (ty VOID)))
               (typeAnnotation
                 (DynamicTy
-                  (ty (named "INFER"))
+                  (ty INFER)
                   (expression null)))))
           (rhs
             (Function
@@ -35,26 +35,26 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                   (parameters
                     (Parameter
                       (vararg false)
-                      (ty (named "VOID"))
+                      (ty VOID)
                       (resolvedTy null)
                       (lexeme
                         (Lexeme
                           (name "x")
-                          (ty (named "VOID"))))
+                          (ty VOID)))
                       (typeAnnotation
                         (DynamicTy
-                          (ty (named "INFER"))
+                          (ty INFER)
                           (expression
                             (Identifier
                               (name "int")
                               (target null)))))))
                   (returnType
                     (DynamicTy
-                      (ty (named "INFER"))
+                      (ty INFER)
                       (expression null)))))
               (body
                 (Return
-                  (ty (named "DEADEND"))
+                  (ty DEADEND)
                   (expression
                     (BinaryOperation
                       (kind ADD)
@@ -66,9 +66,9 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                       (rhs
                         (Literal
                           (content "1")
-                          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))
+                          (ty INTEGER))))))))))
         (Return
-          (ty (named "DEADEND"))
+          (ty DEADEND)
           (expression
             (Call
               (partial false)
@@ -80,8 +80,8 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
               (arguments
                 (Argument
                   (label null)
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+                  (ty INTEGER)
                   (value
                     (Literal
                       (content "2")
-                      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))))
+                      (ty INTEGER))))))))))))

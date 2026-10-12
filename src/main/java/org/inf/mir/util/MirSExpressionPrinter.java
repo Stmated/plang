@@ -7,6 +7,7 @@ import org.inf.mir.model.MirNode;
 import org.inf.ty.BitWidth;
 import org.inf.ty.Ty;
 import org.inf.ty.TyValueNumber;
+import org.inf.ty.util.TyNamedConstants;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -39,66 +40,8 @@ import java.util.Set;
 /// references outside the module or current function are rejected rather than omitted.
 public final class MirSExpressionPrinter {
 
-  private static final List<NamedConstant> NAMED_CONSTANTS = namedConstants();
-
   public String render(final MirLoweringResult module) {
     return new Printer(Objects.requireNonNull(module)).render(module);
-  }
-
-  private static List<NamedConstant> namedConstants() {
-    final var constants = new ArrayList<NamedConstant>();
-    final var fields = Ty.class.getFields();
-    Arrays.sort(fields, Comparator.comparing(Field::getName));
-    for (final var field : fields) {
-      final var name = field.getName();
-      final var underscoreIndex = name.indexOf('_');
-      final var lastIndex = name.lastIndexOf('_');
-
-      // Remove any short prefixes for the display name, such as `BW_`
-      // `BW_EXPLICIT_16` becomes `EXPLICIT_16`.
-      final String displayName;
-      if (underscoreIndex != -1) {
-
-        if (underscoreIndex != lastIndex) {
-          displayName = name.substring(underscoreIndex + 1);
-        } else {
-          if (underscoreIndex < 4) {
-            displayName = name.substring(underscoreIndex + 1);
-          } else {
-            displayName = name;
-          }
-        }
-      } else {
-        displayName = name;
-      }
-
-      try {
-        constants.add(new NamedConstant(field.get(null), displayName));
-      } catch (final IllegalAccessException exception) {
-        throw new IllegalStateException("Cannot read Ty constant: " + name, exception);
-      }
-    }
-    return Collections.unmodifiableList(constants);
-  }
-
-  private static String constantName(final Object value) {
-    for (final var constant : NAMED_CONSTANTS) {
-      if (constant.matches(value)) {
-        return constant.name();
-      }
-    }
-    return null;
-  }
-
-  private record NamedConstant(Object value, String name) {
-
-    private boolean matches(final Object candidate) {
-      if (value instanceof final TyValueNumber expected && candidate instanceof final TyValueNumber actual) {
-        // Some numeric equals implementations omit flags; snapshots must not hide those differences.
-        return expected.equals(actual) && Objects.equals(expected.flags(), actual.flags());
-      }
-      return value.equals(candidate);
-    }
   }
 
   private static final class Printer {
@@ -184,7 +127,7 @@ public final class MirSExpressionPrinter {
     }
 
     private void item(final Object value, final int depth) {
-      final var name = constantName(value);
+      final var name = TyNamedConstants.constantName(value);
       if (name != null) {
         output.append(' ').append(name);
         return;

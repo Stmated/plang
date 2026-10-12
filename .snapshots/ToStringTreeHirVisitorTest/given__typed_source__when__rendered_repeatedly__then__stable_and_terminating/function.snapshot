@@ -9,22 +9,22 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
   (expressions
     (Expressions
       (generated false)
-      (ty (named "DEADEND"))
+      (ty DEADEND)
       (children
         (Assignment
-          (ty (named "VOID"))
+          (ty VOID)
           (lhs
             (Dec
               (mutability IMMUTABLE)
-              (ty (named "VOID"))
+              (ty VOID)
               (resolvedTy (function vararg=false (parameters ("x" (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
               (lexeme
                 (Lexeme
                   (name "f")
-                  (ty (named "VOID"))))
+                  (ty VOID)))
               (typeAnnotation
                 (DynamicTy
-                  (ty (named "INFER"))
+                  (ty INFER)
                   (expression null)))))
           (rhs
             (Function
@@ -35,23 +35,26 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
                   (parameters
                     (Parameter
                       (vararg false)
-                      (ty (named "VOID"))
+                      (ty VOID)
                       (resolvedTy (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
                       (lexeme
                         (Lexeme
                           (name "x")
-                          (ty (named "VOID"))))
+                          (ty VOID)))
                       (typeAnnotation
                         (DynamicTy
                           (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
-                          (expression null)))))
+                          (expression
+                            (BuiltInTy
+                              (name "int")
+                              (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))))))
                   (returnType
                     (DynamicTy
-                      (ty (named "INFER"))
+                      (ty INFER)
                       (expression null)))))
               (body
                 (Return
-                  (ty (named "DEADEND"))
+                  (ty DEADEND)
                   (expression
                     (BinaryOperation
                       (kind ADD)
@@ -63,9 +66,9 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
                       (rhs
                         (Literal
                           (content "1")
-                          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))
+                          (ty INTEGER))))))))))
         (Return
-          (ty (named "DEADEND"))
+          (ty DEADEND)
           (expression
             (Call
               (partial false)

@@ -1,8 +1,9 @@
-package org.inf.hir.passes;
+package org.inf.hir.typing;
 
 import org.inf.Inf;
 import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
+import org.inf.hir.passes.HirTyCommonVisitorPass;
 import org.inf.ty.Ty;
 import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;

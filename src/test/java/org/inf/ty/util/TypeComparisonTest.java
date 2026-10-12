@@ -49,9 +49,9 @@ class TypeComparisonTest {
     Ty actual, Ty expected, boolean equivalent
   ) {
     Assertions.assertAll(
-      () -> Assertions.assertEquals(equivalent, TypeComparison.sameValueType(actual, expected)),
-      () -> Assertions.assertEquals(equivalent, TypeComparison.sameValueType(expected, actual)),
-      () -> Assertions.assertEquals(true, TypeComparison.sameValueType(actual, actual))
+      () -> Assertions.assertEquals(equivalent, TypeComparison.same(actual, expected)),
+      () -> Assertions.assertEquals(equivalent, TypeComparison.same(expected, actual)),
+      () -> Assertions.assertEquals(true, TypeComparison.same(actual, actual))
     );
   }
 
@@ -101,8 +101,8 @@ class TypeComparisonTest {
     Ty actual, Ty expected, boolean equivalent
   ) {
     Assertions.assertAll(
-      () -> Assertions.assertEquals(equivalent, TypeComparison.sameValueType(actual, expected)),
-      () -> Assertions.assertEquals(equivalent, TypeComparison.sameValueType(expected, actual))
+      () -> Assertions.assertEquals(equivalent, TypeComparison.same(actual, expected)),
+      () -> Assertions.assertEquals(equivalent, TypeComparison.same(expected, actual))
     );
   }
 
@@ -125,8 +125,8 @@ class TypeComparisonTest {
   void given__nested_decimal_flag_difference__when__compared__then__record_equality_does_not_bypass_flags(Ty a, Ty b) {
     Assertions.assertAll(
       () -> Assertions.assertEquals(a, b),
-      () -> Assertions.assertEquals(false, TypeComparison.sameValueType(a, b)),
-      () -> Assertions.assertEquals(false, TypeComparison.sameValueType(b, a))
+      () -> Assertions.assertEquals(false, TypeComparison.same(a, b)),
+      () -> Assertions.assertEquals(false, TypeComparison.same(b, a))
     );
   }
 

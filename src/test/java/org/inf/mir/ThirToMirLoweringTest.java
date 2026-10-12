@@ -427,7 +427,7 @@ class ThirToMirLoweringTest {
       () -> assertEquals("b", type.fields()[1].name()),
       () -> assertEquals(1, instructions.stream().filter(Mir.NewStruct.class::isInstance).count()),
       () -> assertTrue(instructions.stream().filter(Mir.Convert.class::isInstance).map(Mir.Convert.class::cast)
-        .allMatch(convert -> TypeComparison.sameValueType(convert.value().ty(), convert.result().ty())))
+        .allMatch(convert -> TypeComparison.same(convert.value().ty(), convert.result().ty())))
     );
   }
 
@@ -493,7 +493,7 @@ class ThirToMirLoweringTest {
       () -> assertTrue(instructions.indexOf(conversion) < instructions.indexOf(construction)),
       () -> assertTrue(instructions.stream().filter(Mir.Convert.class::isInstance)
         .map(Mir.Convert.class::cast).allMatch(convert ->
-          TypeComparison.sameValueType(convert.value().ty(), convert.result().ty())
+          TypeComparison.same(convert.value().ty(), convert.result().ty())
             || convert.value().ty() instanceof TyValueNumberInteger)),
       () -> assertInstanceOf(Mir.Value.class, construction.fields().getLast())
     );

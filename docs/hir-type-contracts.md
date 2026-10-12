@@ -214,7 +214,7 @@ Production consumers are grouped by the information they need. Pass names below 
 | `HirTyCommonVisitorPass.visitParameter`; `HirFnTyVisitorPass.fnToTyFn` | Stored `resolvedTy` binding; signatures consume it, and common typing refreshes explicit constraints without resetting contextual inference from source placeholders. | Ty 3, 5, 15 complete |
 | `ThirToMirLowering.declaration`, `assignment` | `Dec.resolvedTy()` for local allocation and stores, never the declaration's `VOID` completion. | Ty 2 complete |
 | `HirTyCommonVisitorPass.visitStruct` | `Dec.resolvedTy()` for field layout construction. | Ty 2 complete |
-| Assignment destinations in `HirFunctionContextVisitor`, `HirTupleContextVisitorPass`, `HirIntegerLiteralTypingVisitorPass`, `HirFunctionValidationVisitorPass`, `HirTupleValidationVisitorPass`; compound-assignment destination in integer typing | Contextual typing uses `Tys.getAssignmentContextTy`; validation and compound assignments use `Tys.getBindingTy`. Member access and indexing select their resolved member/element types. | Ty 2-4, 8-9 complete |
+| Assignment destinations in `HirInferredFunctionSignatureVisitor`, `HirTupleContextVisitorPass`, `HirIntegerLiteralTypingVisitorPass`, `HirFunctionValidationVisitorPass`, `HirTupleValidationVisitorPass`; compound-assignment destination in integer typing | Contextual typing uses `Tys.getAssignmentContextTy`; validation and compound assignments use `Tys.getBindingTy`. Member access and indexing select their resolved member/element types. | Ty 2-4, 8-9 complete |
 
 ### Source-declared constraints
 
@@ -225,7 +225,7 @@ Annotation reads select source constraints or inference placeholders, never prev
 | Declaration inference in `HirDeclarationTyping`, called by `HirTyCommonVisitorPass`; assignment contexts in function/tuple/integer contextual typing | Resolve whole bindings and omitted array elements, including nested tuple/array constraints. Contexts read source constraints, never previously inferred bindings. | Ty 4, 16 complete |
 | `HirFunctionTyping.contextualize`; `HirFunctionParameterValidationVisitorPass.checkParameters` | Source parameter constraints versus resolved parameter types supplied by context. | Ty 5 complete |
 | `HirFnTyVisitorPass.fnToTyFn`; `HirTyCommonVisitorPass.visitFunction`, `visitFunctionSignature` | Source return constraint versus the resolved `TyFn` return and parameter types. | Ty 5-6 complete |
-| Return contexts in `HirFunctionContextVisitor`, `HirTupleContextVisitorPass`, `HirIntegerLiteralTypingVisitorPass`; return checks in function/tuple validation | Source/use-site return constraints for contextual typing; resolved signatures for validation. | Ty 6 complete |
+| Return contexts in `HirInferredFunctionSignatureVisitor`, `HirTupleContextVisitorPass`, `HirIntegerLiteralTypingVisitorPass`; return checks in function/tuple validation | Source/use-site return constraints for contextual typing; resolved signatures for validation. | Ty 6 complete |
 | `HirLambdaLiftingTransformerPass` generated declarations, parameters, and signatures | Binding identities and resolved capture/signature types through necessary HIR transformations. | Ty 2-6 complete |
 
 `TyParam.ty()` and MIR signature parameter types remain value types; they are not HIR parameter-expression completion types.
@@ -235,7 +235,7 @@ Annotation reads select source constraints or inference placeholders, never prev
 | Current consumer | Required information | Migration |
 |---|---|---|
 | `HirTyCommonVisitorPass.visitCall` target reads | `Tys.getCallableSignature` supplies the resolved callee `TyFn` and nominal call result, independent of target/argument completion. | Ty 7 complete |
-| Call target reads in `HirFunctionContextVisitor`, `HirTupleContextVisitorPass.linkArguments`, `HirIntegerLiteralTypingVisitorPass`, `HirFunctionValidationVisitorPass`, `HirTupleValidationVisitorPass` | `Tys.getCallableSignature` supplies resolved parameters for argument binding, contextualization, and validation. | Ty 7 complete |
+| Call target reads in `HirInferredFunctionSignatureVisitor`, `HirTupleContextVisitorPass.linkArguments`, `HirIntegerLiteralTypingVisitorPass`, `HirFunctionValidationVisitorPass`, `HirTupleValidationVisitorPass` | `Tys.getCallableSignature` supplies resolved parameters for argument binding, contextualization, and validation. | Ty 7 complete |
 | `HirFunctionValidationVisitorPass.check` actual-type reads, including `visitNewByBlockField` | `Tys.getCallableValueTy` supplies function-valued information for diagnostics without interpreting it as reachable completion. Field constraints come from the enclosing construction's current layout. | Ty 7-8 complete |
 
 ### Aggregate/member shapes
@@ -246,7 +246,7 @@ Annotation reads select source constraints or inference placeholders, never prev
 | `HirTyCommonVisitorPass.visitDotAccess`; member-write checks in `HirTupleValidationVisitorPass.requireWritable`; callable member lookup | `Tys.getMemberField` selects members against `Tys.getMemberReceiverTy`. `Tys.getMemberTy` reads the selected type; write validation reads the receiver layout. | Ty 8 complete |
 | `HirTyCommonVisitorPass.visitArrayAccess`; array-access checks in tuple validation | `Tys.getIndexingReceiverTy`, `Tys.getIndexingAccessorTy`, and `Tys.getIndexedTy` separate receiver and element/slice types from completion. | Ty 9 complete |
 | `HirTupleAccess.index`, `availableIndex` | The integer literal's direct type and value for tuple-index diagnostics. | Ty 9 complete |
-| `HirSpreadShape.fields`; spread precheck in `HirFunctionContextVisitor` | Resolved static tuple/struct fields for spread arity, names, and binding, including known layouts after transfers. No layout for a diverging tuple construction. | Ty 10 complete |
+| `HirSpreadShape.fields`; spread precheck in `HirInferredFunctionSignatureVisitor` | Resolved static tuple/struct fields for spread arity, names, and binding, including known layouts after transfers. No layout for a diverging tuple construction. | Ty 10 complete |
 | `HirTupleTyping.resolve` | Tuple completion/layout produced by typing, not a new universal structural query. Contextual destination layout remains separate metadata. | Ty 14 complete |
 
 ### Return/break collection

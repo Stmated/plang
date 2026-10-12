@@ -5,6 +5,7 @@ import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.hir.passes.HirTyCommonVisitorPass;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -61,8 +62,8 @@ class TysTest {
     final var completion = target.ty();
     final var signature = expected instanceof TyFn function ? function : null;
     Assertions.assertAll(
-      () -> Assertions.assertEquals(expected, Tys.getCallableValueTy(target)),
-      () -> Assertions.assertEquals(signature, Tys.getCallableSignature(target)),
+      () -> Assertions.assertEquals(expected, HirExprs.getCallableValueTy(target)),
+      () -> Assertions.assertEquals(signature, HirExprs.getCallableSignature(target)),
       () -> Assertions.assertSame(completion, target.ty())
     );
   }
@@ -100,8 +101,8 @@ class TysTest {
       () -> Assertions.assertSame(parameter, reference.target()),
       () -> Assertions.assertSame(Ty.VOID, parameter.ty()),
       () -> Assertions.assertInstanceOf(TyFn.class, parameter.resolvedTy()),
-      () -> Assertions.assertSame(parameter.resolvedTy(), Tys.getCallableSignature(reference)),
-      () -> Assertions.assertSame(parameter.resolvedTy(), Tys.getCallableValueTy(parameter))
+      () -> Assertions.assertSame(parameter.resolvedTy(), HirExprs.getCallableSignature(reference)),
+      () -> Assertions.assertSame(parameter.resolvedTy(), HirExprs.getCallableValueTy(parameter))
     );
   }
 
@@ -145,14 +146,14 @@ class TysTest {
     final var original = factory.ty().returnTy();
     final var updated = replacements.getFirst().ty().returnTy();
     final var call = calls.getFirst();
-    Assertions.assertSame(original, Tys.getCallableSignature(call));
+    Assertions.assertSame(original, HirExprs.getCallableSignature(call));
     factory.body(replacements.getFirst().body());
     HirTyCommonVisitorPass.pass(root);
     Assertions.assertAll(
-      () -> Assertions.assertEquals(updated, Tys.getCallableSignature(call)),
-      () -> Assertions.assertNotEquals(original, Tys.getCallableSignature(call)),
-      () -> Assertions.assertSame(factory.ty().returnTy(), Tys.getCallableSignature(call)),
-      () -> Assertions.assertSame(factory.ty().returnTy(), Tys.getCallableValueTy(call)),
+      () -> Assertions.assertEquals(updated, HirExprs.getCallableSignature(call)),
+      () -> Assertions.assertNotEquals(original, HirExprs.getCallableSignature(call)),
+      () -> Assertions.assertSame(factory.ty().returnTy(), HirExprs.getCallableSignature(call)),
+      () -> Assertions.assertSame(factory.ty().returnTy(), HirExprs.getCallableValueTy(call)),
       () -> Assertions.assertSame(Ty.DEADEND, call.ty()),
       () -> Assertions.assertSame(Ty.INFER, factory.signature().returnTypeAnnotation().ty())
     );
@@ -181,7 +182,7 @@ class TysTest {
   void given__binding_context__when__type_is_queried__then__resolved_or_compatible_target_type_is_returned(
     final Hir.Expression target, final Ty expected
   ) {
-    Assertions.assertSame(expected, Tys.getBindingTy(target));
+    Assertions.assertSame(expected, HirExprs.getBindingTy(target));
   }
 
   @Test
@@ -200,9 +201,9 @@ class TysTest {
     final var assignment = assignments.getFirst();
     final var target = assignment.lhs();
     Assertions.assertAll(
-      () -> Assertions.assertSame(Ty.INTEGER, Tys.getBindingTy(target)),
-      () -> Assertions.assertSame(Ty.INTEGER, Tys.getAssignmentContextTy(target)),
-      () -> Assertions.assertSame(Ty.VOID, Tys.getBindingTy(assignment))
+      () -> Assertions.assertSame(Ty.INTEGER, HirExprs.getBindingTy(target)),
+      () -> Assertions.assertSame(Ty.INTEGER, HirExprs.getAssignmentContextTy(target)),
+      () -> Assertions.assertSame(Ty.VOID, HirExprs.getBindingTy(assignment))
     );
   }
 
@@ -243,7 +244,7 @@ class TysTest {
   void given__assignment_target__when__context_is_queried__then__source_constraints_are_separate_from_binding_types(
     final Hir.Expression target, final Ty expected
   ) {
-    Assertions.assertSame(expected, Tys.getAssignmentContextTy(target));
+    Assertions.assertSame(expected, HirExprs.getAssignmentContextTy(target));
   }
 
   static Stream<Arguments> returnContexts() {
@@ -271,8 +272,8 @@ class TysTest {
     );
     final var original = signature.ty();
     Assertions.assertAll(
-      () -> Assertions.assertSame(expected, Tys.getFunctionReturnContextTy(signature)),
-      () -> Assertions.assertSame(useSiteExpected, Tys.getFunctionReturnContextTy(signature, useSiteContext)),
+      () -> Assertions.assertSame(expected, HirExprs.getFunctionReturnContextTy(signature)),
+      () -> Assertions.assertSame(useSiteExpected, HirExprs.getFunctionReturnContextTy(signature, useSiteContext)),
       () -> Assertions.assertSame(annotation, signature.returnTypeAnnotation()),
       () -> Assertions.assertSame(original, signature.ty())
     );

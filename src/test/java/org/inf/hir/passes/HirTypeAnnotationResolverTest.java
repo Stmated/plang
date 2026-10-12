@@ -170,8 +170,7 @@ class HirTypeAnnotationResolverTest {
       () -> assertEquals(3, constraints.stream()
         .filter(it -> it.ty().equals(Tys.fromString("int", MachineTarget.T64))).count()),
       () -> assertEquals(1, constraints.stream().filter(it -> it.ty().equals(Ty.BOOLEAN)).count()),
-      () -> assertEquals(3, constraints.stream().filter(it -> it.ty() == Ty.INFER).count()),
-      () -> assertTrue(constraints.stream().allMatch(it -> it.expression() == null))
+      () -> assertEquals(3, constraints.stream().filter(it -> it.ty() == Ty.INFER).count())
     );
   }
 

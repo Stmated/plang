@@ -10,6 +10,7 @@ import org.inf.hir.HirTupleAccess;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirTypeDefinitions;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.HirExprs;
 import org.inf.mir.model.*;
 import org.inf.thir.raising.ThirRaiseResult;
 import org.inf.ty.*;
@@ -361,7 +362,7 @@ public final class ThirToMirLowering {
     if (target instanceof Diverges) {
       return null;
     }
-    final var field = Objects.requireNonNull(Tys.getMemberField(access), "Field access requires a resolved receiver field");
+    final var field = Objects.requireNonNull(HirExprs.getMemberField(access), "Field access requires a resolved receiver field");
     return new Mir.Field(((Continues) target).value(), field.index(), MirTypes.valueType(field.ty()));
   }
 
@@ -613,13 +614,13 @@ public final class ThirToMirLowering {
   }
 
   private Flow instance(Hir.NewByBlock instance) {
-    final var type = Tys.getConstructionTargetTy(instance.target());
+    final var type = HirExprs.getConstructionTargetTy(instance.target());
     if (type == null) {
       throw new IllegalArgumentException("Struct construction requires a resolved target layout");
     }
     final var fields = new Mir.Operand[type.fields().length];
     for (final var initializer : instance.fields()) {
-      final var field = Objects.requireNonNull(Tys.getInitializerField(instance, initializer), "Field initializer requires a resolved target field");
+      final var field = Objects.requireNonNull(HirExprs.getInitializerField(instance, initializer), "Field initializer requires a resolved target field");
       final var index = field.index();
       if (fields[index] != null) {
         throw new IllegalArgumentException("Duplicate initializer for field " + type.fields()[index].name());
@@ -656,7 +657,7 @@ public final class ThirToMirLowering {
     }
     if (operand.ty() instanceof TyPointer<?> actualPointer && actualPointer.inner() instanceof TyFn actualFunction
       && expected instanceof TyPointer<?> expectedPointer && expectedPointer.inner() instanceof TyFn expectedFunction) {
-      if (!TypeComparison.sameValueType(actualFunction, expectedFunction)) {
+      if (!TypeComparison.same(actualFunction, expectedFunction)) {
         throw new IllegalArgumentException("Cannot convert incompatible function signatures: %s to %s".formatted(actualFunction, expectedFunction));
       }
     }

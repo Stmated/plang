@@ -8,7 +8,7 @@ test-method: given__existing_syntax__when__raised__then__expected_hir
   (ty null)
   (expressions
     (Return
-      (ty (named "DEADEND"))
+      (ty DEADEND)
       (expression
         (BinaryOperation
           (kind SUBTRACT)
@@ -20,4 +20,4 @@ test-method: given__existing_syntax__when__raised__then__expected_hir
           (rhs
             (Literal
               (content "1")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))
+              (ty INTEGER))))))))

@@ -12,7 +12,7 @@ import org.inf.util.ArrayUtils;
 public class UnionTypes {
 
   public static boolean compatible(final Ty actual, final Ty expected) {
-    if (actual == Ty.DEADEND || TypeComparison.sameValueType(actual, expected)) {
+    if (actual == Ty.DEADEND || TypeComparison.same(actual, expected)) {
       return true;
     }
     if (actual instanceof TyUnion source) {
@@ -32,12 +32,12 @@ public class UnionTypes {
   }
 
   private static boolean memberCompatible(final Ty actual, final Ty expected) {
-    if (TypeComparison.sameValueType(actual, expected)) {
+    if (TypeComparison.same(actual, expected)) {
       return true;
     }
     if (actual instanceof TyValueArray source && expected instanceof TyValueArray destination) {
       return (destination.size() == null || destination.size().equals(source.size()))
-        && TypeComparison.sameValueType(source.elementType(), destination.elementType());
+        && TypeComparison.same(source.elementType(), destination.elementType());
     }
     return actual instanceof TyPointer<?> source && expected instanceof TyPointer<?> destination
       && source.addressSpace() == destination.addressSpace() && memberCompatible(source.inner(), destination.inner());

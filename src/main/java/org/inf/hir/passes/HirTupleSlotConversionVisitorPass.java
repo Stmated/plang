@@ -6,6 +6,7 @@ import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.typing.HirDeclarationTyping;
 import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
 import org.inf.ty.TyValueNumberInteger;
@@ -48,7 +49,7 @@ public class HirTupleSlotConversionVisitorPass {
       final var destinationField = destination.fields()[slots[index++]];
       final var expected = HirDeclarationTyping.resolve(destinationField.ty(), actual);
       requireSlotConversion(actual, expected);
-      if (actual != Ty.DEADEND && !TypeComparison.sameValueType(actual, expected)) {
+      if (actual != Ty.DEADEND && !TypeComparison.same(actual, expected)) {
         expression.value(new Hir.Convert(expression.value(), expected));
       }
     }

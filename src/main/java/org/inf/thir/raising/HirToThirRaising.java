@@ -36,8 +36,9 @@ public class HirToThirRaising {
     HirFunctionSignatureValidationVisitorPass.pass(e);
     HirFunctionValidationVisitorPass.pass(e);
     HirTupleValidationVisitorPass.pass(e);
-    HirArrayValidationVisitorPass.pass(e);
-    HirUnionValidationVisitorPass.pass(e);
+    HirArrayValidationPass.pass(e);
+    HirUnionValidationPass.pass(e);
+    HirValidationPass.pass(e);
     e = HirGeneratedSequenceTransformerPass.pass(e);
     e = HirLambdaLiftingTransformerPass.pass(e);
     e = HirDependencyReorderingTransformerPass.pass(e);

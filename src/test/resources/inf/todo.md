@@ -305,6 +305,12 @@ I am well aware that the feature can make some syntax ambiguous
     * Support labeled spreads (`name = ...args`)
     * Support spreading of an array into another/new array
 
+* Make more use of `Ty.INVALID` when doing the type investigation
+  * So we can know "something earlier decided this is invalid, so we will not try to work with it, but will do what we can"
+
+* Go through all test cases where we expect throws exceptions, and figure out it those could be more specific exceptions instead
+  * So when we throw and then catch and assert, we can assert on the type and metadata instead of the thrown message text
+
 * Support Arrays, runtime-length expansion for spreads (?)
     * Seems very dangerous. Perhaps a good place to start developing error handling.
         * ie. that if calling convention cannot be statically verified, then should always return `Result<T, Error>`

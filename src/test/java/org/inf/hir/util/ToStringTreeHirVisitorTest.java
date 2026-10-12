@@ -66,10 +66,10 @@ class ToStringTreeHirVisitorTest {
             (children
               (Lexeme
                 (name "first")
-                (ty (named "VOID")))
+                (ty VOID))
               (Lexeme
                 (name "second")
-                (ty (named "VOID")))))))""", printer.render(expression));
+                (ty VOID))))))""", printer.render(expression));
   }
 
   @Test
@@ -77,7 +77,7 @@ class ToStringTreeHirVisitorTest {
     assertEquals("""
       (Literal
         (content "quote:\\" slash:\\\\ newline:\\n return:\\r tab:\\t backspace:\\b formfeed:\\f nul:\\u0000")
-        (ty (string)))""",
+        (ty STRING))""",
       printer.render(new Hir.Literal("quote:\" slash:\\ newline:\n return:\r tab:\t backspace:\b formfeed:\f nul:\0", Ty.STRING)));
   }
 
@@ -103,7 +103,7 @@ class ToStringTreeHirVisitorTest {
           (target
             (Lexeme
               (name "f")
-              (ty (named "VOID"))))
+              (ty VOID)))
           (arguments))""", printer.render(new Hir.Call(new Hir.Lexeme("f"), new Hir.Argument[0]))),
       () -> assertNotEquals(printer.render(new Hir.Conditional(new Hir.Lexeme("p"), new Hir.Lexeme("yes"), null)),
         printer.render(new Hir.Conditional(new Hir.Lexeme("p"), new Hir.Lexeme("yes"), new Hir.Expressions(new Hir.Expression[0]))))
@@ -140,11 +140,11 @@ class ToStringTreeHirVisitorTest {
           (lhs
             (Lexeme
               (name "left")
-              (ty (named "VOID"))))
+              (ty VOID)))
           (rhs
             (Lexeme
               (name "right")
-              (ty (named "VOID")))))""".formatted(kind), printer.render(new Hir.BinaryOperation(left, kind, right))),
+              (ty VOID))))""".formatted(kind), printer.render(new Hir.BinaryOperation(left, kind, right))),
       () -> assertEquals("""
         (CompoundAssignment
           (kind %s)
@@ -152,11 +152,11 @@ class ToStringTreeHirVisitorTest {
           (target
             (Lexeme
               (name "left")
-              (ty (named "VOID"))))
+              (ty VOID)))
           (rhs
             (Lexeme
               (name "right")
-              (ty (named "VOID")))))""".formatted(kind), printer.render(new Hir.CompoundAssignment(left, kind, right)))
+              (ty VOID))))""".formatted(kind), printer.render(new Hir.CompoundAssignment(left, kind, right)))
     );
   }
 
@@ -231,15 +231,15 @@ class ToStringTreeHirVisitorTest {
     assertEquals("""
       (Dec
         (mutability IMMUTABLE)
-        (ty (named "VOID"))
+        (ty VOID)
         (resolvedTy null)
         (lexeme
           (Lexeme
             (name "self")
-            (ty (named "VOID"))))
+            (ty VOID)))
         (typeAnnotation
           (DynamicTy
-            (ty (named "INFER"))
+            (ty INFER)
             (expression
               (Identifier
                 (name "self")
@@ -264,7 +264,7 @@ class ToStringTreeHirVisitorTest {
     final var source = new Hir.Identifier("Alias", null);
     assertEquals("""
       (DynamicTy
-        (ty (boolean))
+        (ty BOOLEAN)
         (expression
           (Identifier
             (name "Alias")
@@ -293,14 +293,12 @@ class ToStringTreeHirVisitorTest {
 
     final var binding = printer.render(declarations.getFirst());
     final var tuple = printer.render(tuples.getFirst());
-    assertAll(
-      () -> assertTrue(binding.contains("(ty (named \"VOID\"))")),
-      () -> assertTrue(binding.contains("(resolvedTy (number INTEGER")),
-      () -> assertTrue(binding.contains("(typeAnnotation\n    (DynamicTy\n      (ty (named \"INFER\"))\n      (expression null)))")),
-      () -> assertTrue(tuple.contains("(contextualType (struct (\"value\" (number INTEGER width=8")),
-      () -> assertFalse(binding.contains("valueTy")),
-      () -> assertFalse(tuple.contains("valueTy"))
-    );
+    assertTrue(binding.contains("(ty VOID)"));
+    assertTrue(binding.contains("(resolvedTy INTEGER"));
+    assertTrue(binding.contains("(typeAnnotation\n    (DynamicTy\n      (ty INFER)\n      (expression null)))"));
+    assertTrue(tuple.contains("(contextualType (struct (\"value\" CHAR"));
+    assertFalse(binding.contains("valueTy"));
+    assertFalse(tuple.contains("valueTy"));
   }
 
   @Test
@@ -361,20 +359,20 @@ class ToStringTreeHirVisitorTest {
       new TyStruct(new TyField[] { new TyField("field", Ty.STRING) })
     };
     final String[] expected = {
-      "(ty (named \"UNKNOWN\"))",
+      "(ty UNKNOWN)",
       "(ty (opaque))",
-      "(ty (number INTEGER width=32 explicit=false signed=true radix=2 flags=[]))",
-      "(ty (number FLOAT width=32 explicit=false signed=true radix=10 flags=[] precision=7))",
-      "(ty (number DECIMAL width=128 explicit=false signed=true radix=10 flags=[] scale=10))",
-      "(ty (boolean))",
-      "(ty (string))",
-      "(ty (array size=null (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))",
-      "(ty (array size=0 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))",
-      "(ty (uninitialized (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))",
-      "(ty (explicit-pointer CPU (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))",
-      "(ty (union (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]) (string)))",
-      "(ty (function vararg=true (parameters (\"p\" (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))) (returns (named \"VOID\"))))",
-      "(ty (struct (\"field\" (string))))"
+      "(ty INTEGER_BINARY)",
+      "(ty FLOAT)",
+      "(ty DECIMAL)",
+      "(ty BOOLEAN)",
+      "(ty STRING)",
+      "(ty (array size=null INTEGER))",
+      "(ty (array size=0 INTEGER))",
+      "(ty (uninitialized INTEGER))",
+      "(ty (explicit-pointer CPU INTEGER))",
+      "(ty (union INTEGER STRING))",
+      "(ty (function vararg=true (parameters (\"p\" INTEGER)) (returns VOID)))",
+      "(ty (struct (\"field\" STRING)))"
     };
     for (int i = 0; i < types.length; i++) {
       assertEquals(expected[i], printer.render(types[i]));

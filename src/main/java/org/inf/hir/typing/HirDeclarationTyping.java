@@ -1,4 +1,4 @@
-package org.inf.hir.passes;
+package org.inf.hir.typing;
 
 import lombok.experimental.UtilityClass;
 import org.inf.exceptions.InvalidTypeConversionException;
@@ -14,16 +14,16 @@ import org.inf.ty.util.TypeComparison;
 
 /// Resolves omitted array element types in source constraints from the current value, never an earlier binding.
 @UtilityClass
-final class HirDeclarationTyping {
+public final class HirDeclarationTyping {
 
-  static void resolveBinding(final Hir.Dec declaration, final Ty actual, final boolean availableOnly) {
+  public static void resolveBinding(final Hir.Dec declaration, final Ty actual, final boolean availableOnly) {
     final var constraint = declaration.typeAnnotation().ty();
     final var resolved = resolve(constraint, actual);
     declaration.resolvedTy(resolved);
     if (availableOnly || actual == Ty.DEADEND || !requiresMemberValidation(constraint)) {
       return;
     }
-    if (Tys.containsInferred(resolved) || !TypeComparison.sameValueType(actual, resolved)) {
+    if (Tys.containsInferred(resolved) || !TypeComparison.same(actual, resolved)) {
       throw new InvalidTypeConversionException("Initializer does not match declaration member constraints", actual, resolved);
     }
   }
@@ -32,7 +32,7 @@ final class HirDeclarationTyping {
     return !Tys.isInferred(constraint) && Tys.containsInferred(constraint);
   }
 
-  static Ty resolve(final Ty constraint, final Ty actual) {
+  public static Ty resolve(final Ty constraint, final Ty actual) {
     if (Tys.isInferred(constraint)) {
       return actual == null ? Ty.INFER : actual;
     }

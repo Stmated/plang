@@ -43,7 +43,7 @@ class HirUnionSyntaxTransformerPassTest {
     assertAll(
       () -> assertEquals(1, operations.size()),
       () -> assertTrue(unions.isEmpty()),
-      () -> assertTrue(TypeComparison.sameValueType(Ty.INTEGER, root.ty()))
+      () -> assertTrue(TypeComparison.same(Ty.INTEGER, root.ty()))
     );
   }
 

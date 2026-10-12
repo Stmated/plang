@@ -58,12 +58,6 @@ final class FindResultExpressionsVisitor implements HirVisitor {
   }
 
   @Override
-  public void visitConditional(final Hir.Conditional expression) {
-    if (expression.pass() != null) {
-      visitChild(expression.pass());
-    }
-    if (expression.fail() != null) {
-      visitChild(expression.fail());
-    }
+  public void visitConditionalPredicate(Hir.Expression expr) {
   }
 }

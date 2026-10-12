@@ -11,7 +11,7 @@ public final class TypeComparison {
 
   /// Ignores numeric width explicitness, function parameter names, and aggregate source syntax.
   /// Aggregate labels, slot order, numeric flags, and all other value-type properties must match.
-  public static boolean sameValueType(Ty actual, Ty expected) {
+  public static boolean same(Ty actual, Ty expected) {
     if (actual == expected) {
       return true;
     }
@@ -24,25 +24,25 @@ public final class TypeComparison {
       }
       for (var i = 0; i < a.fields().length; i++) {
         if (!Objects.equals(a.fields()[i].name(), b.fields()[i].name())
-          || !sameValueType(a.fields()[i].ty(), b.fields()[i].ty())) {
+          || !same(a.fields()[i].ty(), b.fields()[i].ty())) {
           return false;
         }
       }
       return true;
     }
     if (actual instanceof TyValueArray a && expected instanceof TyValueArray b) {
-      return Objects.equals(a.size(), b.size()) && sameValueType(a.elementType(), b.elementType());
+      return Objects.equals(a.size(), b.size()) && same(a.elementType(), b.elementType());
     }
     if (actual instanceof TyPointer<?> a && expected instanceof TyPointer<?> b) {
-      return a.addressSpace() == b.addressSpace() && sameValueType(a.inner(), b.inner());
+      return a.addressSpace() == b.addressSpace() && same(a.inner(), b.inner());
     }
     if (actual instanceof TyFn a && expected instanceof TyFn b) {
       if (a.vararg() != b.vararg() || a.parameters().length != b.parameters().length
-        || !sameValueType(a.returnTy(), b.returnTy())) {
+        || !same(a.returnTy(), b.returnTy())) {
         return false;
       }
       for (var i = 0; i < a.parameters().length; i++) {
-        if (!sameValueType(a.parameters()[i].ty(), b.parameters()[i].ty())) {
+        if (!same(a.parameters()[i].ty(), b.parameters()[i].ty())) {
           return false;
         }
       }
@@ -53,7 +53,7 @@ public final class TypeComparison {
         return false;
       }
       for (var i = 0; i < a.types().length; i++) {
-        if (!sameValueType(a.types()[i], b.types()[i])) {
+        if (!same(a.types()[i], b.types()[i])) {
           return false;
         }
       }

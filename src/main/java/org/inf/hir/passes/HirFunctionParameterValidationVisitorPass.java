@@ -11,7 +11,7 @@ import org.inf.ty.util.TypeComparison;
 public class HirFunctionParameterValidationVisitorPass {
 
   public static void pass(final Hir.Expression expression) {
-    HirFunctionContextVisitor.visit(expression, HirFunctionParameterValidationVisitorPass::checkParameters);
+    HirInferredFunctionSignatureVisitor.visit(expression, HirFunctionParameterValidationVisitorPass::checkParameters);
   }
 
   private static void checkParameters(final Hir.FunctionSignature signature, final TyFn expected) {
@@ -22,10 +22,9 @@ public class HirFunctionParameterValidationVisitorPass {
     for (var i = 0; i < parameters.length; i++) {
       final var actual = parameters[i].resolvedTy();
       final var destination = expected.parameters()[i].ty();
-      if (!TypeComparison.sameValueType(actual, destination)) {
+      if (!TypeComparison.same(actual, destination)) {
         throw new InvalidTypeConversionException("Lambda parameter type does not match expected function type", actual, destination);
       }
     }
   }
-
 }

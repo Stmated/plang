@@ -80,11 +80,25 @@ public interface HirVisitor {
   }
 
   default void visitConditional(Hir.Conditional expr) {
-    visitChild(expr.predicate());
-    visitChild(expr.pass());
-    if (expr.fail() != null) {
-      visitChild(expr.fail());
+    visitConditionalPredicate(expr.predicate());
+    if (expr.pass() != null) {
+      visitConditionalPass(expr.pass());
     }
+    if (expr.fail() != null) {
+      visitConditionalFail(expr.fail());
+    }
+  }
+
+  default void visitConditionalPredicate(Hir.Expression expr) {
+    visitChild(expr);
+  }
+
+  default void visitConditionalPass(Hir.Expression expr) {
+    visitChild(expr);
+  }
+
+  default void visitConditionalFail(Hir.Expression expr) {
+    visitChild(expr);
   }
 
   default void visitFunction(Hir.Function expr) {
@@ -129,8 +143,12 @@ public interface HirVisitor {
 
   default void visitLoopBreak(Hir.LoopBreak expr) {
     if (expr.value() != null) {
-      visitChild(expr.value());
+      visitLoopBreakValue(expr.value());
     }
+  }
+
+  default void visitLoopBreakValue(Hir.Expression expr) {
+    visitChild(expr);
   }
 
   default void visitLoopContinue(Hir.LoopContinue expr) {

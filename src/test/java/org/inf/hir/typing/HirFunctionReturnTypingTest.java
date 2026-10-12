@@ -1,10 +1,11 @@
-package org.inf.hir.passes;
+package org.inf.hir.typing;
 
 import org.inf.Inf;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.passes.HirTyCommonVisitorPass;
 import org.inf.thir.raising.HirToThirRaising;
 import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
@@ -39,8 +40,8 @@ class HirFunctionReturnTypingTest {
     assertThrows(InvalidTypeConversionException.class, () -> new HirToThirRaising(MachineTarget.T64).raise(root));
     assertAll(
       () -> assertSame(annotation.expression(), function.signature().returnTypeAnnotation().expression()),
-      () -> assertTrue(TypeComparison.sameValueType(new TyValueArray(Ty.INTEGER, 2), function.signature().ty().returnTy())),
-      () -> assertTrue(TypeComparison.sameValueType(new TyValueArray(Ty.INTEGER, 3), HirBodyResultTyping.resolve(function.body()))),
+      () -> assertTrue(TypeComparison.same(new TyValueArray(Ty.INTEGER, 2), function.signature().ty().returnTy())),
+      () -> assertTrue(TypeComparison.same(new TyValueArray(Ty.INTEGER, 3), HirBodyResultTyping.resolve(function.body()))),
       () -> assertTrue(Tys.containsInferred(annotation.ty()))
     );
   }
@@ -57,7 +58,7 @@ class HirFunctionReturnTypingTest {
     final var function = functions(root).getFirst();
     final var result = assertInstanceOf(TyStruct.class, function.signature().ty().returnTy());
     assertAll(
-      () -> assertTrue(TypeComparison.sameValueType(Ty.CHAR, result.fields()[0].ty())),
+      () -> assertTrue(TypeComparison.same(Ty.CHAR, result.fields()[0].ty())),
       () -> assertEquals(new TyValueArray(Ty.BOOLEAN, 2), result.fields()[1].ty()),
       () -> assertTrue(Tys.containsInferred(function.signature().returnTypeAnnotation().ty()))
     );

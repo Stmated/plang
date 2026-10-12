@@ -4,6 +4,7 @@ import org.inf.Inf;
 import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyStruct;
@@ -48,8 +49,8 @@ class HirLambdaLiftingIdentityTest {
       () -> assertEquals(Ty.BOOLEAN, root.ty()),
       () -> assertEquals(Ty.DEADEND, call.ty()),
       () -> assertEquals(Ty.DEADEND, call.arguments()[0].ty()),
-      () -> assertSame(lifted.ty(), Tys.getCallableSignature(call.target())),
-      () -> assertEquals(lifted.signature().returnTypeAnnotation().ty(), Tys.getCallableSignature(call.target()).returnTy()),
+      () -> assertSame(lifted.ty(), HirExprs.getCallableSignature(call.target())),
+      () -> assertEquals(lifted.signature().returnTypeAnnotation().ty(), HirExprs.getCallableSignature(call.target()).returnTy()),
       () -> assertSame(declaration.resolvedTy(), argument.ty()),
       () -> assertSame(declaration.resolvedTy(), capture.resolvedTy())
     );
@@ -144,7 +145,7 @@ class HirLambdaLiftingIdentityTest {
       public void visitCall(Hir.Call call) {
         final var arguments = call.arguments();
         assertAll(
-          () -> assertEquals(lifted.ty(), Tys.getCallableSignature(call.target())),
+          () -> assertEquals(lifted.ty(), HirExprs.getCallableSignature(call.target())),
           () -> assertEquals(2, arguments.length),
           () -> assertEquals("argument", assertInstanceOf(Hir.Identifier.class, arguments[0].value()).name()),
           () -> assertEquals("captured", assertInstanceOf(Hir.Identifier.class, arguments[1].value()).name())
@@ -195,7 +196,7 @@ class HirLambdaLiftingIdentityTest {
         assertAll(
           () -> assertEquals(Ty.VOID, parameter.ty()),
           () -> assertNotNull(parameter.resolvedTy()),
-          () -> assertSame(parameter.resolvedTy(), Tys.getBindingTy(parameter))
+          () -> assertSame(parameter.resolvedTy(), HirExprs.getBindingTy(parameter))
         );
       }
 

@@ -50,8 +50,8 @@ class HirSpreadShapeTest {
       () -> assertEquals(2, fields.length),
       () -> assertEquals("b", fields[0].name()),
       () -> assertEquals("a", fields[1].name()),
-      () -> assertTrue(TypeComparison.sameValueType(Ty.BOOLEAN, fields[0].ty())),
-      () -> assertTrue(TypeComparison.sameValueType(Ty.INTEGER, fields[1].ty())),
+      () -> assertTrue(TypeComparison.same(Ty.BOOLEAN, fields[0].ty())),
+      () -> assertTrue(TypeComparison.same(Ty.INTEGER, fields[1].ty())),
       () -> assertSame(completion, spread.ty()),
       () -> assertEquals(before, printer.render(root))
     );
@@ -116,8 +116,8 @@ class HirSpreadShapeTest {
       () -> assertEquals(2, fields.length),
       () -> assertEquals("b", fields[0].name()),
       () -> assertEquals("a", fields[1].name()),
-      () -> assertTrue(TypeComparison.sameValueType(root.ty(), fields[0].ty())),
-      () -> assertTrue(TypeComparison.sameValueType(root.ty(), fields[1].ty()))
+      () -> assertTrue(TypeComparison.same(root.ty(), fields[0].ty())),
+      () -> assertTrue(TypeComparison.same(root.ty(), fields[1].ty()))
     );
   }
 

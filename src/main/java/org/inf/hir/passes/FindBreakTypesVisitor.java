@@ -2,9 +2,12 @@ package org.inf.hir.passes;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import lombok.RequiredArgsConstructor;
 import org.inf.hir.Hir;
 import org.inf.ty.Ty;
 
+@RequiredArgsConstructor
 class FindBreakTypesVisitor extends HirExecutionVisitor {
 
   private final Hir.Expression root;
@@ -16,23 +19,16 @@ class FindBreakTypesVisitor extends HirExecutionVisitor {
     return visitor.types;
   }
 
-  private FindBreakTypesVisitor(Hir.Expression root) {
-    this.root = root;
-  }
-
   @Override
-  public void visitLoop(Hir.Loop maybeNested) {
-    if (maybeNested == root) {
+  public void visitLoop(Hir.Loop loop) {
+    if (loop == root) {
       // Only keep going if it's the first-level loop.
-      super.visitLoop(maybeNested);
+      super.visitLoop(loop);
     }
   }
-
-  @Override
   public void visitLoopBreak(Hir.LoopBreak expr) {
-    if (expr.value() != null) {
-      visitChild(expr.value());
-    }
+    super.visitLoopBreak(expr);
+
     if (continuing) {
       this.types.add(expr.value() == null ? Ty.VOID : expr.value().ty());
     }

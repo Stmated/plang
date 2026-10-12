@@ -5,6 +5,7 @@ import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.HirExprs;
 import org.inf.thir.raising.HirToThirRaising;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
@@ -80,7 +81,7 @@ class HirTyCommonVisitorPassTest {
     final var expected = Tys.union(Stream.of(resultTypes.split(","))
       .map(name -> name.equals("void") ? Ty.VOID : Tys.fromString(name, MachineTarget.T64))
       .toArray(Ty[]::new));
-    Assertions.assertTrue(TypeComparison.sameValueType(expected, root.ty()),
+    Assertions.assertTrue(TypeComparison.same(expected, root.ty()),
       () -> "Expected %s, got %s".formatted(expected, root.ty()));
   }
 
@@ -99,7 +100,7 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertSame(Ty.DEADEND, range.ty()),
       () -> Assertions.assertEquals(new TyValueArray(Ty.INVALID, null), range.rangeTy()),
-      () -> Assertions.assertEquals(range.rangeTy(), Tys.getIndexingAccessorTy(range)),
+      () -> Assertions.assertEquals(range.rangeTy(), HirExprs.getIndexingAccessorTy(range)),
       () -> Assertions.assertSame(Ty.INTEGER, root.ty())
     );
   }
@@ -140,11 +141,11 @@ class HirTyCommonVisitorPassTest {
     final var access = accesses.getFirst();
     final var uint8 = Tys.fromString("uint8", MachineTarget.T64);
     Assertions.assertAll(
-      () -> Assertions.assertTrue(TypeComparison.sameValueType(Tys.fromString(returnType, MachineTarget.T64), root.ty())),
-      () -> Assertions.assertTrue(TypeComparison.sameValueType(deadEnd ? Ty.DEADEND : uint8, access.ty())),
-      () -> Assertions.assertTrue(TypeComparison.sameValueType(uint8, Tys.getIndexedTy(access))),
-      () -> Assertions.assertSame(Tys.getIndexedTy(access), Tys.getBindingTy(access)),
-      () -> Assertions.assertSame(Tys.getIndexedTy(access), access.indexedTy())
+      () -> Assertions.assertTrue(TypeComparison.same(Tys.fromString(returnType, MachineTarget.T64), root.ty())),
+      () -> Assertions.assertTrue(TypeComparison.same(deadEnd ? Ty.DEADEND : uint8, access.ty())),
+      () -> Assertions.assertTrue(TypeComparison.same(uint8, HirExprs.getIndexedTy(access))),
+      () -> Assertions.assertSame(HirExprs.getIndexedTy(access), HirExprs.getBindingTy(access)),
+      () -> Assertions.assertSame(HirExprs.getIndexedTy(access), access.indexedTy())
     );
   }
 
@@ -168,7 +169,7 @@ class HirTyCommonVisitorPassTest {
     final var uint8 = Tys.fromString("uint8", MachineTarget.T64);
     Assertions.assertAll(
       () -> Assertions.assertEquals(uint8, root.ty()),
-      () -> Assertions.assertEquals(uint8, Tys.getIndexedTy(accesses.getFirst()))
+      () -> Assertions.assertEquals(uint8, HirExprs.getIndexedTy(accesses.getFirst()))
     );
   }
 
@@ -193,7 +194,7 @@ class HirTyCommonVisitorPassTest {
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
     HirTyCommonVisitorPass.pass(root);
     Assertions.assertAll(
-      () -> Assertions.assertSame(Ty.BOOLEAN, Tys.getIndexedTy(access)),
+      () -> Assertions.assertSame(Ty.BOOLEAN, HirExprs.getIndexedTy(access)),
       () -> Assertions.assertSame(Ty.BOOLEAN, access.ty()),
       () -> Assertions.assertSame(Ty.BOOLEAN, root.ty())
     );
@@ -213,8 +214,8 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertSame(Ty.DEADEND, access.ty()),
       () -> Assertions.assertSame(Ty.DEADEND, access.accessor().ty()),
-      () -> Assertions.assertInstanceOf(TyValueArray.class, Tys.getIndexingAccessorTy(access.accessor())),
-      () -> Assertions.assertEquals(Tys.getIndexingReceiverTy(access.target()), Tys.getIndexedTy(access)),
+      () -> Assertions.assertInstanceOf(TyValueArray.class, HirExprs.getIndexingAccessorTy(access.accessor())),
+      () -> Assertions.assertEquals(HirExprs.getIndexingReceiverTy(access.target()), HirExprs.getIndexedTy(access)),
       () -> Assertions.assertSame(Ty.BOOLEAN, root.ty())
     );
   }
@@ -231,8 +232,8 @@ class HirTyCommonVisitorPassTest {
     });
     final var access = accesses.getFirst();
     Assertions.assertAll(
-      () -> Assertions.assertSame(Ty.DEADEND, Tys.getIndexingReceiverTy(access.target())),
-      () -> Assertions.assertSame(Ty.INFER, Tys.getIndexedTy(access)),
+      () -> Assertions.assertSame(Ty.DEADEND, HirExprs.getIndexingReceiverTy(access.target())),
+      () -> Assertions.assertSame(Ty.INFER, HirExprs.getIndexedTy(access)),
       () -> Assertions.assertSame(Ty.DEADEND, access.ty()),
       () -> Assertions.assertSame(Ty.BOOLEAN, root.ty())
     );
@@ -274,8 +275,8 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertEquals(Tys.fromString(returnType, MachineTarget.T64), root.ty()),
       () -> Assertions.assertEquals(deadEnd ? Ty.DEADEND : uint8, path.ty()),
-      () -> Assertions.assertEquals(uint8, Tys.getMemberTy(path)),
-      () -> Assertions.assertEquals(uint8, Tys.getBindingTy(path))
+      () -> Assertions.assertEquals(uint8, HirExprs.getMemberTy(path)),
+      () -> Assertions.assertEquals(uint8, HirExprs.getBindingTy(path))
     );
   }
 
@@ -300,13 +301,13 @@ class HirTyCommonVisitorPassTest {
       }
     });
     final var path = paths.getFirst();
-    final var original = Tys.getMemberTy(path);
+    final var original = HirExprs.getMemberTy(path);
     structs.getFirst().declarations()[0].typeAnnotation(new DynamicTy(Ty.LONG));
-    Assertions.assertSame(original, Tys.getMemberTy(path));
+    Assertions.assertSame(original, HirExprs.getMemberTy(path));
     HirTyCommonVisitorPass.pass(root);
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.LONG, Tys.getMemberTy(path)),
-      () -> Assertions.assertEquals(Ty.LONG, Tys.getBindingTy(path)),
+      () -> Assertions.assertEquals(Ty.LONG, HirExprs.getMemberTy(path)),
+      () -> Assertions.assertEquals(Ty.LONG, HirExprs.getBindingTy(path)),
       () -> Assertions.assertEquals(Ty.LONG, path.ty()),
       () -> Assertions.assertEquals(Ty.LONG, root.ty())
     );
@@ -329,11 +330,11 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertEquals(1, constructions.size());
     final var creation = constructions.getFirst();
     final var target = creation.target();
-    final var layout = Assertions.assertInstanceOf(TyStruct.class, Tys.getConstructionTargetTy(target));
+    final var layout = Assertions.assertInstanceOf(TyStruct.class, HirExprs.getConstructionTargetTy(target));
     Assertions.assertAll(
       () -> Assertions.assertEquals("value", layout.fields()[0].name()),
       () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), layout.fields()[0].ty()),
-      () -> Assertions.assertSame(layout, Tys.getMemberReceiverTy(creation)),
+      () -> Assertions.assertSame(layout, HirExprs.getMemberReceiverTy(creation)),
       () -> Assertions.assertSame(Ty.DEADEND, target.ty()),
       () -> Assertions.assertSame(Ty.DEADEND, creation.ty()),
       () -> Assertions.assertSame(Ty.BOOLEAN, root.ty())
@@ -371,8 +372,8 @@ class HirTyCommonVisitorPassTest {
     });
     final var path = paths.getFirst();
     Assertions.assertAll(
-      () -> Assertions.assertNull(Tys.getMemberReceiverTy(path.target())),
-      () -> Assertions.assertSame(Ty.INFER, Tys.getMemberTy(path)),
+      () -> Assertions.assertNull(HirExprs.getMemberReceiverTy(path.target())),
+      () -> Assertions.assertSame(Ty.INFER, HirExprs.getMemberTy(path)),
       () -> Assertions.assertSame(Ty.DEADEND, path.ty()),
       () -> Assertions.assertSame(Ty.BOOLEAN, root.ty())
     );
@@ -419,7 +420,7 @@ class HirTyCommonVisitorPassTest {
     root.visit(new HirVisitor() {
       @Override
       public void visitCall(final Hir.Call call) {
-        final var signature = Tys.getCallableSignature(call.target());
+        final var signature = HirExprs.getCallableSignature(call.target());
         if (signature != null && signature.parameters().length == 3) {
           calls.add(call);
         }
@@ -428,7 +429,7 @@ class HirTyCommonVisitorPassTest {
     });
     Assertions.assertEquals(1, calls.size());
     final var call = calls.getFirst();
-    final var signature = Tys.getCallableSignature(call.target());
+    final var signature = HirExprs.getCallableSignature(call.target());
     final var uint8 = Tys.fromString("uint8", MachineTarget.T64);
     Assertions.assertAll(
       () -> Assertions.assertEquals(Tys.fromString(returnType, MachineTarget.T64), root.ty()),
@@ -490,7 +491,7 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.VOID, parameter.ty()),
       () -> Assertions.assertNotNull(parameter.resolvedTy()),
-      () -> Assertions.assertSame(parameter.resolvedTy(), Tys.getBindingTy(parameter)),
+      () -> Assertions.assertSame(parameter.resolvedTy(), HirExprs.getBindingTy(parameter)),
       () -> Assertions.assertFalse(references.isEmpty())
     );
     if (!Tys.isInferred(parameter.typeAnnotation().ty())) {
@@ -524,7 +525,7 @@ class HirTyCommonVisitorPassTest {
     parameter.typeAnnotation(new DynamicTy(Ty.LONG));
     Assertions.assertAll(
       () -> Assertions.assertSame(resolved, parameter.resolvedTy()),
-      () -> Assertions.assertSame(resolved, Tys.getBindingTy(parameter)),
+      () -> Assertions.assertSame(resolved, HirExprs.getBindingTy(parameter)),
       () -> Assertions.assertSame(resolved, reference.ty()),
       () -> Assertions.assertSame(resolved, function.ty().parameters()[0].ty())
     );
@@ -571,7 +572,7 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.VOID, declaration.ty()),
       () -> Assertions.assertNotNull(declaration.resolvedTy()),
-      () -> Assertions.assertSame(declaration.resolvedTy(), Tys.getBindingTy(declaration)),
+      () -> Assertions.assertSame(declaration.resolvedTy(), HirExprs.getBindingTy(declaration)),
       () -> Assertions.assertEquals(declaration.resolvedTy(), root.ty()),
       () -> Assertions.assertFalse(references.isEmpty())
     );
@@ -602,7 +603,7 @@ class HirTyCommonVisitorPassTest {
     declaration.typeAnnotation(new DynamicTy(Ty.LONG));
     Assertions.assertAll(
       () -> Assertions.assertSame(resolved, declaration.resolvedTy()),
-      () -> Assertions.assertSame(resolved, Tys.getBindingTy(declaration)),
+      () -> Assertions.assertSame(resolved, HirExprs.getBindingTy(declaration)),
       () -> Assertions.assertSame(resolved, root.ty())
     );
     HirTyCommonVisitorPass.pass(root);
@@ -695,7 +696,7 @@ class HirTyCommonVisitorPassTest {
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
     final var integer = Tys.fromString("int", MachineTarget.T64);
     final var expected = new TyFn(new TyParam[]{new TyParam("value", integer)}, false, integer);
-    Assertions.assertTrue(TypeComparison.sameValueType(root.ty(), expected), "%s vs %s".formatted(root.ty(), expected));
+    Assertions.assertTrue(TypeComparison.same(root.ty(), expected), "%s vs %s".formatted(root.ty(), expected));
   }
 
   @Test
@@ -716,7 +717,7 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertSame(annotation, functions.getFirst().signature().returnTypeAnnotation()),
       () -> Assertions.assertEquals(Ty.INFER, annotation.ty()),
-      () -> Assertions.assertTrue(TypeComparison.sameValueType(
+      () -> Assertions.assertTrue(TypeComparison.same(
         Tys.fromString("int", MachineTarget.T64), functions.getFirst().ty().returnTy())),
       () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), typed.ty())
     );
@@ -958,7 +959,7 @@ class HirTyCommonVisitorPassTest {
       () -> Assertions.assertTrue(Tys.containsInferred(annotation.ty())),
       () -> Assertions.assertNotEquals(initial, declaration.resolvedTy()),
       () -> Assertions.assertEquals(root.ty(), declaration.resolvedTy()),
-      () -> Assertions.assertSame(declaration.resolvedTy(), Tys.getBindingTy(declaration))
+      () -> Assertions.assertSame(declaration.resolvedTy(), HirExprs.getBindingTy(declaration))
     );
     HirTyCommonVisitorPass.pass(root);
     Assertions.assertAll(

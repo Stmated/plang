@@ -9,6 +9,8 @@ import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirTypeDefinitions;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.typing.HirBodyResultTyping;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyUnion;
@@ -19,7 +21,7 @@ import org.inf.util.ArrayUtils;
 
 /// Checks union value boundaries and prevents type-only definitions from becoming runtime values.
 @UtilityClass
-public class HirUnionValidationVisitorPass {
+public class HirUnionValidationPass {
 
   public static void pass(final Hir.Expression root) {
     root.visit(new Visitor(root));
@@ -126,14 +128,14 @@ public class HirUnionValidationVisitorPass {
         visitType(expr.rhs());
       } else {
         HirVisitor.super.visitAssignment(expr);
-        check(expr.rhs().ty(), Tys.getBindingTy(expr.lhs()), "assignment");
+        check(expr.rhs().ty(), HirExprs.getBindingTy(expr.lhs()), "assignment");
       }
     }
 
     @Override
     public void visitNewByBlockField(final Hir.NewByBlock construction, final Hir.Assignment expr) {
       HirVisitor.super.visitAssignment(expr);
-      final var field = Tys.getInitializerField(construction, expr);
+      final var field = HirExprs.getInitializerField(construction, expr);
       if (field != null) {
         check(expr.rhs().ty(), field.ty(), "field %s".formatted(expr.lhs()));
       }
@@ -170,7 +172,7 @@ public class HirUnionValidationVisitorPass {
     @Override
     public void visitCall(final Hir.Call expr) {
       HirVisitor.super.visitCall(expr);
-      final var function = Tys.getCallableSignature(expr.target());
+      final var function = HirExprs.getCallableSignature(expr.target());
       if (function == null) {
         return;
       }

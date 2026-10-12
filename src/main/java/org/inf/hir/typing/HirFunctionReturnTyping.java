@@ -1,4 +1,4 @@
-package org.inf.hir.passes;
+package org.inf.hir.typing;
 
 import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
@@ -6,9 +6,9 @@ import org.inf.ty.util.Tys;
 
 /// Infers function results from reachable returns and resolved normal completion.
 @UtilityClass
-final class HirFunctionReturnTyping {
+public final class HirFunctionReturnTyping {
 
-  static void resolve(final Hir.Function function) {
+  public static void resolve(final Hir.Function function) {
     final var signature = function.signature();
     final var constraint = signature.returnTypeAnnotation().ty();
     if (Tys.containsInferred(constraint)) {

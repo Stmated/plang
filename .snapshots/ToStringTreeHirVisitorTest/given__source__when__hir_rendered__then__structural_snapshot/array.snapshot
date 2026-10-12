@@ -16,15 +16,15 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
           (lhs
             (Dec
               (mutability IMMUTABLE)
-              (ty (named "VOID"))
+              (ty VOID)
               (resolvedTy null)
               (lexeme
                 (Lexeme
                   (name "a")
-                  (ty (named "VOID"))))
+                  (ty VOID)))
               (typeAnnotation
                 (DynamicTy
-                  (ty (named "INFER"))
+                  (ty INFER)
                   (expression null)))))
           (rhs
             (Array
@@ -32,21 +32,21 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
               (arrayTy null)
               (elementType
                 (DynamicTy
-                  (ty (named "INFER"))
+                  (ty INFER)
                   (expression null)))
               (length
                 (Literal
                   (content "2")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+                  (ty INTEGER)))
               (elements
                 (Literal
                   (content "1")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
+                  (ty INTEGER))
                 (Literal
                   (content "2")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+                  (ty INTEGER))))))
         (Return
-          (ty (named "DEADEND"))
+          (ty DEADEND)
           (expression
             (ArrayAccess
               (ty null)
@@ -58,4 +58,4 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
               (accessor
                 (Literal
                   (content "0")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))
+                  (ty INTEGER))))))))))

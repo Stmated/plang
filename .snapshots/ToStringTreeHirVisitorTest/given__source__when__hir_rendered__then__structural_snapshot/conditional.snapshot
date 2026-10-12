@@ -8,14 +8,14 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
   (ty null)
   (expressions
     (Return
-      (ty (named "DEADEND"))
+      (ty DEADEND)
       (expression
         (Conditional
           (ty null)
           (predicate
             (Literal
               (content "true")
-              (ty (boolean))))
+              (ty BOOLEAN)))
           (pass
             (Block
               (ty null)
@@ -26,11 +26,11 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                   (children
                     (Literal
                       (content "1")
-                      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
+                      (ty INTEGER))
                     (Literal
                       (content "2")
-                      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))))))
+                      (ty INTEGER)))))))
           (fail
             (Literal
               (content "3")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))
+              (ty INTEGER))))))))

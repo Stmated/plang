@@ -1,10 +1,10 @@
 package org.inf.hir;
 
 import org.inf.Inf;
+import org.inf.hir.util.HirExprs;
 import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
-import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -32,8 +32,8 @@ class HirStructLayoutVisitorTest {
     final var completion = tuple.ty();
     final var contextual = tuple.contextualType();
     assertAll(
-      () -> assertSame(diverges ? null : completion, Tys.getConstructionTargetTy(tuple)),
-      () -> assertSame(completion, Tys.getIndexingReceiverTy(tuple)),
+      () -> assertSame(diverges ? null : completion, HirExprs.getConstructionTargetTy(tuple)),
+      () -> assertSame(completion, HirExprs.getIndexingReceiverTy(tuple)),
       () -> assertSame(contextual, tuple.contextualType())
     );
     if (diverges) {
@@ -95,8 +95,8 @@ class HirStructLayoutVisitorTest {
     final var before = printer.render(root);
     assertAll(
       () -> assertEquals(expected, HirStructLayoutVisitor.find(expression)),
-      () -> assertEquals(expected, Tys.getConstructionTargetTy(expression)),
-      () -> assertEquals(expected, Tys.getMemberReceiverTy(expression)),
+      () -> assertEquals(expected, HirExprs.getConstructionTargetTy(expression)),
+      () -> assertEquals(expected, HirExprs.getMemberReceiverTy(expression)),
       () -> assertSame(completion, expression.ty()),
       () -> assertEquals(before, printer.render(root))
     );
@@ -121,8 +121,8 @@ class HirStructLayoutVisitorTest {
     final var completion = expression.ty();
     assertAll(
       () -> assertNull(HirStructLayoutVisitor.find(expression)),
-      () -> assertNull(Tys.getConstructionTargetTy(expression)),
-      () -> assertNull(Tys.getMemberReceiverTy(expression)),
+      () -> assertNull(HirExprs.getConstructionTargetTy(expression)),
+      () -> assertNull(HirExprs.getMemberReceiverTy(expression)),
       () -> assertSame(completion, expression.ty())
     );
   }
@@ -140,7 +140,7 @@ class HirStructLayoutVisitorTest {
     final var refined = nodes(Inf.codeToThir(
       "val S = struct { val value: bool; val flag: bool; }; S").root(), Hir.Struct.class).getFirst().ty();
     assertAll(
-      () -> assertSame(original, Tys.getConstructionTargetTy(creation)),
+      () -> assertSame(original, HirExprs.getConstructionTargetTy(creation)),
       () -> assertSame(Ty.DEADEND, creation.ty())
     );
 
@@ -149,8 +149,8 @@ class HirStructLayoutVisitorTest {
 
     assertAll(
       () -> assertNotEquals(original, refined),
-      () -> assertSame(refined, Tys.getConstructionTargetTy(creation)),
-      () -> assertSame(refined, Tys.getMemberReceiverTy(creation)),
+      () -> assertSame(refined, HirExprs.getConstructionTargetTy(creation)),
+      () -> assertSame(refined, HirExprs.getMemberReceiverTy(creation)),
       () -> assertSame(Ty.DEADEND, creation.ty())
     );
   }
@@ -190,14 +190,14 @@ class HirStructLayoutVisitorTest {
     final var original = definition.ty();
     final var refined = nodes(Inf.codeToThir(
       "val S = struct { val value: bool; }; S").root(), Hir.Struct.class).getFirst().ty();
-    assertSame(original, Tys.getMemberReceiverTy(conditional));
+    assertSame(original, HirExprs.getMemberReceiverTy(conditional));
 
     definition.ty(refined);
     declaration(root, "S").resolvedTy(refined);
 
     assertAll(
-      () -> assertSame(refined, Tys.getMemberReceiverTy(conditional)),
-      () -> assertSame(refined, Tys.getConstructionTargetTy(conditional)),
+      () -> assertSame(refined, HirExprs.getMemberReceiverTy(conditional)),
+      () -> assertSame(refined, HirExprs.getConstructionTargetTy(conditional)),
       () -> assertSame(Ty.DEADEND, conditional.ty())
     );
   }

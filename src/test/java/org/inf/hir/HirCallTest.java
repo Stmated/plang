@@ -1,6 +1,7 @@
 package org.inf.hir;
 
 import org.inf.Inf;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyValueArray;
 import org.inf.ty.util.MachineTarget;
@@ -267,7 +268,7 @@ class HirCallTest {
       () -> Assertions.assertEquals(Ty.DEADEND, argument.ty()),
       () -> Assertions.assertEquals(
         new TyValueArray(Tys.fromString("int", MachineTarget.T64), 1),
-        Tys.getIndexingAccessorTy(argument)
+        HirExprs.getIndexingAccessorTy(argument)
       )
     );
   }

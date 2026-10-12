@@ -9,11 +9,11 @@ import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirTypeDefinitions;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.TupleTypes;
-import org.inf.ty.util.Tys;
 import org.inf.ty.util.UnionTypes;
 
 import org.inf.util.ArrayUtils;
@@ -139,7 +139,7 @@ public final class HirTupleValidationVisitorPass {
     public void visitAssignment(Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
       requireWritable(expression.lhs());
-      check(expression.rhs().ty(), Tys.getBindingTy(expression.lhs()), "assignment");
+      check(expression.rhs().ty(), HirExprs.getBindingTy(expression.lhs()), "assignment");
     }
 
     @Override
@@ -150,11 +150,11 @@ public final class HirTupleValidationVisitorPass {
 
     private static void requireWritable(Hir.Expression expression) {
       if (expression instanceof Hir.ArrayAccess access
-        && Tys.getIndexingReceiverTy(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
+        && HirExprs.getIndexingReceiverTy(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
         throw new IllegalArgumentException("Tuple element writes are not supported yet");
       }
       if (expression instanceof Hir.DotAccess access
-        && Tys.getMemberReceiverTy(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
+        && HirExprs.getMemberReceiverTy(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
         throw new IllegalArgumentException("Tuple element writes are not supported yet");
       }
     }
@@ -162,7 +162,7 @@ public final class HirTupleValidationVisitorPass {
     @Override
     public void visitNewByBlockField(final Hir.NewByBlock construction, final Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
-      final var field = Tys.getInitializerField(construction, expression);
+      final var field = HirExprs.getInitializerField(construction, expression);
       if (field != null) {
         check(expression.rhs().ty(), field.ty(), "field %s".formatted(expression.lhs()));
       }
@@ -171,7 +171,7 @@ public final class HirTupleValidationVisitorPass {
     @Override
     public void visitCall(Hir.Call expression) {
       HirVisitor.super.visitCall(expression);
-      final var function = Tys.getCallableSignature(expression.target());
+      final var function = HirExprs.getCallableSignature(expression.target());
       if (function == null) {
         return;
       }

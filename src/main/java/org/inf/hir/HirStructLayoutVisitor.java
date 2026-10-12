@@ -1,6 +1,7 @@
 package org.inf.hir;
 
 import jakarta.annotation.Nullable;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.Tys;
@@ -75,7 +76,7 @@ public final class HirStructLayoutVisitor implements HirVisitor {
 
   @Override
   public void visitCall(final Hir.Call expression) {
-    final var signature = Tys.getCallableSignature(expression.target());
+    final var signature = HirExprs.getCallableSignature(expression.target());
     if (signature != null) {
       type = signature.returnTy();
     }
@@ -93,7 +94,7 @@ public final class HirStructLayoutVisitor implements HirVisitor {
 
   @Override
   public void visitDotAccess(final Hir.DotAccess expression) {
-    type = Tys.getMemberTy(expression);
+    type = HirExprs.getMemberTy(expression);
   }
 
   @Override
@@ -114,6 +115,6 @@ public final class HirStructLayoutVisitor implements HirVisitor {
 
   @Override
   public void visitArrayAccess(final Hir.ArrayAccess expression) {
-    type = Tys.getIndexedTy(expression);
+    type = HirExprs.getIndexedTy(expression);
   }
 }

@@ -47,7 +47,7 @@ public class HirTyIdentifierToTyTransformerPass {
         typeModeCounter++;
         final var transformed = annotation.transform(this);
         if (transformed.expression() instanceof Hir.BuiltInTy builtIn) {
-          return new DynamicTy(builtIn.ty());
+          return new DynamicTy(builtIn);
         }
         return transformed;
       } finally {

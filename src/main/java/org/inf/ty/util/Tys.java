@@ -2,14 +2,8 @@ package org.inf.ty.util;
 
 import jakarta.annotation.Nullable;
 import lombok.experimental.UtilityClass;
-import org.inf.exceptions.UnexpectedExpressionException;
-import org.inf.hir.Hir;
-import org.inf.hir.HirCallableSignatureVisitor;
-import org.inf.hir.HirIndexingTypeVisitor;
-import org.inf.hir.HirStructLayoutVisitor;
 import org.inf.ty.*;
 import org.inf.util.ArrayUtils;
-import org.inf.util.ResolvedField;
 
 import java.util.*;
 import java.util.function.Function;
@@ -32,7 +26,7 @@ public class Tys {
       return new TyResult<>(a);
     }
     if (a instanceof TyStruct && b instanceof TyStruct
-      && (TupleTypes.containsTuple(a) || TupleTypes.containsTuple(b)) && TypeComparison.sameValueType(a, b)) {
+      && (TupleTypes.containsTuple(a) || TupleTypes.containsTuple(b)) && TypeComparison.same(a, b)) {
       return new TyResult<>(a);
     }
 
@@ -217,7 +211,7 @@ public class Tys {
 
   private static boolean equivalentUnionMember(final Ty a, final Ty b) {
     // Numeric members still use common-denominator resolution to retain explicit widths.
-    return !(a instanceof TyValueNumber) && !(b instanceof TyValueNumber) && TypeComparison.sameValueType(a, b);
+    return !(a instanceof TyValueNumber) && !(b instanceof TyValueNumber) && TypeComparison.same(a, b);
   }
 
   public boolean isGenerallyCompatible(TyDiffKind[] diffs) {
@@ -229,8 +223,10 @@ public class Tys {
   }
 
   public boolean isSizeCompatible(TyDiffKind[] diffs) {
-    // TODO: Implement actual compatibility checks
-    return diffs == null || diffs.length == 0;
+    // TODO: Perhaps the explicitness can be handled even better, for example int(16?) should likely match int(32)
+    return diffs == null
+      || diffs.length == 0
+      || (diffs.length == 1 && diffs[0] == TyDiffKind.DIFF_WIDTH_EXPLICIT);
   }
 
   public static boolean isUsable(Ty ty) {
@@ -264,10 +260,7 @@ public class Tys {
   }
 
   public static Ty simplify(Ty ty) {
-
-    // TODO: Simplify the kind as much as possible
-    //        Used to be able to find a single kind that LLVM can use
-
+    // TODO: Simplify the kind as much as possible.
     return ty;
   }
 
@@ -294,7 +287,6 @@ public class Tys {
       return ty;
     }
   }
-
 
   /**
    * TODO: Likely very slow, will need to be faster and smarter :)
@@ -368,143 +360,8 @@ public class Tys {
     return (numberIndex != lastIndex) ? Integer.parseInt(name.substring(numberIndex + 1, lastIndex + 1)) : null;
   }
 
-  private int getWidthFromName(String name, int defaultWidth) {
-
-    final var width = Tys.getWidthFromName(name);
-    return Objects.requireNonNullElse(width, defaultWidth);
-  }
-
-  public static boolean isDeadEnd(Hir.Expression... children) {
-    for (final var child : children) {
-      if (child.ty() == Ty.DEADEND) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /// Reads the type for an identifier target or assignment destination, not its expression completion.
-  /// Other targets, including functions and identifiers, expose their resolved completion type.
-  public static Ty getBindingTy(final Hir.Expression expression) {
-    if (expression instanceof Hir.Dec declaration) {
-      return declaration.resolvedTy();
-    }
-    if (expression instanceof Hir.Parameter parameter) {
-      return parameter.resolvedTy();
-    }
-    if (expression instanceof Hir.DotAccess access) {
-      return getMemberTy(access);
-    }
-    if (expression instanceof Hir.ArrayAccess access) {
-      return getIndexedTy(access);
-    }
-    return expression.ty();
-  }
-
-  /// Declaration initializers use source constraints, including omitted array element types, never inferred bindings.
-  public static Ty getAssignmentContextTy(final Hir.Expression target) {
-    if (target instanceof final Hir.Dec declaration) {
-      final var constraint = declaration.typeAnnotation().ty();
-      return isInferred(constraint) ? null : constraint;
-    }
-    return getBindingTy(target);
-  }
-
-  /// Function bodies use source return constraints, never previously inferred returns.
-  public static Ty getFunctionReturnContextTy(final Hir.FunctionSignature signature) {
-    return getFunctionReturnContextTy(signature, null);
-  }
-
-  /// A use-site context supplies missing return information; validation still enforces source constraints.
-  public static Ty getFunctionReturnContextTy(final Hir.FunctionSignature signature, final Ty inferredReturn) {
-    final var constraint = signature.returnTypeAnnotation().ty();
-    if (isInferred(constraint) || containsInferred(constraint) && inferredReturn != null) {
-      return inferredReturn;
-    }
-    return constraint;
-  }
-
   public static boolean containsFunction(final Ty type) {
     return type instanceof TyFn
       || type instanceof TyUnion union && ArrayUtils.any(union.types(), Tys::containsFunction);
   }
-
-  /// Returns only resolved function-valued information, including unions needed for compatibility diagnostics.
-  /// A signature may be available even when evaluating the expression cannot complete.
-  @Nullable
-  public static Ty getCallableValueTy(final Hir.Expression expression) {
-    return HirCallableSignatureVisitor.find(expression);
-  }
-
-  /// Selects a single resolved callee signature; unions do not establish a callable target.
-  @Nullable
-  public static TyFn getCallableSignature(final Hir.Expression expression) {
-    final var type = getCallableValueTy(expression);
-    return type instanceof TyFn function ? function : null;
-  }
-
-  /// Selects the resolved layout to construct, even when evaluating the target cannot complete.
-  @Nullable
-  public static TyStruct getConstructionTargetTy(final Hir.Expression target) {
-    return HirStructLayoutVisitor.find(target);
-  }
-
-  /// Selects the resolved layout whose fields a member access inspects.
-  @Nullable
-  public static TyStruct getMemberReceiverTy(final Hir.Expression receiver) {
-    return HirStructLayoutVisitor.find(receiver);
-  }
-
-  @Nullable
-  public static ResolvedField getMemberField(final Hir.DotAccess access) {
-    return getField(getMemberReceiverTy(access.target()), access.name());
-  }
-
-  @Nullable
-  public static ResolvedField getInitializerField(final Hir.NewByBlock construction, final Hir.Assignment initializer) {
-    if (!(initializer.lhs() instanceof Hir.Lexeme name)) {
-      throw new UnexpectedExpressionException(initializer.lhs());
-    }
-    return getField(getConstructionTargetTy(construction.target()), name.name());
-  }
-
-  /// Looks up a name in the current layout without retaining the result on an expression.
-  @Nullable
-  public static ResolvedField getField(final TyStruct owner, final String name) {
-    if (owner != null) {
-      final var fields = owner.fields();
-      for (var i = 0; i < fields.length; i++) {
-        if (name.equals(fields[i].name())) {
-          return new ResolvedField(owner, i);
-        }
-      }
-    }
-    return null;
-  }
-
-  /// Reads the selected member independently of receiver completion.
-  public static Ty getMemberTy(final Hir.DotAccess access) {
-    final var field = getMemberField(access);
-    return field == null ? Ty.INFER : field.ty();
-  }
-
-  /// Reads the resolved indexing receiver, retaining inferred and invalid types for diagnostics.
-  @Nullable
-  public static Ty getIndexingReceiverTy(final Hir.Expression receiver) {
-    return HirIndexingTypeVisitor.find(receiver);
-  }
-
-  /// Distinguishes an element index from an array/range slice even after control transfers.
-  @Nullable
-  public static Ty getIndexingAccessorTy(final Hir.Expression accessor) {
-    return HirIndexingTypeVisitor.find(accessor);
-  }
-
-  /// Reads the selected element or slice independently of receiver/accessor completion.
-  @Nullable
-  public static Ty getIndexedTy(final Hir.ArrayAccess access) {
-    return access.indexedTy();
-  }
-
-
 }

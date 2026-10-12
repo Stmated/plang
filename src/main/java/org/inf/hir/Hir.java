@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.*;
 import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
@@ -620,7 +621,7 @@ public class Hir {
     /// TODO: This is likely wrong and untrustworthy -- we need to resolve it all the way using something like HirTypeAnnotationResolver
     @Override
     public Ty ty() {
-      return (this.target != null) ? Tys.getBindingTy(this.target) : null;
+      return (this.target != null) ? HirExprs.getBindingTy(this.target) : null;
     }
 
     @Override
@@ -930,7 +931,7 @@ public class Hir {
     }
 
     public Ty memberTy() {
-      return Tys.getMemberTy(this);
+      return HirExprs.getMemberTy(this);
     }
 
     @Override

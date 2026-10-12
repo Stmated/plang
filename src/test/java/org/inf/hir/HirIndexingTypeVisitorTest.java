@@ -2,11 +2,11 @@ package org.inf.hir;
 
 import org.inf.Inf;
 import org.inf.hir.passes.HirTyCommonVisitorPass;
+import org.inf.hir.util.HirExprs;
 import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyStruct;
-import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -69,8 +69,8 @@ class HirIndexingTypeVisitorTest {
     final var before = printer.render(root);
     assertAll(
       () -> assertEquals(expected, HirIndexingTypeVisitor.find(expression)),
-      () -> assertEquals(expected, Tys.getIndexingReceiverTy(expression)),
-      () -> assertEquals(expected, Tys.getIndexingAccessorTy(expression)),
+      () -> assertEquals(expected, HirExprs.getIndexingReceiverTy(expression)),
+      () -> assertEquals(expected, HirExprs.getIndexingAccessorTy(expression)),
       () -> assertSame(completion, expression.ty()),
       () -> assertEquals(before, printer.render(root))
     );
@@ -95,8 +95,8 @@ class HirIndexingTypeVisitorTest {
     final var completion = expression.ty();
     assertAll(
       () -> assertNull(HirIndexingTypeVisitor.find(expression)),
-      () -> assertNull(Tys.getIndexingReceiverTy(expression)),
-      () -> assertNull(Tys.getIndexingAccessorTy(expression)),
+      () -> assertNull(HirExprs.getIndexingReceiverTy(expression)),
+      () -> assertNull(HirExprs.getIndexingAccessorTy(expression)),
       () -> assertSame(completion, expression.ty())
     );
   }
@@ -130,8 +130,8 @@ class HirIndexingTypeVisitorTest {
     final var refined = function.signature().ty().returnTy();
     assertAll(
       () -> assertNotEquals(original, refined),
-      () -> assertSame(refined, Tys.getIndexingReceiverTy(call)),
-      () -> assertSame(refined, Tys.getIndexingAccessorTy(call)),
+      () -> assertSame(refined, HirExprs.getIndexingReceiverTy(call)),
+      () -> assertSame(refined, HirExprs.getIndexingAccessorTy(call)),
       () -> assertSame(Ty.DEADEND, call.ty()),
       () -> assertSame(Ty.INFER, function.signature().returnTypeAnnotation().ty())
     );
@@ -149,14 +149,14 @@ class HirIndexingTypeVisitorTest {
     final var selected = access.indexedTy();
     assertAll(
       () -> assertSame(Ty.DEADEND, access.ty()),
-      () -> assertSame(selected, Tys.getIndexedTy(access)),
-      () -> assertSame(selected, Tys.getBindingTy(access)),
-      () -> assertSame(selected, Tys.getAssignmentContextTy(access)),
-      () -> assertSame(selected, Tys.getIndexingReceiverTy(access)),
-      () -> assertSame(selected, Tys.getIndexingAccessorTy(access)),
-      () -> assertSame(selected instanceof TyStruct ? selected : null, Tys.getMemberReceiverTy(access)),
-      () -> assertSame(selected instanceof TyStruct ? selected : null, Tys.getConstructionTargetTy(access)),
-      () -> assertSame(selected instanceof TyFn ? selected : null, Tys.getCallableSignature(access))
+      () -> assertSame(selected, HirExprs.getIndexedTy(access)),
+      () -> assertSame(selected, HirExprs.getBindingTy(access)),
+      () -> assertSame(selected, HirExprs.getAssignmentContextTy(access)),
+      () -> assertSame(selected, HirExprs.getIndexingReceiverTy(access)),
+      () -> assertSame(selected, HirExprs.getIndexingAccessorTy(access)),
+      () -> assertSame(selected instanceof TyStruct ? selected : null, HirExprs.getMemberReceiverTy(access)),
+      () -> assertSame(selected instanceof TyStruct ? selected : null, HirExprs.getConstructionTargetTy(access)),
+      () -> assertSame(selected instanceof TyFn ? selected : null, HirExprs.getCallableSignature(access))
     );
   }
 
@@ -167,7 +167,7 @@ class HirIndexingTypeVisitorTest {
     final var arrays = nodes(root, Hir.Array.class);
     final var original = arrays.getFirst().arrayTy();
     final var replacement = nodes(Inf.codeToThir("[true, false]").root(), Hir.Array.class).getFirst();
-    assertEquals(original, Tys.getIndexingReceiverTy(conditional));
+    assertEquals(original, HirExprs.getIndexingReceiverTy(conditional));
 
     for (final var array : arrays) {
       array.elements(replacement.elements());
@@ -178,8 +178,8 @@ class HirIndexingTypeVisitorTest {
     final var refined = arrays.getFirst().arrayTy();
     assertAll(
       () -> assertNotEquals(original, refined),
-      () -> assertEquals(refined, Tys.getIndexingReceiverTy(conditional)),
-      () -> assertEquals(refined, Tys.getIndexingAccessorTy(conditional)),
+      () -> assertEquals(refined, HirExprs.getIndexingReceiverTy(conditional)),
+      () -> assertEquals(refined, HirExprs.getIndexingAccessorTy(conditional)),
       () -> assertSame(Ty.DEADEND, conditional.ty())
     );
   }
@@ -190,7 +190,7 @@ class HirIndexingTypeVisitorTest {
     assertAll(
       () -> assertNotEquals(conversion.expression().ty(), conversion.targetTy()),
       () -> assertSame(conversion.targetTy(), HirIndexingTypeVisitor.find(conversion)),
-      () -> assertSame(conversion.targetTy(), Tys.getIndexingAccessorTy(conversion))
+      () -> assertSame(conversion.targetTy(), HirExprs.getIndexingAccessorTy(conversion))
     );
   }
 

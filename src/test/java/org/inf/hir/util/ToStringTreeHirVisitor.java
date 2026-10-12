@@ -4,6 +4,7 @@ import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.*;
+import org.inf.ty.util.TyNamedConstants;
 
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -278,10 +279,16 @@ public final class ToStringTreeHirVisitor {
     if (active.contains(ty)) {
       return "(recursive)";
     }
+
+    final var namedConstant = TyNamedConstants.constantName(ty);
+    if (namedConstant != null) {
+      return namedConstant;
+    }
+
     active.add(ty);
     try {
       return switch (ty) {
-        case Ty.TyNamed named -> "(named " + quote(named.name()) + ")";
+        case Ty.TyNamed named -> "(named %s)".formatted(quote(named.name()));
         case TyValueNumber number -> {
           final var flags = switch (number) {
             case TyValueNumberInteger integer -> integer.flags();
@@ -301,14 +308,10 @@ public final class ToStringTreeHirVisitor {
         case TyValueBoolean ignored -> "(boolean)";
         case TyValueString ignored -> "(string)";
         case TyOpaque ignored -> "(opaque)";
-        case TyPointer<?> pointer -> "(pointer " + pointer.addressSpace() + " "
-          + formatType(pointer.inner(), active) + ")";
-        case TyPointerExplicit pointer -> "(explicit-pointer " + pointer.addressSpace() + " "
-          + formatType(pointer.inner(), active) + ")";
-        case TyUninitialized<?> uninitialized -> "(uninitialized "
-          + formatType(uninitialized.inner(), active) + ")";
-        case TyValueArray array -> "(array size=" + array.size() + " "
-          + formatType(array.elementType(), active) + ")";
+        case TyPointer<?> pointer -> "(pointer %s %s)".formatted(pointer.addressSpace(), formatType(pointer.inner(), active));
+        case TyPointerExplicit pointer -> "(explicit-pointer %s %s)".formatted(pointer.addressSpace(), formatType(pointer.inner(), active));
+        case TyUninitialized<?> uninitialized -> "(uninitialized %s)".formatted(formatType(uninitialized.inner(), active));
+        case TyValueArray array -> "(array size=%d %s)".formatted(array.size(), formatType(array.elementType(), active));
         case TyFn fn -> {
           final var parameters = new StringJoiner(" ", "(parameters ", ")").setEmptyValue("(parameters)");
           if (fn.parameters() == null) {

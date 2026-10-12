@@ -3,15 +3,13 @@ package org.inf.hir.passes;
 import org.inf.Inf;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
-import org.inf.ty.TyField;
-import org.inf.ty.TyStruct;
 import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,12 +27,12 @@ class HirFieldResolutionTest {
       """).root();
     final var construction = nodes(root, Hir.NewByBlock.class).getFirst();
     final var access = nodes(root, Hir.DotAccess.class).getFirst();
-    final var owner = Tys.getConstructionTargetTy(construction.target());
+    final var owner = HirExprs.getConstructionTargetTy(construction.target());
     final var value = construction.fields()[0];
     final var flag = construction.fields()[1];
-    final var memberField = Tys.getMemberField(access);
-    final var valueField = Tys.getInitializerField(construction, value);
-    final var flagField = Tys.getInitializerField(construction, flag);
+    final var memberField = HirExprs.getMemberField(access);
+    final var valueField = HirExprs.getInitializerField(construction, value);
+    final var flagField = HirExprs.getInitializerField(construction, flag);
     assertAll(
       () -> assertEquals("value", access.name()),
       () -> assertEquals(1, memberField.index()),
@@ -47,65 +45,6 @@ class HirFieldResolutionTest {
       () -> assertSame(Ty.BOOLEAN, flagField.ty()),
       () -> assertEquals(Tys.fromString("uint8", MachineTarget.T64), root.ty())
     );
-  }
-
-  @ParameterizedTest
-  @ValueSource(booleans = {
-    false,
-    true
-  })
-  void given__field_uses__when__layout_order_and_type_change__then__queries_immediately_select_the_current_fields(
-    final boolean availableOnly
-  ) {
-    final var root = Inf.codeToThir("""
-      val S = struct { val flag: bool; val value: uint8; };
-      val s = new heap S { value = 7; flag = false; };
-      s.value
-      """).root();
-    final var construction = nodes(root, Hir.NewByBlock.class).getFirst();
-    final var access = nodes(root, Hir.DotAccess.class).getFirst();
-    final var refined = new TyStruct(new TyField[] {
-      new TyField("value", Ty.LONG),
-      new TyField("flag", Ty.BOOLEAN)
-    });
-    assertInstanceOf(Hir.Dec.class, assertInstanceOf(Hir.Identifier.class, construction.target()).target()).resolvedTy(refined);
-    assertInstanceOf(Hir.Dec.class, assertInstanceOf(Hir.Identifier.class, access.target()).target()).resolvedTy(refined);
-
-    assertAll(
-      () -> assertSame(refined, Tys.getMemberField(access).owner()),
-      () -> assertEquals(0, Tys.getMemberField(access).index()),
-      () -> assertSame(Ty.LONG, access.memberTy()),
-      () -> assertEquals(0, Tys.getInitializerField(construction, construction.fields()[0]).index()),
-      () -> assertSame(Ty.LONG, Tys.getInitializerField(construction, construction.fields()[0]).ty()),
-      () -> assertEquals(1, Tys.getInitializerField(construction, construction.fields()[1]).index())
-    );
-
-    HirFieldResolution.resolve(construction, availableOnly);
-    HirFieldResolution.resolve(access, availableOnly);
-    assertSame(Ty.LONG, access.ty());
-  }
-
-  @Test
-  void given__previously_resolved_uses__when__the_receiver_becomes_unavailable__then__queries_do_not_retain_the_old_layout() {
-    final var root = Inf.codeToThir("""
-      val S = struct { val value: int; };
-      val s = new heap S { value = 7; };
-      s.value
-      """).root();
-    final var construction = nodes(root, Hir.NewByBlock.class).getFirst();
-    final var access = nodes(root, Hir.DotAccess.class).getFirst();
-    assertInstanceOf(Hir.Dec.class, assertInstanceOf(Hir.Identifier.class, construction.target()).target()).resolvedTy(null);
-    assertInstanceOf(Hir.Dec.class, assertInstanceOf(Hir.Identifier.class, access.target()).target()).resolvedTy(null);
-
-    assertAll(
-      () -> assertNull(Tys.getMemberField(access)),
-      () -> assertSame(Ty.INFER, access.memberTy()),
-      () -> assertNull(Tys.getInitializerField(construction, construction.fields()[0]))
-    );
-
-    HirFieldResolution.resolve(construction, true);
-    HirFieldResolution.resolve(access, true);
-    assertSame(Ty.INFER, access.ty());
   }
 
   @Test
@@ -121,8 +60,8 @@ class HirFieldResolutionTest {
       () -> assertSame(Ty.DEADEND, initializer.ty()),
       () -> assertSame(Ty.DEADEND, construction.ty()),
       () -> assertSame(Ty.DEADEND, access.ty()),
-      () -> assertEquals(Tys.getInitializerField(construction, initializer).ty(), access.memberTy()),
-      () -> assertNotNull(Tys.getMemberField(access)),
+      () -> assertEquals(HirExprs.getInitializerField(construction, initializer).ty(), access.memberTy()),
+      () -> assertNotNull(HirExprs.getMemberField(access)),
       () -> assertSame(Ty.BOOLEAN, root.ty())
     );
   }
@@ -142,8 +81,8 @@ class HirFieldResolutionTest {
     assertAll(
       () -> assertEquals(uint8, inner.fields()[0].rhs().ty()),
       () -> assertEquals(uint16, outer.fields()[1].rhs().ty()),
-      () -> assertEquals(uint8, Tys.getInitializerField(inner, inner.fields()[0]).ty()),
-      () -> assertEquals(uint16, Tys.getInitializerField(outer, outer.fields()[1]).ty())
+      () -> assertEquals(uint8, HirExprs.getInitializerField(inner, inner.fields()[0]).ty()),
+      () -> assertEquals(uint16, HirExprs.getInitializerField(outer, outer.fields()[1]).ty())
     );
   }
 

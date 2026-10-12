@@ -8,7 +8,7 @@ test-method: given__existing_syntax__when__raised__then__expected_hir
   (ty null)
   (expressions
     (Return
-      (ty (named "DEADEND"))
+      (ty DEADEND)
       (expression
         (Identifier
           (name "f")

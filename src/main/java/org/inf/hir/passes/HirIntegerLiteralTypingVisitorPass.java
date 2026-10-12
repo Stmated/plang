@@ -9,6 +9,7 @@ import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
 import org.inf.ty.TyFn;
@@ -61,19 +62,19 @@ public class HirIntegerLiteralTypingVisitorPass {
 
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
-      contextualize(expression.rhs(), Tys.getAssignmentContextTy(expression.lhs()));
+      contextualize(expression.rhs(), HirExprs.getAssignmentContextTy(expression.lhs()));
       HirVisitor.super.visitAssignment(expression);
     }
 
     @Override
     public void visitCompoundAssignment(final Hir.CompoundAssignment expression) {
-      contextualize(expression.rhs(), Tys.getBindingTy(expression.target()));
+      contextualize(expression.rhs(), HirExprs.getBindingTy(expression.target()));
       HirVisitor.super.visitCompoundAssignment(expression);
     }
 
     @Override
     public void visitFunction(final Hir.Function expression) {
-      contextualizeReturns(expression, Tys.getFunctionReturnContextTy(expression.signature()));
+      contextualizeReturns(expression, HirExprs.getFunctionReturnContextTy(expression.signature()));
       HirVisitor.super.visitFunction(expression);
     }
 
@@ -94,7 +95,7 @@ public class HirIntegerLiteralTypingVisitorPass {
 
     @Override
     public void visitNewByBlockField(final Hir.NewByBlock construction, final Hir.Assignment expression) {
-      final var field = Tys.getInitializerField(construction, expression);
+      final var field = HirExprs.getInitializerField(construction, expression);
       if (field != null) {
         contextualize(expression.rhs(), field.ty());
       }
@@ -103,7 +104,7 @@ public class HirIntegerLiteralTypingVisitorPass {
 
     @Override
     public void visitCall(final Hir.Call expression) {
-      final var function = Tys.getCallableSignature(expression.target());
+      final var function = HirExprs.getCallableSignature(expression.target());
       if (function != null) {
         final var parameters = function.parameters();
         final var binding = new HirArgumentBinding(
@@ -170,7 +171,7 @@ public class HirIntegerLiteralTypingVisitorPass {
     @Override
     public void visitFunction(final Hir.Function expression) {
       if (expected instanceof final TyFn function) {
-        contextualizeReturns(expression, Tys.getFunctionReturnContextTy(expression.signature(), function.returnTy()));
+        contextualizeReturns(expression, HirExprs.getFunctionReturnContextTy(expression.signature(), function.returnTy()));
       }
     }
   }

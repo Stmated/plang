@@ -1,8 +1,10 @@
-package org.inf.hir.passes;
+package org.inf.hir.typing;
 
 import org.inf.Inf;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.passes.HirTyCommonVisitorPass;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
 import org.inf.ty.TyStruct;
@@ -42,7 +44,7 @@ class HirTupleTypingTest {
     }, true);
     Assertions.assertAll(
       () -> Assertions.assertTrue(type.tuple()),
-      () -> Assertions.assertTrue(TypeComparison.sameValueType(type, expected))
+      () -> Assertions.assertTrue(TypeComparison.same(type, expected))
     );
   }
 
@@ -58,7 +60,7 @@ class HirTupleTypingTest {
     "val t: (a: uint16,) = (a = 255u8,); t[0] | uint16"
   })
   void given__tuple_read__when__typed__then__named_and_positional_access_resolve_slots(final String code, final String type) {
-    Assertions.assertTrue(TypeComparison.sameValueType(
+    Assertions.assertTrue(TypeComparison.same(
       Inf.codeToThir(code).root().ty(), Tys.fromString(type, MachineTarget.T64)
     ));
   }
@@ -199,7 +201,7 @@ class HirTupleTypingTest {
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.DEADEND, expression.ty()),
       () -> Assertions.assertNull(expression.contextualType()),
-      () -> Assertions.assertNull(Tys.getConstructionTargetTy(expression))
+      () -> Assertions.assertNull(HirExprs.getConstructionTargetTy(expression))
     );
   }
 
@@ -209,7 +211,7 @@ class HirTupleTypingTest {
     final var expected = Inf.codeToThir("val t: (int, bool) = (1, true); t").root().ty();
     Assertions.assertAll(
       () -> Assertions.assertNotEquals(actual, expected),
-      () -> Assertions.assertEquals(true, TypeComparison.sameValueType(actual, expected))
+      () -> Assertions.assertEquals(true, TypeComparison.same(actual, expected))
     );
   }
 }

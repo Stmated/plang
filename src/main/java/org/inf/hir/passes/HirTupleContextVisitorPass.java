@@ -1,6 +1,5 @@
 package org.inf.hir.passes;
 
-import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import org.inf.hir.Hir;
 import org.inf.hir.HirArgumentBinding;
@@ -8,13 +7,13 @@ import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyStruct;
 import org.inf.ty.TyValueArray;
-import org.inf.ty.util.Tys;
 import org.inf.util.ArrayUtils;
 
 /// Links fresh tuple constructions to resolved destination layouts.
@@ -45,7 +44,12 @@ public class HirTupleContextVisitorPass {
 
           // Replace the resolved type, since the expected is likely to be more accurate.
           expression.contextualType(expectedStruct);
-          expression.visit(new EntryVisitor(expectedStruct, slots));
+
+          for (var index = 0; index < expression.children().length; index++) {
+            final var entry = expression.children()[index];
+            final var field = expectedStruct.fields()[slots[index]];
+            link(entry.value(), field.ty());
+          }
         } else {
           expression.contextualType(expression.resolvedTy());
         }
@@ -64,7 +68,7 @@ public class HirTupleContextVisitorPass {
     @Override
     public void visitFunction(final Hir.Function expression) {
       if (expected instanceof final TyFn function) {
-        final var type = Tys.getFunctionReturnContextTy(expression.signature(), function.returnTy());
+        final var type = HirExprs.getFunctionReturnContextTy(expression.signature(), function.returnTy());
         for (Hir.Expression result : FindResultExpressionsVisitor.findReturns(expression.body())) {
           link(result, type);
         }
@@ -73,7 +77,7 @@ public class HirTupleContextVisitorPass {
   }
 
   private static void linkArguments(final Hir.Call expression) {
-    final var function = Tys.getCallableSignature(expression.target());
+    final var function = HirExprs.getCallableSignature(expression.target());
     if (function == null
       || ArrayUtils.none(function.parameters(), parameter -> parameter.ty() instanceof TyStruct tuple && tuple.tuple())) {
       return;
@@ -105,33 +109,19 @@ public class HirTupleContextVisitorPass {
     }
   }
 
-  /// TODO: Can likely be removed, since the children will always be tuple entries, so the visitor is superfluous
-  @RequiredArgsConstructor
-  private static final class EntryVisitor implements HirVisitor {
-
-    private final TyStruct destination;
-    private final int[] slots;
-    private int index;
-
-    @Override
-    public void visitTupleEntry(final Hir.TupleEntry expression) {
-      link(expression.value(), destination.fields()[slots[index++]].ty());
-    }
-  }
-
   private static final class Visitor implements HirVisitor {
 
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
       if (expression.lhs() instanceof Hir.Identifier || expression.lhs() instanceof Hir.Dec) {
-        link(expression.rhs(), Tys.getAssignmentContextTy(expression.lhs()));
+        link(expression.rhs(), HirExprs.getAssignmentContextTy(expression.lhs()));
       }
       HirVisitor.super.visitAssignment(expression);
     }
 
     @Override
     public void visitFunction(final Hir.Function expression) {
-      final var type = Tys.getFunctionReturnContextTy(expression.signature());
+      final var type = HirExprs.getFunctionReturnContextTy(expression.signature());
       for (final var result : FindResultExpressionsVisitor.findReturns(expression.body())) {
         link(result, type);
       }

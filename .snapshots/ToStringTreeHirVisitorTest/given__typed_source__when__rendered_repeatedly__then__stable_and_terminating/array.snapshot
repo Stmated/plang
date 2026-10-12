@@ -5,52 +5,52 @@ test-class: org.inf.hir.util.ToStringTreeHirVisitorTest
 test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_terminating
 
 (Program
-  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+  (ty INTEGER)
   (expressions
     (Expressions
       (generated false)
-      (ty (named "DEADEND"))
+      (ty DEADEND)
       (children
         (Assignment
-          (ty (named "VOID"))
+          (ty VOID)
           (lhs
             (Dec
               (mutability MUTABLE)
-              (ty (named "VOID"))
-              (resolvedTy (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
+              (ty VOID)
+              (resolvedTy (array size=2 INTEGER))
               (lexeme
                 (Lexeme
                   (name "a")
-                  (ty (named "VOID"))))
+                  (ty VOID)))
               (typeAnnotation
                 (DynamicTy
-                  (ty (named "INFER"))
+                  (ty INFER)
                   (expression null)))))
           (rhs
             (Array
-              (ty (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
-              (arrayTy (array size=2 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
+              (ty (array size=2 INTEGER))
+              (arrayTy (array size=2 INTEGER))
               (elementType
                 (DynamicTy
-                  (ty (named "INFER"))
+                  (ty INFER)
                   (expression null)))
               (length
                 (Literal
                   (content "2")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+                  (ty INTEGER)))
               (elements
                 (Literal
                   (content "1")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
+                  (ty INTEGER))
                 (Literal
                   (content "2")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+                  (ty INTEGER))))))
         (Assignment
-          (ty (named "VOID"))
+          (ty VOID)
           (lhs
             (ArrayAccess
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-              (indexedTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (ty INTEGER)
+              (indexedTy INTEGER)
               (target
                 (Identifier
                   (name "a")
@@ -58,17 +58,17 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
               (accessor
                 (Literal
                   (content "0")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))))
+                  (ty INTEGER)))))
           (rhs
             (Literal
               (content "9")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+              (ty INTEGER))))
         (Return
-          (ty (named "DEADEND"))
+          (ty DEADEND)
           (expression
             (ArrayAccess
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
-              (indexedTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (ty INTEGER)
+              (indexedTy INTEGER)
               (target
                 (Identifier
                   (name "a")
@@ -76,4 +76,4 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
               (accessor
                 (Literal
                   (content "0")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))
+                  (ty INTEGER))))))))))

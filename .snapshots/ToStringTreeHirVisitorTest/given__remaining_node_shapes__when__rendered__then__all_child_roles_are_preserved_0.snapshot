@@ -12,23 +12,23 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
       (ty null)
       (children
         (Array
-          (ty (named "VOID"))
-          (arrayTy (array size=1 (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))
+          (ty VOID)
+          (arrayTy (array size=1 INTEGER))
           (elementType
             (DynamicTy
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (ty INTEGER)
               (expression null)))
           (length
             (Literal
               (content "7")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+              (ty INTEGER)))
           (elements
             (Literal
               (content "7")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+              (ty INTEGER))))
         (ArrayAccess
-          (ty (named "VOID"))
-          (indexedTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+          (ty VOID)
+          (indexedTy INTEGER)
           (target
             (Identifier
               (name "name")
@@ -36,33 +36,33 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
           (accessor
             (Literal
               (content "7")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+              (ty INTEGER))))
         (Labeling
-          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+          (ty INTEGER)
           (lhs
             (Lexeme
               (name "name")
-              (ty (named "VOID"))))
+              (ty VOID)))
           (rhs
             (Literal
               (content "7")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+              (ty INTEGER))))
         (Loop
           (ty null)
           (body
             (Block
-              (ty (named "DEADEND"))
+              (ty DEADEND)
               (children
                 (LoopBreak
-                  (ty (named "DEADEND"))
+                  (ty DEADEND)
                   (value
                     (Literal
                       (content "7")
-                      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))
+                      (ty INTEGER))))))))
         (LoopContinue
-          (ty (named "DEADEND")))
+          (ty DEADEND))
         (NewByBlock
-          (ty (named "VOID"))
+          (ty VOID)
           (target
             (Identifier
               (name "name")
@@ -77,11 +77,11 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
               (lhs
                 (Lexeme
                   (name "name")
-                  (ty (named "VOID"))))
+                  (ty VOID)))
               (rhs
                 (Literal
                   (content "7")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+                  (ty INTEGER))))))
         (NewByCtor
           (ty null)
           (target
@@ -95,11 +95,11 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
               (contextualType null)
               (children))))
         (Not
-          (ty (boolean))
+          (ty BOOLEAN)
           (expression
             (Literal
               (content "7")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+              (ty INTEGER))))
         (DotAccess
           (name "name")
           (ty null)
@@ -113,49 +113,49 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
           (lower
             (Literal
               (content "7")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))))
+              (ty INTEGER)))
           (higher
             (Literal
               (content "9")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+              (ty INTEGER))))
         (DeadEnd
-          (ty (named "DEADEND"))
+          (ty DEADEND)
           (expression
             (Return
-              (ty (named "DEADEND"))
+              (ty DEADEND)
               (expression
                 (Literal
                   (content "7")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+                  (ty INTEGER))))))
         (Struct
           (ty null)
           (declarations
             (Dec
               (mutability CONSTANT)
-              (ty (named "VOID"))
+              (ty VOID)
               (resolvedTy null)
               (lexeme
                 (Lexeme
                   (name "name")
-                  (ty (named "VOID"))))
+                  (ty VOID)))
               (typeAnnotation
                 (DynamicTy
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+                  (ty INTEGER)
                   (expression null))))))
         (Trait
           (ty null)
           (children
             (Dec
               (mutability CONSTANT)
-              (ty (named "VOID"))
+              (ty VOID)
               (resolvedTy null)
               (lexeme
                 (Lexeme
                   (name "name")
-                  (ty (named "VOID"))))
+                  (ty VOID)))
               (typeAnnotation
                 (DynamicTy
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+                  (ty INTEGER)
                   (expression null))))))
         (Tuple
           (ty null)
@@ -163,18 +163,18 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
           (children
             (TupleEntry
               (label "name")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (ty INTEGER)
               (value
                 (Literal
                   (content "7")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))
+                  (ty INTEGER))))
             (TupleEntry
               (label null)
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (ty INTEGER)
               (value
                 (Literal
                   (content "7")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))
+                  (ty INTEGER))))))
         (BuiltInTy
           (name "int")
           (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[])))))))

@@ -4,6 +4,7 @@ import org.inf.Inf;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.HirExprs;
 import org.inf.thir.raising.HirToThirRaising;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
@@ -76,7 +77,7 @@ class HirDeclarationTypingTest {
       Assertions.assertAll(
         () -> Assertions.assertSame(annotation.expression(), declaration.typeAnnotation().expression()),
         () -> Assertions.assertEquals(constraint, declaration.typeAnnotation().ty()),
-        () -> Assertions.assertEquals(Tys.isInferred(constraint) ? null : constraint, Tys.getAssignmentContextTy(declaration)),
+        () -> Assertions.assertEquals(Tys.isInferred(constraint) ? null : constraint, HirExprs.getAssignmentContextTy(declaration)),
         () -> Assertions.assertEquals(expected, declaration.resolvedTy()),
         () -> Assertions.assertEquals(expected, result.ty()),
         () -> Assertions.assertFalse(Tys.containsInferred(declaration.resolvedTy()))
@@ -159,7 +160,7 @@ class HirDeclarationTypingTest {
         () -> Assertions.assertEquals(refined, result.ty()),
         () -> Assertions.assertSame(annotation.expression(), declaration.typeAnnotation().expression()),
         () -> Assertions.assertEquals(constraint, declaration.typeAnnotation().ty()),
-        () -> Assertions.assertEquals(constraint, Tys.getAssignmentContextTy(declaration))
+        () -> Assertions.assertEquals(constraint, HirExprs.getAssignmentContextTy(declaration))
       );
     }
     literal.ty(Ty.LONG);
@@ -169,7 +170,7 @@ class HirDeclarationTypingTest {
       () -> Assertions.assertEquals(latest, result.ty()),
       () -> Assertions.assertSame(annotation.expression(), declaration.typeAnnotation().expression()),
       () -> Assertions.assertEquals(constraint, declaration.typeAnnotation().ty()),
-      () -> Assertions.assertEquals(constraint, Tys.getAssignmentContextTy(declaration))
+      () -> Assertions.assertEquals(constraint, HirExprs.getAssignmentContextTy(declaration))
     );
   }
 

@@ -8,7 +8,7 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
   (ty null)
   (expressions
     (Return
-      (ty (named "DEADEND"))
+      (ty DEADEND)
       (expression
         (Call
           (partial false)
@@ -32,15 +32,15 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                   (arguments
                     (Argument
                       (label null)
-                      (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+                      (ty INTEGER)
                       (value
                         (Literal
                           (content "1")
-                          (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))
+                          (ty INTEGER))))))))
             (Argument
               (label "label")
-              (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (ty INTEGER)
               (value
                 (Literal
                   (content "2")
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[])))))))))))
+                  (ty INTEGER))))))))))

@@ -54,7 +54,7 @@ class HirTupleContextualTypingVisitorPassTest {
       () -> Assertions.assertEquals("a", tuple.children()[1].label().name()),
       () -> Assertions.assertEquals("a", tuple.contextualType().fields()[0].name()),
       () -> Assertions.assertEquals("b", tuple.contextualType().fields()[1].name()),
-      () -> Assertions.assertTrue(TypeComparison.sameValueType(tuple.ty(), tuple.contextualType())),
+      () -> Assertions.assertTrue(TypeComparison.same(tuple.ty(), tuple.contextualType())),
       () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty())
     );
   }
@@ -130,7 +130,7 @@ class HirTupleContextualTypingVisitorPassTest {
       new TyField("p1", uint8),
       new TyField("p2", uint8)
     }, true);
-    Assertions.assertTrue(TypeComparison.sameValueType(Inf.codeToThir(code).root().ty(), expected));
+    Assertions.assertTrue(TypeComparison.same(Inf.codeToThir(code).root().ty(), expected));
   }
 
   @Test
@@ -168,7 +168,7 @@ class HirTupleContextualTypingVisitorPassTest {
     final var tuple = constructions.getFirst();
     Assertions.assertAll(
       () -> Assertions.assertEquals(expected, root.ty()),
-      () -> Assertions.assertTrue(TypeComparison.sameValueType(tuple.ty(), tuple.contextualType())),
+      () -> Assertions.assertTrue(TypeComparison.same(tuple.ty(), tuple.contextualType())),
       () -> Assertions.assertNull(tuple.children()[0].label()),
       () -> Assertions.assertEquals("b", tuple.children()[1].label().name()),
       () -> Assertions.assertEquals("a", tuple.children()[2].label().name()),
@@ -238,7 +238,7 @@ class HirTupleContextualTypingVisitorPassTest {
       new TyField(null, uint8),
       new TyField(null, uint8)
     });
-    Assertions.assertTrue(TypeComparison.sameValueType(Inf.codeToThir(code).root().ty(), expected));
+    Assertions.assertTrue(TypeComparison.same(Inf.codeToThir(code).root().ty(), expected));
   }
 
   @ParameterizedTest
@@ -379,7 +379,7 @@ class HirTupleContextualTypingVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertFalse(literals.isEmpty()),
       () -> Assertions.assertTrue(literals.stream().allMatch(literal ->
-        TypeComparison.sameValueType(literal.ty(), Ty.INTEGER)))
+        TypeComparison.same(literal.ty(), Ty.INTEGER)))
     );
   }
 

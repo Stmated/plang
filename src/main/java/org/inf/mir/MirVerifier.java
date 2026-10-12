@@ -201,12 +201,12 @@ public final class MirVerifier {
         if (from instanceof TyUnion source && to instanceof TyUnion target) {
           allowed = UnionTypes.compatible(source, target);
         } else {
-          allowed = TypeComparison.sameValueType(to, from)
+          allowed = TypeComparison.same(to, from)
             || numericConversion(from, to)
             || from instanceof TyValueString && characterReference(to)
             || characterReference(from) && to instanceof TyValueString
             || from instanceof TyPointer<?> && to instanceof TyPointer<?>
-              && (!(TupleTypes.containsTuple(from) || TupleTypes.containsTuple(to)) || TypeComparison.sameValueType(from, to));
+              && (!(TupleTypes.containsTuple(from) || TupleTypes.containsTuple(to)) || TypeComparison.same(from, to));
         }
         require(allowed, "Invalid explicit conversion from " + from + " to " + to);
       }
@@ -351,7 +351,7 @@ public final class MirVerifier {
           final var variant = union.types()[i];
           concrete(variant, visited);
           for (var j = 0; j < i; j++) {
-            require(!TypeComparison.sameValueType(union.types()[j], variant), "Duplicate union variant");
+            require(!TypeComparison.same(union.types()[j], variant), "Duplicate union variant");
           }
         }
       }
@@ -379,7 +379,7 @@ public final class MirVerifier {
   }
 
   private static void same(Ty expected, Ty actual, String context) {
-    final var isSame = TypeComparison.sameValueType(actual, expected);
+    final var isSame = TypeComparison.same(actual, expected);
     require(isSame, context + " type mismatch: expected " + expected + ", got " + actual);
   }
 

@@ -44,10 +44,12 @@ class HirTyIdentifierToTyTransformerPassTest {
     );
 
     HirTyIdentifierToTyTransformerPass.pass(root, MachineTarget.T64);
+    HirTyCommonVisitorPass.pass(root);
 
     assertAll(
-      () -> assertEquals(Tys.fromString(name, MachineTarget.T64), annotation.get().ty(), "Should be %s".formatted(name)),
-      () -> assertNull(annotation.get().expression(), "Should not keep expression"),
+      () -> assertEquals(
+        Tys.fromString(name, MachineTarget.T64), annotation.get().ty(), "Should be %s".formatted(name)
+      ),
       () -> assertEquals(name, source.name(), "Identifier name should be parameterized input"),
       () -> assertNull(source.target(), "Identifier target should be null")
     );

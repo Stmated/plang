@@ -1,5 +1,6 @@
 package org.inf.hir;
 
+import lombok.experimental.UtilityClass;
 import org.inf.ty.TyStruct;
 import org.inf.ty.TyValueNumberInteger;
 import org.inf.util.IntegerLiterals;
@@ -7,10 +8,8 @@ import org.inf.util.IntegerLiterals;
 import java.math.BigInteger;
 
 /// Resolve positional slots before lowering them to aggregate field places.
+@UtilityClass
 public final class HirTupleAccess {
-
-  private HirTupleAccess() {
-  }
 
   /// Returns null when index validation must wait for final type resolution.
   public static Integer availableIndex(final TyStruct tuple, final Hir.Expression accessor) {

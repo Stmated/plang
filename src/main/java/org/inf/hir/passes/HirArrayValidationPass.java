@@ -7,19 +7,20 @@ import org.inf.hir.HirArgumentBinding;
 import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.typing.HirBodyResultTyping;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyUnion;
 import org.inf.ty.TyValueArray;
 import org.inf.ty.util.TypeComparison;
-import org.inf.ty.util.Tys;
 import org.inf.util.ArrayUtils;
 
 import java.util.Objects;
 
 /// Checks array element types and exact declared lengths at value boundaries.
 @UtilityClass
-public class HirArrayValidationVisitorPass {
+public class HirArrayValidationPass {
 
   public static void pass(final Hir.Expression expression) {
     expression.visit(new Visitor());
@@ -27,11 +28,13 @@ public class HirArrayValidationVisitorPass {
 
   private static boolean containsArray(final Ty type) {
     return type instanceof TyValueArray
-      || type instanceof TyUnion union && ArrayUtils.any(union.types(), HirArrayValidationVisitorPass::containsArray);
+      || type instanceof TyUnion union && ArrayUtils.any(union.types(), HirArrayValidationPass::containsArray);
   }
 
+  /// TODO: Move to `TypeComparison` to a more general `compatible` or `isAssignableTo` function
+  ///         One which we can use in other locations in the code without so much duplication
   private static boolean compatible(final Ty actual, final Ty expected) {
-    if (actual == Ty.DEADEND || TypeComparison.sameValueType(actual, expected)) {
+    if (actual == Ty.DEADEND || TypeComparison.same(actual, expected)) {
       return true;
     }
     if (actual instanceof TyUnion union) {
@@ -59,13 +62,13 @@ public class HirArrayValidationVisitorPass {
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
-      check(expression.rhs().ty(), Tys.getBindingTy(expression.lhs()), "assignment");
+      check(expression.rhs().ty(), HirExprs.getBindingTy(expression.lhs()), "assignment");
     }
 
     @Override
     public void visitNewByBlockField(final Hir.NewByBlock construction, final Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
-      final var field = Tys.getInitializerField(construction, expression);
+      final var field = HirExprs.getInitializerField(construction, expression);
       if (field != null) {
         check(expression.rhs().ty(), field.ty(), "field %s".formatted(expression.lhs()));
       }
@@ -74,7 +77,7 @@ public class HirArrayValidationVisitorPass {
     @Override
     public void visitCall(final Hir.Call expression) {
       HirVisitor.super.visitCall(expression);
-      final var function = Tys.getCallableSignature(expression.target());
+      final var function = HirExprs.getCallableSignature(expression.target());
       // Variadic receiver packing is not an ordinary array argument boundary.
       if (function == null || function.vararg()) {
         return;

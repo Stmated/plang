@@ -2,6 +2,7 @@ package org.inf.hir;
 
 import org.inf.Inf;
 import org.inf.hir.passes.HirTyCommonVisitorPass;
+import org.inf.hir.util.HirExprs;
 import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
@@ -45,8 +46,8 @@ class HirCallableSignatureVisitorTest {
     final var before = printer.render(root);
     assertAll(
       () -> assertEquals(expected, HirCallableSignatureVisitor.find(conditional)),
-      () -> assertEquals(expected, Tys.getCallableValueTy(conditional)),
-      () -> assertEquals(expected instanceof TyFn ? expected : null, Tys.getCallableSignature(conditional)),
+      () -> assertEquals(expected, HirExprs.getCallableValueTy(conditional)),
+      () -> assertEquals(expected instanceof TyFn ? expected : null, HirExprs.getCallableSignature(conditional)),
       () -> assertSame(Ty.DEADEND, conditional.ty()),
       () -> assertEquals(before, printer.render(root))
     );
@@ -59,7 +60,7 @@ class HirCallableSignatureVisitorTest {
     final var conditional = nodes(root, Hir.Conditional.class).getFirst();
     final var original = function.ty();
     final var replacement = nodes(Inf.codeToThir("val f = () => true; f").root(), Hir.Function.class).getFirst();
-    assertSame(original, Tys.getCallableSignature(conditional));
+    assertSame(original, HirExprs.getCallableSignature(conditional));
 
     function.body(replacement.body());
     HirTyCommonVisitorPass.pass(root);
@@ -68,8 +69,8 @@ class HirCallableSignatureVisitorTest {
     assertAll(
       () -> assertNotEquals(original, refined),
       () -> assertSame(Ty.BOOLEAN, refined.returnTy()),
-      () -> assertSame(refined, Tys.getCallableSignature(conditional)),
-      () -> assertSame(refined, Tys.getCallableValueTy(conditional)),
+      () -> assertSame(refined, HirExprs.getCallableSignature(conditional)),
+      () -> assertSame(refined, HirExprs.getCallableValueTy(conditional)),
       () -> assertSame(Ty.DEADEND, conditional.ty())
     );
   }
@@ -84,7 +85,7 @@ class HirCallableSignatureVisitorTest {
     assertAll(
       () -> assertSame(parameter, reference.target()),
       () -> assertSame(parameter.resolvedTy(), HirCallableSignatureVisitor.find(reference)),
-      () -> assertSame(parameter.resolvedTy(), Tys.getCallableSignature(parameter))
+      () -> assertSame(parameter.resolvedTy(), HirExprs.getCallableSignature(parameter))
     );
   }
 

@@ -130,7 +130,7 @@ class HirIntegerLiteralTypingVisitorPassTest {
     final var uint8 = Tys.fromString("uint8", MachineTarget.T64);
     Assertions.assertAll(
       () -> Assertions.assertFalse(results.isEmpty()),
-      () -> Assertions.assertTrue(results.stream().allMatch(literal -> TypeComparison.sameValueType(literal.ty(), uint8))),
+      () -> Assertions.assertTrue(results.stream().allMatch(literal -> TypeComparison.same(literal.ty(), uint8))),
       () -> Assertions.assertTrue(literals.stream().filter(literal -> literal.content().equals("999"))
         .allMatch(literal -> literal.ty().equals(Ty.INTEGER))),
       () -> Assertions.assertDoesNotThrow(() -> Inf.codeToMir(code))
@@ -313,7 +313,7 @@ class HirIntegerLiteralTypingVisitorPassTest {
       Assertions.assertAll(
         () -> Assertions.assertSame(beforeType, value.ty()),
         () -> Assertions.assertEquals(beforeContent, value.content()),
-        () -> Assertions.assertTrue(TypeComparison.sameValueType(Tys.fromString(source, MachineTarget.T64), value.ty()))
+        () -> Assertions.assertTrue(TypeComparison.same(Tys.fromString(source, MachineTarget.T64), value.ty()))
       );
     }
   }

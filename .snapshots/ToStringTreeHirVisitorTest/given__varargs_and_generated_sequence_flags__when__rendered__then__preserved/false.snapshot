@@ -16,23 +16,23 @@ test-method: given__varargs_and_generated_sequence_flags__when__rendered__then__
           (parameters
             (Parameter
               (vararg false)
-              (ty (named "VOID"))
-              (resolvedTy (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+              (ty VOID)
+              (resolvedTy INTEGER)
               (lexeme
                 (Lexeme
                   (name "p")
-                  (ty (named "VOID"))))
+                  (ty VOID)))
               (typeAnnotation
                 (DynamicTy
-                  (ty (number INTEGER width=32 explicit=false signed=true radix=10 flags=[]))
+                  (ty INTEGER)
                   (expression null)))))
           (returnType
             (DynamicTy
-              (ty (named "INFER"))
+              (ty INFER)
               (expression null)))))
       (body
         (Return
-          (ty (named "DEADEND"))
+          (ty DEADEND)
           (expression
             (Identifier
               (name "p")

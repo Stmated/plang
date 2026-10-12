@@ -4,6 +4,7 @@ import org.inf.Inf;
 import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.HirExprs;
 import org.inf.thir.raising.HirToThirRaising;
 import org.inf.ty.Ty;
 import org.inf.ty.TyUnion;
@@ -78,7 +79,7 @@ class HirDeadEndTest {
     final var assignment = new Hir.Assignment(arrayAccess(new Hir.Return(integer())), integer());
     HirTyCommonVisitorPass.pass(assignment);
     assertEquals(Ty.DEADEND, assignment.ty());
-    assertEquals(Ty.INTEGER, Tys.getIndexedTy(assertInstanceOf(Hir.ArrayAccess.class, assignment.lhs())));
+    assertEquals(Ty.INTEGER, HirExprs.getIndexedTy(assertInstanceOf(Hir.ArrayAccess.class, assignment.lhs())));
   }
 
   @Test
@@ -92,7 +93,7 @@ class HirDeadEndTest {
 
     assertAll(
       () -> assertEquals(Ty.DEADEND, compound.ty()),
-      () -> assertEquals(Ty.INTEGER, Tys.getIndexedTy(assertInstanceOf(Hir.ArrayAccess.class, compound.target())))
+      () -> assertEquals(Ty.INTEGER, HirExprs.getIndexedTy(assertInstanceOf(Hir.ArrayAccess.class, compound.target())))
     );
   }
 

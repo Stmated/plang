@@ -4,6 +4,7 @@ import org.inf.Inf;
 import org.inf.hir.DynamicTy;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.HirExprs;
 import org.inf.ty.*;
 import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
@@ -42,7 +43,7 @@ class HirReturnTypeVisitorTest {
     assertEquals(Ty.INTEGER, program.ty());
     assertEquals(Ty.DEADEND, ret.ty());
     assertEquals(Ty.DEADEND, call.ty());
-    assertEquals(Ty.BOOLEAN, Tys.getCallableSignature(call.target()).returnTy());
+    assertEquals(Ty.BOOLEAN, HirExprs.getCallableSignature(call.target()).returnTy());
   }
 
   @Test
@@ -52,7 +53,7 @@ class HirReturnTypeVisitorTest {
 
     assertEquals(Ty.DEADEND, sequence.ty());
     assertEquals(Ty.DEADEND, call.ty());
-    assertEquals(Ty.DEADEND, Tys.getCallableSignature(call.target()).returnTy());
+    assertEquals(Ty.DEADEND, HirExprs.getCallableSignature(call.target()).returnTy());
   }
 
   @Test
@@ -71,8 +72,8 @@ class HirReturnTypeVisitorTest {
     assertEquals(Ty.INTEGER, program.ty());
     assertEquals(Ty.DEADEND, ret.ty());
     assertEquals(Ty.DEADEND, target.ty());
-    assertInstanceOf(TyFn.class, Tys.getCallableSignature(target));
-    assertEquals(Ty.BOOLEAN, Tys.getCallableSignature(call.target()).returnTy());
+    assertInstanceOf(TyFn.class, HirExprs.getCallableSignature(target));
+    assertEquals(Ty.BOOLEAN, HirExprs.getCallableSignature(call.target()).returnTy());
     assertEquals(Ty.DEADEND, call.ty());
   }
 
@@ -250,12 +251,12 @@ class HirReturnTypeVisitorTest {
     });
     assertEquals(1, constructions.size());
     final var construction = constructions.getFirst();
-    final var layout = assertInstanceOf(TyStruct.class, Tys.getConstructionTargetTy(construction.target()));
+    final var layout = assertInstanceOf(TyStruct.class, HirExprs.getConstructionTargetTy(construction.target()));
     assertAll(
       () -> assertEquals(Ty.BOOLEAN, program.ty()),
       () -> assertEquals(Ty.DEADEND, construction.ty()),
       () -> assertEquals("x", layout.fields()[0].name()),
-      () -> assertSame(layout, Tys.getConstructionTargetTy(construction))
+      () -> assertSame(layout, HirExprs.getConstructionTargetTy(construction))
     );
   }
 
@@ -335,7 +336,7 @@ class HirReturnTypeVisitorTest {
       () -> assertEquals(Ty.DEADEND, rangeTy.ty()),
       () -> assertEquals(Ty.DEADEND, returnTy.ty(), "ret should be dead-end"),
       () -> assertEquals(new TyValueArray(Ty.DEADEND, null), rangeTy.rangeTy()),
-      () -> assertEquals(rangeTy.rangeTy(), Tys.getIndexingAccessorTy(rangeTy))
+      () -> assertEquals(rangeTy.rangeTy(), HirExprs.getIndexingAccessorTy(rangeTy))
     );
   }
 
