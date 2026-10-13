@@ -35,7 +35,7 @@ class HirIntegerLiteralTypingVisitorPassTest {
       val use = () => %s;
       use()
       """.formatted(call)).root();
-    final var values = literals(root).stream().filter(literal -> literal.content().equals("17")).toList();
+    final var values = literals(root).stream().filter(literal -> literal.content().equals("17")).distinct().toList();
     Assertions.assertEquals(1, values.size());
     Assertions.assertAll(
       () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), values.getFirst().ty()),

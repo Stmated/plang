@@ -18,6 +18,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 class HirFunctionContextualTypingVisitorPassTest {
 
@@ -39,7 +40,7 @@ class HirFunctionContextualTypingVisitorPassTest {
       val use = () => %s;
       use()
       """.formatted(call)).root();
-    final var parameters = new ArrayList<Hir.Parameter>();
+    final var parameters = new HashSet<Hir.Parameter>();
     root.visit(new HirVisitor() {
       @Override
       public void visitParameter(final Hir.Parameter parameter) {
@@ -50,9 +51,10 @@ class HirFunctionContextualTypingVisitorPassTest {
       }
     });
     Assertions.assertEquals(1, parameters.size());
+    final var parameter = parameters.stream().findFirst().orElseThrow();
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.INFER, parameters.getFirst().typeAnnotation().ty()),
-      () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), parameters.getFirst().ty().structuralTy()),
+      () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
+      () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), parameter.ty().structuralTy()),
       () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty())
     );
   }

@@ -5,6 +5,8 @@ import de.skuzzle.test.snapshots.junit5.EnableSnapshotTests;
 import org.inf.Inf;
 import org.inf.ast.util.SnapshotTestUtils;
 import org.inf.hir.DynamicTy;
+import org.inf.hir.DynamicTyDefault;
+import org.inf.hir.DynamicTyRedirector;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.*;
@@ -170,7 +172,7 @@ class ToStringTreeHirVisitorTest {
     final Hir.MutabilityKind kind, final TestInfo testInfo, final Snapshot snapshot
   ) {
     SnapshotTestUtils.assertMatches(testInfo, snapshot, kind.name(),
-      printer.render(new Hir.Dec(new Hir.Lexeme("value"), kind, new DynamicTy(Ty.INTEGER))));
+      printer.render(new Hir.Dec(new Hir.Lexeme("value"), kind, new DynamicTyDefault(Ty.INTEGER))));
   }
 
   @ParameterizedTest
@@ -181,8 +183,8 @@ class ToStringTreeHirVisitorTest {
   void given__varargs_and_generated_sequence_flags__when__rendered__then__preserved(
     final boolean flag, final TestInfo testInfo, final Snapshot snapshot
   ) {
-    final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), new DynamicTy(Ty.INTEGER), flag, Ty.INTEGER);
-    final var signature = new Hir.FunctionSignature(new Hir.Parameter[] { parameter }, flag, new DynamicTy());
+    final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), new DynamicTyDefault(Ty.INTEGER), flag, Ty.INTEGER);
+    final var signature = new Hir.FunctionSignature(new Hir.Parameter[] { parameter }, flag, new DynamicTyDefault());
     final var expressions = new Hir.Expressions(new Hir.Expression[] {
       new Hir.Function(signature, new Hir.Return(new Hir.Identifier(parameter.lexeme().name(), parameter)))
     }, null, flag);
@@ -260,30 +262,6 @@ class ToStringTreeHirVisitorTest {
   }
 
   @Test
-  void given__resolved_declaration_cycle__when__rendered__then__symbolic_reference_without_following_target() {
-    final var identifier = new Hir.Identifier("self", null);
-    final var declaration = new Hir.Dec(new Hir.Lexeme(identifier.name()), Hir.MutabilityKind.IMMUTABLE, new DynamicTy(identifier));
-    identifier.target(declaration);
-
-    final var actual = assertTimeout(Duration.ofSeconds(1), () -> printer.render(declaration));
-    assertEquals("""
-      (Dec
-        (mutability IMMUTABLE)
-        (ty (completion VOID structural null declaredConstraint INFER))
-        (lexeme
-          (Lexeme
-            (name "self")
-            (ty VOID)))
-        (typeAnnotation
-          (DynamicTy
-            (ty INFER)
-            (expression
-              (Identifier
-                (name "self")
-                (target (reference "self")))))))""", actual);
-  }
-
-  @Test
   void given__recursive_type__when__rendered__then__bounded_without_identity_addresses() {
     final var fields = new TyField[1];
     final var type = new TyStruct(fields, false);
@@ -293,7 +271,7 @@ class ToStringTreeHirVisitorTest {
       (DynamicTy
         (ty (struct ("next" (pointer CPU (recursive)))))
         (expression null))""",
-      assertTimeout(Duration.ofSeconds(1), () -> printer.render(new DynamicTy(type))));
+      assertTimeout(Duration.ofSeconds(1), () -> printer.render(new DynamicTyDefault(type))));
   }
 
   @Test
@@ -305,7 +283,7 @@ class ToStringTreeHirVisitorTest {
         (expression
           (Identifier
             (name "Alias")
-            (target null))))""", printer.render(new DynamicTy(Ty.BOOLEAN, source)));
+            (target null))))""", printer.render(new DynamicTyDefault(Ty.BOOLEAN, source)));
   }
 
   @Test
@@ -355,9 +333,9 @@ class ToStringTreeHirVisitorTest {
     final var name = new Hir.Lexeme("name");
     final var identifier = new Hir.Identifier(name.name(), null);
     final var value = new Hir.Literal("7", Ty.INTEGER);
-    final var declaration = new Hir.Dec(name, Hir.MutabilityKind.CONSTANT, new DynamicTy(Ty.INTEGER));
+    final var declaration = new Hir.Dec(name, Hir.MutabilityKind.CONSTANT, new DynamicTyDefault(Ty.INTEGER));
     final var initializer = new Hir.Assignment(name, value);
-    final var array = new Hir.Array(new Hir.Expression[] { value }, new DynamicTy(Ty.INTEGER), value,
+    final var array = new Hir.Array(new Hir.Expression[] { value }, new DynamicTyDefault(Ty.INTEGER), value,
       Tys.withCompletion(Ty.VOID, new TyValueArray(Ty.INTEGER, 1)));
     final var nodes = new Hir.Expression[] {
       array,

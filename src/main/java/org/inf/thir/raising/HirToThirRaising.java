@@ -5,6 +5,8 @@ import org.inf.hir.Hir;
 import org.inf.hir.passes.*;
 import org.inf.ty.util.MachineTarget;
 
+import java.util.Random;
+
 /**
  * TODO: This should be rewritten to use some kind of query system like Rust, eventually.
  *        That way we can easier multi-thread the investigation, and also do it lazily on-demand, and cache more easily.
@@ -12,9 +14,16 @@ import org.inf.ty.util.MachineTarget;
 @Slf4j
 public class HirToThirRaising {
 
+  private final Random random;
   private final MachineTarget machineTarget;
 
   public HirToThirRaising(MachineTarget machineTarget) {
+    this.random = new Random();
+    this.machineTarget = machineTarget;
+  }
+
+  public HirToThirRaising(Random random, MachineTarget machineTarget) {
+    this.random = random;
     this.machineTarget = machineTarget;
   }
 
@@ -40,7 +49,7 @@ public class HirToThirRaising {
     HirUnionValidationPass.pass(e);
     HirValidationPass.pass(e);
     e = HirGeneratedSequenceTransformerPass.pass(e);
-    e = HirLambdaLiftingTransformerPass.pass(e);
+    e = HirLambdaLiftingTransformerPass.pass(this.random, e);
     e = HirDependencyReorderingTransformerPass.pass(e);
 
     // Call investigate on the expression.

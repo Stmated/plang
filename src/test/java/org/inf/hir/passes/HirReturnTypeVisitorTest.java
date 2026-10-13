@@ -2,6 +2,7 @@ package org.inf.hir.passes;
 
 import org.inf.Inf;
 import org.inf.hir.DynamicTy;
+import org.inf.hir.DynamicTyDefault;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.hir.util.HirExprs;
@@ -19,11 +20,11 @@ class HirReturnTypeVisitorTest {
     final var parameters = new Hir.Parameter[operands.length];
     final var arguments = new Hir.Argument[operands.length];
     for (var i = 0; i < operands.length; i++) {
-      parameters[i] = new Hir.Parameter(new Hir.Lexeme("p" + i), new DynamicTy(Ty.INTEGER), false, null);
+      parameters[i] = new Hir.Parameter(new Hir.Lexeme("p" + i), new DynamicTyDefault(Ty.INTEGER), false, null);
       arguments[i] = new Hir.Argument(null, operands[i]);
     }
     return new Hir.Call(
-      new Hir.FunctionSignature(parameters, false, new DynamicTy(result), null),
+      new Hir.FunctionSignature(parameters, false, new DynamicTyDefault(result), null),
       arguments,
       false,
       null
@@ -58,7 +59,7 @@ class HirReturnTypeVisitorTest {
 
   @Test
   void callTargetTransferPreventsArgumentEvaluation() {
-    final var signature = new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTy(Ty.BOOLEAN), null);
+    final var signature = new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTyDefault(Ty.BOOLEAN, null));
     final var target = new Hir.Conditional(new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), signature, signature, null);
     final var call = new Hir.Call(
       target,
@@ -114,7 +115,7 @@ class HirReturnTypeVisitorTest {
   void arrayElementsAreRuntimeExpressionsAndLengthIsEvaluatedLast() {
     final var array = new Hir.Array(
       new Hir.Expression[]{new Hir.Return(new Hir.Literal("1", Ty.INTEGER)), new Hir.Return(new Hir.Literal("text", Ty.STRING))},
-      new DynamicTy(Ty.INTEGER),
+      new DynamicTyDefault(Ty.INTEGER),
       new Hir.Return(new Hir.Literal("4", Ty.INTEGER)),
       null
     );
@@ -135,7 +136,7 @@ class HirReturnTypeVisitorTest {
   void returningArrayLengthRetainsNominalArrayLayout() {
     final var array = new Hir.Array(
       new Hir.Expression[]{new Hir.Literal("1", Ty.INTEGER)},
-      new DynamicTy(Ty.INTEGER), new Hir.Return(new Hir.Literal("text", Ty.STRING)),
+      new DynamicTyDefault(Ty.INTEGER), new Hir.Return(new Hir.Literal("text", Ty.STRING)),
       null
     );
     final var ret = new Hir.Return(array);
@@ -308,7 +309,7 @@ class HirReturnTypeVisitorTest {
   @Test
   void nestedFunctionBodiesDoNotExecuteWhenPassedAsArguments() {
     final var nested = new Hir.Function(
-      new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTy(), null),
+      new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTyDefault(), null),
       new Hir.Return(new Hir.Literal("text", Ty.STRING))
     );
     final var call = call(Ty.BOOLEAN, nested);

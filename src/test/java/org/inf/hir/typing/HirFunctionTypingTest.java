@@ -1,6 +1,7 @@
 package org.inf.hir.typing;
 
 import org.inf.hir.DynamicTy;
+import org.inf.hir.DynamicTyDefault;
 import org.inf.hir.Hir;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
@@ -26,9 +27,9 @@ class HirFunctionTypingTest {
   void given__inferred_parameter__when__contextual_typing_is_repeated__then__annotation_binding_and_signature_are_stable(
     final Ty destination
   ) {
-    final var annotation = new DynamicTy();
+    final var annotation = new DynamicTyDefault();
     final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), annotation, false, null);
-    final var signature = new Hir.FunctionSignature(new Hir.Parameter[]{parameter}, false, new DynamicTy());
+    final var signature = new Hir.FunctionSignature(new Hir.Parameter[]{parameter}, false, new DynamicTyDefault());
     final var expected = new TyFn(new TyParam[]{new TyParam("value", destination)}, false, destination);
 
     HirFunctionTyping.adhereToConstraint(signature, expected);
@@ -50,10 +51,10 @@ class HirFunctionTypingTest {
 
   @Test
   void given__previous_contextual_binding__when__the_expected_type_changes__then__binding_and_signature_can_be_refreshed() {
-    final var annotation = new DynamicTy();
+    final var annotation = new DynamicTyDefault();
     final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), annotation, false, Ty.BOOLEAN);
     final var resolved = new TyFn(new TyParam[]{new TyParam("p", Ty.BOOLEAN)}, false, Ty.BOOLEAN);
-    final var signature = new Hir.FunctionSignature(new Hir.Parameter[]{parameter}, false, new DynamicTy(), resolved);
+    final var signature = new Hir.FunctionSignature(new Hir.Parameter[]{parameter}, false, new DynamicTyDefault(), resolved);
 
     HirFunctionTyping.adhereToConstraint(signature, new TyFn(new TyParam[]{new TyParam("value", Ty.LONG)}, false, Ty.LONG));
 
@@ -70,9 +71,9 @@ class HirFunctionTypingTest {
 
   @Test
   void given__resolved_inferred_return__when__parameter_context_changes__then__return_is_retained() {
-    final var annotation = new DynamicTy();
-    final var explicit = new Hir.Parameter(new Hir.Lexeme("p"), new DynamicTy(Ty.BOOLEAN), false, Ty.BOOLEAN);
-    final var inferred = new Hir.Parameter(new Hir.Lexeme("q"), new DynamicTy(), false, Ty.INTEGER);
+    final var annotation = new DynamicTyDefault();
+    final var explicit = new Hir.Parameter(new Hir.Lexeme("p"), new DynamicTyDefault(Ty.BOOLEAN), false, Ty.BOOLEAN);
+    final var inferred = new Hir.Parameter(new Hir.Lexeme("q"), new DynamicTyDefault(), false, Ty.INTEGER);
     final var resolved = new TyFn(
       new TyParam[]{new TyParam("p", Ty.BOOLEAN), new TyParam("q", Ty.INTEGER)}, false, Ty.BOOLEAN
     );
@@ -96,10 +97,10 @@ class HirFunctionTypingTest {
   @Test
   void given__explicit_parameter_constraint__when__contextualized__then__annotation_binding_and_signature_are_not_rewritten() {
     final var resolved = new TyFn(new TyParam[]{new TyParam("value", Ty.BOOLEAN)}, false, Ty.BOOLEAN);
-    final var annotation = new DynamicTy(resolved, new Hir.Identifier("Fn", null));
+    final var annotation = new DynamicTyDefault(resolved, new Hir.Identifier("Fn", null));
     final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), annotation, false, resolved);
     final var function = new TyFn(new TyParam[]{new TyParam("p", resolved)}, false, Ty.BOOLEAN);
-    final var signature = new Hir.FunctionSignature(new Hir.Parameter[]{parameter}, false, new DynamicTy(), function);
+    final var signature = new Hir.FunctionSignature(new Hir.Parameter[]{parameter}, false, new DynamicTyDefault(), function);
 
     HirFunctionTyping.adhereToConstraint(signature, new TyFn(new TyParam[]{new TyParam("value", Ty.LONG)}, false, Ty.LONG));
 

@@ -23,3 +23,7 @@ Features/ideas that will be attempted:
 * Simple data structures that can be easily copied
 * Types are structurally compared
   * ```val x = struct {a: uint8}``` == ```val y = struct {a: uint8}```
+
+## Test logging
+
+Test logs automatically include `TestClass#test_method` and the invocation's display name for parameterized tests. This applies to logs on the test's execution thread, including `@BeforeEach` and `@AfterEach`; logs outside a test show `no test`. Production logging is unchanged.

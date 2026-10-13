@@ -4,6 +4,8 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import org.inf.hir.DynamicTy;
+import org.inf.hir.DynamicTyDefault;
+import org.inf.hir.DynamicTyRedirector;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
 import org.inf.hir.HirTypeDefinitions;
@@ -22,6 +24,7 @@ import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
@@ -45,7 +48,7 @@ public class HirLambdaLiftingTransformerPass {
     List<Capture> captures;
   }
 
-  public static Hir.Expression pass(Hir.Expression expr) {
+  public static Hir.Expression pass(final Random random, final Hir.Expression expr) {
 
     final var definitions = new HirTypeDefinitions();
     final Set<Hir.Expression> staticFunctions = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -61,7 +64,7 @@ public class HirLambdaLiftingTransformerPass {
         HirVisitor.super.visitAssignment(assignment);
       }
     });
-    final var functionTransformer = new FunctionTransformer(staticFunctions);
+    final var functionTransformer = new FunctionTransformer(random, staticFunctions);
     var transformed = expr.transform(functionTransformer);
 
     return transformed.transform(functionTransformer.callTransformer);
@@ -155,6 +158,7 @@ public class HirLambdaLiftingTransformerPass {
   @RequiredArgsConstructor
   private static class FunctionTransformer implements HirTransformer {
 
+    private final Random random;
     private final Set<Hir.Expression> staticFunctions;
     private final List<FromTo> lifted = new ArrayList<>();
     private final CallTransformer callTransformer = new CallTransformer(lifted);
@@ -208,7 +212,7 @@ public class HirLambdaLiftingTransformerPass {
             if (entry.toIdentifier() == transformedRhs) {
               entry.fromAssignment(expr);
               entry.fromDec(ass_lhs_dec);
-              ass_lhs_dec.typeAnnotation(new DynamicTy(transformedRhs.ty()));
+              ass_lhs_dec.typeAnnotation(new DynamicTyRedirector(transformedRhs));
               ass_lhs_dec.ty(Tys.typeInfo(Ty.VOID, transformedRhs.ty(), transformedRhs.ty()));
               break;
             }
@@ -283,7 +287,7 @@ public class HirLambdaLiftingTransformerPass {
 
           final var id = needsClosure.get(i);
           final var ty = HirExprs.getBindingStructureTy(id);
-          final var typeAnnotation = new DynamicTy(ty);
+          final var typeAnnotation = new DynamicTyRedirector(id);
 
           final var newParam = new Hir.Parameter(new Hir.Lexeme(id.name()), typeAnnotation, false, ty);
 
@@ -318,7 +322,9 @@ public class HirLambdaLiftingTransformerPass {
         // Captures are supplied values; rebinding can change completion-dependent body types.
         HirTyCommonVisitorPass.pass(transformed);
 
-        final var randomName = UUID.randomUUID().toString();
+        final var randomBytes = new byte[128];
+        this.random.nextBytes(randomBytes);
+        final var randomName = UUID.nameUUIDFromBytes(randomBytes).toString();
 
         final var newIdentifier = new Hir.Identifier(
           randomName,
@@ -328,7 +334,7 @@ public class HirLambdaLiftingTransformerPass {
         final var newDec = new Hir.Dec(
           new Hir.Lexeme(randomName),
           Hir.MutabilityKind.CONSTANT,
-          new DynamicTy(transformed.ty()),
+          new DynamicTyRedirector(transformed),
           transformed.ty()
         );
 

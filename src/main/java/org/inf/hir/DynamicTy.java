@@ -1,65 +1,23 @@
 package org.inf.hir;
 
-import jakarta.annotation.Nonnull;
 import org.inf.ty.Ty;
 
-import java.util.Objects;
+public interface DynamicTy<T extends DynamicTy<?>> {
+  DynamicTy<? extends DynamicTy<?>> resolve(java.util.function.Function<Hir.Expression, Ty> resolver);
 
-/// A source type constraint, not a runtime expression or an inferred binding type.
-///
-/// @param ty         Resolved source constraint, retaining omitted types as `INFER`
-/// @param expression Source type syntax; null for omitted or static constraints
-public record DynamicTy(@Nonnull Ty ty, Hir.Expression expression) {
+  void visit(HirVisitor visitor);
 
-  public DynamicTy {
-    Objects.requireNonNull(ty);
-  }
-
-  public DynamicTy() {
-    this(Ty.INFER, null);
-  }
-
-  public DynamicTy(final Ty ty) {
-    this(ty, null);
-  }
-
-  public DynamicTy(final Hir.Expression expression) {
-    this(Ty.INFER, Objects.requireNonNull(expression));
-  }
-
-  public DynamicTy computeIfAbsent(final java.util.function.Supplier<Ty> supplier) {
-    if (expression == null) {
-      return this;
-    }
-    final var resolved = Objects.requireNonNullElse(supplier.get(), Ty.INFER);
-    return resolved == ty ? this : new DynamicTy(resolved, expression);
-  }
-
-  /// Refresh expression-backed constraints; static constraints need no resolution.
-  public DynamicTy resolve(final java.util.function.Function<Hir.Expression, Ty> resolver) {
-    if (expression == null) {
-      return this;
-    }
-    final var resolved = Objects.requireNonNullElse(resolver.apply(expression), Ty.INFER);
-    return resolved == ty ? this : new DynamicTy(resolved, expression);
-  }
-
-  public void visit(final HirVisitor visitor) {
-    if (expression != null) {
-      visitor.visitChild(expression);
-    }
-  }
-
-  public DynamicTy transform(final HirTransformer transformer) {
-    if (expression == null) {
-      return this;
-    }
-    final var transformed = Objects.requireNonNull(expression.transform(transformer));
-    return transformed == expression ? this : new DynamicTy(ty, transformed);
-  }
+  DynamicTy<T> transform(HirTransformer transformer);
 
   @Override
-  public String toString() {
-    return expression == null ? ty.toShortString() : expression.toString();
+  String toString();
+
+  Ty ty();
+
+  /// TODO: Should eventually be removed -- there shouldn't be a need to check for this
+  default boolean hasDirectTy() {
+    return this.ty() != null;
   }
+
+  Hir.Expression expression();
 }

@@ -60,6 +60,12 @@
 * The current split reuses assignment processing but separates a binding from its initializer, complicating live type queries, traversal, and identity-preserving transformations. An initialization back-reference is access metadata only, not declaration ownership.
 * Compare the full declaration representation across raising, evaluation order, typing, execution-aware visitors, printing, generated bindings, and MIR lowering. Preserve standalone declarations and assignment destination conversions.
 
+### Removing "target" from Hir.Identifier
+Remove "target" from identifier, and instead keep a compilation state that can be shared between passes.
+Then that state can whenever, by whomever, be reset and it will be re-created again upon request.
+So that some pass that transforms the tree can say "I invalidate this identifier mapping" (either all, or just one by replacing with a known new)
+This way there will be less recursion inside the tree, and might even simplify some stuff.
+
 ### Layout query result selection (deferred investigation)
 
 * `HirStructLayoutVisitor` and `HirIndexingTypeVisitor` duplicate syntactic-result selection and current binding/call/member reads. Investigate sharing only that selection if it reduces maintenance without obscuring the separate layout and indexing policies.

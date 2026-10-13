@@ -286,19 +286,20 @@ public class AstToHirRaising {
 
       // There are only elements. We will derive the rest from that.
       // TODO: Ty here should be "inferred" until THIR kicks in
-      final var elementType = new DynamicTy();
+      final var elementType = new DynamicTyDefault();
       final var arrayLengthExpr = new Hir.Literal(Objects.toString(elementArray.length), Ty.INTEGER);
       return new Hir.Array(elementArray, elementType, arrayLengthExpr, null);
 
     } else if (section == 1) {
 
-      final var elementType = new DynamicTy();
+      final var elementType = new DynamicTyDefault();
       final var size = sections[1];
       return new Hir.Array(elementArray, elementType, size, null);
 
     } else if (section == 2) {
 
-      final var elementType = new DynamicTy(sections[1]);
+      final var elementType = new DynamicTyRedirector(sections[1]);
+        //new DynamicTyDefault(sections[1]);
       final var sizeExpr = sections[2];
       return new Hir.Array(elementArray, elementType, sizeExpr, null);
 
@@ -306,24 +307,6 @@ public class AstToHirRaising {
       throw new IllegalArgumentException("Unknown array syntax");
     }
   }
-
-//  private Ty getTy(Hir.Expression expr) {
-//
-//    final var thir = new HirToThirRaising(true, machineTarget);
-//    final var found = thir.raise(expr).root().ty();
-//    return Objects.requireNonNullElse(found, Ty.INFER);
-//  }
-//
-//  private Ty getTyFromType(Hir.Expression expr) {
-//
-//    final var thir = new HirToThirRaising(true, machineTarget);
-//    var found = thir.investigate_type_expression(expr);
-//    if (found == null) {
-//      found = thir.raise(expr).root().ty();
-//    }
-//
-//    return Objects.requireNonNullElse(found, Ty.INFER);
-//  }
 
   private Hir.Expression lower_labeling(final Ast.Labeling ast) {
 
@@ -353,7 +336,8 @@ public class AstToHirRaising {
       case final Ast.Labeling labeling -> {
 
         final var signature = find_and_lower_parameters(labeling.lhs());
-        final var returnTypeAnnotation = new DynamicTy(raiseType(labeling.rhs()));
+        //final var returnTypeAnnotation = new DynamicTyDefault(raiseType(labeling.rhs()));
+        final var returnTypeAnnotation = new DynamicTyRedirector(raiseType(labeling.rhs()));
 
         yield new Hir.FunctionSignature(signature.parameters(), signature.vararg(), returnTypeAnnotation, null);
       }
@@ -364,7 +348,7 @@ public class AstToHirRaising {
         final var parameters = (signature == null) ? new Hir.Parameter[0] : signature.parameters();
         final var vararg = signature != null && signature.vararg();
 
-        yield new Hir.FunctionSignature(parameters, vararg, new DynamicTy(), null);
+        yield new Hir.FunctionSignature(parameters, vararg, new DynamicTyDefault(), null);
       }
       default -> find_and_lower_parameters_inner(ast);
     };
@@ -388,24 +372,23 @@ public class AstToHirRaising {
       default -> parameters.add(lower_parameter(ast, isVarArg));
     }
 
-    return new Hir.FunctionSignature(parameters.toArray(new Hir.Parameter[0]), isVarArg.get(), new DynamicTy(), null);
+    return new Hir.FunctionSignature(parameters.toArray(new Hir.Parameter[0]), isVarArg.get(), new DynamicTyDefault(), null);
   }
 
   private Hir.Parameter lower_parameter(final Ast.Expression expr, final AtomicBoolean restVararg) {
 
     return switch (expr) {
-      case final Ast.Spread spread -> new Hir.Parameter(asLexeme(spread.expression()), new DynamicTy(), true, null);
+      case final Ast.Spread spread -> new Hir.Parameter(asLexeme(spread.expression()), new DynamicTyDefault(), true, null);
       case Ast.Rest _ -> {
         restVararg.set(true);
         yield null;
-        //new Hir.Parameter(new Hir.Identifier("..."), null, true);
       }
       case final Ast.Labeling labeling -> {
         final var labelingLhs = lower_parameter(labeling.lhs(), restVararg);
-        final var labelingRhs = new DynamicTy(raiseType(labeling.rhs()));
+        final var labelingRhs = new DynamicTyRedirector(raiseType(labeling.rhs()));
         yield new Hir.Parameter(labelingLhs.lexeme(), labelingRhs, labelingLhs.vararg(), null);
       }
-      default -> new Hir.Parameter(asLexeme(expr), new DynamicTy(), false, null);
+      default -> new Hir.Parameter(asLexeme(expr), new DynamicTyDefault(), false, null);
     };
   }
 
@@ -418,13 +401,17 @@ public class AstToHirRaising {
 
   private Hir.Dec lower_variable_declaration(final Ast.VariableDeclaration ast) {
 
+    final var typeAnnotation = (ast.type() == null)
+      ? new DynamicTyDefault()
+      : new DynamicTyRedirector(raiseType(ast.type()));
+
     return new Hir.Dec(
       lower_lexeme(ast.lexeme()),
       switch (ast.mutabilityKind()) {
         case Immutable -> Hir.MutabilityKind.IMMUTABLE;
         case Mutable -> Hir.MutabilityKind.MUTABLE;
       },
-      ast.type() == null ? new DynamicTy() : new DynamicTy(raiseType(ast.type()))
+      typeAnnotation
     );
   }
 

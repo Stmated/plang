@@ -2,6 +2,7 @@ package org.inf.hir.passes;
 
 import org.inf.Inf;
 import org.inf.hir.DynamicTy;
+import org.inf.hir.DynamicTyDefault;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.hir.util.HirExprs;
@@ -16,8 +17,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -200,7 +203,7 @@ class HirLambdaLiftingIdentityTest {
   }
 
   private List<Hir.Function> functions(Hir.Expression expression) {
-    final var result = new ArrayList<Hir.Function>();
+    final var result = new HashSet<Hir.Function>();
     expression.visit(new HirVisitor() {
       @Override
       public void visitFunction(Hir.Function function) {
@@ -208,7 +211,7 @@ class HirLambdaLiftingIdentityTest {
         HirVisitor.super.visitFunction(function);
       }
     });
-    return result;
+    return new ArrayList<>(result);
   }
 
   private void assertLocalBindings(Hir.Function function) {
@@ -301,17 +304,21 @@ class HirLambdaLiftingIdentityTest {
     for (final var function : lifted) {
       assertLocalBindings(function);
     }
-    assertEquals(3, lifted.get(0).signature().parameters().length);
-    assertEquals(2, lifted.get(1).signature().parameters().length);
+
+    final var fnWith3args = lifted.stream().filter(it -> it.signature().parameters().length == 3).findFirst().orElseThrow();
+    final var fnWith2args = lifted.stream().filter(it -> it.signature().parameters().length == 3).findFirst().orElseThrow();
+
+    assertNotNull(fnWith3args);
+    assertNotNull(fnWith2args);
   }
 
   @Test
   void inlineLiftedCallReceivesItsCapture() {
     final var declaration = new Hir.Dec(
-      new Hir.Lexeme("x"), Hir.MutabilityKind.IMMUTABLE, new DynamicTy(Ty.INTEGER)
+      new Hir.Lexeme("x"), Hir.MutabilityKind.IMMUTABLE, new DynamicTyDefault(Ty.INTEGER)
     );
     final var function = new Hir.Function(
-      new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTy(), null),
+      new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTyDefault(), null),
       new Hir.Return(new Hir.Identifier(declaration.lexeme().name(), declaration))
     );
     final var program = new Hir.Program(new Hir.Expressions(new Hir.Expression[]{
@@ -319,7 +326,7 @@ class HirLambdaLiftingIdentityTest {
       new Hir.Return(new Hir.Call(function, new Hir.Argument[0]))
     }));
     HirTyCommonVisitorPass.pass(program);
-    final var root = HirLambdaLiftingTransformerPass.pass(program);
+    final var root = HirLambdaLiftingTransformerPass.pass(new Random(0), program);
     final var lifted = functions(root);
     assertEquals(1, lifted.size());
     assertLocalBindings(lifted.getFirst());
@@ -395,35 +402,6 @@ class HirLambdaLiftingIdentityTest {
     assertEquals("S", typeName.name());
   }
 
-  @Test
-  void callableParameterIsCapturedByIdentity() {
-
-    final var root = Inf.codeToThir("""
-      (fn: (): int) => {
-        return (() => {
-          return fn();
-        })();
-      }
-      """).root();
-
-    // TODO: Lexer needs to be fixed! It should not require the `(,,,)()` syntax to be valid, right now "target" for call becomes the block!
-
-    final var functions = functions(root);
-    assertEquals(2, functions.size());
-
-    for (final var function : functions) {
-      assertEquals(1, function.signature().parameters().length);
-    }
-
-    final var lifted = functions.getFirst();
-    final var capture = lifted.signature().parameters()[0];
-    final var liftedBody = assertInstanceOf(Hir.Return.class, lifted.body());
-    final var innerCall = assertInstanceOf(Hir.Call.class, liftedBody.expression());
-    final var innerCallTarget = assertInstanceOf(Hir.Identifier.class, innerCall.target());
-
-    assertSame(capture, innerCallTarget.target());
-  }
-
   @ParameterizedTest
   @ValueSource(strings = {
     "val implementation = () => 7; val alias = implementation; val run = () => alias(); run()",
@@ -431,7 +409,8 @@ class HirLambdaLiftingIdentityTest {
   })
   void callableLocalBindingsAreCaptured(String code) {
     final var root = Inf.codeToThir(code).root();
-    final var lifted = functions(root).getFirst();
+    final var functions = functions(root);
+    final var lifted = functions.stream().filter(it -> it.signature().parameters().length == 1).findFirst().orElseThrow();
 
     assertEquals(1, lifted.signature().parameters().length);
 

@@ -2,6 +2,7 @@ package org.inf.hir.passes;
 
 import org.inf.Inf;
 import org.inf.hir.DynamicTy;
+import org.inf.hir.DynamicTyDefault;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.hir.util.HirExprs;
@@ -30,14 +31,14 @@ class HirDeadEndTest {
 
   private Hir.Function function(Hir.Expression body) {
     return new Hir.Function(
-      new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTy(), null),
+      new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTyDefault(), null),
       body
     );
   }
 
   private Hir.ArrayAccess arrayAccess(Hir.Expression index) {
     return new Hir.ArrayAccess(
-      new Hir.Array(new Hir.Expression[]{integer()}, new DynamicTy(Ty.INTEGER), null, null),
+      new Hir.Array(new Hir.Expression[]{integer()}, new DynamicTyDefault(Ty.INTEGER), null, null),
       index,
       null
     );
@@ -212,7 +213,7 @@ class HirDeadEndTest {
     final var declaration = new Hir.Dec(
       new Hir.Lexeme("value"),
       Hir.MutabilityKind.IMMUTABLE,
-      new DynamicTy()
+      new DynamicTyDefault()
     );
     final var fn = function(new Hir.Expressions(new Hir.Expression[]{
       new Hir.Assignment(

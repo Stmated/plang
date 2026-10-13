@@ -3,6 +3,8 @@ package org.inf.hir.passes;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import org.inf.hir.DynamicTy;
+import org.inf.hir.DynamicTyDefault;
+import org.inf.hir.DynamicTyRedirector;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
 import org.inf.ty.util.MachineTarget;
@@ -38,16 +40,16 @@ public class HirTyIdentifierToTyTransformerPass {
     }
 
     @Override
-    public DynamicTy transformArrayElementType(DynamicTy expr) {
+    public DynamicTy<? extends DynamicTy<?>> transformArrayElementType(DynamicTy<? extends DynamicTy<?>> expr) {
       return transformAnnotation(expr);
     }
 
-    private DynamicTy transformAnnotation(final DynamicTy annotation) {
+    private DynamicTy<? extends DynamicTy<?>> transformAnnotation(final DynamicTy<? extends DynamicTy<?>> annotation) {
       try {
         typeModeCounter++;
         final var transformed = annotation.transform(this);
         if (transformed.expression() instanceof Hir.BuiltInTy builtIn) {
-          return new DynamicTy(builtIn);
+          return new DynamicTyRedirector(builtIn);
         }
         return transformed;
       } finally {

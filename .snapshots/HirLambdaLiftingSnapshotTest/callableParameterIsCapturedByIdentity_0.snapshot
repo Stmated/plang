@@ -1,0 +1,154 @@
+dynamic-directory: true
+snapshot-name: callableParameterIsCapturedByIdentity_0
+snapshot-number: 0
+test-class: org.inf.hir.passes.HirLambdaLiftingSnapshotTest
+test-method: callableParameterIsCapturedByIdentity
+
+(Program
+  (ty (function vararg=false (parameters ("fn" (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+  (expressions
+    (Expressions
+      (generated false)
+      (ty null)
+      (children
+        (Assignment
+          (ty null)
+          (lhs
+            (Dec
+              (mutability CONSTANT)
+              (ty (completion VOID structural (function vararg=false (parameters ("fn" (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) declaredConstraint (function vararg=false (parameters ("fn" (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[])))))
+              (lexeme
+                (Lexeme
+                  (name "b33dbfe3-536d-326e-b55e-ee2c1955dcb1")
+                  (ty VOID)))
+              (typeAnnotation
+                (DynamicTy
+                  (ty (function vararg=false (parameters ("fn" (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+                  (expression
+                    (Function
+                      (signature
+                        (FunctionSignature
+                          (vararg false)
+                          (ty (function vararg=false (parameters ("fn" (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+                          (parameters
+                            (Parameter
+                              (vararg false)
+                              (ty (completion VOID structural (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) declaredConstraint (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[])))))
+                              (lexeme
+                                (Lexeme
+                                  (name "fn")
+                                  (ty VOID)))
+                              (typeAnnotation
+                                (DynamicTy
+                                  (ty (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+                                  (expression
+                                    (Identifier
+                                      (name "fn")
+                                      (target (reference "fn"))))))))
+                          (returnType
+                            (DynamicTy
+                              (ty INFER)
+                              (expression null)))))
+                      (body
+                        (Return
+                          (ty DEADEND)
+                          (expression
+                            (Call
+                              (partial false)
+                              (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+                              (target
+                                (Identifier
+                                  (name "fn")
+                                  (target (reference "fn"))))
+                              (arguments)))))))))))
+          (rhs
+            (Function
+              (signature
+                (FunctionSignature
+                  (vararg false)
+                  (ty (function vararg=false (parameters ("fn" (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+                  (parameters
+                    (Parameter
+                      (vararg false)
+                      (ty (completion VOID structural (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) declaredConstraint (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[])))))
+                      (lexeme
+                        (Lexeme
+                          (name "fn")
+                          (ty VOID)))
+                      (typeAnnotation
+                        (DynamicTy
+                          (ty (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+                          (expression
+                            (Identifier
+                              (name "fn")
+                              (target (reference "fn"))))))))
+                  (returnType
+                    (DynamicTy
+                      (ty INFER)
+                      (expression null)))))
+              (body
+                (Return
+                  (ty DEADEND)
+                  (expression
+                    (Call
+                      (partial false)
+                      (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+                      (target
+                        (Identifier
+                          (name "fn")
+                          (target (reference "fn"))))
+                      (arguments))))))))
+        (Return
+          (ty DEADEND)
+          (expression
+            (Function
+              (signature
+                (FunctionSignature
+                  (vararg false)
+                  (ty (function vararg=false (parameters ("fn" (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+                  (parameters
+                    (Parameter
+                      (vararg false)
+                      (ty (completion VOID structural (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) declaredConstraint (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[])))))
+                      (lexeme
+                        (Lexeme
+                          (name "fn")
+                          (ty VOID)))
+                      (typeAnnotation
+                        (DynamicTy
+                          (ty (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+                          (expression
+                            (FunctionSignature
+                              (vararg false)
+                              (ty (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+                              (parameters)
+                              (returnType
+                                (DynamicTy
+                                  (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+                                  (expression
+                                    (BuiltInTy
+                                      (name "int")
+                                      (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))))))))))
+                  (returnType
+                    (DynamicTy
+                      (ty INFER)
+                      (expression null)))))
+              (body
+                (Return
+                  (ty DEADEND)
+                  (expression
+                    (Call
+                      (partial false)
+                      (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+                      (target
+                        (Identifier
+                          (name "b33dbfe3-536d-326e-b55e-ee2c1955dcb1")
+                          (target (reference "b33dbfe3-536d-326e-b55e-ee2c1955dcb1"))))
+                      (arguments
+                        (Argument
+                          (label "fn")
+                          (ty (function vararg=false (parameters) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+                          (value
+                            (Identifier
+                              (name "fn")
+                              (target (reference "fn")))))))))))))))))

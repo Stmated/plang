@@ -139,7 +139,7 @@ public class Hir {
     @Nonnull
     Expression[] elements;
     @Nonnull
-    DynamicTy elementType;
+    DynamicTy<? extends DynamicTy<?>> elementType;
     Expression length;
     Ty ty;
 
@@ -256,7 +256,7 @@ public class Hir {
     }
 
     public Assignment lhs(final Expression lhs) {
-      if (this.lhs instanceof Dec declaration && declaration.initialization() == this) {
+      if (this.lhs instanceof Dec declaration && declaration. initialization() == this) {
         declaration.initialization(null);
       }
       this.lhs = lhs;
@@ -538,10 +538,10 @@ public class Hir {
     Parameter[] parameters;
     boolean vararg;
     @Nonnull
-    DynamicTy returnTypeAnnotation;
+    DynamicTy<? extends DynamicTy<?>> returnTypeAnnotation;
     TyFn ty;
 
-    public FunctionSignature(@Nonnull Parameter[] parameters, boolean vararg, @Nonnull DynamicTy returnTypeAnnotation) {
+    public FunctionSignature(@Nonnull Parameter[] parameters, boolean vararg, @Nonnull DynamicTy<? extends DynamicTy<?>> returnTypeAnnotation) {
       this.parameters = parameters;
       this.vararg = vararg;
       this.returnTypeAnnotation = Objects.requireNonNull(returnTypeAnnotation);
@@ -905,7 +905,7 @@ public class Hir {
     @Nonnull
     Hir.Lexeme lexeme;
     @Nonnull
-    DynamicTy typeAnnotation;
+    DynamicTy<? extends DynamicTy<?>> typeAnnotation;
     boolean vararg;
     Ty ty;
 
@@ -1185,25 +1185,25 @@ public class Hir {
     Lexeme lexeme;
     MutabilityKind mutabilityKind;
     @Nonnull
-    DynamicTy typeAnnotation;
+    DynamicTy<? extends DynamicTy<?>> typeAnnotation;
     Ty ty;
 
     /// Non-owning access to the current initializer; not a child of this declaration.
     @EqualsAndHashCode.Exclude
     Assignment initialization;
 
-    public Dec(final Lexeme lexeme, final MutabilityKind mutabilityKind, final DynamicTy typeAnnotation, final Ty structuralTy) {
+    public Dec(final Lexeme lexeme, final MutabilityKind mutabilityKind, final DynamicTy<? extends DynamicTy<?>> typeAnnotation, final Ty structuralTy) {
       this.lexeme = lexeme;
       this.mutabilityKind = mutabilityKind;
       this.typeAnnotation = Objects.requireNonNull(typeAnnotation);
       this.ty = Tys.typeInfo(Ty.VOID, structuralTy, typeAnnotation.ty());
     }
 
-    public Dec(final Lexeme lexeme, final MutabilityKind mutabilityKind, final DynamicTy typeAnnotation) {
+    public Dec(final Lexeme lexeme, final MutabilityKind mutabilityKind, final DynamicTy<? extends DynamicTy<?>> typeAnnotation) {
       this(lexeme, mutabilityKind, typeAnnotation, null);
     }
 
-    public Dec typeAnnotation(final DynamicTy typeAnnotation) {
+    public Dec typeAnnotation(final DynamicTy<? extends DynamicTy<?>> typeAnnotation) {
       this.typeAnnotation = Objects.requireNonNull(typeAnnotation);
       ty(Tys.withDeclaredConstraint(ty, typeAnnotation.ty()));
       return this;
@@ -1211,6 +1211,9 @@ public class Hir {
 
     @Override
     public String toString() {
+      if (!typeAnnotation.hasDirectTy()) {
+        return toShortString();
+      }
       return "%s: %s".formatted(toShortString(), typeAnnotation);
     }
 

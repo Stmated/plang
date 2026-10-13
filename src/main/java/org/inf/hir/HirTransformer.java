@@ -68,7 +68,7 @@ public interface HirTransformer {
     return expr;
   }
 
-  default DynamicTy transformArrayElementType(final DynamicTy expr) {
+  default DynamicTy<? extends DynamicTy<?>> transformArrayElementType(final DynamicTy<? extends DynamicTy<?>> expr) {
     return expr.transform(this);
   }
 
@@ -146,7 +146,7 @@ public interface HirTransformer {
     return batch(expr, Hir.Parameter.class);
   }
 
-  default DynamicTy transformFunctionSignatureReturnType(final DynamicTy expr) {
+  default DynamicTy<? extends DynamicTy<?>> transformFunctionSignatureReturnType(final DynamicTy<? extends DynamicTy<?>> expr) {
     return expr.transform(this);
   }
 

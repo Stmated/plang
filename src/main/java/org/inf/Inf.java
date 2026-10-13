@@ -48,9 +48,13 @@ public class Inf {
   }
 
   public static ThirRaiseResult codeToThir(String code) {
-    final var hir = Inf.codeToHir(code);
     final var options = InfCompileOptions.builder().build();
-    return new HirToThirRaising(options.machineTarget()).raise(hir);
+    return Inf.codeToThir(code, options);
+  }
+
+  public static ThirRaiseResult codeToThir(String code, InfCompileOptions options) {
+    final var hir = Inf.codeToHir(code);
+    return new HirToThirRaising(options.random(), options.machineTarget()).raise(hir);
   }
 
   public static MirLoweringResult codeToMir(String code) {

@@ -41,7 +41,14 @@ class UnionTypesTest {
   @ValueSource(strings = {
     "val U = int | bool; val x: U = if (true) 7 else false; val use = (v: U): bool => true; use(x)",
     "val x: [;int;] | bool = [1,2]; val use = (v: [;int;] | bool): bool => true; use(x)",
-    "val F = (x: int): int; val U = F | bool; val f = (y: int): int => y; val v: U = if (true) f else false; val use = (v: U): bool => true; use(v)"
+    """
+    val F = (x: int): int;
+    val U = F | bool;
+    val f = (y: int): int => y;
+    val v: U = if (true) f else false;
+    val use = (v: U): bool => true;
+    use(v)
+    """
   })
   void given__equivalent_or_unsized_union_member__when__both_backends_execute__then__the_union_can_be_passed(
     final String code

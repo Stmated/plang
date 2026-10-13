@@ -3,6 +3,7 @@ package org.inf.hir.typing;
 import org.inf.Inf;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.DynamicTy;
+import org.inf.hir.DynamicTyDefault;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.hir.passes.HirTyCommonVisitorPass;
@@ -115,7 +116,7 @@ class HirFunctionReturnTypingTest {
     final Hir.Expression body, final Ty expected
   ) {
     final var function = new Hir.Function(
-      new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTy()), body
+      new Hir.FunctionSignature(new Hir.Parameter[0], false, new DynamicTyDefault()), body
     );
     HirTyCommonVisitorPass.pass(function);
     assertEquals(expected, function.signature().ty().returnTy());

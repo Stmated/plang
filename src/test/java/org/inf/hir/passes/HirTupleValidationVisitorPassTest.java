@@ -8,6 +8,7 @@ import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.MachineTarget;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -177,7 +178,6 @@ class HirTupleValidationVisitorPassTest {
     "val f = (): (1, true) => (1, true)",
     "[(1, true); (1, true); 1]",
     "val t: ((int, 1), bool) = ((1, 2), true)",
-    "val t: (int, ()) = (1, 2)",
     "val f = () => 1; val t: (f(), bool) = (1, true)",
     "val f = (): (int, { return true; }) => (1, true)",
     "val t: ([1], bool) = ([1], true)",
@@ -187,7 +187,17 @@ class HirTupleValidationVisitorPassTest {
     final var error = Assertions.assertThrows(
       IllegalArgumentException.class, () -> Inf.codeToThir(code)
     );
-    Assertions.assertEquals("Type annotations require types, not value expressions", error.getMessage());
+    Assertions.assertEquals("Tuple annotations require types, not value expressions", error.getMessage());
+  }
+
+  @Test
+  void given__value_expression_with_wrong_type__when__parsed__then__reject() {
+
+    final var error = Assertions.assertThrows(
+      InvalidTypeConversionException.class, () -> Inf.codeToThir("val t: (int, ()) = (1, 2)")
+    );
+    Assertions.assertEquals(Ty.INTEGER, error.given());
+    Assertions.assertEquals(Ty.VOID, error.expected());
   }
 
   @ParameterizedTest

@@ -17,7 +17,8 @@ public class HirLexemeToIdentifierTransformerPass {
 
     @Override
     public Hir.Expression transformLexeme(Hir.Lexeme expr) {
-
+      // TODO: This looks very wrong. Why translate Lexeme -> Identifier just for the heck of it?
+      //        We should only translate it into an Identifier if we can actually find what it is identifying!
       return new Hir.Identifier(expr.name(), null);
     }
 

@@ -3,6 +3,7 @@ package org.inf.hir.passes;
 import org.inf.Inf;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.DynamicTy;
+import org.inf.hir.DynamicTyDefault;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.hir.util.HirExprs;
@@ -34,7 +35,7 @@ class HirTyCommonVisitorPassTest {
     final var integer = new Hir.Literal("1", Ty.INTEGER);
     final var returning = new Hir.Return(integer);
     final var sequence = new Hir.Expressions(new Hir.Expression[]{returning, integer});
-    final var declaration = new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new DynamicTy());
+    final var declaration = new Hir.Dec(new Hir.Lexeme("n"), Hir.MutabilityKind.IMMUTABLE, new DynamicTyDefault());
     return Stream.of(
       Arguments.of(new Hir.BinaryOperation(integer, Hir.BinaryOperationKind.ADD, integer), Ty.INTEGER),
       Arguments.of(new Hir.BinaryOperation(returning, Hir.BinaryOperationKind.ADD, integer), Ty.DEADEND),
@@ -45,7 +46,7 @@ class HirTyCommonVisitorPassTest {
       Arguments.of(new Hir.Conditional(new Hir.Literal("true", Ty.BOOLEAN), integer, returning), Ty.INTEGER),
       Arguments.of(new Hir.Not(returning, null), Ty.DEADEND),
       Arguments.of(new Hir.Assignment(declaration, integer), Ty.VOID),
-      Arguments.of(new Hir.Array(new Hir.Expression[]{integer}, new DynamicTy(), null, null), new TyValueArray(Ty.INTEGER, null)),
+      Arguments.of(new Hir.Array(new Hir.Expression[]{integer}, new DynamicTyDefault(), null, null), new TyValueArray(Ty.INTEGER, null)),
       Arguments.of(sequence, Ty.DEADEND),
       Arguments.of(new Hir.Block(sequence, null), Ty.DEADEND),
       Arguments.of(new Hir.Argument(null, returning), Ty.DEADEND),
@@ -203,7 +204,7 @@ class HirTyCommonVisitorPassTest {
   @Test
   void given__noncontinuing_range_accessor__when__indexing_is_typed__then__the_slice_type_is_retained() {
     final var array = new Hir.Array(
-      new Hir.Expression[]{new Hir.Literal("7", Ty.INTEGER)}, new DynamicTy(Ty.INTEGER), null, null
+      new Hir.Expression[]{new Hir.Literal("7", Ty.INTEGER)}, new DynamicTyDefault(Ty.INTEGER), null, null
     );
     final var lower = new Hir.Block(new Hir.Expressions(new Hir.Expression[]{
       new Hir.Return(new Hir.Literal("true", Ty.BOOLEAN)), new Hir.Literal("0", Ty.INTEGER)
@@ -302,7 +303,7 @@ class HirTyCommonVisitorPassTest {
     });
     final var path = paths.getFirst();
     final var original = HirExprs.getMemberTy(path);
-    structs.getFirst().declarations()[0].typeAnnotation(new DynamicTy(Ty.LONG));
+    structs.getFirst().declarations()[0].typeAnnotation(new DynamicTyDefault(Ty.LONG));
     Assertions.assertSame(original, HirExprs.getMemberTy(path));
     HirTyCommonVisitorPass.pass(root);
     Assertions.assertAll(
@@ -522,7 +523,7 @@ class HirTyCommonVisitorPassTest {
     final var body = Assertions.assertInstanceOf(Hir.Return.class, function.body());
     final var reference = Assertions.assertInstanceOf(Hir.Identifier.class, body.expression());
     final var resolved = parameter.ty().structuralTy();
-    parameter.typeAnnotation(new DynamicTy(Ty.LONG));
+    parameter.typeAnnotation(new DynamicTyDefault(Ty.LONG));
     Assertions.assertAll(
       () -> Assertions.assertSame(resolved, parameter.ty().structuralTy()),
       () -> Assertions.assertSame(resolved, HirExprs.getBindingTy(parameter)),
@@ -600,7 +601,7 @@ class HirTyCommonVisitorPassTest {
     HirTyCommonVisitorPass.pass(root);
     final var declaration = declarations.getFirst();
     final var resolved = declaration.ty().structuralTy();
-    declaration.typeAnnotation(new DynamicTy(Ty.LONG));
+    declaration.typeAnnotation(new DynamicTyDefault(Ty.LONG));
     Assertions.assertAll(
       () -> Assertions.assertSame(resolved, declaration.ty().structuralTy()),
       () -> Assertions.assertSame(resolved, HirExprs.getBindingTy(declaration)),

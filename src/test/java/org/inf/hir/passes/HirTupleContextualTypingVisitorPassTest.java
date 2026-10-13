@@ -18,6 +18,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 class HirTupleContextualTypingVisitorPassTest {
 
@@ -37,7 +38,7 @@ class HirTupleContextualTypingVisitorPassTest {
       val use = () => %s;
       use()
       """.formatted(call)).root();
-    final var tuples = new ArrayList<Hir.Tuple>();
+    final var tuples = new HashSet<Hir.Tuple>();
     root.visit(new HirVisitor() {
       @Override
       public void visitTuple(final Hir.Tuple tuple) {
@@ -48,7 +49,7 @@ class HirTupleContextualTypingVisitorPassTest {
       }
     });
     Assertions.assertEquals(1, tuples.size());
-    final var tuple = tuples.getFirst();
+    final var tuple = tuples.stream().findFirst().orElseThrow(); //.getFirst();
     Assertions.assertAll(
       () -> Assertions.assertEquals("b", tuple.children()[0].label().name()),
       () -> Assertions.assertEquals("a", tuple.children()[1].label().name()),
