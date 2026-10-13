@@ -137,7 +137,7 @@ class HirTyIdentifierToTyTransformerPassTest {
     final var declaration = assertInstanceOf(Hir.Dec.class, valueReference.target());
     assertAll(
       () -> assertEquals("int", declaration.lexeme().name()),
-      () -> assertSame(Ty.INTEGER, declaration.resolvedTy()),
+      () -> assertSame(Ty.INTEGER, declaration.ty().structuralTy()),
       () -> assertSame(Ty.INTEGER, valueReference.ty()),
       () -> assertSame(Ty.INTEGER, typed.ty()),
       () -> assertNull(typeReference.target()),

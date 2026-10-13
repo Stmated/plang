@@ -193,7 +193,7 @@ public final class ToStringTreeHirVisitor {
     @Override
     public void visitParameter(final Hir.Parameter expr) {
       result = node("Parameter", atom("vararg", expr.vararg()), type("ty", expr.ty()),
-        type("resolvedTy", expr.resolvedTy()), child("lexeme", expr.lexeme()), child("typeAnnotation", expr.typeAnnotation()));
+        child("lexeme", expr.lexeme()), child("typeAnnotation", expr.typeAnnotation()));
     }
 
     @Override
@@ -248,7 +248,7 @@ public final class ToStringTreeHirVisitor {
     @Override
     public void visitDec(final Hir.Dec expr) {
       result = node("Dec", atom("mutability", expr.mutabilityKind()), type("ty", expr.ty()),
-        type("resolvedTy", expr.resolvedTy()), child("lexeme", expr.lexeme()), child("typeAnnotation", expr.typeAnnotation()));
+        child("lexeme", expr.lexeme()), child("typeAnnotation", expr.typeAnnotation()));
     }
 
     @Override
@@ -289,12 +289,17 @@ public final class ToStringTreeHirVisitor {
     active.add(ty);
     try {
       return switch (ty) {
-        case TyCompletion pair -> {
-          if (Objects.equals(pair.completionTy(), pair.structuralTy())) {
-            yield formatType(pair.completionTy(), active);
+        case TyInfo info -> {
+          if (info.declaredConstraint() != null) {
+            yield "(completion %s structural %s declaredConstraint %s)".formatted(
+              formatType(info.completionTy(), active), formatType(info.structuralTy(), active),
+              formatType(info.declaredConstraintTy(), active));
+          }
+          if (Objects.equals(info.completionTy(), info.structuralTy())) {
+            yield formatType(info.completionTy(), active);
           }
           yield "(completion %s structural %s)".formatted(
-            formatType(pair.completionTy(), active), formatType(pair.structuralTy(), active));
+            formatType(info.completionTy(), active), formatType(info.structuralTy(), active));
         }
         case Ty.TyNamed named -> "(named %s)".formatted(quote(named.name()));
         case TyValueNumber number -> {

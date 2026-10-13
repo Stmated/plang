@@ -64,7 +64,7 @@ class HirBodyResultTypingTest {
   ) {
     final var program = HirTyCommonVisitorPass.pass(new Hir.Program(body));
     assertAll(
-      () -> assertEquals(completion, body.ty()),
+      () -> assertEquals(completion, body.ty().completionTy()),
       () -> assertEquals(result, program.ty())
     );
   }

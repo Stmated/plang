@@ -146,7 +146,7 @@ class HirUnionTest {
     assertAll(
       () -> assertEquals(expected, union.unionTy()),
       () -> assertEquals(expected, declaration.typeAnnotation().ty()),
-      () -> assertEquals(expected, declaration.resolvedTy()),
+      () -> assertEquals(expected, declaration.ty().structuralTy()),
       () -> assertEquals(expected, root.ty()),
       () -> assertSame(Ty.VOID, union.ty()),
       () -> assertTrue(Arrays.stream(union.elements()).allMatch(Hir.BuiltInTy.class::isInstance))
@@ -167,7 +167,7 @@ class HirUnionTest {
       () -> assertInstanceOf(Hir.Identifier.class, binary.rhs()),
       () -> assertTrue(nodes(hir, Hir.Union.class).isEmpty()),
       () -> assertEquals(expected, union.unionTy()),
-      () -> assertEquals(expected, declaration(thir, "v").resolvedTy()),
+      () -> assertEquals(expected, declaration(thir, "v").ty().structuralTy()),
       () -> assertSame(Ty.VOID, union.ty())
     );
   }
@@ -191,7 +191,7 @@ class HirUnionTest {
       () -> assertEquals("string", string.name()),
       () -> assertInstanceOf(Hir.Identifier.class, definition(root, "V").rhs()),
       () -> assertEquals(expected, union.unionTy()),
-      () -> assertEquals(expected, declaration(root, "v").resolvedTy()),
+      () -> assertEquals(expected, declaration(root, "v").ty().structuralTy()),
       () -> assertEquals(expected, root.ty()),
       () -> assertSame(Ty.VOID, union.ty())
     );
@@ -267,7 +267,7 @@ class HirUnionTest {
     final var union = assertInstanceOf(Hir.Union.class, definition(root, "U").rhs());
     final var parameter = nodes(root, Hir.Parameter.class).getFirst();
     final var source = parameter.typeAnnotation().expression();
-    final var original = parameter.resolvedTy();
+    final var original = parameter.ty().structuralTy();
     final var replacement = Inf.codeToThir("val U = int | string; val use = (p: U) => p; use").root();
     final var elements = assertInstanceOf(Hir.Union.class, definition(replacement, "U").rhs()).elements();
     union.elements(elements);
@@ -279,10 +279,10 @@ class HirUnionTest {
       final var expected = Tys.union(INT, Ty.STRING);
       assertAll(
         () -> assertSame(elements, union.elements()),
-        () -> assertNotEquals(original, parameter.resolvedTy()),
+        () -> assertNotEquals(original, parameter.ty().structuralTy()),
         () -> assertEquals(expected, union.unionTy()),
         () -> assertEquals(expected, parameter.typeAnnotation().ty()),
-        () -> assertEquals(expected, parameter.resolvedTy()),
+        () -> assertEquals(expected, parameter.ty().structuralTy()),
         () -> assertSame(source, parameter.typeAnnotation().expression()),
         () -> assertSame(Ty.VOID, union.ty())
       );
@@ -299,7 +299,7 @@ class HirUnionTest {
     assertAll(
       () -> assertEquals(expected, union.unionTy()),
       () -> assertEquals(expected, declaration.typeAnnotation().ty()),
-      () -> assertEquals(expected, declaration.resolvedTy()),
+      () -> assertEquals(expected, declaration.ty().structuralTy()),
       () -> assertEquals(expected, root.ty()),
       () -> assertEquals("U", source.name())
     );
@@ -324,7 +324,7 @@ class HirUnionTest {
         .map(element -> assertInstanceOf(Hir.Identifier.class, element).name()).toList()),
       () -> assertEquals(expected, union.unionTy()),
       () -> assertEquals(expected, declaration.typeAnnotation().ty()),
-      () -> assertEquals(expected, declaration.resolvedTy()),
+      () -> assertEquals(expected, declaration.ty().structuralTy()),
       () -> assertEquals(expected, root.ty()),
       () -> assertEquals("U24", source.name())
     );

@@ -89,6 +89,96 @@ class TysTest {
     );
   }
 
+  @Test
+  void given__independent_type_info__when__normalized__then__only_absent_constraints_allow_collapse() {
+    final var omitted = Tys.typeInfo(Ty.INTEGER, Ty.INTEGER, Ty.INFER);
+    final var explicit = Ty.INTEGER.toBuilder().width(Ty.BW_EXPLICIT_32).build();
+    final var constrained = Tys.typeInfo(explicit, explicit, explicit);
+    final var nested = Tys.typeInfo(Ty.INTEGER, Ty.LONG, Ty.BOOLEAN);
+    final var constant = new TyValueNumberScaled(Ty.DECIMAL.width(), Ty.DECIMAL.scale(), Ty.DECIMAL.signed(),
+      EnumSet.of(TyFlags.CONSTANT));
+    final var flagged = Tys.typeInfo(Ty.DECIMAL, constant, Ty.INFER);
+    Assertions.assertAll(
+      () -> Assertions.assertNull(Tys.typeInfo(null, null, null)),
+      () -> Assertions.assertSame(Ty.INTEGER, Tys.typeInfo(Ty.INTEGER, Ty.INTEGER, null)),
+      () -> Assertions.assertSame(Ty.DEADEND, Tys.typeInfo(Ty.DEADEND, Ty.DEADEND, null)),
+      () -> Assertions.assertSame(explicit, Tys.typeInfo(explicit, explicit, null)),
+      () -> Assertions.assertSame(Ty.INTEGER, Tys.typeInfo(Ty.INTEGER, Ty.INTEGER.toBuilder().build(), null)),
+      () -> Assertions.assertInstanceOf(TyInfo.class, omitted),
+      () -> Assertions.assertSame(omitted, Tys.typeInfo(Ty.INTEGER, Ty.INTEGER, Ty.INFER)),
+      () -> Assertions.assertSame(explicit, Tys.completionTy(constrained)),
+      () -> Assertions.assertSame(explicit, Tys.structuralTy(constrained)),
+      () -> Assertions.assertSame(explicit, Tys.declaredConstraintTy(constrained)),
+      () -> Assertions.assertSame(constant, Tys.structuralTy(flagged)),
+      () -> Assertions.assertNotEquals(flagged, Tys.typeInfo(Ty.DECIMAL, Ty.DECIMAL, Ty.INFER)),
+      () -> Assertions.assertNotEquals(Tys.typeInfo(Ty.INTEGER, explicit, Ty.INFER),
+        Tys.typeInfo(Ty.INTEGER, Ty.INTEGER, Ty.INFER)),
+      () -> Assertions.assertSame(Ty.INTEGER, Tys.typeInfo(nested, Ty.INTEGER, null)),
+      () -> Assertions.assertEquals(Tys.typeInfo(Ty.INTEGER, Ty.LONG, null), Tys.typeInfo(nested, nested, null)),
+      () -> Assertions.assertSame(Ty.INTEGER, Tys.declaredConstraintTy(Tys.typeInfo(Ty.VOID, Ty.INTEGER, nested))),
+      () -> Assertions.assertNull(Tys.declaredConstraintTy(Ty.INTEGER)),
+      () -> Assertions.assertNull(Tys.structuralTy(null)),
+      () -> Assertions.assertNull(Tys.declaredConstraintTy(null))
+    );
+  }
+
+  @Test
+  void given__source_constraint__when__structure_and_annotation_refresh__then__only_selected_answers_change() {
+    final var constraint = new TyValueArray(Ty.INFER, 2);
+    final var initial = new TyValueArray(Ty.INTEGER, 2);
+    final var updated = new TyValueArray(Ty.BOOLEAN, 2);
+    final var info = Tys.typeInfo(Ty.VOID, initial, constraint);
+    final var refined = Tys.withStructural(info, updated);
+    final var diverging = Tys.typeInfo(Ty.DEADEND, updated, Tys.declaredConstraintTy(refined));
+    final var refreshed = Tys.withDeclaredConstraint(diverging, new TyValueArray(Ty.BOOLEAN, 2));
+    Assertions.assertAll(
+      () -> Assertions.assertSame(Ty.VOID, Tys.completionTy(refined)),
+      () -> Assertions.assertSame(updated, Tys.structuralTy(refined)),
+      () -> Assertions.assertSame(constraint, Tys.declaredConstraintTy(refined)),
+      () -> Assertions.assertSame(refined, Tys.withStructural(refined, updated)),
+      () -> Assertions.assertSame(Ty.DEADEND, Tys.completionTy(diverging)),
+      () -> Assertions.assertSame(updated, Tys.structuralTy(diverging)),
+      () -> Assertions.assertSame(constraint, Tys.declaredConstraintTy(diverging)),
+      () -> Assertions.assertSame(Ty.DEADEND, Tys.completionTy(refreshed)),
+      () -> Assertions.assertSame(updated, Tys.structuralTy(refreshed)),
+      () -> Assertions.assertEquals(updated, Tys.declaredConstraintTy(refreshed)),
+      () -> Assertions.assertSame(initial, Tys.structuralTy(info)),
+      () -> Assertions.assertSame(constraint, Tys.declaredConstraintTy(info)),
+      () -> Assertions.assertSame(updated, Tys.withDeclaredConstraint(Tys.typeInfo(updated, updated, constraint), null)),
+      () -> Assertions.assertEquals(Tys.typeInfo(null, Ty.INTEGER, null), Tys.withStructural(null, Ty.INTEGER)),
+      () -> Assertions.assertEquals(Tys.typeInfo(null, null, Ty.INFER), Tys.withDeclaredConstraint(null, Ty.INFER))
+    );
+  }
+
+  @Test
+  void given__missing_structure_and_an_omitted_constraint__when__refined__then__completion_and_constraint_are_preserved() {
+    final var info = Tys.typeInfo(Ty.VOID, null, Ty.INFER);
+    final var refined = Tys.withStructural(info, Ty.INTEGER);
+    Assertions.assertAll(
+      () -> Assertions.assertSame(Ty.VOID, Tys.completionTy(info)),
+      () -> Assertions.assertNull(Tys.structuralTy(info)),
+      () -> Assertions.assertFalse(Tys.isDeadend(info)),
+      () -> Assertions.assertTrue(Tys.containsInferred(info)),
+      () -> Assertions.assertSame(Ty.VOID, Tys.completionTy(refined)),
+      () -> Assertions.assertSame(Ty.INTEGER, Tys.structuralTy(refined)),
+      () -> Assertions.assertFalse(Tys.containsInferred(refined)),
+      () -> Assertions.assertSame(Ty.INFER, Tys.declaredConstraintTy(refined))
+    );
+  }
+
+  @Test
+  void given__constraint_bearing_inputs__when__expression_projections_are_composed__then__source_requirements_do_not_leak() {
+    final var info = Tys.typeInfo(Ty.INTEGER, Ty.LONG, Ty.BOOLEAN);
+    final var composed = Tys.withCompletion(info, info);
+    Assertions.assertAll(
+      () -> Assertions.assertSame(Ty.INTEGER, Tys.completionTy(composed)),
+      () -> Assertions.assertSame(Ty.LONG, Tys.structuralTy(composed)),
+      () -> Assertions.assertNull(Tys.declaredConstraintTy(composed)),
+      () -> Assertions.assertSame(Tys.withCompletion(Ty.INTEGER, Ty.LONG), composed),
+      () -> Assertions.assertSame(Ty.BOOLEAN, Tys.declaredConstraintTy(info))
+    );
+  }
+
   static Stream<Arguments> callableTargets() {
     final var integer = Tys.fromString("int", MachineTarget.T64);
     final var function = new TyFn(new TyParam[]{new TyParam("value", integer)}, false, integer);
@@ -168,10 +258,10 @@ class TysTest {
     final var reference = references.getFirst();
     Assertions.assertAll(
       () -> Assertions.assertSame(parameter, reference.target()),
-      () -> Assertions.assertSame(Ty.VOID, parameter.ty()),
-      () -> Assertions.assertInstanceOf(TyFn.class, parameter.resolvedTy()),
-      () -> Assertions.assertSame(parameter.resolvedTy(), HirExprs.getCallableSignature(reference)),
-      () -> Assertions.assertSame(parameter.resolvedTy(), HirExprs.getCallableValueTy(parameter))
+      () -> Assertions.assertSame(Ty.VOID, parameter.ty().completionTy()),
+      () -> Assertions.assertInstanceOf(TyFn.class, parameter.ty().structuralTy()),
+      () -> Assertions.assertSame(parameter.ty().structuralTy(), HirExprs.getCallableSignature(reference)),
+      () -> Assertions.assertSame(parameter.ty().structuralTy(), HirExprs.getCallableValueTy(parameter))
     );
   }
 
@@ -360,7 +450,16 @@ class TysTest {
       Arguments.of(new TyFn(new TyParam[0], false, new TyValueArray(Ty.INFER, 2)), true),
       Arguments.of(new TyFn(new TyParam[]{new TyParam("v", Ty.INTEGER)}, false, Ty.INTEGER), false),
       Arguments.of(new TyUnion(new Ty[]{Ty.INTEGER, new TyValueArray(Ty.INFER, 0)}), true),
-      Arguments.of(new TyUnion(new Ty[]{Ty.INTEGER, Ty.BOOLEAN}), false)
+      Arguments.of(new TyUnion(new Ty[]{Ty.INTEGER, Ty.BOOLEAN}), false),
+      Arguments.of(Tys.typeInfo(Ty.VOID, Ty.INTEGER, Ty.INFER), false),
+      Arguments.of(Tys.typeInfo(Ty.INTEGER, Ty.INTEGER, new TyValueArray(Ty.INFER, 2)), false),
+      Arguments.of(Tys.typeInfo(Ty.VOID, Ty.INFER, Ty.INTEGER), true),
+      Arguments.of(Tys.typeInfo(null, Ty.INTEGER, Ty.INTEGER), true),
+      Arguments.of(Tys.typeInfo(Ty.VOID, null, Ty.INTEGER), true),
+      Arguments.of(Tys.typeInfo(Ty.DEADEND, null, Ty.INFER), false),
+      Arguments.of(Tys.typeInfo(Ty.DEADEND, Ty.INFER, Ty.INTEGER), true),
+      Arguments.of(new TyValueArray(Tys.typeInfo(Ty.INTEGER, Ty.INTEGER, Ty.INFER), 2), false),
+      Arguments.of(new TyValueArray(Tys.typeInfo(Ty.INTEGER, Ty.INFER, Ty.INTEGER), 2), true)
     );
   }
 

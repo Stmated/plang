@@ -9,7 +9,7 @@ The type produced by normal expression completion. `VOID` means completion witho
 _Avoid_: Runtime type, result type when referring only to normal completion
 
 **Resolved structural type**:
-The aggregate layout or selected value type established by typing, independently of whether evaluating the expression completes. It is not a control-transfer payload or evidence of reachability.
+The aggregate layout or selected value type established by typing, independently of whether evaluating the expression completes. It may be refined as inference inputs change; it is not a control-transfer payload or evidence of reachability.
 _Avoid_: Developer intent type, hypothetical runtime value
 
 **Declared constraint**:
@@ -22,6 +22,7 @@ _Avoid_: Resolved structural type, contextual flag
 
 **Binding type**:
 The resolved type of a value bound to a declaration or parameter, distinct from the completion of the declaration itself.
+A noncompleting initializer establishes no normally obtainable bound value, even when its constraint or structural type is known.
 _Avoid_: Declaration result type
 
 **Exit payload type**:

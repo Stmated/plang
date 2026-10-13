@@ -77,10 +77,11 @@ class HirDeclarationTypingTest {
       Assertions.assertAll(
         () -> Assertions.assertSame(annotation.expression(), declaration.typeAnnotation().expression()),
         () -> Assertions.assertEquals(constraint, declaration.typeAnnotation().ty()),
+        () -> Assertions.assertEquals(constraint, declaration.ty().declaredConstraintTy()),
         () -> Assertions.assertEquals(Tys.isInferred(constraint) ? null : constraint, HirExprs.getAssignmentContextTy(declaration)),
-        () -> Assertions.assertEquals(expected, declaration.resolvedTy()),
+        () -> Assertions.assertEquals(expected, declaration.ty().structuralTy()),
         () -> Assertions.assertEquals(expected, result.ty()),
-        () -> Assertions.assertFalse(Tys.containsInferred(declaration.resolvedTy()))
+        () -> Assertions.assertFalse(Tys.containsInferred(declaration.ty().structuralTy()))
       );
       if (i < 2) {
         root = raising.raise(root).root();
@@ -145,7 +146,7 @@ class HirDeclarationTypingTest {
       }
     });
     Assertions.assertAll(
-      () -> Assertions.assertEquals(initial, declaration.resolvedTy()),
+      () -> Assertions.assertEquals(initial, declaration.ty().structuralTy()),
       () -> Assertions.assertEquals(constraint, annotation.ty()),
       () -> Assertions.assertEquals(1, literals.size())
     );
@@ -156,7 +157,7 @@ class HirDeclarationTypingTest {
       root = raising.raise(root).root();
       final var result = root;
       Assertions.assertAll(
-        () -> Assertions.assertEquals(refined, declaration.resolvedTy()),
+        () -> Assertions.assertEquals(refined, declaration.ty().structuralTy()),
         () -> Assertions.assertEquals(refined, result.ty()),
         () -> Assertions.assertSame(annotation.expression(), declaration.typeAnnotation().expression()),
         () -> Assertions.assertEquals(constraint, declaration.typeAnnotation().ty()),
@@ -166,7 +167,7 @@ class HirDeclarationTypingTest {
     literal.ty(Ty.LONG);
     final var result = raising.raise(root).root();
     Assertions.assertAll(
-      () -> Assertions.assertEquals(latest, declaration.resolvedTy()),
+      () -> Assertions.assertEquals(latest, declaration.ty().structuralTy()),
       () -> Assertions.assertEquals(latest, result.ty()),
       () -> Assertions.assertSame(annotation.expression(), declaration.typeAnnotation().expression()),
       () -> Assertions.assertEquals(constraint, declaration.typeAnnotation().ty()),
@@ -191,12 +192,13 @@ class HirDeclarationTypingTest {
       () -> Assertions.assertSame(Ty.INFER, elementAnnotation.ty()),
       () -> Assertions.assertEquals(new TyValueArray(Ty.INFER, 2), array.ty()),
       () -> Assertions.assertEquals(tuple(Ty.CHAR, new TyValueArray(Ty.INFER, 2)), annotation.ty()),
-      () -> Assertions.assertEquals(tuple(Ty.CHAR, new TyValueArray(Ty.BOOLEAN, 2)), declaration.resolvedTy())
+      () -> Assertions.assertEquals(tuple(Ty.CHAR, new TyValueArray(Ty.BOOLEAN, 2)), declaration.ty().structuralTy())
     );
   }
 
   static Stream<Arguments> lowerableDeclarations() {
     return Stream.of(
+      Arguments.of("val v: uint16 = 255u8; v", 255),
       Arguments.of("val v: (uint16, [;2]) = (255u8, [true, false]); v[0]", 255),
       Arguments.of("val v: (uint8, [;2]) = (10, [true, false]); v[1][0]", true),
       Arguments.of("val rows: [;(uint8, [;2]);1] = [(10, [true, false])]; rows[0][1][1]", false),

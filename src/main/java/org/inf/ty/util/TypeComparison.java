@@ -11,11 +11,12 @@ public final class TypeComparison {
 
   /// Ignores numeric width explicitness, function parameter names, and aggregate source syntax.
   /// Aggregate labels, slot order, numeric flags, and all other value-type properties must match.
+  /// Source constraints are not value properties; container equality includes them instead.
   public static boolean same(Ty actual, Ty expected) {
     if (actual == expected) {
       return true;
     }
-    if (actual instanceof TyCompletion || expected instanceof TyCompletion) {
+    if (actual instanceof TyInfo || expected instanceof TyInfo) {
       return same(Tys.completionTy(actual), Tys.completionTy(expected))
         && same(Tys.structuralTy(actual), Tys.structuralTy(expected));
     }

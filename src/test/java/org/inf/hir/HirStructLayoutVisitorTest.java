@@ -5,6 +5,7 @@ import org.inf.hir.util.HirExprs;
 import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
+import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -122,7 +123,7 @@ class HirStructLayoutVisitorTest {
   ) {
     final var root = Inf.codeToThir(code).root();
     final var expression = nodes(root, nodeType).getLast();
-    final var expected = hasLayout ? declaration(root, "S").resolvedTy() : null;
+    final var expected = hasLayout ? declaration(root, "S").ty().structuralTy() : null;
     final var completion = expression.ty();
     final var printer = new ToStringTreeHirVisitor();
     final var before = printer.render(root);
@@ -178,7 +179,7 @@ class HirStructLayoutVisitorTest {
     );
 
     definition.ty(refined);
-    namedType.resolvedTy(refined);
+    namedType.ty(Tys.withStructural(namedType.ty(), refined));
 
     assertAll(
       () -> assertNotEquals(original, refined),
@@ -203,7 +204,8 @@ class HirStructLayoutVisitorTest {
     assertSame(original, HirStructLayoutVisitor.findAvailableLayout(call));
 
     function.signature().ty(function.ty().toBuilder().returnTy(refined).build());
-    declaration(root, "make").resolvedTy(function.ty());
+    final var namedFunction = declaration(root, "make");
+    namedFunction.ty(Tys.withStructural(namedFunction.ty(), function.ty()));
 
     assertAll(
       () -> assertSame(refined, HirStructLayoutVisitor.findAvailableLayout(call)),
@@ -226,7 +228,8 @@ class HirStructLayoutVisitorTest {
     assertSame(original, HirExprs.getMemberReceiverLayout(conditional));
 
     definition.ty(refined);
-    declaration(root, "S").resolvedTy(refined);
+    final var namedType = declaration(root, "S");
+    namedType.ty(Tys.withStructural(namedType.ty(), refined));
 
     assertAll(
       () -> assertSame(refined, HirExprs.getMemberReceiverLayout(conditional)),
@@ -244,8 +247,8 @@ class HirStructLayoutVisitorTest {
       .filter(identifier -> identifier.target() == parameter).findFirst().orElseThrow();
     assertAll(
       () -> assertSame(parameter, reference.target()),
-      () -> assertSame(parameter.resolvedTy(), HirStructLayoutVisitor.findAvailableLayout(parameter)),
-      () -> assertSame(parameter.resolvedTy(), HirStructLayoutVisitor.findAvailableLayout(reference))
+      () -> assertSame(parameter.ty().structuralTy(), HirStructLayoutVisitor.findAvailableLayout(parameter)),
+      () -> assertSame(parameter.ty().structuralTy(), HirStructLayoutVisitor.findAvailableLayout(reference))
     );
   }
 

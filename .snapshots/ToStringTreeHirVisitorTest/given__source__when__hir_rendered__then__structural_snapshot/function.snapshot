@@ -16,8 +16,7 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
           (lhs
             (Dec
               (mutability IMMUTABLE)
-              (ty VOID)
-              (resolvedTy null)
+              (ty (completion VOID structural null declaredConstraint INFER))
               (lexeme
                 (Lexeme
                   (name "f")
@@ -35,8 +34,7 @@ test-method: given__source__when__hir_rendered__then__structural_snapshot
                   (parameters
                     (Parameter
                       (vararg false)
-                      (ty VOID)
-                      (resolvedTy null)
+                      (ty (completion VOID structural null declaredConstraint INFER))
                       (lexeme
                         (Lexeme
                           (name "x")

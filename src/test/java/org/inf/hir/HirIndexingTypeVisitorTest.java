@@ -147,8 +147,8 @@ class HirIndexingTypeVisitorTest {
       .filter(identifier -> identifier.target() == parameter).findFirst().orElseThrow();
     assertAll(
       () -> assertSame(parameter, reference.target()),
-      () -> assertSame(parameter.resolvedTy(), HirIndexingTypeVisitor.find(parameter)),
-      () -> assertSame(parameter.resolvedTy(), HirIndexingTypeVisitor.find(reference))
+      () -> assertSame(parameter.ty().structuralTy(), HirIndexingTypeVisitor.find(parameter)),
+      () -> assertSame(parameter.ty().structuralTy(), HirIndexingTypeVisitor.find(reference))
     );
   }
 
@@ -247,11 +247,11 @@ class HirIndexingTypeVisitorTest {
   private static Ty binding(final Hir.Expression root, final String name) {
     for (final var declaration : nodes(root, Hir.Dec.class)) {
       if (declaration.lexeme().name().equals(name)) {
-        return declaration.resolvedTy();
+        return declaration.ty().structuralTy();
       }
     }
     return nodes(root, Hir.Parameter.class).stream()
-      .filter(parameter -> parameter.lexeme().name().equals(name)).findFirst().orElseThrow().resolvedTy();
+      .filter(parameter -> parameter.lexeme().name().equals(name)).findFirst().orElseThrow().ty().structuralTy();
   }
 
   private static <T extends Hir.Expression> List<T> nodes(final Hir.Expression root, final Class<T> nodeType) {

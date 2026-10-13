@@ -437,7 +437,7 @@ class HirTyCommonVisitorPassTest {
       () -> Assertions.assertEquals(uint8, signature.returnTy()),
       () -> Assertions.assertSame(annotation, parameter.typeAnnotation()),
       () -> Assertions.assertEquals(Ty.INFER, annotation.ty()),
-      () -> Assertions.assertEquals(uint8, parameter.resolvedTy())
+      () -> Assertions.assertEquals(uint8, parameter.ty().structuralTy())
     );
     for (final var argument : call.arguments()) {
       final var value = argument.value();
@@ -466,7 +466,7 @@ class HirTyCommonVisitorPassTest {
       public void visitFunctionSignature(final Hir.FunctionSignature signature) {
         for (var i = 0; i < signature.parameters().length; i++) {
           final var parameter = signature.parameters()[i];
-          Assertions.assertSame(parameter.resolvedTy(), signature.ty().parameters()[i].ty());
+          Assertions.assertSame(parameter.ty().structuralTy(), signature.ty().parameters()[i].ty());
         }
         HirVisitor.super.visitFunctionSignature(signature);
       }
@@ -489,18 +489,18 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertEquals(1, parameters.size());
     final var parameter = parameters.getFirst();
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.VOID, parameter.ty()),
-      () -> Assertions.assertNotNull(parameter.resolvedTy()),
-      () -> Assertions.assertSame(parameter.resolvedTy(), HirExprs.getBindingTy(parameter)),
+      () -> Assertions.assertEquals(Ty.VOID, parameter.ty().completionTy()),
+      () -> Assertions.assertNotNull(parameter.ty().structuralTy()),
+      () -> Assertions.assertSame(parameter.ty().structuralTy(), HirExprs.getBindingTy(parameter)),
       () -> Assertions.assertFalse(references.isEmpty())
     );
     if (!Tys.isInferred(parameter.typeAnnotation().ty())) {
-      Assertions.assertEquals(parameter.typeAnnotation().ty(), parameter.resolvedTy());
+      Assertions.assertEquals(parameter.typeAnnotation().ty(), parameter.ty().structuralTy());
     }
     for (final var reference : references) {
       Assertions.assertAll(
         () -> Assertions.assertSame(parameter, reference.target()),
-        () -> Assertions.assertSame(parameter.resolvedTy(), reference.ty())
+        () -> Assertions.assertSame(parameter.ty().structuralTy(), reference.ty())
       );
     }
   }
@@ -521,20 +521,20 @@ class HirTyCommonVisitorPassTest {
     final var parameter = function.signature().parameters()[0];
     final var body = Assertions.assertInstanceOf(Hir.Return.class, function.body());
     final var reference = Assertions.assertInstanceOf(Hir.Identifier.class, body.expression());
-    final var resolved = parameter.resolvedTy();
+    final var resolved = parameter.ty().structuralTy();
     parameter.typeAnnotation(new DynamicTy(Ty.LONG));
     Assertions.assertAll(
-      () -> Assertions.assertSame(resolved, parameter.resolvedTy()),
+      () -> Assertions.assertSame(resolved, parameter.ty().structuralTy()),
       () -> Assertions.assertSame(resolved, HirExprs.getBindingTy(parameter)),
       () -> Assertions.assertSame(resolved, reference.ty()),
       () -> Assertions.assertSame(resolved, function.ty().parameters()[0].ty())
     );
     HirTyCommonVisitorPass.pass(function.signature());
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.VOID, parameter.ty()),
-      () -> Assertions.assertEquals(Ty.LONG, parameter.resolvedTy()),
+      () -> Assertions.assertEquals(Ty.VOID, parameter.ty().completionTy()),
+      () -> Assertions.assertEquals(Ty.LONG, parameter.ty().structuralTy()),
       () -> Assertions.assertEquals(Ty.LONG, reference.ty()),
-      () -> Assertions.assertSame(parameter.resolvedTy(), function.ty().parameters()[0].ty())
+      () -> Assertions.assertSame(parameter.ty().structuralTy(), function.ty().parameters()[0].ty())
     );
   }
 
@@ -570,19 +570,19 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertEquals(1, declarations.size());
     final var declaration = declarations.getFirst();
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.VOID, declaration.ty()),
-      () -> Assertions.assertNotNull(declaration.resolvedTy()),
-      () -> Assertions.assertSame(declaration.resolvedTy(), HirExprs.getBindingTy(declaration)),
-      () -> Assertions.assertEquals(declaration.resolvedTy(), root.ty()),
+      () -> Assertions.assertEquals(Ty.VOID, declaration.ty().completionTy()),
+      () -> Assertions.assertNotNull(declaration.ty().structuralTy()),
+      () -> Assertions.assertSame(declaration.ty().structuralTy(), HirExprs.getBindingTy(declaration)),
+      () -> Assertions.assertEquals(declaration.ty().structuralTy(), root.ty()),
       () -> Assertions.assertFalse(references.isEmpty())
     );
     if (!Tys.containsInferred(declaration.typeAnnotation().ty())) {
-      Assertions.assertEquals(declaration.typeAnnotation().ty(), declaration.resolvedTy());
+      Assertions.assertEquals(declaration.typeAnnotation().ty(), declaration.ty().structuralTy());
     }
     for (final var reference : references) {
       Assertions.assertAll(
         () -> Assertions.assertSame(declaration, reference.target()),
-        () -> Assertions.assertSame(declaration.resolvedTy(), reference.ty())
+        () -> Assertions.assertSame(declaration.ty().structuralTy(), reference.ty())
       );
     }
   }
@@ -599,18 +599,18 @@ class HirTyCommonVisitorPassTest {
     });
     HirTyCommonVisitorPass.pass(root);
     final var declaration = declarations.getFirst();
-    final var resolved = declaration.resolvedTy();
+    final var resolved = declaration.ty().structuralTy();
     declaration.typeAnnotation(new DynamicTy(Ty.LONG));
     Assertions.assertAll(
-      () -> Assertions.assertSame(resolved, declaration.resolvedTy()),
+      () -> Assertions.assertSame(resolved, declaration.ty().structuralTy()),
       () -> Assertions.assertSame(resolved, HirExprs.getBindingTy(declaration)),
       () -> Assertions.assertSame(resolved, root.ty())
     );
     HirTyCommonVisitorPass.pass(root);
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.LONG, declaration.resolvedTy()),
+      () -> Assertions.assertEquals(Ty.LONG, declaration.ty().structuralTy()),
       () -> Assertions.assertEquals(Ty.LONG, root.ty()),
-      () -> Assertions.assertEquals(Ty.VOID, declaration.ty())
+      () -> Assertions.assertEquals(Ty.VOID, declaration.ty().completionTy())
     );
   }
 
@@ -636,9 +636,9 @@ class HirTyCommonVisitorPassTest {
       final var declaration = struct.declarations()[i];
       final var field = layout.fields()[i];
       Assertions.assertAll(
-        () -> Assertions.assertEquals(Ty.VOID, declaration.ty()),
+        () -> Assertions.assertEquals(Ty.VOID, declaration.ty().completionTy()),
         () -> Assertions.assertEquals(declaration.lexeme().name(), field.name()),
-        () -> Assertions.assertSame(declaration.resolvedTy(), field.ty())
+        () -> Assertions.assertSame(declaration.ty().structuralTy(), field.ty())
       );
     }
     Assertions.assertInstanceOf(Hir.Identifier.class, struct.declarations()[0].typeAnnotation().expression());
@@ -866,15 +866,15 @@ class HirTyCommonVisitorPassTest {
       root = raising.raise(root).root();
       Assertions.assertAll(
         () -> Assertions.assertSame(annotation.expression(), declaration.typeAnnotation().expression()),
-        () -> Assertions.assertFalse(Tys.containsInferred(declaration.resolvedTy()))
+        () -> Assertions.assertFalse(Tys.containsInferred(declaration.ty().structuralTy()))
       );
       if (annotation.expression() == null) {
         Assertions.assertSame(annotation, declaration.typeAnnotation());
         Assertions.assertEquals(Ty.INFER, declaration.typeAnnotation().ty());
       } else {
-        Assertions.assertEquals(declaration.resolvedTy(), declaration.typeAnnotation().ty());
+        Assertions.assertEquals(declaration.ty().structuralTy(), declaration.typeAnnotation().ty());
       }
-      Assertions.assertEquals(declaration.resolvedTy(), root.ty());
+      Assertions.assertEquals(declaration.ty().structuralTy(), root.ty());
     }
   }
 
@@ -904,7 +904,7 @@ class HirTyCommonVisitorPassTest {
     }, true);
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.INFER, declaration.typeAnnotation().ty()),
-      () -> Assertions.assertEquals(expected, declaration.resolvedTy()),
+      () -> Assertions.assertEquals(expected, declaration.ty().structuralTy()),
       () -> Assertions.assertEquals(expected, root.ty())
     );
   }
@@ -944,7 +944,7 @@ class HirTyCommonVisitorPassTest {
     final var declaration = declarations.getFirst();
     final var annotation = declaration.typeAnnotation();
     HirTyCommonVisitorPass.resolveAvailableTypes(root);
-    final var initial = declaration.resolvedTy();
+    final var initial = declaration.ty().structuralTy();
     root.visit(new HirVisitor() {
       @Override
       public void visitLiteral(final Hir.Literal literal) {
@@ -957,15 +957,15 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertSame(annotation, declaration.typeAnnotation()),
       () -> Assertions.assertTrue(Tys.containsInferred(annotation.ty())),
-      () -> Assertions.assertNotEquals(initial, declaration.resolvedTy()),
-      () -> Assertions.assertEquals(root.ty(), declaration.resolvedTy()),
-      () -> Assertions.assertSame(declaration.resolvedTy(), HirExprs.getBindingTy(declaration))
+      () -> Assertions.assertNotEquals(initial, declaration.ty().structuralTy()),
+      () -> Assertions.assertEquals(root.ty(), declaration.ty().structuralTy()),
+      () -> Assertions.assertSame(declaration.ty().structuralTy(), HirExprs.getBindingTy(declaration))
     );
     HirTyCommonVisitorPass.pass(root);
     Assertions.assertAll(
       () -> Assertions.assertSame(annotation, declaration.typeAnnotation()),
       () -> Assertions.assertTrue(Tys.containsInferred(annotation.ty())),
-      () -> Assertions.assertEquals(root.ty(), declaration.resolvedTy())
+      () -> Assertions.assertEquals(root.ty(), declaration.ty().structuralTy())
     );
     root.visit(new HirVisitor() {
       @Override
@@ -983,7 +983,7 @@ class HirTyCommonVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertSame(annotation, declaration.typeAnnotation()),
       () -> Assertions.assertTrue(Tys.containsInferred(annotation.ty())),
-      () -> Assertions.assertEquals(expected, declaration.resolvedTy()),
+      () -> Assertions.assertEquals(expected, declaration.ty().structuralTy()),
       () -> Assertions.assertEquals(expected, root.ty())
     );
   }

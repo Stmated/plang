@@ -16,8 +16,7 @@ test-method: given__varargs_and_generated_sequence_flags__when__rendered__then__
           (parameters
             (Parameter
               (vararg true)
-              (ty VOID)
-              (resolvedTy INTEGER)
+              (ty (completion VOID structural INTEGER declaredConstraint INTEGER))
               (lexeme
                 (Lexeme
                   (name "p")

@@ -21,7 +21,7 @@ public class HirFnTyVisitorPass {
 
       final var parameter = signature.parameters()[i];
       final var parameterName = parameter.lexeme().name();
-      final var paramTy = parameter.resolvedTy();
+      final var paramTy = Tys.structuralTy(parameter.ty());
 
       parameterTys[i] = new TyParam(parameterName, paramTy);
     }

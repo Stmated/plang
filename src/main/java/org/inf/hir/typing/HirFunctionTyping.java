@@ -19,10 +19,10 @@ public final class HirFunctionTyping {
     // TODO: `Max.min` feels very weird. Should probably throw exception if they're not the same length, but then test cases fail
     for (var i = 0; i < Math.min(parameters.length, constraint.parameters().length); i++) {
       final var param = parameters[i];
-      final var paramAnnotationTy = param.typeAnnotation().ty();
+      final var paramAnnotationTy = Tys.declaredConstraintTy(param.ty());
       final var constraintParamTy = constraint.parameters()[i].ty();
-      if (Tys.isInferred(paramAnnotationTy) && !Tys.isInferred(constraintParamTy) && !Objects.equals(param.resolvedTy(), constraintParamTy)) {
-        param.resolvedTy(constraintParamTy);
+      if (Tys.isInferred(paramAnnotationTy) && !Tys.isInferred(constraintParamTy) && !Objects.equals(Tys.structuralTy(param.ty()), constraintParamTy)) {
+        param.ty(Tys.withStructural(param.ty(), constraintParamTy));
         changed = true;
       }
     }

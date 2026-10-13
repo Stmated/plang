@@ -46,7 +46,7 @@ public final class ThirToMirLowering {
     HirTypeDefinitions typeDefinitions;
 
     void collect(Hir.Expression root) {
-      typeDefinitions = new HirTypeDefinitions(root);
+      typeDefinitions = new HirTypeDefinitions();
       root.visit(new HirVisitor() {
         @Override
         public void visitAssignment(Hir.Assignment assignment) {
@@ -245,7 +245,7 @@ public final class ThirToMirLowering {
   }
 
   private Flow declaration(Hir.Dec declaration) {
-    locals.computeIfAbsent(declaration, key -> function.newLocal(declaration.lexeme().name(), MirTypes.valueType(declaration.resolvedTy())));
+    locals.computeIfAbsent(declaration, key -> function.newLocal(declaration.lexeme().name(), MirTypes.valueType(Tys.structuralTy(declaration.ty()))));
     return UNIT;
   }
 
@@ -288,7 +288,7 @@ public final class ThirToMirLowering {
         return UNIT;
       }
       final var value = ((Continues) rhs).value();
-      final var type = MirTypes.valueType(declaration.resolvedTy());
+      final var type = MirTypes.valueType(Tys.structuralTy(declaration.ty()));
       final var local = function.newLocal(declaration.lexeme().name(), type);
       locals.put(declaration, local);
       emit(new Mir.Store(local, convert(value, type)));

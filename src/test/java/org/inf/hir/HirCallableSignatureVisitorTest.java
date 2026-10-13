@@ -84,8 +84,8 @@ class HirCallableSignatureVisitorTest {
       .filter(identifier -> identifier.target() == parameter).findFirst().orElseThrow();
     assertAll(
       () -> assertSame(parameter, reference.target()),
-      () -> assertSame(parameter.resolvedTy(), HirCallableSignatureVisitor.find(reference)),
-      () -> assertSame(parameter.resolvedTy(), HirExprs.getCallableSignature(parameter))
+      () -> assertSame(parameter.ty().structuralTy(), HirCallableSignatureVisitor.find(reference)),
+      () -> assertSame(parameter.ty().structuralTy(), HirExprs.getCallableSignature(parameter))
     );
   }
 

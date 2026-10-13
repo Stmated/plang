@@ -8,24 +8,15 @@ import java.util.Set;
 /// Classifies source type definitions without deriving types from runtime values.
 public final class HirTypeDefinitions {
 
-  private final Map<Hir.Dec, Hir.Expression> definitions = new IdentityHashMap<>();
   private final Map<Hir.Expression, Boolean> typeSyntax = new IdentityHashMap<>();
   private final Map<Hir.Expression, Boolean> unionDefinitions = new IdentityHashMap<>();
 
-  public HirTypeDefinitions(final Hir.Expression root) {
-    root.visit(new HirVisitor() {
-      @Override
-      public void visitAssignment(final Hir.Assignment expr) {
-        if (expr.lhs() instanceof Hir.Dec declaration) {
-          definitions.put(declaration, expr.rhs());
-        }
-        HirVisitor.super.visitAssignment(expr);
-      }
-    });
-  }
-
   public Hir.Expression definition(final Hir.Expression target) {
-    return target instanceof Hir.Dec declaration ? definitions.get(declaration) : target;
+    if (target instanceof Hir.Dec declaration) {
+      final var initialization = declaration.initialization();
+      return initialization == null ? null : initialization.rhs();
+    }
+    return target;
   }
 
   public boolean isType(final Hir.Expression expr) {

@@ -67,7 +67,7 @@ class HirTupleContextualTypingVisitorPassTest {
     root.visit(new HirVisitor() {
       @Override
       public void visitDec(final Hir.Dec declaration) {
-        declaration.resolvedTy(new TyStruct(new TyField[]{new TyField(null, Ty.LONG)}, true));
+        declaration.ty(Tys.withStructural(declaration.ty(), new TyStruct(new TyField[]{new TyField(null, Ty.LONG)}, true)));
         declarations.add(declaration);
       }
 

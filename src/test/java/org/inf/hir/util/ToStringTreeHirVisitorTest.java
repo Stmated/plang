@@ -230,16 +230,24 @@ class ToStringTreeHirVisitorTest {
   static Stream<Arguments> completionTypes() {
     return Stream.of(
       Arguments.of(Ty.INTEGER, "(ty INTEGER)"),
-      Arguments.of(new TyCompletion(Ty.INTEGER, Ty.INTEGER), "(ty INTEGER)"),
-      Arguments.of(new TyCompletion(new TyValueArray(Ty.INTEGER, 1), new TyValueArray(Ty.INTEGER, 1)),
+      Arguments.of(new TyInfo(Ty.INTEGER, Ty.INTEGER, null), "(ty INTEGER)"),
+      Arguments.of(new TyInfo(new TyValueArray(Ty.INTEGER, 1), new TyValueArray(Ty.INTEGER, 1), null),
         "(ty (array size=1 INTEGER))"),
-      Arguments.of(new TyCompletion(null, null), "(ty null)"),
-      Arguments.of(new TyCompletion(null, Ty.INTEGER), "(ty (completion null structural INTEGER))"),
-      Arguments.of(new TyCompletion(Ty.INTEGER, null), "(ty (completion INTEGER structural null))"),
-      Arguments.of(new TyCompletion(Ty.INTEGER, Ty.LONG), "(ty (completion INTEGER structural LONG))"),
+      Arguments.of(new TyInfo(null, null, null), "(ty null)"),
+      Arguments.of(new TyInfo(null, Ty.INTEGER, null), "(ty (completion null structural INTEGER))"),
+      Arguments.of(new TyInfo(Ty.INTEGER, null, null), "(ty (completion INTEGER structural null))"),
+      Arguments.of(new TyInfo(Ty.INTEGER, Ty.LONG, null), "(ty (completion INTEGER structural LONG))"),
       Arguments.of(Tys.withCompletion(Ty.DEADEND, new TyValueArray(Ty.INTEGER, 1)),
         "(ty (completion DEADEND structural (array size=1 INTEGER)))"),
-      Arguments.of(Tys.withCompletion(Ty.DEADEND, null), "(ty DEADEND)")
+      Arguments.of(Tys.withCompletion(Ty.DEADEND, null), "(ty DEADEND)"),
+      Arguments.of(Tys.typeInfo(Ty.INTEGER, Ty.INTEGER, Ty.INFER),
+        "(ty (completion INTEGER structural INTEGER declaredConstraint INFER))"),
+      Arguments.of(Tys.typeInfo(Ty.VOID, Ty.DEADEND, Ty.INFER),
+        "(ty (completion VOID structural null declaredConstraint INFER))"),
+      Arguments.of(Tys.typeInfo(Ty.VOID, Ty.DEADEND, null),
+        "(ty (completion VOID structural null))"),
+      Arguments.of(Tys.typeInfo(Ty.VOID, null, Ty.BOOLEAN),
+        "(ty (completion VOID structural null declaredConstraint BOOLEAN))")
     );
   }
 
@@ -261,8 +269,7 @@ class ToStringTreeHirVisitorTest {
     assertEquals("""
       (Dec
         (mutability IMMUTABLE)
-        (ty VOID)
-        (resolvedTy null)
+        (ty (completion VOID structural null declaredConstraint INFER))
         (lexeme
           (Lexeme
             (name "self")
@@ -323,8 +330,7 @@ class ToStringTreeHirVisitorTest {
 
     final var binding = printer.render(declarations.getFirst());
     final var tuple = printer.render(tuples.getFirst());
-    assertTrue(binding.contains("(ty VOID)"));
-    assertTrue(binding.contains("(resolvedTy INTEGER"));
+    assertTrue(binding.contains("(ty (completion VOID structural INTEGER declaredConstraint INFER))"));
     assertTrue(binding.contains("(typeAnnotation\n    (DynamicTy\n      (ty INFER)\n      (expression null)))"));
     assertTrue(tuple.contains("(contextualType (struct (\"value\" CHAR"));
     assertFalse(binding.contains("valueTy"));

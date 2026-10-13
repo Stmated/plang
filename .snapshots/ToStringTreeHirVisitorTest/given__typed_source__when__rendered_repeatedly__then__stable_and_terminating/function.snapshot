@@ -16,8 +16,7 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
           (lhs
             (Dec
               (mutability IMMUTABLE)
-              (ty VOID)
-              (resolvedTy (function vararg=false (parameters ("x" (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+              (ty (completion VOID structural (function vararg=false (parameters ("x" (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) declaredConstraint INFER))
               (lexeme
                 (Lexeme
                   (name "f")
@@ -35,8 +34,7 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
                   (parameters
                     (Parameter
                       (vararg false)
-                      (ty VOID)
-                      (resolvedTy (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+                      (ty (completion VOID structural (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]) declaredConstraint (number INTEGER width=32 explicit=true signed=true radix=10 flags=[])))
                       (lexeme
                         (Lexeme
                           (name "x")

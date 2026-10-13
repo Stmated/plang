@@ -74,7 +74,7 @@ public class HirUnionSyntaxTransformerPass {
         return builtIn == null ? expr : builtIn;
       }
     });
-    final var definitions = new HirTypeDefinitions(named);
+    final var definitions = new HirTypeDefinitions();
     return named.transform(new HirTransformer() {
       @Override
       public Hir.Expression transformBinaryOperation(final Hir.BinaryOperation expr) {

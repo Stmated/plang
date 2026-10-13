@@ -17,9 +17,10 @@ import org.inf.ty.util.TypeComparison;
 public final class HirDeclarationTyping {
 
   public static void resolveBinding(final Hir.Dec declaration, final Ty actual, final boolean availableOnly) {
-    final var constraint = declaration.typeAnnotation().ty();
-    final var resolved = resolve(constraint, actual);
-    declaration.resolvedTy(resolved);
+    final var constraint = Tys.declaredConstraintTy(declaration.ty());
+    final var structuralActual = Tys.isDeadend(actual) ? Tys.structuralTy(actual) : actual;
+    final var resolved = resolve(constraint, structuralActual);
+    declaration.ty(Tys.withStructural(declaration.ty(), resolved));
     if (availableOnly || Tys.isDeadend(actual) || !requiresMemberValidation(constraint)) {
       return;
     }

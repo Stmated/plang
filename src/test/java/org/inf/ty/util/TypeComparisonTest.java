@@ -91,7 +91,17 @@ class TypeComparisonTest {
       Arguments.of(Ty.BOOLEAN, new TyValueBoolean(), true),
       Arguments.of(Ty.INTEGER, Ty.BOOLEAN, false),
       Arguments.of(null, Ty.INTEGER, false),
-      Arguments.of(null, null, true)
+      Arguments.of(null, null, true),
+      Arguments.of(Tys.typeInfo(Ty.INTEGER, Ty.INTEGER, Ty.INFER), Ty.INTEGER, true),
+      Arguments.of(Tys.typeInfo(Ty.INTEGER, Ty.INTEGER, Ty.INFER),
+        Tys.typeInfo(Ty.INTEGER, explicitInt, Ty.BOOLEAN), true),
+      Arguments.of(Tys.typeInfo(Ty.VOID, Ty.INTEGER, Ty.INFER),
+        Tys.typeInfo(Ty.VOID, Ty.BOOLEAN, Ty.INFER), false),
+      Arguments.of(Tys.typeInfo(Ty.VOID, null, Ty.INFER),
+        Tys.typeInfo(Ty.VOID, Ty.INTEGER, Ty.INFER), false),
+      Arguments.of(Tys.typeInfo(Ty.DEADEND, Ty.DEADEND, Ty.INFER), Ty.DEADEND, true),
+      Arguments.of(new TyValueArray(Tys.typeInfo(Ty.INTEGER, Ty.INTEGER, Ty.INFER), 2),
+        new TyValueArray(explicitInt, 2), true)
     );
   }
 

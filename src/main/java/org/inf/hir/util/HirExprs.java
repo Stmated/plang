@@ -26,14 +26,19 @@ public class HirExprs {
     return false;
   }
 
-  /// Reads the type for an identifier target or assignment destination, not its expression completion.
+  /// Reads bound-value completion, not declaration/parameter completion.
+  /// Declarations read their initialization assignment's typed completion, retaining binding structure.
+  /// Initializer changes require typing to refresh that completion.
   /// Other targets, including functions and identifiers, expose their resolved completion type.
   public static Ty getBindingTy(final Hir.Expression expression) {
     if (expression instanceof Hir.Dec declaration) {
-      return declaration.resolvedTy();
+      final var structural = Tys.structuralTy(declaration.ty());
+      final var initialization = declaration.initialization();
+      return initialization != null && Tys.isDeadend(initialization.ty())
+        ? Tys.withCompletion(Ty.DEADEND, structural) : structural;
     }
     if (expression instanceof Hir.Parameter parameter) {
-      return parameter.resolvedTy();
+      return Tys.structuralTy(parameter.ty());
     }
     if (expression instanceof Hir.DotAccess access) {
       return getMemberTy(access);
@@ -44,13 +49,24 @@ public class HirExprs {
     return Tys.completionTy(expression.ty());
   }
 
+  /// Reads a binding destination without inspecting initialization completion.
+  public static Ty getBindingStructureTy(final Hir.Expression expression) {
+    if (expression instanceof Hir.Identifier identifier && identifier.target() != null) {
+      return getBindingStructureTy(identifier.target());
+    }
+    if (expression instanceof Hir.Dec || expression instanceof Hir.Parameter) {
+      return Tys.structuralTy(expression.ty());
+    }
+    return Tys.structuralTy(getBindingTy(expression));
+  }
+
   /// Declaration initializers use source constraints, including omitted array element types, never inferred bindings.
   public static Ty getAssignmentContextTy(final Hir.Expression target) {
     if (target instanceof final Hir.Dec declaration) {
-      final var constraint = declaration.typeAnnotation().ty();
+      final var constraint = Tys.declaredConstraintTy(declaration.ty());
       return Tys.isInferred(constraint) ? null : constraint;
     }
-    return getBindingTy(target);
+    return getBindingStructureTy(target);
   }
 
   /// Function bodies use source return constraints, never previously inferred returns.

@@ -82,7 +82,7 @@ class HirIntegerLiteralTypingVisitorPassTest {
     root.visit(new HirVisitor() {
       @Override
       public void visitDec(final Hir.Dec declaration) {
-        declaration.resolvedTy(new TyValueArray(Tys.fromString("uint8", MachineTarget.T64), 1));
+        declaration.ty(Tys.withStructural(declaration.ty(), new TyValueArray(Tys.fromString("uint8", MachineTarget.T64), 1)));
       }
     });
     Assertions.assertDoesNotThrow(() -> HirIntegerLiteralTypingVisitorPass.pass(root));

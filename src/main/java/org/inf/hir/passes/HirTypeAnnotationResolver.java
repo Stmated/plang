@@ -18,8 +18,8 @@ public final class HirTypeAnnotationResolver {
   private final HirTypeDefinitions definitions;
   private final Map<Hir.Expression, Ty> resolved = new IdentityHashMap<>();
 
-  HirTypeAnnotationResolver(final Hir.Expression root) {
-    definitions = new HirTypeDefinitions(root);
+  HirTypeAnnotationResolver() {
+    definitions = new HirTypeDefinitions();
   }
 
   Ty resolve(final Hir.Expression expr) {
@@ -43,9 +43,9 @@ public final class HirTypeAnnotationResolver {
       case Hir.Array array -> Tys.structuralTy(array.ty());
       case Hir.Union union -> union.unionTy();
       case Hir.Tuple tuple -> Tys.asStructural(tuple.ty(), TyStruct.class);
-      case Hir.Dec dec -> dec.resolvedTy();
+      case Hir.Dec dec -> Tys.structuralTy(dec.ty());
       case Hir.Struct s -> s.ty();
-      case Hir.Parameter param -> param.resolvedTy();
+      case Hir.Parameter param -> Tys.structuralTy(param.ty());
       case Hir.Block block -> resolvedType(block.children());
       case Hir.Return ret -> resolvedType(ret.expression());
       default -> Tys.completionTy(expr.ty());

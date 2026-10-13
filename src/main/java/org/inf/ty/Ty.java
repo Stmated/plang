@@ -62,6 +62,12 @@ public interface Ty {
     return this == DEADEND ? null : this;
   }
 
+  /// Null means no recorded source constraint, not an omitted annotation (`INFER`).
+  @Nullable
+  default Ty declaredConstraintTy() {
+    return null;
+  }
+
   default boolean isDeadend() {
     return Tys.isDeadend(this);
   }

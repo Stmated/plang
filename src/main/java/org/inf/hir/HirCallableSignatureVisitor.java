@@ -60,12 +60,12 @@ public final class HirCallableSignatureVisitor implements HirVisitor {
 
   @Override
   public void visitDec(final Hir.Dec expression) {
-    type = expression.resolvedTy();
+    type = Tys.structuralTy(expression.ty());
   }
 
   @Override
   public void visitParameter(final Hir.Parameter expression) {
-    type = expression.resolvedTy();
+    type = Tys.structuralTy(expression.ty());
   }
 
   @Override

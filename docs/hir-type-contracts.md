@@ -7,8 +7,8 @@ HIR separates expression completion, binding types, source constraints, and cont
 | Concept | Contract |
 |---|---|
 | Expression completion | `Expression.ty()` carries the resolved type; `Tys.completionTy(expression.ty())` selects normal completion. `VOID` means completion without a value; `DEADEND` means no normal completion. Neither is a missing type. |
-| Binding type | `Dec.resolvedTy` and `Parameter.resolvedTy` describe the bound value. Their own expression completion is `VOID`; identifiers read the binding type, not the declaration/parameter completion type. |
-| Source-declared constraint | `Dec.typeAnnotation`, `Parameter.typeAnnotation`, `FunctionSignature.returnTypeAnnotation`, and `Array.elementType` use non-expression `Hir.DynamicTy` containers. Their `ty` values retain source constraints, including inference placeholders; optional source expressions preserve aliases and composite type syntax. |
+| Binding type | `Tys.structuralTy(Dec.ty())` and `Tys.structuralTy(Parameter.ty())` describe the bound value. Their own completion is `VOID`; `HirExprs.getBindingTy` combines that structure with the initialization assignment's typed noncompletion for identifier reads. |
+| Source-declared constraint | Declaration/parameter `TyInfo.declaredConstraint` retains source requirements, including inference placeholders. `DynamicTy` preserves annotation syntax and the annotation resolver's input. Function-return and array-element constraints still use their `DynamicTy` containers. |
 | Callable signature | The resolved `TyFn` supplies parameter types and `returnTy()`. `FunctionSignature.ty()` is authoritative; no duplicate return-type cache is needed. Creating a function value does not execute its body. |
 | Aggregate/member shape | Construction-target, member, indexing, and spread-field queries expose the specific resolved layout or selected type required by the consumer. They do not infer types or provide a universal structural fallback. |
 | Resolved structural type | `Tys.structuralTy(expression.ty())` projects retained typing information from the same `ty` storage; typed inspection uses `Tys.asStructural`. A tuple's retained structure is not automatically an available runtime layout. |
@@ -33,13 +33,13 @@ Typing passes own inference and refresh resolved information after contextual ty
 
 Tuple typing constructs layouts without checking member validity. Tuple validation distinguishes annotation constraints, which may retain placeholders, from runtime value members, which must have resolved value types.
 
-Declaration and parameter bindings store `resolvedTy`. Typing initializes explicit constraints and refreshes inferred bindings, and lambda lifting supplies resolved types for generated bindings. Declaration and parameter inference preserve `typeAnnotation`. Contextually inferred parameters retain their source placeholders; validation and resolved signatures read their binding types.
+Declaration and parameter typing refreshes structural bindings without changing completion `VOID` or turning earlier inference into source restrictions. Contextually inferred parameters retain their source placeholders; validation, signatures, struct fields, and MIR storage select binding structure.
 
 Function return inference preserves `returnTypeAnnotation`, including inference placeholders and aliases. The resolved `FunctionSignature.ty().returnTy()` refreshes as the body is refined. Rebuilding or lifting a signature retains that return type and uses the current resolved parameters, including generated captures.
 
 ### Binding storage and annotation resolution
 
-`resolvedTy` is the binding's current type, not constraint provenance. `DynamicTy.ty` currently resolves the source annotation only; it does not fill omissions from an initializer or use-site context.
+Declarations and parameters store `TyInfo` in their ordinary `ty` field. Annotation refresh updates its declared constraint; binding inference updates its structure. `DynamicTy.ty` resolves annotations only, never omissions supplied by an initializer or use-site context. Its broader ownership refactor is deferred.
 
 ```inf
 val values: [;2] = [true, false]; // Annotation resolves to [;INFER;2]; binding resolves to [;bool;2].
@@ -47,9 +47,21 @@ val Fn = (value: uint8): uint8;
 val f: Fn = (p) => p;            // p has no source annotation; its binding resolves to uint8.
 ```
 
-Keeping these answers distinct lets passes infer again without mistaking an earlier inferred type for an explicit requirement. `typeAnnotation.expression` can preserve the source independently, so separate node fields are not inherently necessary: a redesign could store the binding type in `DynamicTy.ty` and derive source requirements from the syntax. It must also define how omitted annotations and static/generated annotations without source expressions retain their meaning. Array-element and function-return annotation containers have their own consumers and cannot silently adopt binding semantics.
+Keeping these answers distinct lets passes infer again without mistaking an earlier inferred type for an explicit requirement. Preserved syntax alone does not supply every constraint: null `DynamicTy.expression` covers omitted, static, and generated annotations.
 
-Adding a constraint projection to `TyCompletion` would move, not eliminate, the two answers. Its current normalization preserves completion and structure only; source requirements need a distinct contract if stored there. Prefer source-derived requirements if they avoid another stored projection without freezing inference or losing explicit restrictions.
+Initializer noncompletion is queried, not stored again on the binding:
+
+```inf
+val implicit = { return true; };       // Constraint INFER; no completing bound value.
+val explicit: bool = { return true; }; // Constraint bool; still no completing bound value.
+val wide: uint16 = 255u8;              // Binding destination uint16, not initializer uint8.
+```
+
+Both noncompleting declarations remain `VOID` nodes; their assignments and identifier reads complete with `DEADEND`. Binding queries retain known structure without copying the declaration's constraint or a transfer payload. Noncompletion never changes a constraint into `DEADEND`.
+
+`Dec.initialization` is a non-owning reference to its current assignment, excluded from traversal, equality, hashing, and tree output. Assignment construction/replacement maintains it. Binding completion reads that assignment's existing typed completion in constant time; initializer changes require retyping, as with other cached HIR expression types. Type-definition queries use the current RHS instead of a declaration-to-RHS index.
+
+Generated captures use structural value types as parameter requirements, not the original initialization flow. Rebinding identifiers refreshes body typing before the lifted signature is consumed. Array-element and function-return containers retain their separate inference policies.
 
 ## Type inspection
 
@@ -67,7 +79,48 @@ final var diverges = Tys.isDeadend(expression.ty());
 `Ty.INFER` is an explicit inference placeholder; null usually means resolution is unavailable or a pass has not populated a field yet. `Tys.isInferred` accepts both for existing inference decisions, but they remain distinct representations.
 Use `isDeadend` for completion decisions rather than comparing directly with the sentinel.
 
-### Completion and structural projections
+### Shared type information
+
+`TyInfo` stores `completion`, `structural`, and `declaredConstraint` directly. Their accessors return the stored answers; there is no generic resolved projection.
+
+| View | Meaning |
+|---|---|
+| `completionTy()` | Normal expression completion, including `VOID` and `DEADEND`. |
+| `structuralTy()` | Retained structural type, independently of completion; `DEADEND` itself has no structure. |
+| `declaredConstraintTy()` | Source requirement; null means no recorded constraint, `INFER` means an omitted requirement. |
+
+```java
+final var constraint = new TyValueArray(Ty.INFER, 2);
+final var booleans = new TyValueArray(Ty.BOOLEAN, 2);
+final var binding = Tys.typeInfo(Ty.VOID, booleans, constraint);
+binding.completionTy();         // VOID
+binding.structuralTy();         // [;bool;2]
+binding.declaredConstraintTy(); // [;INFER;2]
+
+final var integers = new TyValueArray(Ty.INTEGER, 2);
+final var refined = Tys.withStructural(binding, integers); // Completion and source constraint stay unchanged.
+final var explicit = Tys.withDeclaredConstraint(refined, integers); // Current answers stay unchanged.
+```
+
+Declaration and parameter nodes use this representation. Inference remains the responsibility of typing passes; the helpers replace selected answers without inferring or validating.
+
+```java
+final var transfer = Tys.typeInfo(Ty.DEADEND, null, Ty.INFER);
+transfer.completionTy(); // DEADEND: no normal completion
+transfer.structuralTy(); // null: no retained value shape
+```
+
+Null completion is unresolved information; null structure is unavailable structural information, including the expected absence on `DEADEND`. Neither is `INFER` or `VOID`. Explicit static and generated constraints remain recorded even without source syntax. Expected use-site types, transfer payloads, body results, and layout availability are not additional stored projections.
+
+`Tys.typeInfo` flattens input containers: completion and constraint arguments contribute their completion type; structure contributes its structural type. To copy a container's source requirement, pass its `declaredConstraintTy()` explicitly. The stored projections do not nest `TyInfo` wrappers.
+
+Normalization interns containers by the identities of all three selected answers, preserving source and alias objects rather than substituting equal projections from another binding. A plain type is sufficient only when its structural view matches the supplied structure and the constraint is absent; even an equal explicit constraint or `INFER` requires a container. Numeric widths and flags are preserved.
+
+Container equality includes all three answers. `TypeComparison.same` compares completion and structure, ignoring source constraints; value compatibility selects the appropriate value projection. `Tys.containsInferred` checks completion and structure, not source placeholders; absent structure on `DEADEND` is not an inference hole. Checking the declared constraint separately still detects its omissions.
+
+Binding noncompletion reuses typed initialization completion, not a fourth projection or a separately stored binding sentinel. Destination checks select structure even when obtaining the bound value cannot complete.
+
+### Completion and structural composition
 
 ```java
 final var type = Tys.withCompletion(Ty.DEADEND, arrayType);
@@ -78,11 +131,11 @@ Tys.withCompletion(arrayType, arrayType); // arrayType, without a wrapper
 Tys.withCompletion(Ty.DEADEND, null);     // DEADEND, without a structural value
 ```
 
-`TyCompletion` retains distinct completion and structural projections. `Tys.withCompletion` flattens nested pairs and interns distinct pairs; equal projections keep the original type, including explicit widths and flags. Null remains unresolved; it is not replaced with `INFER`.
+`Tys.withCompletion` composes expression completion and retained structure without copying source constraints. A `DEADEND` second argument has no retained structure. Matching completion/structure keep the plain type; distinct answers use `TyInfo`. Use `Tys.typeInfo` with an explicit constraint or the refinement helpers when source requirements must be retained.
 
-Use the null-safe `Tys.completionTy` and `Tys.structuralTy` when resolution may be unavailable. `Tys.isDeadend`, common-denominator resolution, and branch unions consume completion. `TypeComparison.same` compares both projections when given a pair; value compatibility must select completion instead. A branch merge drops transferring arms without including their retained structures.
+Use the null-safe `Tys` projections when resolution may be unavailable. `Tys.isDeadend`, common-denominator resolution, and branch unions consume completion. A branch merge drops transferring arms without including their retained structures or source constraints.
 
-The four aggregate/indexing nodes store one pair, not duplicate type fields. Binding types, declared constraints, and expected tuple layouts remain separate. Transfers retain `DEADEND` with no structure, never their return/break payloads.
+The four aggregate/indexing nodes store one container when completion and retained structure differ, not duplicate type fields. Their annotations and expected tuple layouts remain separate. Transfers retain `DEADEND` with no structure, never their return/break payloads.
 
 `asStructural(TyStruct.class)` exposes metadata, not an available layout: a diverging tuple may match while construction/member/spread queries still have no layout. Neither typed projection collects function body results; `HirBodyResultTyping.resolve(body)` combines reachable returns with normal completion.
 
@@ -164,9 +217,9 @@ A noncontinuing script with no reachable returns has external type `DEADEND`. MI
 
 ## Context-specific queries
 
-`Tys.getBindingTy` selects the type for identifier targets and assignment destinations. It reads declaration and parameter `resolvedTy`, selects resolved member/indexed types, and uses completion types for other targets, including resolved function signatures. Consumers with a known declaration or parameter read `resolvedTy` directly; other consumers use the helper instead of repeating node-kind checks.
+`HirExprs.getBindingTy` reads declaration/parameter structure and the current initialization assignment's typed completion. Identifiers consume that completion/structure pair. `HirExprs.getBindingStructureTy` reads destinations and captures without inspecting initialization completion. Other targets supply selected member/indexed types or their ordinary completion.
 
-`Tys.getAssignmentContextTy` selects initializer constraints separately: declarations supply source annotations, including omitted array element types, while other assignment targets supply binding types. Prior inferred binding types are never initializer constraints.
+`HirExprs.getAssignmentContextTy` selects initializer constraints separately: declarations supply declared constraints, including omitted array elements, while other targets supply binding structure. Prior inferred declaration types are never initializer constraints.
 
 Declaration inference resolves whole bindings or omitted array element types from the current initializer. Recursive array/tuple resolution preserves explicit source constraints; previously inferred binding types are not constraints. Inferred members refresh when the initializer changes, without modifying the annotation tree.
 
@@ -188,7 +241,7 @@ val Constrained: Complete = (value): bool;      // error, despite the complete e
 
 Lambdas have a separate parameter policy: a concrete expected signature supplies an entirely omitted annotation by position, or the lambda may declare a complete equivalent annotation. Parameter names need not match. Partially annotated parameters such as `(arr: [;2])` are not completed from the expected signature.
 
-`Tys.getFunctionReturnContextTy` selects source return constraints for body contextual typing; its use-site overload supplies an expected return where needed. Previously inferred returns are not body constraints. Ordinary lambda returns are inferred from the body; partially annotated array returns infer the element type while retaining the declared length. Validation compares the actual body result collected by `HirBodyResultTyping` with the resolved signature return.
+`HirExprs.getFunctionReturnContextTy` selects source return constraints for body contextual typing; its use-site overload supplies an expected return where needed. Previously inferred returns are not body constraints. Ordinary lambda returns are inferred from the body; partially annotated array returns infer the element type while retaining the declared length. Validation compares the actual body result collected by `HirBodyResultTyping` with the resolved signature return.
 
 ```inf
 val good = ():[;2] => [10,20];
@@ -200,9 +253,9 @@ A body ending in a synthetic `Return` can complete with `DEADEND` while its coll
 Fixed array lengths are exact at binding/reassignment, argument, field, and return boundaries. Existing unspecified-length arrays such as `[;int;]` remain supported; they are not minimum-length constraints.
 Array lengths are value expressions, not type expressions. Existing constant folding is retained; identifier lengths currently remain unspecified rather than being evaluated at comptime.
 
-`Tys.getCallableSignature` selects a single resolved `TyFn` for call typing and argument contexts. `Tys.getCallableValueTy` also retains function-containing unions for compatibility diagnostics; neither query exposes nonfunction aggregate shapes or infers missing types. A union does not establish a single callable signature.
+`HirExprs.getCallableSignature` selects a single resolved `TyFn` for call typing and argument contexts. `HirExprs.getCallableValueTy` also retains function-containing unions for compatibility diagnostics; neither query exposes nonfunction aggregate shapes or infers missing types. A union does not establish a single callable signature.
 
-Callable lookup follows syntactic result wrappers, bindings, and conversion destinations without entering function bodies or return/break payloads. Higher-order calls read their resolved callee's return signature, not a cached hypothetical result. Member/indexed calls read `Tys.getMemberTy`/`Tys.getIndexedTy`; conditionals select resolved branch information and include `VOID` for missing arms.
+Callable lookup follows syntactic result wrappers, bindings, and conversion destinations without entering function bodies or return/break payloads. Higher-order calls read their resolved callee's return signature, not a cached hypothetical result. Member/indexed calls read `HirExprs.getMemberTy`/`HirExprs.getIndexedTy`; conditionals select resolved branch information and include `VOID` for missing arms.
 
 ```inf
 val apply = (fn: (value: uint8): uint8): uint8 => fn(1);
@@ -212,9 +265,9 @@ use()
 
 The target still supplies `apply`'s signature for argument typing and diagnostics. The call completes with `DEADEND`; only `true`, not the nominal `uint8` call result, contributes to `use`'s return type.
 
-`HirExprs.getConstructionTargetLayout` and `HirExprs.getMemberReceiverLayout` expose only available struct/tuple layouts for their respective contexts. They follow result wrappers, resolved bindings, conversion destinations, call return signatures, construction targets, and selected members. They do not infer layouts, enter function bodies or transfer payloads, or reconstruct tuples from their entries. A diverging tuple construction has no layout.
+`HirExprs.getConstructionTargetLayout` and `HirExprs.getMemberReceiverLayout` expose only available struct/tuple layouts for their respective contexts. They follow result wrappers, resolved bindings, conversion destinations, call return signatures, construction targets, and selected members. They do not infer layouts, enter function bodies or transfer payloads, or reconstruct tuples from their entries. A diverging tuple construction or noncompleting declaration initialization supplies no binding layout.
 
-`HirExprs.getMemberField` looks up a `DotAccess` name in its receiver's current layout. `DotAccess.memberTy()` and `HirExprs.getMemberTy` read the selected type independently of completion. Field selections are query results, never cached on expressions.
+`HirExprs.getMemberField` looks up a `DotAccess` name in its receiver's current layout. `HirExprs.getMemberTy` reads the selected type independently of completion. Field selections are query results, never cached on expressions.
 Common typing checks field names and resolves member completion. Preparation may defer unavailable layouts; final resolution reports unknown field names.
 
 AST-to-HIR constructs `DotAccess` directly. Nested accesses each have their own receiver; calls and indexing operate on the complete accessed member.
@@ -285,12 +338,12 @@ Production consumers are grouped by the information they need. Pass names below 
 
 | Current consumer | Required information | Migration |
 |---|---|---|
-| `Hir.Identifier.ty` through `Tys.getBindingTy` | Resolved declaration/parameter binding, or the referenced function's resolved signature. | Ty 2-3 complete |
-| `HirTyCommonVisitorPass.visitDec`, `visitAssignment` inference | Stored `resolvedTy` binding, separate from source annotations and `VOID` completion. | Ty 2, 4, 15 complete |
-| `HirTyCommonVisitorPass.visitParameter`; `HirFnTyVisitorPass.fnToTyFn` | Stored `resolvedTy` binding; signatures consume it, and common typing refreshes explicit constraints without resetting contextual inference from source placeholders. | Ty 3, 5, 15 complete |
-| `ThirToMirLowering.declaration`, `assignment` | `Dec.resolvedTy()` for local allocation and stores, never the declaration's `VOID` completion. | Ty 2 complete |
-| `HirTyCommonVisitorPass.visitStruct` | `Dec.resolvedTy()` for field layout construction. | Ty 2 complete |
-| Assignment destinations in `HirInferredFunctionSignatureVisitor`, `HirTupleContextVisitorPass`, `HirIntegerLiteralTypingVisitorPass`, `HirFunctionValidationVisitorPass`, `HirTupleValidationVisitorPass`; compound-assignment destination in integer typing | Contextual typing uses `Tys.getAssignmentContextTy`; validation and compound assignments use `Tys.getBindingTy`. Member access and indexing select their resolved member/element types. | Ty 2-4, 8-9 complete |
+| `Hir.Identifier.ty` through `HirExprs.getBindingTy` | Bound-value completion plus retained structure, or the referenced function's resolved signature. | Shared bindings complete |
+| `HirTyCommonVisitorPass.visitDec`, `visitAssignment` inference | Structural binding and declared constraint, separate from declaration completion `VOID`; initialization completion is refreshed by typing and reused by queries. | Shared bindings complete |
+| `HirTyCommonVisitorPass.visitParameter`; `HirFnTyVisitorPass.fnToTyFn` | Structural parameter binding; explicit constraints refresh without resetting contextual inference from source placeholders. | Shared bindings complete |
+| `ThirToMirLowering.declaration`, `assignment` | Structural destination for locals and stores; a diverging RHS produces no binding storage. | Shared bindings complete |
+| `HirTyCommonVisitorPass.visitStruct` | Structural declaration bindings for field layouts. | Shared bindings complete |
+| Assignment destinations in contextual typing and validation; compound assignments in integer typing | `HirExprs.getAssignmentContextTy` supplies contextual constraints; destination checks use `HirExprs.getBindingStructureTy`. | Shared bindings complete |
 
 ### Source-declared constraints
 
@@ -299,7 +352,7 @@ Annotation reads select source constraints or inference placeholders, never prev
 | Current consumer | Required information | Migration |
 |---|---|---|
 | Declaration inference in `HirDeclarationTyping`, called by `HirTyCommonVisitorPass`; assignment contexts in function/tuple/integer contextual typing | Resolve whole bindings and omitted array elements, including nested tuple/array constraints. Contexts read source constraints, never previously inferred bindings. | Ty 4, 16 complete |
-| `HirFunctionTyping.contextualize`; `HirFunctionParameterValidationVisitorPass.checkParameters` | Source parameter constraints versus resolved parameter types supplied by context. | Ty 5 complete |
+| `HirFunctionTyping.adhereToConstraint`; `HirFunctionParameterValidationVisitorPass.checkParameters` | Source parameter constraints versus resolved parameter types supplied by context. | Ty 5 complete |
 | `HirFnTyVisitorPass.fnToTyFn`; `HirTyCommonVisitorPass.visitFunction`, `visitFunctionSignature` | Source return constraint versus the resolved `TyFn` return and parameter types. | Ty 5-6 complete |
 | Return contexts in `HirInferredFunctionSignatureVisitor`, `HirTupleContextVisitorPass`, `HirIntegerLiteralTypingVisitorPass`; return checks in function/tuple validation | Source/use-site return constraints for contextual typing; resolved signatures for validation. | Ty 6 complete |
 | `HirLambdaLiftingTransformerPass` generated declarations, parameters, and signatures | Binding identities and resolved capture/signature types through necessary HIR transformations. | Ty 2-6 complete |
@@ -310,9 +363,9 @@ Annotation reads select source constraints or inference placeholders, never prev
 
 | Current consumer | Required information | Migration |
 |---|---|---|
-| `HirTyCommonVisitorPass.visitCall` target reads | `Tys.getCallableSignature` supplies the resolved callee `TyFn` and nominal call result, independent of target/argument completion. | Ty 7 complete |
-| Call target reads in `HirInferredFunctionSignatureVisitor`, `HirTupleContextVisitorPass.linkArguments`, `HirIntegerLiteralTypingVisitorPass`, `HirFunctionValidationVisitorPass`, `HirTupleValidationVisitorPass` | `Tys.getCallableSignature` supplies resolved parameters for argument binding, contextualization, and validation. | Ty 7 complete |
-| `HirFunctionValidationVisitorPass.check` actual-type reads, including `visitNewByBlockField` | `Tys.getCallableValueTy` supplies function-valued information for diagnostics without interpreting it as reachable completion. Field constraints come from the enclosing construction's current layout. | Ty 7-8 complete |
+| `HirTyCommonVisitorPass.visitCall` target reads | `HirExprs.getCallableSignature` supplies the resolved callee `TyFn` and nominal call result, independent of target/argument completion. | Ty 7 complete |
+| Call target reads in `HirInferredFunctionSignatureVisitor`, `HirTupleContextVisitorPass.linkArguments`, `HirIntegerLiteralTypingVisitorPass`, `HirFunctionValidationVisitorPass`, `HirTupleValidationVisitorPass` | `HirExprs.getCallableSignature` supplies resolved parameters for argument binding, contextualization, and validation. | Ty 7 complete |
+| `HirFunctionValidationVisitorPass.check` actual-type reads, including `visitNewByBlockField` | `HirExprs.getCallableValueTy` supplies function-valued information for diagnostics without interpreting it as reachable completion. Field constraints come from the enclosing construction's current layout. | Ty 7-8 complete |
 
 ### Aggregate/member shapes
 
@@ -340,7 +393,7 @@ Annotation reads select source constraints or inference placeholders, never prev
 
 There are no universal value-type caches or forwarding adapters. Type projections select existing information, not expression contexts: callable signatures, bindings, body results, and available layouts still require their specific queries.
 
-Named context-specific `Tys` helpers centralize type selection without performing inference. Production typing, queries, lowering, tree printing, and type assertions do not consume the universal accessor.
+Named context-specific `HirExprs` helpers centralize type selection without performing inference. Production typing, queries, lowering, tree printing, and type assertions do not consume the universal accessor.
 
 `HirTransformer.transformAssignment` and lambda-lifted calls retain completion types. Generated bindings and signatures retain their resolved types; callable results and construction layouts derive from those authoritative sources instead of duplicate caches.
 

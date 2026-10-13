@@ -15,10 +15,30 @@ public class Tys {
 
   public static final Comparator<Ty> TY_COMPARATOR = Comparator.comparing(it -> it.getClass().getSimpleName());
 
-  private static final Map<Ty, Ty> tyInternMap = Collections.synchronizedMap(new HashMap<>());
+  private static final Map<Object, Ty> tyInternMap = Collections.synchronizedMap(new HashMap<>());
+
+  /// Intern containers without substituting equal but independently owned projection objects.
+  private record TypeInfoKey(Ty completion, Ty structural, Ty declaredConstraint) {
+    TypeInfoKey(final TyInfo info) {
+      this(info.completion(), info.structural(), info.declaredConstraint());
+    }
+
+    @Override
+    public boolean equals(final Object other) {
+      return other instanceof TypeInfoKey key && completion == key.completion
+        && structural == key.structural && declaredConstraint == key.declaredConstraint;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(System.identityHashCode(completion), System.identityHashCode(structural),
+        System.identityHashCode(declaredConstraint));
+    }
+  }
 
   public static <T extends Ty> T intern(T ty) {
-    return (T) tyInternMap.computeIfAbsent(ty, Function.identity());
+    final var key = ty instanceof TyInfo info ? new TypeInfoKey(info) : ty;
+    return (T) tyInternMap.computeIfAbsent(key, _ -> ty);
   }
 
   @Nullable
@@ -32,13 +52,37 @@ public class Tys {
   }
 
   @Nullable
-  public static Ty withCompletion(@Nullable final Ty completion, @Nullable final Ty structural) {
+  public static Ty declaredConstraintTy(@Nullable final Ty ty) {
+    return ty == null ? null : ty.declaredConstraintTy();
+  }
+
+  /// Composes explicitly selected projections; source constraints are not inherited from its arguments.
+  @Nullable
+  public static Ty typeInfo(@Nullable final Ty completion, @Nullable final Ty structural, @Nullable final Ty declaredConstraint) {
     final var completionType = completionTy(completion);
     final var structuralType = structuralTy(structural);
-    if (Objects.equals(structuralTy(completionType), structuralType)) {
+    final var constraintType = completionTy(declaredConstraint);
+    if (constraintType == null && Objects.equals(structuralTy(completionType), structuralType)) {
       return completionType;
     }
-    return intern(new TyCompletion(completionType, structuralType));
+    return intern(new TyInfo(completionType, structuralType, constraintType));
+  }
+
+  /// Updates retained structure without changing completion or source requirements.
+  @Nullable
+  public static Ty withStructural(@Nullable final Ty ty, @Nullable final Ty structural) {
+    return typeInfo(completionTy(ty), structural, declaredConstraintTy(ty));
+  }
+
+  @Nullable
+  public static Ty withDeclaredConstraint(@Nullable final Ty ty, @Nullable final Ty declaredConstraint) {
+    return typeInfo(completionTy(ty), structuralTy(ty), declaredConstraint);
+  }
+
+  /// Composes expression completion and retained structure, without inheriting source constraints.
+  @Nullable
+  public static Ty withCompletion(@Nullable final Ty completion, @Nullable final Ty structural) {
+    return typeInfo(completion, structural, null);
   }
 
   public static boolean isDeadend(@Nullable final Ty ty) {
@@ -282,10 +326,16 @@ public class Tys {
     return ty == null || ty == Ty.INFER;
   }
 
+  /// Checks current typing answers; source placeholders do not make an otherwise resolved value incomplete.
   public static boolean containsInferred(final Ty ty) {
     return switch (ty) {
       case null -> true;
-      case TyCompletion pair -> containsInferred(pair.completion()) || containsInferred(pair.structural());
+      case TyInfo info -> {
+        if (info.structural() == null && isDeadend(info.completion())) {
+          yield false;
+        }
+        yield containsInferred(info.completion()) || containsInferred(info.structural());
+      }
       case TyFn function -> containsInferred(function.returnTy())
         || ArrayUtils.any(function.parameters(), parameter -> containsInferred(parameter.ty()));
       case TyStruct struct -> ArrayUtils.any(struct.fields(), field -> containsInferred(field.ty()));

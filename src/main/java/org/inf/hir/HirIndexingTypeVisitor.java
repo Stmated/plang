@@ -72,12 +72,19 @@ public final class HirIndexingTypeVisitor implements HirVisitor {
 
   @Override
   public void visitDec(final Hir.Dec expression) {
-    type = expression.resolvedTy();
+    type = Tys.completionTy(HirExprs.getBindingTy(expression));
   }
 
   @Override
   public void visitParameter(final Hir.Parameter expression) {
-    type = expression.resolvedTy();
+    type = Tys.structuralTy(expression.ty());
+  }
+
+  @Override
+  public void visitIdentifier(final Hir.Identifier expression) {
+    if (expression.target() != null) {
+      visitResult(expression.target());
+    }
   }
 
   @Override

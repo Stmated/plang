@@ -6,71 +6,59 @@
 
 ## Smarter incorporation of DEADEND/ty contexts
 
-### Investigation and inspection helpers (done)
+### Remove/restructure 'Dec.resolvedTy' and 'Parameter.resolvedTy': investigation (done)
 
-Canonical terminology and contracts are in [Inf type contexts](../../../../CONTEXT.md) and [HIR type contracts](../../../../docs/hir-type-contracts.md).
+* Canonical terms are **completion type**, **resolved structural type**, and **declared constraint**. A **binding type** is the current resolved type of a declaration/parameter's bound value, not another name for its source constraint.
+* `val values: [;2] = [true, false]` has declaration completion `VOID`, declared constraint `[;INFER;2]`, and binding type `[;bool;2]`. The constraint retains omissions so later inference can refresh the binding rather than enforce an earlier answer.
+* The original representation stored constraints in `DynamicTy.ty` and bindings in `Dec.resolvedTy`/`Parameter.resolvedTy`. The consumer inventory covers identifiers, callable/layout/indexing queries, signatures, validation, generated captures, and MIR locals.
+* Syntax-derived constraints alone are insufficient for the current representation: null `DynamicTy.expression` covers omitted, static, and generated constraints. The annotation resolver also consumes previously typed information rather than independently resolving all source syntax.
+* Direction: consolidate constraint and resolved information with completion in a shared three-projection container, preparing for a later `DynamicTy` refactor. This deliberately favors a common refinement model over removing stored constraints through source queries.
+* Storage names are `completion`, `structural`, and `declaredConstraint` in `TyInfo`. Structural information is explicitly stored and refreshable; no generic resolved projection is needed.
 
-* Completion type: normal expression completion; `VOID` completes without a value, `DEADEND` does not complete.
-* Resolved structural type: aggregate/selected type retained for typing, not proof that its runtime value or layout exists.
-* Declared constraint: source annotations and their explicit `INFER` placeholders.
-* Expected type: contextual input; `Tuple.contextualType` determines destination layout and is not a duplicate result.
-* Binding type: resolved declaration/parameter value, separate from their `VOID` completion.
-* Exit payload type: a reachable return/break operand, separate from the transfer's `DEADEND` completion. Body results combine reachable return payloads with normal completion.
-* Migrated production DEADEND comparisons to `Ty.isDeadend` and null-safe `Tys.isDeadend`. Initial representation inspection helpers are superseded by the explicit typed projections below.
-* Retained `Ty.INFER`: null commonly means unresolved pass state or unavailable information, whereas annotation containers require a non-null inference placeholder.
-* No new expression fields: forwarding expressions already expose their child type; new caches would add synchronization without resolving a context distinction.
+### Shared type storage: three-projection contracts (step 1, done)
 
-### Completion/structural wrappers (done)
+* `TyInfo` extends the existing completion/structural pair with declared-constraint storage. `structuralTy()` returns the structural field directly; constructor normalization flattens input wrappers without changing projection meanings.
+* Binding storage is `completion = VOID`, `structural = inferred value type`, and `declaredConstraint = source requirement`. Binding noncompletion is derived from initialization, not another stored projection.
+* `Tys.typeInfo` flattens/interns explicitly selected answers. Only absent constraints permit plain-type collapse; null is absent/unresolved, while `INFER` records an omitted requirement. Static/generated restrictions do not depend on source syntax.
+* `withStructural` and `withDeclaredConstraint` preserve untouched answers. `withCompletion` keeps expression completion/structure composition without inheriting source constraints.
+* Full equality/interning includes constraints; value comparison and resolved-type readiness exclude them. Retained structure, expected types, available layouts, transfer payloads, and body results keep their distinct policies.
+* Contracts and examples are in [HIR type contracts](../../../../docs/hir-type-contracts.md). Coverage includes normalization, nested wrappers, null/`INFER`, repeated refinement, explicit widths/flags, constraint ownership, printing, and MIR/LLVM completion boundaries.
+* Declaration/parameter adoption is step 2; broader refinement adoption is step 3. `DynamicTy` ownership remains a separate deferred refactor.
 
-* `TyCompletion` replaces duplicate tuple/array/range/indexed storage; existing shape accessors project from `ty`. Declared constraints, expected layouts, and binding types stay separate.
-* Explicit `completionTy()` and `structuralTy()` projections use `Tys.withCompletion` to flatten and normalize pairs without losing widths, flags, or unresolved state. Scaled-number equality includes flags so interning preserves them.
-* Explicit projections avoid a context enum that conflates expression queries such as body results with stored type information.
-* Transfers have no structural value. Retained tuple metadata does not manufacture available layouts; callable, member, spread, and indexing queries preserve their context-specific rules.
-* Completion consumers and backend boundaries project explicitly. Branch unions discard transferring arms: `int | DEADEND | VOID` completes with `int | VOID`; all-transferring branches remain `DEADEND`.
+### Shared type storage: declaration and parameter migration (depends on step 1, step 2, done)
 
-### Explicit typed projections (done)
+* Remove `Dec.resolvedTy` and `Parameter.resolvedTy` in favor of `TyInfo` in ordinary node type storage. Completing bindings use structural information rather than declaration/parameter completion. Preserve completion `VOID`, source syntax, and independent declared constraints; avoid replacing the removed fields with duplicate caches elsewhere.
+* `HirExprs.getBindingTy` combines binding structure with the initialization assignment's existing typed completion. Explicit and omitted annotations follow the same flow rule; initializer `DEADEND` is never stored as a declared constraint or fourth projection. Retyping refreshes completion after initializer changes.
+* `Dec.initialization` is a non-owning access link maintained when assignments are created or replaced. It is invisible to traversal, equality, hashing, and printing; type-definition queries also use it instead of a declaration-to-RHS index.
+* Centralize projection reads and constraint-preserving updates so declarations/parameters need fewer node-specific type operations. Keep inference in the existing typing passes: shared storage must not reimplement inference or become a universal expression-result query.
+* Migrate initialization, contextual typing, binding/callable/layout/indexing reads, signature rebuilding, struct fields, validation, generated captures/lifted bindings, and MIR locals together.
+* Earlier inferred answers must not become explicit restrictions when initializer types, expected signatures, or alias definitions change. Annotation refresh must update source requirements without resetting valid contextual inference.
+* Reuse repeated-typing, changed-initializer/context, partial-array, alias-refresh, noncompletion, and lambda-lifting coverage. Preserve rejection of partially annotated lambda parameters.
+* `Tys.isDeadend` reads bound-value noncompletion consistently while structural and constraint information remain independent. Source-derived flow was chosen over a fourth projection: source requirements describe acceptable values, not whether initialization finishes. Destination checks and generated capture parameters select structure, never initialization flow.
+* Reuse typed initialization completion for constant-time binding queries instead of recursively walking declaration chains. `getBindingStructureTy` bypasses completion for destination checks and captures; no extra query cache or lookup table is needed.
 
-* `Ty.asCompletion(Class)` and `Ty.asStructural(Class)` select a view and inspect its kind without exposing completion wrappers. Null-safe `Tys` equivalents return null for unavailable or nonmatching projections.
-* Removed public context-free `is/as/ifIs`. Use typed projections for kind lookup and `completionTy()/structuralTy()` for merging, comparison, and switches. Keep `isDeadend()` for completion flow.
-* Structural inspection does not establish layout availability or collect body results; those expression-level queries retain their existing policies.
+### Shared type storage: broader refinement adoption (depends on step 2, step 3)
 
-### Wrapper query simplification (done)
+* Investigate array-element and function-return typing as concrete additional consumers of the shared declared-constraint/resolved-type distinction. Adopt it where it removes duplicated update logic or storage, not merely to attach three fields to every type.
+* Preserve separate inference policies: omitted array elements and supported partial array returns may refine, while partial lambda parameter annotations and incomplete standalone signature aliases remain rejected.
+* Ordinary unannotated expressions should keep lightweight types; do not propagate a child's source constraint into unrelated parent expressions. Keep expected tuple layouts as contextual inputs.
+* Document which helpers refine resolved information, refresh declared constraints, or replace completion, and exercise repeated typing for each migrated consumer.
 
-* Callable/layout/indexing queries read indexed results through structural projections; indexing queries also project array and range metadata without node-specific overrides.
-* Keep syntactic result selection, live call/member metadata, conversion destinations, and tuple layout availability distinct from stored structural metadata.
-* Source-driven coverage includes completing/diverging indexed values, array metadata, and unresolved queries. Range queries retain HIR-level coverage pending range syntax raising.
+### DynamicTy refactor (depends on shared projection adoption, deferred)
 
-### Wrapper query accessor removal (done)
+* Rework `DynamicTy` around the shared type information while retaining source annotation syntax and alias refresh. Establish one authoritative constraint/resolution owner rather than mirroring the same answers between annotation and expression storage.
+* Preserve omitted, static, and generated annotations without requiring artificial source expressions. Keep AST source grouping separate from HIR typing state.
+* Update [HIR type contracts](../../../../docs/hir-type-contracts.md) with the final annotation ownership and examples.
 
-* Array, range, and indexed-result metadata use explicit structural projections rather than node-specific accessors.
-* HIR snapshots render one `ty`; `TyCompletion` prints both projections only when they differ. Propagated completion, including `DEADEND`, remains visible.
+/// TODO: Delete DynamicTy! We can keep just the expression at the owner level!
+///       Also change Hir.Dec so it has its own initializer, so Dec and Assignment are different "root nodes"
+///       Also look into removing "declaredConstraint" from TyInfo and instead deriving from typeAnnotation expr structuralTy
 
-### Layout metadata versus available layouts (done)
+### Declaration ownership of initialization (deferred investigation)
 
-* `HirStructLayoutVisitor.findAvailableLayout`, `HirExprs.getConstructionTargetLayout`, and `getMemberReceiverLayout` explicitly select available layouts. Construction/member/spread callers use these queries; indexing retains diagnostic type queries.
-* `asStructural(TyStruct.class)` exposes retained typing metadata, not permission to construct, access, or spread a tuple. Contextual destinations and type syntax remain metadata-only uses.
-* `({ return true; }, 7)` retains tuple fields but supplies no layout or spread slots. `make({ return true; })` may supply its current return layout for diagnostics despite noncompletion.
-* Source-driven coverage preserves both contrasts, including no unfinished allocation, call, or field loads after a transfer. No tuple-layout reconstruction, result-state hierarchy, reachability flags, or expression caches are needed.
-* Goal is to make things easier to read/understand, not to invoke new/more complexity.
-
-### Tuple structural accessor removal (done)
-
-* Tuple typing and type syntax use `Tys.asStructural(tuple.ty(), TyStruct.class)` directly; the redundant `Tuple.resolvedTy()` getter is removed.
-* Available-layout queries remain separate from retained tuple metadata.
-
-### Binding storage: source-requirement queries (deferred decision, step 1)
-
-* `Dec.resolvedTy` and `Parameter.resolvedTy` store the current binding type, not where its constraints came from. `DynamicTy.ty` currently resolves source requirements only: `val values: [;2] = [true, false]` retains `[;INFER;2]` there while the binding is `[;bool;2]`.
-* Investigate deriving source requirements from `DynamicTy.expression` through the existing annotation resolver, independently of a fully resolved binding cache. This could remove the need to store both answers on declaration/parameter nodes.
-* Define omitted versus explicit requirements when `expression` is null, including static constraints and generated capture/lifted bindings. Preserve supported partial annotations and current rejection of partially annotated lambda parameters.
-* Keep array-element and function-return annotation policies explicit. Proceed only if source-derived queries simplify the passes rather than duplicating inference.
-
-### Binding storage: consolidating resolved types (depends on step 1, deferred decision, step 2)
-
-* If step 1 establishes an independent source-requirement query, consider making declaration/parameter `DynamicTy.ty` the current binding type and removing their `resolvedTy` fields. Keep node completion `VOID`; let typing passes supply initializer/use-site information.
-* Update binding reads, contextual typing, signature rebuilding, generated bindings, and annotation refresh together. Earlier inferred answers must not become explicit restrictions when context, initializer types, or aliases change.
-* A third constraint projection in `TyCompletion` is an alternative storage design, not a requirement: it retains both answers and broadens normalization beyond completion/structure. Compare its complexity with deriving source requirements before choosing it.
-* Reuse existing repeated-typing, changed-context, partial-array, alias-refresh, and lambda-lifting coverage. Preserve source syntax and explicit restrictions without introducing a new cache or provenance field.
+* Reconsider `Hir.Dec` as the LHS of `Hir.Assignment`: let `Dec` own the whole `val v: Type = something` tree, and reserve `Assignment` for `v = something`.
+* The current split reuses assignment processing but separates a binding from its initializer, complicating live type queries, traversal, and identity-preserving transformations. An initialization back-reference is access metadata only, not declaration ownership.
+* Compare the full declaration representation across raising, evaluation order, typing, execution-aware visitors, printing, generated bindings, and MIR lowering. Preserve standalone declarations and assignment destination conversions.
 
 ### Layout query result selection (deferred investigation)
 

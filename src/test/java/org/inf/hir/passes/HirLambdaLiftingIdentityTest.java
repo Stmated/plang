@@ -14,6 +14,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -22,6 +23,34 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 class HirLambdaLiftingIdentityTest {
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val n: bool = { return true; }; val read = () => n; read()",
+    "val n: int = { return true; }; val read = () => n + 1; read()",
+    "val Fn = (): int; val n: int = { return true; }; val read = (callback: Fn) => n + 1; read(() => 0)"
+  })
+  void given__noncompleting_initializer__when__captured__then__generated_constraints_and_body_types_describe_supplied_values(
+    final String code
+  ) {
+    final var root = Inf.codeToThir(code).root();
+    final var lifted = functions(root).stream().filter(function -> Arrays.stream(function.signature().parameters())
+      .anyMatch(parameter -> parameter.lexeme().name().equals("n"))).findFirst().orElseThrow();
+    final var capture = Arrays.stream(lifted.signature().parameters())
+      .filter(parameter -> parameter.lexeme().name().equals("n")).findFirst().orElseThrow();
+    final var type = capture.ty().structuralTy();
+    final var body = assertInstanceOf(Hir.Return.class, lifted.body());
+    assertAll(
+      () -> assertNotEquals(Ty.DEADEND, type),
+      () -> assertNotEquals(Ty.VOID, type),
+      () -> assertNotEquals(Ty.INFER, type),
+      () -> assertSame(type, capture.ty().declaredConstraintTy()),
+      () -> assertSame(type, capture.typeAnnotation().ty()),
+      () -> assertSame(type, HirExprs.getBindingTy(capture)),
+      () -> assertEquals(type, lifted.ty().returnTy()),
+      () -> assertEquals(type, body.expression().ty().completionTy())
+    );
+  }
 
   @Test
   void given__captured_callee_with_transferring_argument__when__lifted__then__completion_and_signature_are_preserved() {
@@ -51,8 +80,8 @@ class HirLambdaLiftingIdentityTest {
       () -> assertEquals(Ty.DEADEND, call.arguments()[0].ty()),
       () -> assertSame(lifted.ty(), HirExprs.getCallableSignature(call.target())),
       () -> assertEquals(lifted.signature().returnTypeAnnotation().ty(), HirExprs.getCallableSignature(call.target()).returnTy()),
-      () -> assertSame(declaration.resolvedTy(), argument.ty()),
-      () -> assertSame(declaration.resolvedTy(), capture.resolvedTy())
+      () -> assertSame(declaration.ty().structuralTy(), argument.ty()),
+      () -> assertSame(declaration.ty().structuralTy(), capture.ty().structuralTy())
     );
   }
 
@@ -73,8 +102,8 @@ class HirLambdaLiftingIdentityTest {
       () -> assertEquals(2, lifted.signature().parameters().length),
       () -> assertEquals("captured", capture.lexeme().name()),
       () -> assertSame(capture, reference.target()),
-      () -> assertSame(capture.resolvedTy(), reference.ty()),
-      () -> assertSame(capture.resolvedTy(), lifted.ty().parameters()[1].ty()),
+      () -> assertSame(capture.ty().structuralTy(), reference.ty()),
+      () -> assertSame(capture.ty().structuralTy(), lifted.ty().parameters()[1].ty()),
       () -> assertEquals(layout, tuple.ty()),
       () -> assertEquals(layout, tuple.contextualType()),
       () -> assertEquals("value", tuple.contextualType().fields()[0].name()),
@@ -134,8 +163,8 @@ class HirLambdaLiftingIdentityTest {
       public void visitAssignment(Hir.Assignment assignment) {
         if (assignment.lhs() instanceof Hir.Dec declaration && declaration.lexeme().name().equals("read")) {
           assertAll(
-            () -> assertEquals(Ty.VOID, declaration.ty()),
-            () -> assertEquals(lifted.ty(), declaration.resolvedTy())
+            () -> assertEquals(Ty.VOID, declaration.ty().completionTy()),
+            () -> assertEquals(lifted.ty(), declaration.ty().structuralTy())
           );
         }
         HirVisitor.super.visitAssignment(assignment);
@@ -165,8 +194,8 @@ class HirLambdaLiftingIdentityTest {
     });
     assertEquals(1, liftedDeclarations.size());
     assertAll(
-      () -> assertEquals(Ty.VOID, liftedDeclarations.getFirst().ty()),
-      () -> assertEquals(lifted.ty(), liftedDeclarations.getFirst().resolvedTy())
+      () -> assertEquals(Ty.VOID, liftedDeclarations.getFirst().ty().completionTy()),
+      () -> assertEquals(lifted.ty(), liftedDeclarations.getFirst().ty().structuralTy())
     );
   }
 
@@ -194,9 +223,10 @@ class HirLambdaLiftingIdentityTest {
       public void visitParameter(Hir.Parameter parameter) {
         locals.add(parameter);
         assertAll(
-          () -> assertEquals(Ty.VOID, parameter.ty()),
-          () -> assertNotNull(parameter.resolvedTy()),
-          () -> assertSame(parameter.resolvedTy(), HirExprs.getBindingTy(parameter))
+          () -> assertEquals(Ty.VOID, parameter.ty().completionTy()),
+          () -> assertNotNull(parameter.ty().structuralTy()),
+          () -> assertSame(parameter.typeAnnotation().ty(), parameter.ty().declaredConstraintTy()),
+          () -> assertSame(parameter.ty().structuralTy(), HirExprs.getBindingTy(parameter))
         );
       }
 
@@ -216,12 +246,12 @@ class HirLambdaLiftingIdentityTest {
     for (final var reference : references) {
       assertTrue(locals.contains(reference.target()), "Nonlocal binding remains: " + reference.name());
       if (reference.target() instanceof Hir.Parameter parameter) {
-        assertSame(parameter.resolvedTy(), reference.ty());
+        assertSame(parameter.ty().structuralTy(), reference.ty());
       }
     }
     final var parameters = function.signature().parameters();
     for (var i = 0; i < parameters.length; i++) {
-      assertEquals(parameters[i].resolvedTy(), function.ty().parameters()[i].ty());
+      assertEquals(parameters[i].ty().structuralTy(), function.ty().parameters()[i].ty());
     }
   }
 
@@ -254,9 +284,9 @@ class HirLambdaLiftingIdentityTest {
     assertSame(declarations.getFirst(), argument.target());
     assertNotSame(lifted.signature().parameters()[0], argument.target());
     assertAll(
-      () -> assertEquals(Ty.VOID, declarations.getFirst().ty()),
-      () -> assertEquals(declarations.getFirst().resolvedTy(), argument.ty()),
-      () -> assertEquals(declarations.getFirst().resolvedTy(), lifted.signature().parameters()[0].resolvedTy())
+      () -> assertEquals(Ty.VOID, declarations.getFirst().ty().completionTy()),
+      () -> assertEquals(declarations.getFirst().ty().structuralTy(), argument.ty()),
+      () -> assertEquals(declarations.getFirst().ty().structuralTy(), lifted.signature().parameters()[0].ty().structuralTy())
     );
   }
 
@@ -408,9 +438,9 @@ class HirLambdaLiftingIdentityTest {
     final var capture = lifted.signature().parameters()[0];
     assertEquals("alias", capture.lexeme().name());
     assertAll(
-      () -> assertEquals(Ty.VOID, capture.ty()),
-      () -> assertInstanceOf(TyFn.class, capture.resolvedTy()),
-      () -> assertEquals(capture.resolvedTy(), lifted.ty().parameters()[0].ty())
+      () -> assertEquals(Ty.VOID, capture.ty().completionTy()),
+      () -> assertInstanceOf(TyFn.class, capture.ty().structuralTy()),
+      () -> assertEquals(capture.ty().structuralTy(), lifted.ty().parameters()[0].ty())
     );
 
     final var call = assertInstanceOf(Hir.Call.class, assertInstanceOf(Hir.Return.class, lifted.body()).expression());

@@ -46,7 +46,7 @@ public class HirFunctionValidationVisitorPass {
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
-      check(expression.rhs(), HirExprs.getBindingTy(expression.lhs()), "assignment");
+      check(expression.rhs(), HirExprs.getBindingStructureTy(expression.lhs()), "assignment");
     }
 
     @Override

@@ -73,12 +73,20 @@ public final class HirStructLayoutVisitor implements HirVisitor {
 
   @Override
   public void visitDec(final Hir.Dec expression) {
-    type = expression.resolvedTy();
+    final var binding = HirExprs.getBindingTy(expression);
+    type = Tys.isDeadend(binding) ? null : Tys.structuralTy(binding);
   }
 
   @Override
   public void visitParameter(final Hir.Parameter expression) {
-    type = expression.resolvedTy();
+    type = Tys.structuralTy(expression.ty());
+  }
+
+  @Override
+  public void visitIdentifier(final Hir.Identifier expression) {
+    if (expression.target() != null) {
+      visitResult(expression.target());
+    }
   }
 
   @Override

@@ -1,0 +1,76 @@
+dynamic-directory: true
+snapshot-name: diverging_array
+snapshot-number: 0
+test-class: org.inf.hir.util.ToStringTreeHirVisitorTest
+test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_terminating
+
+(Program
+  (ty BOOLEAN)
+  (expressions
+    (Expressions
+      (generated false)
+      (ty DEADEND)
+      (children
+        (Assignment
+          (ty VOID)
+          (lhs
+            (Dec
+              (mutability IMMUTABLE)
+              (ty (completion VOID structural (function vararg=false (parameters) (returns BOOLEAN)) declaredConstraint INFER))
+              (lexeme
+                (Lexeme
+                  (name "use")
+                  (ty VOID)))
+              (typeAnnotation
+                (DynamicTy
+                  (ty INFER)
+                  (expression null)))))
+          (rhs
+            (Function
+              (signature
+                (FunctionSignature
+                  (vararg false)
+                  (ty (function vararg=false (parameters) (returns BOOLEAN)))
+                  (parameters)
+                  (returnType
+                    (DynamicTy
+                      (ty INFER)
+                      (expression null)))))
+              (body
+                (Return
+                  (ty DEADEND)
+                  (expression
+                    (Array
+                      (ty (completion DEADEND structural (array size=2 INTEGER)))
+                      (elementType
+                        (DynamicTy
+                          (ty INFER)
+                          (expression null)))
+                      (length
+                        (Literal
+                          (content "2")
+                          (ty INTEGER)))
+                      (elements
+                        (Block
+                          (ty DEADEND)
+                          (children
+                            (Return
+                              (ty DEADEND)
+                              (expression
+                                (Literal
+                                  (content "true")
+                                  (ty BOOLEAN))))))
+                        (Literal
+                          (content "7")
+                          (ty INTEGER))))))))))
+        (Return
+          (ty DEADEND)
+          (expression
+            (Call
+              (partial false)
+              (ty BOOLEAN)
+              (target
+                (Identifier
+                  (name "use")
+                  (target (reference "use"))))
+              (arguments))))))))

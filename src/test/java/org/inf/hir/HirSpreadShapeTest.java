@@ -5,6 +5,7 @@ import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.TypeComparison;
+import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -74,8 +75,9 @@ class HirSpreadShapeTest {
     assertSame(original.fields(), HirSpreadShape.fields(spread));
 
     factory.signature().ty(factory.ty().toBuilder().returnTy(refined).build());
-    nodes(root, Hir.Dec.class).stream().filter(declaration -> declaration.lexeme().name().equals("make"))
-      .findFirst().orElseThrow().resolvedTy(factory.ty());
+    final var declaration = nodes(root, Hir.Dec.class).stream()
+      .filter(candidate -> candidate.lexeme().name().equals("make")).findFirst().orElseThrow();
+    declaration.ty(Tys.withStructural(declaration.ty(), factory.ty()));
 
     assertAll(
       () -> assertSame(refined.fields(), HirSpreadShape.fields(spread)),

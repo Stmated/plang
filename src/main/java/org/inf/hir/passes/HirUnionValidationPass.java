@@ -24,7 +24,7 @@ import org.inf.util.ArrayUtils;
 public class HirUnionValidationPass {
 
   public static void pass(final Hir.Expression root) {
-    root.visit(new Visitor(root));
+    root.visit(new Visitor());
   }
 
   private static void check(final Ty actualType, final Ty expectedType, final String context) {
@@ -37,13 +37,9 @@ public class HirUnionValidationPass {
 
   private static final class Visitor implements HirVisitor {
 
-    private final HirTypeDefinitions definitions;
+    private final HirTypeDefinitions definitions = new HirTypeDefinitions();
     private boolean typePosition;
     private Ty returnType;
-
-    private Visitor(final Hir.Expression root) {
-      definitions = new HirTypeDefinitions(root);
-    }
 
     private void visitType(final Hir.Expression expr) {
       final var outer = typePosition;
@@ -123,14 +119,14 @@ public class HirUnionValidationPass {
     @Override
     public void visitAssignment(final Hir.Assignment expr) {
       if (expr.lhs() instanceof Hir.Dec declaration && definitions.isUnionDefinition(expr.rhs())) {
-        if (!Tys.isInferred(declaration.typeAnnotation().ty())) {
+        if (!Tys.isInferred(Tys.declaredConstraintTy(declaration.ty()))) {
           throw new IllegalArgumentException("Type unions cannot initialize runtime bindings");
         }
         visitChild(declaration);
         visitType(expr.rhs());
       } else {
         HirVisitor.super.visitAssignment(expr);
-        check(expr.rhs().ty(), HirExprs.getBindingTy(expr.lhs()), "assignment");
+        check(expr.rhs().ty(), HirExprs.getBindingStructureTy(expr.lhs()), "assignment");
       }
     }
 

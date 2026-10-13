@@ -24,7 +24,7 @@ import org.inf.util.ArrayUtils;
 public final class HirTupleValidationVisitorPass {
 
   public static void pass(Hir.Expression expression) {
-    expression.visit(new Visitor(expression));
+    expression.visit(new Visitor());
   }
 
   /**
@@ -42,18 +42,13 @@ public final class HirTupleValidationVisitorPass {
 
   private static final class Visitor implements HirVisitor {
 
-    private final HirTypeDefinitions definitions;
-    private final HirTypeAnnotationResolver annotations;
+    private final HirTypeDefinitions definitions = new HirTypeDefinitions();
+    private final HirTypeAnnotationResolver annotations = new HirTypeAnnotationResolver();
     private Ty returnType;
 
     /// HIR uses the same tuple node for `(int, bool)` annotations and `(1, true)` values.
     /// Only annotation entries must denote types; their enclosing type position supplies that distinction.
     private boolean inAnnotation;
-
-    private Visitor(final Hir.Expression root) {
-      this.definitions = new HirTypeDefinitions(root);
-      this.annotations = new HirTypeAnnotationResolver(root); // TODO: Should not need to create a new one here, it needs to be smarter than that
-    }
 
     @Override
     public void visitUnion(final Hir.Union expr) {
@@ -140,7 +135,7 @@ public final class HirTupleValidationVisitorPass {
     public void visitAssignment(Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
       requireWritable(expression.lhs());
-      check(expression.rhs().ty(), HirExprs.getBindingTy(expression.lhs()), "assignment");
+      check(expression.rhs().ty(), HirExprs.getBindingStructureTy(expression.lhs()), "assignment");
     }
 
     @Override

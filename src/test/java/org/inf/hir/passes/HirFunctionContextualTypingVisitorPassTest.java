@@ -52,7 +52,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     Assertions.assertEquals(1, parameters.size());
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.INFER, parameters.getFirst().typeAnnotation().ty()),
-      () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), parameters.getFirst().resolvedTy()),
+      () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), parameters.getFirst().ty().structuralTy()),
       () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty())
     );
   }
@@ -87,7 +87,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     final var parameter = parameters.getFirst();
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
-      () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), parameter.resolvedTy())
+      () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), parameter.ty().structuralTy())
     );
   }
 
@@ -120,15 +120,15 @@ class HirFunctionContextualTypingVisitorPassTest {
     final var signature = Assertions.assertInstanceOf(TyFn.class, root.ty());
     Assertions.assertAll(
       () -> Assertions.assertSame(annotation.expression(), parameter.typeAnnotation().expression()),
-      () -> Assertions.assertEquals(Ty.VOID, parameter.ty()),
-      () -> Assertions.assertFalse(Tys.containsInferred(parameter.resolvedTy())),
-      () -> Assertions.assertEquals(parameter.resolvedTy(), signature.parameters()[0].ty())
+      () -> Assertions.assertEquals(Ty.VOID, parameter.ty().completionTy()),
+      () -> Assertions.assertFalse(Tys.containsInferred(parameter.ty().structuralTy())),
+      () -> Assertions.assertEquals(parameter.ty().structuralTy(), signature.parameters()[0].ty())
     );
     if (annotation.expression() == null) {
       Assertions.assertEquals(Ty.INFER, annotation.ty());
     } else {
       Assertions.assertInstanceOf(Hir.Identifier.class, parameter.typeAnnotation().expression());
-      Assertions.assertSame(parameter.typeAnnotation().ty(), parameter.resolvedTy());
+      Assertions.assertSame(parameter.typeAnnotation().ty(), parameter.ty().structuralTy());
     }
   }
 
@@ -139,7 +139,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     root.visit(new HirVisitor() {
       @Override
       public void visitDec(final Hir.Dec declaration) {
-        declaration.resolvedTy(new TyFn(new TyParam[]{new TyParam("v", Ty.BOOLEAN)}, false, Ty.BOOLEAN));
+        declaration.ty(Tys.withStructural(declaration.ty(), new TyFn(new TyParam[]{new TyParam("v", Ty.BOOLEAN)}, false, Ty.BOOLEAN)));
       }
 
       @Override
@@ -153,7 +153,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     final var parameter = functions.getFirst().signature().parameters()[0];
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
-      () -> Assertions.assertNull(parameter.resolvedTy())
+      () -> Assertions.assertNull(parameter.ty().structuralTy())
     );
   }
 
@@ -199,10 +199,10 @@ class HirFunctionContextualTypingVisitorPassTest {
     final var parameter = functions.getFirst().signature().parameters()[0];
     Assertions.assertAll(
       () -> Assertions.assertEquals("v", parameter.lexeme().name()),
-      () -> Assertions.assertEquals(Ty.VOID, parameter.ty()),
+      () -> Assertions.assertEquals(Ty.VOID, parameter.ty().completionTy()),
       () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
-      () -> Assertions.assertEquals(function.parameters()[0].ty(), parameter.resolvedTy()),
-      () -> Assertions.assertEquals(function.returnTy(), parameter.resolvedTy())
+      () -> Assertions.assertEquals(function.parameters()[0].ty(), parameter.ty().structuralTy()),
+      () -> Assertions.assertEquals(function.returnTy(), parameter.ty().structuralTy())
     );
   }
 
@@ -290,7 +290,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     final var parameter = functions.getFirst().signature().parameters()[0];
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
-      () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), parameter.resolvedTy()),
+      () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), parameter.ty().structuralTy()),
       () -> Assertions.assertEquals(beforeRootType, root.ty()),
       () -> Assertions.assertEquals(beforeTupleTypes, tuples.stream().map(Hir.Tuple::ty).toList()),
       () -> Assertions.assertTrue(tuples.stream().allMatch(tuple -> tuple.contextualType() == null)),
@@ -355,10 +355,10 @@ class HirFunctionContextualTypingVisitorPassTest {
     HirFunctionContextualTypingVisitorPass.pass(root);
     Assertions.assertAll(
       () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].typeAnnotation().ty())),
-      () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].resolvedTy())),
+      () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].ty().structuralTy())),
       () -> Assertions.assertEquals(Ty.INFER, functions.getLast().signature().parameters()[0].typeAnnotation().ty()),
       () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64),
-        functions.getLast().signature().parameters()[0].resolvedTy())
+        functions.getLast().signature().parameters()[0].ty().structuralTy())
     );
   }
 
@@ -402,11 +402,11 @@ class HirFunctionContextualTypingVisitorPassTest {
     );
     final var target = Assertions.assertInstanceOf(Hir.Identifier.class, constructors.getFirst().target());
     final var declaration = Assertions.assertInstanceOf(Hir.Dec.class, target.target());
-    declaration.resolvedTy(null);
+    declaration.ty(Tys.withStructural(declaration.ty(), null));
     Assertions.assertNull(HirExprs.getConstructionTargetLayout(target));
     HirFunctionContextualTypingVisitorPass.pass(root);
     Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64),
-      functions.getFirst().signature().parameters()[0].resolvedTy(),
+      functions.getFirst().signature().parameters()[0].ty().structuralTy(),
       () -> new ToStringTreeHirVisitor().render(root));
   }
 

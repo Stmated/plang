@@ -27,13 +27,13 @@ import java.util.Objects;
 public class HirTyCommonVisitorPass {
 
   public static <T extends Hir.Expression> T pass(T expr) {
-    expr.visit(new Visitor(false, new HirTypeAnnotationResolver(expr)));
+    expr.visit(new Visitor(false, new HirTypeAnnotationResolver()));
     return expr;
   }
 
   /// TODO: Delete the return from here! It is temporary while I try to figure out the tuple+union+identifire-resolved types
   public static HirTypeAnnotationResolver resolveAvailableTypes(final Hir.Expression expr) {
-    final var annotationResolver = new HirTypeAnnotationResolver(expr);
+    final var annotationResolver = new HirTypeAnnotationResolver();
     expr.visit(new Visitor(true, annotationResolver));
     return annotationResolver;
   }
@@ -62,9 +62,9 @@ public class HirTyCommonVisitorPass {
     public void visitParameter(Hir.Parameter expr) {
       HirVisitor.super.visitParameter(expr);
       expr.typeAnnotation(expr.typeAnnotation().resolve(annotations::resolve));
-      final var annotation = expr.typeAnnotation().ty();
-      if (!Tys.isInferred(annotation) || expr.resolvedTy() == null) {
-        expr.resolvedTy(annotation);
+      final var annotation = Tys.declaredConstraintTy(expr.ty());
+      if (!Tys.isInferred(annotation) || Tys.structuralTy(expr.ty()) == null) {
+        expr.ty(Tys.withStructural(expr.ty(), annotation));
       }
     }
 
@@ -148,14 +148,16 @@ public class HirTyCommonVisitorPass {
     public void visitDec(Hir.Dec expr) {
       HirVisitor.super.visitDec(expr);
       expr.typeAnnotation(expr.typeAnnotation().resolve(annotations::resolve));
-      final var annotation = expr.typeAnnotation().ty();
-      if (!Tys.containsInferred(annotation) || expr.resolvedTy() == null) {
-        expr.resolvedTy(annotation);
+      final var annotation = Tys.declaredConstraintTy(expr.ty());
+      if (!Tys.containsInferred(annotation) || Tys.structuralTy(expr.ty()) == null) {
+        expr.ty(Tys.withStructural(expr.ty(), annotation));
       }
     }
 
     @Override
     public void visitAssignment(Hir.Assignment expr) {
+      // Recursive references must not inherit completion from an earlier typing pass.
+      expr.ty(null);
       HirVisitor.super.visitAssignment(expr);
 
       if (HirExprs.isDeadEnd(expr.rhs(), expr.lhs())) {
@@ -221,7 +223,7 @@ public class HirTyCommonVisitorPass {
         // A sequence can finish only if every direct child can finish normally.
         expr.ty(Ty.DEADEND);
       } else {
-        expr.ty(children.length == 0 ? Ty.VOID : children[children.length - 1].ty());
+        expr.ty(children.length == 0 ? Ty.VOID : Tys.completionTy(children[children.length - 1].ty()));
       }
     }
 
@@ -343,7 +345,7 @@ public class HirTyCommonVisitorPass {
       for (final var decl : expr.declarations()) {
 
         final var name = decl.lexeme().name();
-        final var ty = Objects.requireNonNull(decl.resolvedTy());
+        final var ty = Objects.requireNonNull(Tys.structuralTy(decl.ty()));
 
         fields.add(new TyField(name, ty));
       }

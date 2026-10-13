@@ -115,7 +115,7 @@ class HirFunctionParameterValidationVisitorPassTest {
     HirFunctionParameterValidationVisitorPass.pass(root);
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
-      () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), parameter.resolvedTy()),
+      () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), parameter.ty().structuralTy()),
       () -> Assertions.assertEquals(before, printer.render(root))
     );
   }

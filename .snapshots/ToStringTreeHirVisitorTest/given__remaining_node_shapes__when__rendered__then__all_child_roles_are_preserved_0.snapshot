@@ -129,8 +129,7 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
           (declarations
             (Dec
               (mutability CONSTANT)
-              (ty VOID)
-              (resolvedTy null)
+              (ty (completion VOID structural null declaredConstraint INTEGER))
               (lexeme
                 (Lexeme
                   (name "name")
@@ -144,8 +143,7 @@ test-method: given__remaining_node_shapes__when__rendered__then__all_child_roles
           (children
             (Dec
               (mutability CONSTANT)
-              (ty VOID)
-              (resolvedTy null)
+              (ty (completion VOID structural null declaredConstraint INTEGER))
               (lexeme
                 (Lexeme
                   (name "name")

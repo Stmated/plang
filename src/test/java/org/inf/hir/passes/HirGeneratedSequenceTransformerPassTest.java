@@ -47,7 +47,7 @@ class HirGeneratedSequenceTransformerPassTest {
       .filter(assignment -> ((Hir.Dec) assignment.lhs()).lexeme().name().equals("argument"))
       .findFirst().orElseThrow();
     final var declaration = assertInstanceOf(Hir.Dec.class, original.lhs());
-    final var binding = declaration.resolvedTy();
+    final var binding = declaration.ty().structuralTy();
     final var tuple = assertInstanceOf(Hir.Tuple.class, original.rhs());
     final var completion = tuple.ty();
     final var layout = tuple.contextualType();
@@ -73,7 +73,7 @@ class HirGeneratedSequenceTransformerPassTest {
       () -> assertNotSame(original, replacement),
       () -> assertSame(original.ty(), replacement.ty()),
       () -> assertSame(declaration, replacement.lhs()),
-      () -> assertSame(binding, declaration.resolvedTy()),
+      () -> assertSame(binding, declaration.ty().structuralTy()),
       () -> assertSame(tuple, replacement.rhs()),
       () -> assertSame(completion, tuple.ty()),
       () -> assertSame(layout, tuple.contextualType()),

@@ -34,9 +34,9 @@ class HirFnTyVisitorPassTest {
     final var signature = new Hir.FunctionSignature(new Hir.Parameter[]{parameter}, false, new DynamicTy(Ty.BOOLEAN));
     final var type = HirFnTyVisitorPass.fnToTyFn(signature);
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.VOID, parameter.ty()),
-      () -> Assertions.assertSame(Ty.INTEGER, parameter.resolvedTy()),
-      () -> Assertions.assertSame(parameter.resolvedTy(), type.parameters()[0].ty()),
+      () -> Assertions.assertEquals(Ty.VOID, parameter.ty().completionTy()),
+      () -> Assertions.assertSame(Ty.INTEGER, parameter.ty().structuralTy()),
+      () -> Assertions.assertSame(parameter.ty().structuralTy(), type.parameters()[0].ty()),
       () -> Assertions.assertEquals("p", type.parameters()[0].name()),
       () -> Assertions.assertEquals(Ty.BOOLEAN, type.returnTy()),
       () -> Assertions.assertEquals(Ty.LONG, parameter.typeAnnotation().ty())

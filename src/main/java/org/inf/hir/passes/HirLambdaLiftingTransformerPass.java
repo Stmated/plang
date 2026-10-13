@@ -8,8 +8,11 @@ import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
 import org.inf.hir.HirTypeDefinitions;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.HirExprs;
+import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyParam;
+import org.inf.ty.util.Tys;
 
 import java.util.ArrayList;
 import java.util.ArrayDeque;
@@ -44,7 +47,7 @@ public class HirLambdaLiftingTransformerPass {
 
   public static Hir.Expression pass(Hir.Expression expr) {
 
-    final var definitions = new HirTypeDefinitions(expr);
+    final var definitions = new HirTypeDefinitions();
     final Set<Hir.Expression> staticFunctions = Collections.newSetFromMap(new IdentityHashMap<>());
     expr.visit(new HirVisitor() {
       @Override
@@ -206,7 +209,7 @@ public class HirLambdaLiftingTransformerPass {
               entry.fromAssignment(expr);
               entry.fromDec(ass_lhs_dec);
               ass_lhs_dec.typeAnnotation(new DynamicTy(transformedRhs.ty()));
-              ass_lhs_dec.resolvedTy(transformedRhs.ty());
+              ass_lhs_dec.ty(Tys.typeInfo(Ty.VOID, transformedRhs.ty(), transformedRhs.ty()));
               break;
             }
           }
@@ -279,7 +282,7 @@ public class HirLambdaLiftingTransformerPass {
         for (var i = 0; i < needsClosure.size(); i++) {
 
           final var id = needsClosure.get(i);
-          final var ty = id.ty();
+          final var ty = HirExprs.getBindingStructureTy(id);
           final var typeAnnotation = new DynamicTy(ty);
 
           final var newParam = new Hir.Parameter(new Hir.Lexeme(id.name()), typeAnnotation, false, ty);
@@ -312,6 +315,8 @@ public class HirLambdaLiftingTransformerPass {
           transformed.signature().vararg(),
           transformed.signature().ty().returnTy()
         ));
+        // Captures are supplied values; rebinding can change completion-dependent body types.
+        HirTyCommonVisitorPass.pass(transformed);
 
         final var randomName = UUID.randomUUID().toString();
 

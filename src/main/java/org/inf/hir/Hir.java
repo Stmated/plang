@@ -5,6 +5,7 @@ import jakarta.annotation.Nullable;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import org.inf.hir.util.HirExprs;
@@ -238,15 +239,31 @@ public class Hir {
   }
 
   @Data
-  @AllArgsConstructor
   public static class Assignment implements Expression {
 
     Expression lhs;
     Expression rhs;
     Ty ty;
 
+    public Assignment(final Expression lhs, final Expression rhs, final Ty ty) {
+      lhs(lhs);
+      this.rhs = rhs;
+      this.ty = ty;
+    }
+
     public Assignment(Expression lhs, Expression rhs) {
       this(lhs, rhs, null);
+    }
+
+    public Assignment lhs(final Expression lhs) {
+      if (this.lhs instanceof Dec declaration && declaration.initialization() == this) {
+        declaration.initialization(null);
+      }
+      this.lhs = lhs;
+      if (lhs instanceof Dec declaration) {
+        declaration.initialization(this);
+      }
+      return this;
     }
 
     @Override
@@ -883,7 +900,6 @@ public class Hir {
   }
 
   @Data
-  @AllArgsConstructor
   public static class Parameter implements Expression {
 
     @Nonnull
@@ -891,11 +907,19 @@ public class Hir {
     @Nonnull
     DynamicTy typeAnnotation;
     boolean vararg;
-    Ty resolvedTy;
+    Ty ty;
 
-    @Override
-    public Ty ty() {
-      return Ty.VOID;
+    public Parameter(final Lexeme lexeme, final DynamicTy typeAnnotation, final boolean vararg, final Ty structuralTy) {
+      this.lexeme = Objects.requireNonNull(lexeme);
+      this.typeAnnotation = Objects.requireNonNull(typeAnnotation);
+      this.vararg = vararg;
+      this.ty = Tys.typeInfo(Ty.VOID, structuralTy, typeAnnotation.ty());
+    }
+
+    public Parameter typeAnnotation(final DynamicTy typeAnnotation) {
+      this.typeAnnotation = Objects.requireNonNull(typeAnnotation);
+      ty(Tys.withDeclaredConstraint(ty, typeAnnotation.ty()));
+      return this;
     }
 
     @Override
@@ -1156,21 +1180,33 @@ public class Hir {
   }
 
   @Data
-  @AllArgsConstructor
   public static class Dec implements Expression {
 
     Lexeme lexeme;
     MutabilityKind mutabilityKind;
     @Nonnull
     DynamicTy typeAnnotation;
-    Ty resolvedTy;
+    Ty ty;
+
+    /// Non-owning access to the current initializer; not a child of this declaration.
+    @EqualsAndHashCode.Exclude
+    Assignment initialization;
+
+    public Dec(final Lexeme lexeme, final MutabilityKind mutabilityKind, final DynamicTy typeAnnotation, final Ty structuralTy) {
+      this.lexeme = lexeme;
+      this.mutabilityKind = mutabilityKind;
+      this.typeAnnotation = Objects.requireNonNull(typeAnnotation);
+      this.ty = Tys.typeInfo(Ty.VOID, structuralTy, typeAnnotation.ty());
+    }
 
     public Dec(final Lexeme lexeme, final MutabilityKind mutabilityKind, final DynamicTy typeAnnotation) {
       this(lexeme, mutabilityKind, typeAnnotation, null);
     }
 
-    public Ty ty() {
-      return Ty.VOID;
+    public Dec typeAnnotation(final DynamicTy typeAnnotation) {
+      this.typeAnnotation = Objects.requireNonNull(typeAnnotation);
+      ty(Tys.withDeclaredConstraint(ty, typeAnnotation.ty()));
+      return this;
     }
 
     @Override

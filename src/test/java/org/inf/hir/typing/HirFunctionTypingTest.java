@@ -39,8 +39,9 @@ class HirFunctionTypingTest {
       () -> Assertions.assertSame(resolved, signature.ty()),
       () -> Assertions.assertSame(annotation, parameter.typeAnnotation()),
       () -> Assertions.assertEquals(Ty.INFER, annotation.ty()),
-      () -> Assertions.assertEquals(Ty.VOID, parameter.ty()),
-      () -> Assertions.assertSame(destination, parameter.resolvedTy()),
+      () -> Assertions.assertEquals(Ty.VOID, parameter.ty().completionTy()),
+      () -> Assertions.assertSame(destination, parameter.ty().structuralTy()),
+      () -> Assertions.assertSame(Ty.INFER, parameter.ty().declaredConstraintTy()),
       () -> Assertions.assertSame(destination, signature.ty().parameters()[0].ty()),
       () -> Assertions.assertEquals("p", signature.ty().parameters()[0].name()),
       () -> Assertions.assertEquals(Ty.INFER, signature.ty().returnTy())
@@ -59,7 +60,8 @@ class HirFunctionTypingTest {
     Assertions.assertAll(
       () -> Assertions.assertSame(annotation, parameter.typeAnnotation()),
       () -> Assertions.assertEquals(Ty.INFER, annotation.ty()),
-      () -> Assertions.assertEquals(Ty.LONG, parameter.resolvedTy()),
+      () -> Assertions.assertEquals(Ty.LONG, parameter.ty().structuralTy()),
+      () -> Assertions.assertSame(Ty.INFER, parameter.ty().declaredConstraintTy()),
       () -> Assertions.assertEquals(Ty.LONG, signature.ty().parameters()[0].ty()),
       () -> Assertions.assertNotSame(resolved, signature.ty()),
       () -> Assertions.assertSame(resolved.returnTy(), signature.ty().returnTy())
@@ -85,8 +87,8 @@ class HirFunctionTypingTest {
       () -> Assertions.assertSame(annotation, signature.returnTypeAnnotation()),
       () -> Assertions.assertEquals(Ty.INFER, annotation.ty()),
       () -> Assertions.assertSame(resolved.returnTy(), signature.ty().returnTy()),
-      () -> Assertions.assertSame(Ty.BOOLEAN, explicit.resolvedTy()),
-      () -> Assertions.assertSame(Ty.LONG, inferred.resolvedTy()),
+      () -> Assertions.assertSame(Ty.BOOLEAN, explicit.ty().structuralTy()),
+      () -> Assertions.assertSame(Ty.LONG, inferred.ty().structuralTy()),
       () -> Assertions.assertSame(Ty.LONG, signature.ty().parameters()[1].ty())
     );
   }
@@ -104,7 +106,7 @@ class HirFunctionTypingTest {
     Assertions.assertAll(
       () -> Assertions.assertSame(annotation, parameter.typeAnnotation()),
       () -> Assertions.assertSame(annotation.expression(), parameter.typeAnnotation().expression()),
-      () -> Assertions.assertSame(resolved, parameter.resolvedTy()),
+      () -> Assertions.assertSame(resolved, parameter.ty().structuralTy()),
       () -> Assertions.assertSame(function, signature.ty())
     );
   }

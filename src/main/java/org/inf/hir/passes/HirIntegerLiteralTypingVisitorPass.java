@@ -68,7 +68,7 @@ public class HirIntegerLiteralTypingVisitorPass {
 
     @Override
     public void visitCompoundAssignment(final Hir.CompoundAssignment expression) {
-      contextualize(expression.rhs(), HirExprs.getBindingTy(expression.target()));
+      contextualize(expression.rhs(), HirExprs.getBindingStructureTy(expression.target()));
       HirVisitor.super.visitCompoundAssignment(expression);
     }
 

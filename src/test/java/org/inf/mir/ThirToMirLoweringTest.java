@@ -27,6 +27,56 @@ class ThirToMirLoweringTest {
 
   @ParameterizedTest
   @ValueSource(strings = {
+    "val n: bool = { return true; }; val read = () => n; read()",
+    "val n: int = { return true; }; val read = () => n + 1; read()",
+    "val Fn = (): int; val n: int = { return true; }; val read = (callback: Fn) => n + 1; read(() => 0)"
+  })
+  void given__noncompleting_initializer_with_an_unreachable_capture__when__lowered__then__generated_functions_do_not_mask_unreachable_diagnostics(
+    final String code
+  ) {
+    final var error = assertThrows(UnreachableCodeException.class, () -> Inf.codeToMir(code));
+    assertTrue(error.getMessage().startsWith("Unreachable expression: val read = "));
+  }
+
+  @Test
+  void given__widening_declaration_initializer__when__lowered__then__the_binding_destination_controls_storage() {
+    final var module = Inf.codeToMir("val n: uint16 = 255u8; n");
+    final var local = module.script().locals().stream().filter(candidate -> candidate.name().equals("n"))
+      .findFirst().orElseThrow();
+    final var store = instructions(module).stream().filter(Mir.Store.class::isInstance).map(Mir.Store.class::cast)
+      .filter(candidate -> candidate.place() == local).findFirst().orElseThrow();
+    final var conversion = instructions(module).stream().filter(Mir.Convert.class::isInstance).map(Mir.Convert.class::cast)
+      .filter(candidate -> candidate.result() == store.value()).findFirst().orElseThrow();
+    assertAll(
+      () -> assertTrue(local.ty() instanceof TyValueNumberInteger integer
+        && integer.width().value() == 16 && !integer.signed()),
+      () -> assertEquals(local.ty(), store.value().ty()),
+      () -> assertNotEquals(conversion.value().ty(), conversion.result().ty()),
+      () -> assertEquals(local.ty(), module.script().signature().returnType())
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+    "val n = { return true; };",
+    "val n: bool = { return true; };",
+    "val n = [{ return true; }, 7];",
+    "val n: [;2] = [{ return true; }, 7];",
+    "val Fn = (): int; val make = (flag: bool): Fn => (() => 7); val n: Fn = make({ return true; });"
+  })
+  void given__noncompleting_declaration_initializer__when__lowered__then__no_binding_storage_is_created(final String code) {
+    final var module = Inf.codeToMir(code);
+    final var scriptInstructions = module.script().blocks().stream().flatMap(block -> block.instructions().stream()).toList();
+    assertAll(
+      () -> assertEquals(Ty.BOOLEAN, module.script().signature().returnType()),
+      () -> assertTrue(module.script().locals().stream().noneMatch(local -> local.name().equals("n"))),
+      () -> assertTrue(scriptInstructions.stream().noneMatch(instruction ->
+        instruction instanceof Mir.Store || instruction instanceof Mir.NewArray))
+    );
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
     "val n = 7;",
     "var n: int;",
     "var n = 7; n = 8;",

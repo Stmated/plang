@@ -5,6 +5,7 @@ import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.ty.TyFn;
 import org.inf.ty.util.TypeComparison;
+import org.inf.ty.util.Tys;
 
 /// Checks resolved lambda parameters after contextual inference, before dependent body typing.
 @UtilityClass
@@ -20,7 +21,7 @@ public class HirFunctionParameterValidationVisitorPass {
       throw new IllegalArgumentException("Lambda parameter count or variadic shape does not match expected function type");
     }
     for (var i = 0; i < parameters.length; i++) {
-      final var actual = parameters[i].resolvedTy();
+      final var actual = Tys.structuralTy(parameters[i].ty());
       final var destination = expected.parameters()[i].ty();
       if (!TypeComparison.same(actual, destination)) {
         throw new InvalidTypeConversionException("Lambda parameter type does not match expected function type", actual, destination);

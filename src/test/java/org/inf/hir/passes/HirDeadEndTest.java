@@ -224,7 +224,7 @@ class HirDeadEndTest {
 
     HirTyCommonVisitorPass.pass(fn);
 
-    assertEquals(Ty.INTEGER, declaration.resolvedTy());
+    assertEquals(Ty.INTEGER, declaration.ty().structuralTy());
     assertEquals(Tys.union(Ty.STRING, Ty.INTEGER), fn.ty().returnTy());
   }
 

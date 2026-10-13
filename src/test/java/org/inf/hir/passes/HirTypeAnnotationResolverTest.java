@@ -226,7 +226,7 @@ class HirTypeAnnotationResolverTest {
       assertAll(
         () -> assertNotEquals(original.ty(), refreshed.ty()),
         () -> assertSame(original.expression(), refreshed.expression()),
-        () -> assertEquals(refreshed.ty(), parameter.resolvedTy())
+        () -> assertEquals(refreshed.ty(), parameter.ty().structuralTy())
       );
       final Ty member = switch (refreshed.ty()) {
         case TyStruct struct -> struct.fields()[0].ty();
