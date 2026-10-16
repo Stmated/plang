@@ -10,7 +10,7 @@ import org.inf.hir.HirTupleAccess;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirTypeDefinitions;
 import org.inf.hir.HirVisitor;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.mir.model.*;
 import org.inf.thir.raising.ThirRaiseResult;
 import org.inf.ty.*;
@@ -362,7 +362,7 @@ public final class ThirToMirLowering {
     if (target instanceof Diverges) {
       return null;
     }
-    final var field = Objects.requireNonNull(HirExprs.getMemberField(access), "Field access requires a resolved receiver field");
+    final var field = Objects.requireNonNull(Hirs.getMemberField(access), "Field access requires a resolved receiver field");
     return new Mir.Field(((Continues) target).value(), field.index(), MirTypes.valueType(field.ty()));
   }
 
@@ -614,13 +614,13 @@ public final class ThirToMirLowering {
   }
 
   private Flow instance(Hir.NewByBlock instance) {
-    final var type = HirExprs.getConstructionTargetLayout(instance.target());
+    final var type = Hirs.getConstructionTargetLayout(instance.target());
     if (type == null) {
       throw new IllegalArgumentException("Struct construction requires a resolved target layout");
     }
     final var fields = new Mir.Operand[type.fields().length];
     for (final var initializer : instance.fields()) {
-      final var field = Objects.requireNonNull(HirExprs.getInitializerField(instance, initializer), "Field initializer requires a resolved target field");
+      final var field = Objects.requireNonNull(Hirs.getInitializerField(instance, initializer), "Field initializer requires a resolved target field");
       final var index = field.index();
       if (fields[index] != null) {
         throw new IllegalArgumentException("Duplicate initializer for field " + type.fields()[index].name());

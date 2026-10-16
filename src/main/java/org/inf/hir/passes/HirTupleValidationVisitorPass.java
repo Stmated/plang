@@ -9,7 +9,7 @@ import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirTypeDefinitions;
 import org.inf.hir.HirVisitor;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyStruct;
@@ -71,13 +71,23 @@ public final class HirTupleValidationVisitorPass {
       }
     }
 
+    private void visitAnnotation(Hir.Expression expr) {
+      final var outerAnnotation = inAnnotation;
+      try {
+        inAnnotation = true;
+        visitChild(expr);
+      } finally {
+        inAnnotation = outerAnnotation;
+      }
+    }
+
     @Override
     public void visitDecType(DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitParameterType(DynamicTy expression) {
+    public void visitParameterType(Hir.Expression expression) {
       visitAnnotation(expression);
     }
 
@@ -135,7 +145,7 @@ public final class HirTupleValidationVisitorPass {
     public void visitAssignment(Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
       requireWritable(expression.lhs());
-      check(expression.rhs().ty(), HirExprs.getBindingStructureTy(expression.lhs()), "assignment");
+      check(expression.rhs().ty(), Hirs.getBindingStructureTy(expression.lhs()), "assignment");
     }
 
     @Override
@@ -146,11 +156,11 @@ public final class HirTupleValidationVisitorPass {
 
     private static void requireWritable(Hir.Expression expression) {
       if (expression instanceof Hir.ArrayAccess access
-        && HirExprs.getIndexingReceiverTy(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
+        && Hirs.getIndexingReceiverTy(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
         throw new IllegalArgumentException("Tuple element writes are not supported yet");
       }
       if (expression instanceof Hir.DotAccess access
-        && HirExprs.getMemberReceiverLayout(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
+        && Hirs.getMemberReceiverLayout(access.target()) instanceof TyStruct tuple && tuple.tuple()) {
         throw new IllegalArgumentException("Tuple element writes are not supported yet");
       }
     }
@@ -158,7 +168,7 @@ public final class HirTupleValidationVisitorPass {
     @Override
     public void visitNewByBlockField(final Hir.NewByBlock construction, final Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
-      final var field = HirExprs.getInitializerField(construction, expression);
+      final var field = Hirs.getInitializerField(construction, expression);
       if (field != null) {
         check(expression.rhs().ty(), field.ty(), "field %s".formatted(expression.lhs()));
       }
@@ -167,7 +177,7 @@ public final class HirTupleValidationVisitorPass {
     @Override
     public void visitCall(Hir.Call expression) {
       HirVisitor.super.visitCall(expression);
-      final var function = HirExprs.getCallableSignature(expression.target());
+      final var function = Hirs.getCallableSignature(expression.target());
       if (function == null) {
         return;
       }

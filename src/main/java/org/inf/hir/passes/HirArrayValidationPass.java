@@ -8,7 +8,7 @@ import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirVisitor;
 import org.inf.hir.typing.HirBodyResultTyping;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyUnion;
@@ -64,13 +64,13 @@ public class HirArrayValidationPass {
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
-      check(expression.rhs().ty(), HirExprs.getBindingStructureTy(expression.lhs()), "assignment");
+      check(expression.rhs().ty(), Hirs.getBindingStructureTy(expression.lhs()), "assignment");
     }
 
     @Override
     public void visitNewByBlockField(final Hir.NewByBlock construction, final Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
-      final var field = HirExprs.getInitializerField(construction, expression);
+      final var field = Hirs.getInitializerField(construction, expression);
       if (field != null) {
         check(expression.rhs().ty(), field.ty(), "field %s".formatted(expression.lhs()));
       }
@@ -79,7 +79,7 @@ public class HirArrayValidationPass {
     @Override
     public void visitCall(final Hir.Call expression) {
       HirVisitor.super.visitCall(expression);
-      final var function = HirExprs.getCallableSignature(expression.target());
+      final var function = Hirs.getCallableSignature(expression.target());
       // Variadic receiver packing is not an ordinary array argument boundary.
       if (function == null || function.vararg()) {
         return;

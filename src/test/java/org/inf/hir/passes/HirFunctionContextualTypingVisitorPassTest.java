@@ -3,7 +3,7 @@ package org.inf.hir.passes;
 import org.inf.Inf;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.thir.raising.HirToThirRaising;
 import org.inf.ty.TyFn;
@@ -53,7 +53,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     Assertions.assertEquals(1, parameters.size());
     final var parameter = parameters.stream().findFirst().orElseThrow();
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
+      () -> Assertions.assertTrue(Tys.isInferred(Hirs.structuralTy(parameter.typeAnnotation()))),
       () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), parameter.ty().structuralTy()),
       () -> Assertions.assertEquals(Ty.BOOLEAN, root.ty())
     );
@@ -88,7 +88,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     Assertions.assertEquals(1, parameters.size());
     final var parameter = parameters.getFirst();
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
+      () -> Assertions.assertNull(parameter.typeAnnotation()),
       () -> Assertions.assertEquals(Tys.fromString("uint8", MachineTarget.T64), parameter.ty().structuralTy())
     );
   }
@@ -121,15 +121,15 @@ class HirFunctionContextualTypingVisitorPassTest {
     final var root = new HirToThirRaising(MachineTarget.T64).raise(hir).root();
     final var signature = Assertions.assertInstanceOf(TyFn.class, root.ty());
     Assertions.assertAll(
-      () -> Assertions.assertSame(annotation.expression(), parameter.typeAnnotation().expression()),
+      () -> Assertions.assertSame(annotation, parameter.typeAnnotation()),
       () -> Assertions.assertEquals(Ty.VOID, parameter.ty().completionTy()),
       () -> Assertions.assertFalse(Tys.containsInferred(parameter.ty().structuralTy())),
       () -> Assertions.assertEquals(parameter.ty().structuralTy(), signature.parameters()[0].ty())
     );
-    if (annotation.expression() == null) {
-      Assertions.assertEquals(Ty.INFER, annotation.ty());
+    if (annotation == null) {
+      Assertions.assertTrue(Tys.isInferred(Tys.declaredConstraintTy(parameter.ty())));
     } else {
-      Assertions.assertInstanceOf(Hir.Identifier.class, parameter.typeAnnotation().expression());
+      Assertions.assertInstanceOf(Hir.Identifier.class, parameter.typeAnnotation());
       Assertions.assertSame(parameter.typeAnnotation().ty(), parameter.ty().structuralTy());
     }
   }
@@ -154,7 +154,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     Assertions.assertEquals(1, functions.size());
     final var parameter = functions.getFirst().signature().parameters()[0];
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
+      () -> Assertions.assertEquals(true, Tys.isInferred(Hirs.ty(parameter.typeAnnotation()))),
       () -> Assertions.assertNull(parameter.ty().structuralTy())
     );
   }
@@ -202,7 +202,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     Assertions.assertAll(
       () -> Assertions.assertEquals("v", parameter.lexeme().name()),
       () -> Assertions.assertEquals(Ty.VOID, parameter.ty().completionTy()),
-      () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
+      () -> Assertions.assertEquals(true, Tys.isInferred(Hirs.ty(parameter.typeAnnotation()))),
       () -> Assertions.assertEquals(function.parameters()[0].ty(), parameter.ty().structuralTy()),
       () -> Assertions.assertEquals(function.returnTy(), parameter.ty().structuralTy())
     );
@@ -291,7 +291,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     HirFunctionContextualTypingVisitorPass.pass(root);
     final var parameter = functions.getFirst().signature().parameters()[0];
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
+      () -> Assertions.assertEquals(true, Tys.isInferred(Hirs.ty(parameter.typeAnnotation()))),
       () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), parameter.ty().structuralTy()),
       () -> Assertions.assertEquals(beforeRootType, root.ty()),
       () -> Assertions.assertEquals(beforeTupleTypes, tuples.stream().map(Hir.Tuple::ty).toList()),
@@ -356,9 +356,9 @@ class HirFunctionContextualTypingVisitorPassTest {
     Assertions.assertEquals(2, functions.size());
     HirFunctionContextualTypingVisitorPass.pass(root);
     Assertions.assertAll(
-      () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].typeAnnotation().ty())),
+      () -> Assertions.assertTrue(Tys.isInferred(Hirs.ty(functions.getFirst().signature().parameters()[0].typeAnnotation()))),
       () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].ty().structuralTy())),
-      () -> Assertions.assertEquals(Ty.INFER, functions.getLast().signature().parameters()[0].typeAnnotation().ty()),
+      () -> Assertions.assertTrue(Tys.isInferred(Hirs.ty(functions.getLast().signature().parameters()[0].typeAnnotation()))),
       () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64),
         functions.getLast().signature().parameters()[0].ty().structuralTy())
     );
@@ -405,7 +405,7 @@ class HirFunctionContextualTypingVisitorPassTest {
     final var target = Assertions.assertInstanceOf(Hir.Identifier.class, constructors.getFirst().target());
     final var declaration = Assertions.assertInstanceOf(Hir.Dec.class, target.target());
     declaration.ty(Tys.withStructural(declaration.ty(), null));
-    Assertions.assertNull(HirExprs.getConstructionTargetLayout(target));
+    Assertions.assertNull(Hirs.getConstructionTargetLayout(target));
     HirFunctionContextualTypingVisitorPass.pass(root);
     Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64),
       functions.getFirst().signature().parameters()[0].ty().structuralTy(),

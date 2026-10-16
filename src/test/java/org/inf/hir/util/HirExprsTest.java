@@ -49,7 +49,7 @@ class HirExprsTest {
     final var declaration = declaration(root);
     final var reference = nodes(root, Hir.Identifier.class).stream()
       .filter(identifier -> identifier.target() == declaration).findFirst().orElseThrow();
-    final var binding = HirExprs.getBindingTy(declaration);
+    final var binding = Hirs.getBindingTy(declaration);
     assertAll(
       () -> assertSame(Ty.VOID, declaration.ty().completionTy()),
       () -> assertEquals(structural, declaration.ty().structuralTy()),
@@ -61,8 +61,8 @@ class HirExprsTest {
       () -> assertNull(Tys.declaredConstraintTy(binding)),
       () -> assertSame(binding, reference.ty()),
       () -> assertSame(Ty.BOOLEAN, root.ty()),
-      () -> assertNull(HirExprs.getMemberReceiverLayout(reference)),
-      () -> assertSame(Ty.DEADEND, HirExprs.getIndexingReceiverTy(reference))
+      () -> assertNull(Hirs.getMemberReceiverLayout(reference)),
+      () -> assertSame(Ty.DEADEND, Hirs.getIndexingReceiverTy(reference))
     );
   }
 
@@ -72,7 +72,7 @@ class HirExprsTest {
     final var declaration = declaration(root);
     final var expected = Tys.fromString("uint16", MachineTarget.T64);
     assertAll(
-      () -> assertEquals(expected, HirExprs.getBindingTy(declaration)),
+      () -> assertEquals(expected, Hirs.getBindingTy(declaration)),
       () -> assertEquals(expected, declaration.ty().structuralTy()),
       () -> assertEquals(expected, declaration.ty().declaredConstraintTy()),
       () -> assertNotEquals(expected, declaration.initialization().rhs().ty()),
@@ -88,12 +88,12 @@ class HirExprsTest {
       val v: Fn = make({ return true; });
       """).root();
     final var declaration = declaration(root);
-    final var binding = HirExprs.getBindingTy(declaration);
+    final var binding = Hirs.getBindingTy(declaration);
     assertAll(
       () -> assertTrue(Tys.isDeadend(binding)),
       () -> assertSame(declaration.ty().structuralTy(), Tys.structuralTy(binding)),
-      () -> assertSame(declaration.ty().structuralTy(), HirExprs.getCallableSignature(declaration)),
-      () -> assertSame(declaration.ty().declaredConstraintTy(), HirExprs.getAssignmentContextTy(declaration)),
+      () -> assertSame(declaration.ty().structuralTy(), Hirs.getCallableSignature(declaration)),
+      () -> assertSame(declaration.ty().declaredConstraintTy(), Hirs.getAssignmentContextTy(declaration)),
       () -> assertSame(Ty.BOOLEAN, root.ty())
     );
 
@@ -117,24 +117,24 @@ class HirExprsTest {
     assertAll(
       () -> assertSame(storedType, declaration.ty()),
       () -> assertSame(Ty.VOID, initialization.ty()),
-      () -> assertSame(Ty.BOOLEAN, HirExprs.getBindingTy(declaration)),
-      () -> assertSame(Ty.BOOLEAN, HirExprs.getBindingStructureTy(declaration))
+      () -> assertSame(Ty.BOOLEAN, Hirs.getBindingTy(declaration)),
+      () -> assertSame(Ty.BOOLEAN, Hirs.getBindingStructureTy(declaration))
     );
 
     HirTyCommonVisitorPass.pass(root);
     assertAll(
       () -> assertSame(storedType, declaration.ty()),
       () -> assertSame(Ty.DEADEND, initialization.ty()),
-      () -> assertTrue(Tys.isDeadend(HirExprs.getBindingTy(declaration)))
+      () -> assertTrue(Tys.isDeadend(Hirs.getBindingTy(declaration)))
     );
 
     initialization.rhs(originalValue);
-    assertTrue(Tys.isDeadend(HirExprs.getBindingTy(declaration)));
+    assertTrue(Tys.isDeadend(Hirs.getBindingTy(declaration)));
     HirTyCommonVisitorPass.pass(root);
     assertAll(
       () -> assertSame(storedType, declaration.ty()),
       () -> assertSame(Ty.VOID, initialization.ty()),
-      () -> assertSame(Ty.BOOLEAN, HirExprs.getBindingTy(declaration))
+      () -> assertSame(Ty.BOOLEAN, Hirs.getBindingTy(declaration))
     );
   }
 
@@ -163,7 +163,7 @@ class HirExprsTest {
     HirTyCommonVisitorPass.pass(transformed);
     final var sameDeclaration = declaration(Inf.codeToThir("val v: bool = false; v").root());
     assertAll(
-      () -> assertTrue(Tys.isDeadend(HirExprs.getBindingTy(declaration))),
+      () -> assertTrue(Tys.isDeadend(Hirs.getBindingTy(declaration))),
       () -> assertEquals(declarationBefore, printer.render(declaration)),
       () -> assertEquals(sameDeclaration, declaration),
       () -> assertEquals(hash, declaration.hashCode())
@@ -172,7 +172,7 @@ class HirExprsTest {
     replacement.lhs(new Hir.Identifier("v", declaration));
     assertAll(
       () -> assertNull(declaration.initialization()),
-      () -> assertSame(Ty.BOOLEAN, HirExprs.getBindingTy(declaration))
+      () -> assertSame(Ty.BOOLEAN, Hirs.getBindingTy(declaration))
     );
   }
 
@@ -185,7 +185,7 @@ class HirExprsTest {
       () -> assertSame(assignments.getFirst(), declaration.initialization()),
       () -> assertSame(Ty.VOID, declaration.initialization().ty()),
       () -> assertSame(Ty.DEADEND, assignments.getLast().ty()),
-      () -> assertSame(Ty.BOOLEAN, HirExprs.getBindingTy(declaration))
+      () -> assertSame(Ty.BOOLEAN, Hirs.getBindingTy(declaration))
     );
   }
 
@@ -194,7 +194,7 @@ class HirExprsTest {
     final var root = Inf.codeToThir("val v = v; v").root();
     final var declaration = declaration(root);
     assertAll(
-      () -> assertSame(Ty.INFER, HirExprs.getBindingTy(declaration)),
+      () -> assertSame(Ty.INFER, Hirs.getBindingTy(declaration)),
       () -> assertSame(Ty.INFER, declaration.ty().declaredConstraintTy()),
       () -> assertSame(Ty.VOID, declaration.ty().completionTy()),
       () -> assertSame(declaration,
@@ -214,7 +214,7 @@ class HirExprsTest {
 
     assertAll(
       () -> assertSame(Ty.VOID, declaration.initialization().ty()),
-      () -> assertSame(Ty.BOOLEAN, HirExprs.getBindingTy(declaration)),
+      () -> assertSame(Ty.BOOLEAN, Hirs.getBindingTy(declaration)),
       () -> assertSame(Ty.BOOLEAN, reference.ty())
     );
   }
@@ -241,8 +241,8 @@ class HirExprsTest {
     });
 
     for (final var declaration : declarations) {
-      assertSame(Ty.INTEGER, HirExprs.getBindingTy(declaration));
-      assertSame(Ty.INTEGER, HirExprs.getBindingStructureTy(declaration));
+      assertSame(Ty.INTEGER, Hirs.getBindingTy(declaration));
+      assertSame(Ty.INTEGER, Hirs.getBindingStructureTy(declaration));
     }
     assertAll(
       () -> assertSame(Ty.INTEGER, root.ty()),

@@ -3,7 +3,7 @@ package org.inf.hir;
 import jakarta.annotation.Nullable;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.Tys;
@@ -73,7 +73,7 @@ public final class HirStructLayoutVisitor implements HirVisitor {
 
   @Override
   public void visitDec(final Hir.Dec expression) {
-    final var binding = HirExprs.getBindingTy(expression);
+    final var binding = Hirs.getBindingTy(expression);
     type = Tys.isDeadend(binding) ? null : Tys.structuralTy(binding);
   }
 
@@ -96,7 +96,7 @@ public final class HirStructLayoutVisitor implements HirVisitor {
 
   @Override
   public void visitCall(final Hir.Call expression) {
-    final var signature = HirExprs.getCallableSignature(expression.target());
+    final var signature = Hirs.getCallableSignature(expression.target());
     if (signature != null) {
       type = signature.returnTy();
     }
@@ -114,7 +114,7 @@ public final class HirStructLayoutVisitor implements HirVisitor {
 
   @Override
   public void visitDotAccess(final Hir.DotAccess expression) {
-    type = HirExprs.getMemberTy(expression);
+    type = Hirs.getMemberTy(expression);
   }
 
   @Override

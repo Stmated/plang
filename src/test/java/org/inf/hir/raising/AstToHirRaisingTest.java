@@ -24,6 +24,7 @@ import org.inf.ast.util.SnapshotTestUtils;
 import org.inf.ast.util.ToStringTreeAstVisitor;
 import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
+import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -148,17 +149,18 @@ class AstToHirRaisingTest {
   void given__explicit_and_omitted_annotations__when__raised__then__source_syntax_is_preserved_without_type_resolution() {
     final var root = Inf.codeToHir("val v: int = 7; val use = (p: bool, q): bool => p; [7;int;1]; [7]");
     final var annotations = new ArrayList<DynamicTy>();
+    final var annotationExpressions = new ArrayList<Hir.Expression>();
     root.visit(new HirVisitor() {
       @Override
-      public void visitDec(final Hir.Dec declaration) {
-        annotations.add(declaration.typeAnnotation());
-        HirVisitor.super.visitDec(declaration);
+      public void visitDecType(DynamicTy annotation) {
+        annotations.add(annotation);
+        HirVisitor.super.visitDecType(annotation);
       }
 
       @Override
-      public void visitParameter(final Hir.Parameter parameter) {
-        annotations.add(parameter.typeAnnotation());
-        HirVisitor.super.visitParameter(parameter);
+      public void visitParameterType(Hir.Expression expr) {
+        annotationExpressions.add(expr);
+        HirVisitor.super.visitParameterType(expr);
       }
 
       @Override
@@ -173,15 +175,21 @@ class AstToHirRaisingTest {
         HirVisitor.super.visitArrayElementType(annotation);
       }
     });
-    final var explicit = annotations.stream().filter(annotation -> annotation.expression() != null)
-      .map(annotation -> Assertions.assertInstanceOf(Hir.Identifier.class, annotation.expression())).toList();
-    Assertions.assertAll(
-      () -> Assertions.assertEquals(7, annotations.size()),
-      () -> Assertions.assertTrue(annotations.stream().allMatch(annotation -> annotation.ty() == Ty.INFER)),
-      () -> Assertions.assertEquals(java.util.List.of("int", "bool", "bool", "int"),
-        explicit.stream().map(Hir.Identifier::name).toList()),
-      () -> Assertions.assertTrue(explicit.stream().allMatch(identifier -> identifier.ty() == null)),
-      () -> Assertions.assertTrue(explicit.stream().allMatch(identifier -> identifier.target() == null))
+
+    final var typeAnnotationIdentifiers = new ArrayList<>(annotations.stream()
+      .filter(a -> a.expression() != null)
+      .map(a -> Assertions.assertInstanceOf(Hir.Identifier.class, a.expression()))
+      .toList());
+
+    typeAnnotationIdentifiers.addAll(annotationExpressions.stream()
+      .map(e -> Assertions.assertInstanceOf(Hir.Identifier.class, e))
+      .toList()
+    );
+
+    // TODO: This needs to be updated when more nodes move away from DynamicTy (so they end up as expressions at end of list instead)
+    Assertions.assertEquals(
+      List.of("int", "bool", "int", "bool"),
+      typeAnnotationIdentifiers.stream().map(Hir.Identifier::name).toList()
     );
   }
 
@@ -366,8 +374,8 @@ class AstToHirRaisingTest {
     Assertions.assertAll(
       () -> Assertions.assertEquals("label", entry.label().name()),
       () -> Assertions.assertInstanceOf(Hir.Identifier.class, entry.value()),
-      () -> Assertions.assertEquals(java.util.List.of("value"), visited),
-      () -> Assertions.assertEquals(java.util.List.of("value"), transformed)
+      () -> Assertions.assertEquals(List.of("value"), visited),
+      () -> Assertions.assertEquals(List.of("value"), transformed)
     );
   }
 

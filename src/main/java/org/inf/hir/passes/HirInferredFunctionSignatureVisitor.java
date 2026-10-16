@@ -8,7 +8,7 @@ import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyParam;
@@ -56,7 +56,7 @@ final class HirInferredFunctionSignatureVisitor {
       public void visitFunction(final Hir.Function expression) {
         if (expected instanceof final TyFn function) {
           action.accept(expression.signature(), function);
-          visitReturns(expression, HirExprs.getFunctionReturnContextTy(expression.signature(), function.returnTy()));
+          visitReturns(expression, Hirs.getFunctionReturnContextTy(expression.signature(), function.returnTy()));
         }
       }
 
@@ -95,13 +95,13 @@ final class HirInferredFunctionSignatureVisitor {
 
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
-      visitContext(expression.rhs(), HirExprs.getAssignmentContextTy(expression.lhs()));
+      visitContext(expression.rhs(), Hirs.getAssignmentContextTy(expression.lhs()));
       HirVisitor.super.visitAssignment(expression);
     }
 
     @Override
     public void visitNewByBlockField(final Hir.NewByBlock construction, final Hir.Assignment expression) {
-      final var field = HirExprs.getInitializerField(construction, expression);
+      final var field = Hirs.getInitializerField(construction, expression);
       if (field != null) {
         visitContext(expression.rhs(), field.ty());
       }
@@ -110,13 +110,13 @@ final class HirInferredFunctionSignatureVisitor {
 
     @Override
     public void visitFunction(final Hir.Function expression) {
-      visitReturns(expression, HirExprs.getFunctionReturnContextTy(expression.signature()));
+      visitReturns(expression, Hirs.getFunctionReturnContextTy(expression.signature()));
       HirVisitor.super.visitFunction(expression);
     }
 
     @Override
     public void visitCall(final Hir.Call expression) {
-      final var function = HirExprs.getCallableSignature(expression.target());
+      final var function = Hirs.getCallableSignature(expression.target());
       if (function != null && ArrayUtils.any(function.parameters(), p -> p.ty() instanceof TyFn)) {
         final var arguments = expression.arguments();
         if (ArrayUtils.none(arguments, a -> a.value() instanceof Hir.Spread spread && HirSpreadShape.availableFields(spread) == null)) {

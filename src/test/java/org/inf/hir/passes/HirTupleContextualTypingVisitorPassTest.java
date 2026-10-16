@@ -4,6 +4,7 @@ import org.inf.Inf;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
 import org.inf.ty.TyStruct;
@@ -103,7 +104,9 @@ class HirTupleContextualTypingVisitorPassTest {
       }
     });
     Assertions.assertEquals(1, functions.size());
-    Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].typeAnnotation().ty()));
+
+    final var firstParam = functions.getFirst().signature().parameters()[0];
+    Assertions.assertNull(firstParam.typeAnnotation());
   }
 
   @ParameterizedTest

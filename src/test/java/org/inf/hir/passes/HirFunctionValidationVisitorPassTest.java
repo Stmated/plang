@@ -94,8 +94,8 @@ class HirFunctionValidationVisitorPassTest {
     final var root = prepare("val Fn = (v: int): int; %s".formatted(expression));
     final var printer = new ToStringTreeHirVisitor();
     final var before = printer.render(root);
-    final var error = Assertions.assertThrows(InvalidTypeConversionException.class,
-      () -> HirFunctionValidationVisitorPass.pass(root));
+    final var error = Assertions.assertThrows(InvalidTypeConversionException.class, () -> HirFunctionValidationVisitorPass.pass(root));
+    
     Assertions.assertAll(
       () -> Assertions.assertTrue(error.getMessage().contains("Function type does not match expected function type")),
       () -> Assertions.assertEquals(before, printer.render(root))

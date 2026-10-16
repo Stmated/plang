@@ -33,6 +33,7 @@ public class HirFunctionSignatureValidationVisitorPass {
     public void visitFunctionSignature(final Hir.FunctionSignature expression) {
       HirVisitor.super.visitFunctionSignature(expression);
       if (Tys.containsInferred(expression.ty())) {
+        // TODO: This should have its own custom exception for circumstances like these
         throw new IllegalArgumentException("Function signature requires resolved parameter and return types: " + expression);
       }
     }

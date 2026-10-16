@@ -7,7 +7,8 @@ description: Use when writing Java test cases, including for the Inf compiler wr
 
 * Prefer parameterized tests when testing multiple inputs and outputs for the same method.
   * Always separate parameterized test case entries by newline, such as between different values sent in as @ValueSource.
-* Prefer using `assertAll` if there are several assertions one after another that do not have dependencies on each other.
+* Prefer using `assertAll` if there are several assertions one after another that do not have any dependencies to each other.
+  * But there must be a very short identifiable message (one or two words) for the the nested assertion, so developer can distinguish which entry failed.
 * Avoid tests that check only "does not throw" -- a test is supposed to check against a result only reachable because of the thing the test tests.
 
 ## Test naming

@@ -28,13 +28,23 @@ public class HirTupleSyntaxValidationVisitorPass {
       }
     }
 
+    private void visitAnnotation(final Hir.Expression expr) {
+      final var outer = inAnnotation;
+      try {
+        inAnnotation = true;
+        visitChild(expr);
+      } finally {
+        inAnnotation = outer;
+      }
+    }
+
     @Override
     public void visitDecType(final DynamicTy expression) {
       visitAnnotation(expression);
     }
 
     @Override
-    public void visitParameterType(final DynamicTy expression) {
+    public void visitParameterType(final Hir.Expression expression) {
       visitAnnotation(expression);
     }
 

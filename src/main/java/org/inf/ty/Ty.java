@@ -59,6 +59,8 @@ public interface Ty {
 
   @Nullable
   default Ty structuralTy() {
+    // TODO: Is it actually correct to return null here instead of just returning the DEADEND that we actually are? Seems better...
+    //      Or to differentiate it somehow else, because right now it seems weird to make `structuralTy` behave this way.
     return this == DEADEND ? null : this;
   }
 

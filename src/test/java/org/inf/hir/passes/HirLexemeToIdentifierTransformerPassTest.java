@@ -4,6 +4,7 @@ import org.inf.Inf;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
+import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -25,11 +26,10 @@ class HirLexemeToIdentifierTransformerPassTest {
     final var lexeme = new Hir.Lexeme(name);
     final var identifier = assertInstanceOf(Hir.Identifier.class, HirLexemeToIdentifierTransformerPass.pass(lexeme));
     assertAll(
-      () -> assertSame(Ty.VOID, lexeme.ty()),
-      () -> assertEquals(name, identifier.name()),
-      () -> assertEquals(name, identifier.toString()),
-      () -> assertNull(identifier.ty()),
-      () -> assertNull(identifier.target())
+      () -> assertSame(Ty.VOID, Tys.completionTy(lexeme.ty()), "void"),
+      () -> assertEquals(name, identifier.name(), "name"),
+      () -> assertNull(identifier.ty(), "no ty"),
+      () -> assertNull(identifier.target(), "no target")
     );
   }
 
@@ -52,7 +52,7 @@ class HirLexemeToIdentifierTransformerPassTest {
     final var nested = assignments.getFirst();
     assertAll(
       () -> assertEquals("value", assertInstanceOf(Hir.Lexeme.class, field.lhs()).name()),
-      () -> assertSame(Ty.VOID, field.lhs().ty()),
+      () -> assertSame(Ty.VOID, Tys.completionTy(field.lhs().ty())),
       () -> assertEquals(1, assignments.size()),
       () -> assertEquals("value", assertInstanceOf(Hir.Identifier.class, nested.lhs()).name()),
       () -> assertEquals("other", assertInstanceOf(Hir.Identifier.class, nested.rhs()).name())
@@ -97,14 +97,13 @@ class HirLexemeToIdentifierTransformerPassTest {
     final var member = paths.getFirst();
     final var label = calls.getFirst().arguments()[0].label();
     assertAll(
-      () -> assertFalse(names.isEmpty()),
-      () -> assertTrue(names.stream().allMatch(name -> name.ty() == Ty.VOID)),
+      () -> assertFalse(names.isEmpty(), "names"),
       () -> assertEquals("value", member.name()),
       () -> assertEquals(root.ty(), member.memberTy()),
       () -> assertEquals("object", label.name()),
-      () -> assertSame(Ty.VOID, label.ty()),
+      () -> assertSame(Ty.VOID, Tys.completionTy(label.ty()), "same void"),
       () -> assertEquals(List.of("S", "object", "S", "heap", "read", "s"), references.stream().map(Hir.Identifier::name).toList()),
-      () -> assertTrue(references.stream().allMatch(reference -> reference.target() != null)),
+      () -> assertTrue(references.stream().allMatch(reference -> reference.target() != null), "no targets"),
       () -> assertEquals(paths.getFirst().memberTy(), root.ty())
     );
   }

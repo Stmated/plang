@@ -7,7 +7,7 @@ import org.inf.hir.HirArgumentBinding;
 import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirVisitor;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyParam;
 import org.inf.ty.util.Tys;
@@ -23,7 +23,7 @@ public class HirFunctionValidationVisitorPass {
   }
 
   private static void check(final Hir.Expression expression, final Ty expected, final String context) {
-    final var callable = HirExprs.getCallableValueTy(expression);
+    final var callable = Hirs.getCallableValueTy(expression);
     check(callable == null ? expression.ty() : callable, expected, context);
   }
 
@@ -46,13 +46,13 @@ public class HirFunctionValidationVisitorPass {
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
-      check(expression.rhs(), HirExprs.getBindingStructureTy(expression.lhs()), "assignment");
+      check(expression.rhs(), Hirs.getBindingStructureTy(expression.lhs()), "assignment");
     }
 
     @Override
     public void visitNewByBlockField(final Hir.NewByBlock construction, final Hir.Assignment expression) {
       HirVisitor.super.visitAssignment(expression);
-      final var field = HirExprs.getInitializerField(construction, expression);
+      final var field = Hirs.getInitializerField(construction, expression);
       if (field != null) {
         check(expression.rhs(), field.ty(), "field %s".formatted(expression.lhs()));
       }
@@ -81,7 +81,7 @@ public class HirFunctionValidationVisitorPass {
     @Override
     public void visitCall(final Hir.Call expression) {
       HirVisitor.super.visitCall(expression);
-      final var function = HirExprs.getCallableSignature(expression.target());
+      final var function = Hirs.getCallableSignature(expression.target());
       if (function == null || ArrayUtils.none(function.parameters(), parameter -> Tys.containsFunction(parameter.ty()))) {
         return;
       }

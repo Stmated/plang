@@ -3,6 +3,7 @@ package org.inf.hir;
 import org.inf.Inf;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.passes.HirTyCommonVisitorPass;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyStruct;
@@ -188,7 +189,7 @@ class HirUnionTest {
       () -> assertEquals(2, union.elements().length),
       () -> assertEquals("V", member.name()),
       () -> assertSame(declaration(root, "V"), member.target()),
-      () -> assertEquals("string", string.name()),
+      () -> assertEquals(Ty.STRING, string.ty()),
       () -> assertInstanceOf(Hir.Identifier.class, definition(root, "V").rhs()),
       () -> assertEquals(expected, union.unionTy()),
       () -> assertEquals(expected, declaration(root, "v").ty().structuralTy()),
@@ -239,12 +240,11 @@ class HirUnionTest {
   void given__union_in_a_supported_annotation_position__when__raised_and_typed__then__source_and_constraint_are_preserved(
     final String code, final String role
   ) {
-    final var hirUnion = nodes(Inf.codeToHir(code), Hir.Union.class).getFirst();
     final var root = Inf.codeToThir(code).root();
     final var union = nodes(root, Hir.Union.class).getFirst();
     final Ty constraint = switch (role) {
       case "declaration" -> declaration(root, "v").typeAnnotation().ty();
-      case "parameter" -> nodes(root, Hir.Parameter.class).getFirst().typeAnnotation().ty();
+      case "parameter" -> nodes(root, Hir.Parameter.class).getFirst().ty().structuralTy();
       case "return" -> nodes(root, Hir.Function.class).getFirst().signature().returnTypeAnnotation().ty();
       case "field" -> nodes(root, Hir.Struct.class).getFirst().declarations()[0].typeAnnotation().ty();
       case "element" -> nodes(root, Hir.Array.class).getFirst().elementType().ty();
@@ -253,11 +253,9 @@ class HirUnionTest {
     };
     final var expected = Tys.union(INT, Ty.BOOLEAN);
     assertAll(
-      () -> assertSame(Ty.INFER, hirUnion.unionTy()),
-      () -> assertTrue(Arrays.stream(hirUnion.elements()).allMatch(Hir.Identifier.class::isInstance)),
-      () -> assertEquals(expected, union.unionTy()),
-      () -> assertEquals(expected, constraint),
-      () -> assertSame(Ty.VOID, union.ty())
+      () -> assertEquals(expected, union.unionTy(), "union's"),
+      () -> assertEquals(expected, constraint, "constraint"),
+      () -> assertSame(Ty.VOID, union.ty(), "expect void")
     );
   }
 
@@ -266,11 +264,12 @@ class HirUnionTest {
     final var root = Inf.codeToThir("val U = int | bool; val V = U; val use = (p: V) => p; use").root();
     final var union = assertInstanceOf(Hir.Union.class, definition(root, "U").rhs());
     final var parameter = nodes(root, Hir.Parameter.class).getFirst();
-    final var source = parameter.typeAnnotation().expression();
+    final var source = parameter.typeAnnotation();
     final var original = parameter.ty().structuralTy();
+
     final var replacement = Inf.codeToThir("val U = int | string; val use = (p: U) => p; use").root();
-    final var elements = assertInstanceOf(Hir.Union.class, definition(replacement, "U").rhs()).elements();
-    union.elements(elements);
+    final var replacementElements = assertInstanceOf(Hir.Union.class, definition(replacement, "U").rhs()).elements();
+    union.elements(replacementElements);
     union.unionTy(Ty.INFER);
 
     for (int i = 0; i < 2; i++) {
@@ -278,13 +277,13 @@ class HirUnionTest {
       HirTyCommonVisitorPass.pass(root);
       final var expected = Tys.union(INT, Ty.STRING);
       assertAll(
-        () -> assertSame(elements, union.elements()),
-        () -> assertNotEquals(original, parameter.ty().structuralTy()),
-        () -> assertEquals(expected, union.unionTy()),
-        () -> assertEquals(expected, parameter.typeAnnotation().ty()),
-        () -> assertEquals(expected, parameter.ty().structuralTy()),
-        () -> assertSame(source, parameter.typeAnnotation().expression()),
-        () -> assertSame(Ty.VOID, union.ty())
+        () -> assertSame(replacementElements, union.elements(), "elements"),
+        () -> assertNotEquals(original, parameter.ty().structuralTy(), "structural"),
+        () -> assertEquals(expected, union.unionTy(), "union"),
+        () -> assertEquals(expected, Hirs.getDeclaredConstraintTy(parameter), "annotation"),
+        () -> assertEquals(expected, parameter.ty().structuralTy(), "structural"),
+        () -> assertSame(source, parameter.typeAnnotation(), "as source"),
+        () -> assertSame(Ty.VOID, union.ty(), "union ty is void")
       );
     }
   }

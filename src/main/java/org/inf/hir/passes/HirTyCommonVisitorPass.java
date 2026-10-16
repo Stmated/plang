@@ -11,8 +11,9 @@ import org.inf.hir.HirVisitor;
 import org.inf.hir.typing.HirBodyResultTyping;
 import org.inf.hir.typing.HirDeclarationTyping;
 import org.inf.hir.typing.HirFunctionReturnTyping;
+import org.inf.hir.typing.HirStructuralConstraintTyResolver;
 import org.inf.hir.typing.HirTupleTyping;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.*;
 import org.inf.ty.util.Tys;
 import org.inf.ty.util.TupleTypes;
@@ -50,6 +51,7 @@ public class HirTyCommonVisitorPass {
     public void visitUnion(final Hir.Union expr) {
       HirVisitor.super.visitUnion(expr);
 
+      // TODO: Perhaps we should not be reconstructing this over and over, it seems expensive.
       final var types = new Ty[expr.elements().length];
       for (var i = 0; i < types.length; i++) {
         types[i] = annotations.resolve(expr.elements()[i]);
@@ -61,9 +63,20 @@ public class HirTyCommonVisitorPass {
     @Override
     public void visitParameter(Hir.Parameter expr) {
       HirVisitor.super.visitParameter(expr);
-      expr.typeAnnotation(expr.typeAnnotation().resolve(annotations::resolve));
-      final var annotation = Tys.declaredConstraintTy(expr.ty());
-      if (!Tys.isInferred(annotation) || Tys.structuralTy(expr.ty()) == null) {
+
+      // TODO: This "transfer" of the type can likely be removed later, since we can just derive it with the resolver below instead of double-storing it.
+      if (expr.typeAnnotation() != null) {
+        final var annotationTy = HirStructuralConstraintTyResolver.resolve(expr.typeAnnotation());
+        expr.ty(Tys.withDeclaredConstraint(expr.ty(), annotationTy));
+      }
+
+      // TODO: This is likely wrong, since a parameter itself should not really ever have a "structural type" generally from here.
+      //        If another transformer fills in information about "this parameter is this, but there's no constraint" then that is for elsewhere
+      final var annotation = HirStructuralConstraintTyResolver.resolve(expr);
+      if (!Tys.isInferred(annotation) || Tys.isInferred(Tys.structuralTy(expr.ty()))) {
+
+        // TODO: Delete this after we have a proper and secure way of doing `get the structural type, or the constraint`
+        //        Because there needs to be a CLEAR distinction between what the "dev" has stated and what a transformer has said.
         expr.ty(Tys.withStructural(expr.ty(), annotation));
       }
     }
@@ -84,6 +97,9 @@ public class HirTyCommonVisitorPass {
       } else if (expr.kind().isPredicate()) {
         expr.ty(Ty.BOOLEAN);
       } else {
+        // TODO: Consider not returning "null" or "INFER" here if we cannot find one; perhaps it is INVALID?
+        //        For example if one of the ty is null, then we cannot deduce common denominator, but that does not mean type is "infer"...
+        //        Why if there is NO OVERLAP between two types would we say the type is "inferred"? It should be INVALID or something else
         expr.ty(Objects.requireNonNullElse(Tys.getCommonDenominator(lhst, rhst).ty(), Ty.INFER));
       }
     }
@@ -139,7 +155,7 @@ public class HirTyCommonVisitorPass {
 
       // The element ty can still be INFER -- it will be used for late type decisions.
       final var arrayTy = Tys.intern(new TyValueArray(arrayElementTy, arrayLength));
-      final var diverges = HirExprs.isDeadEnd(expr.elements())
+      final var diverges = Hirs.isDeadEnd(expr.elements())
         || (expr.length() != null && Tys.isDeadend(expr.length().ty()));
       expr.ty(Tys.withCompletion(diverges ? Ty.DEADEND : arrayTy, arrayTy));
     }
@@ -160,7 +176,7 @@ public class HirTyCommonVisitorPass {
       expr.ty(null);
       HirVisitor.super.visitAssignment(expr);
 
-      if (HirExprs.isDeadEnd(expr.rhs(), expr.lhs())) {
+      if (Hirs.isDeadEnd(expr.rhs(), expr.lhs())) {
         expr.ty(Ty.DEADEND);
       } else {
         expr.ty(Ty.VOID);
@@ -175,7 +191,7 @@ public class HirTyCommonVisitorPass {
     public void visitCompoundAssignment(Hir.CompoundAssignment expr) {
       HirVisitor.super.visitCompoundAssignment(expr);
 
-      if (HirExprs.isDeadEnd(expr.rhs(), expr.target())) {
+      if (Hirs.isDeadEnd(expr.rhs(), expr.target())) {
         expr.ty(Ty.DEADEND);
       } else {
         expr.ty(Ty.VOID);
@@ -192,7 +208,7 @@ public class HirTyCommonVisitorPass {
       final var breakType = Tys.union(breakTypes.toArray(new Ty[0]));
 
       // TODO: Perhaps the loop return type should be the last expression in the loop body? Or require explicit break?
-      if (HirExprs.isDeadEnd(expr.body())) {
+      if (Hirs.isDeadEnd(expr.body())) {
         expr.ty(breakType);
       } else if (breakTypes.isEmpty()) {
         expr.ty(Ty.VOID);
@@ -219,7 +235,7 @@ public class HirTyCommonVisitorPass {
     public void visitExpressions(Hir.Expressions expr) {
       HirVisitor.super.visitExpressions(expr);
       final var children = expr.children();
-      if (HirExprs.isDeadEnd(children)) {
+      if (Hirs.isDeadEnd(children)) {
         // A sequence can finish only if every direct child can finish normally.
         expr.ty(Ty.DEADEND);
       } else {
@@ -260,7 +276,7 @@ public class HirTyCommonVisitorPass {
       HirVisitor.super.visitCall(expr);
 
       Ty ty;
-      final var signature = HirExprs.getCallableSignature(expr.target());
+      final var signature = Hirs.getCallableSignature(expr.target());
       if (signature != null) {
         ty = signature.returnTy();
       } else if (availableOnly || Tys.isInferred(expr.target().ty()) || Tys.isDeadend(expr.target().ty())) {
@@ -280,12 +296,12 @@ public class HirTyCommonVisitorPass {
     public void visitArrayAccess(Hir.ArrayAccess expr) {
       HirVisitor.super.visitArrayAccess(expr);
 
-      final var accessorTy = HirExprs.getIndexingAccessorTy(expr.accessor());
-      final var targetTy = HirExprs.getIndexingReceiverTy(expr.target());
+      final var accessorTy = Hirs.getIndexingAccessorTy(expr.accessor());
+      final var targetTy = Hirs.getIndexingReceiverTy(expr.target());
 
       if (availableOnly && Tys.isInferred(targetTy)) {
         expr.ty(Tys.withCompletion(
-          HirExprs.isDeadEnd(expr.target(), expr.accessor()) ? Ty.DEADEND : Ty.INFER, Ty.INFER));
+          Hirs.isDeadEnd(expr.target(), expr.accessor()) ? Ty.DEADEND : Ty.INFER, Ty.INFER));
         return;
       }
 
@@ -316,7 +332,7 @@ public class HirTyCommonVisitorPass {
         }
       };
 
-      expr.ty(Tys.withCompletion(HirExprs.isDeadEnd(expr.target(), expr.accessor()) ? Ty.DEADEND : ty, ty));
+      expr.ty(Tys.withCompletion(Hirs.isDeadEnd(expr.target(), expr.accessor()) ? Ty.DEADEND : ty, ty));
     }
 
     @Override
@@ -333,7 +349,7 @@ public class HirTyCommonVisitorPass {
       final var common = Tys.getCommonDenominator(expr.lower().ty(), expr.higher().ty());
       final var commonTy = Objects.requireNonNullElse(common.ty(), Ty.INVALID);
       final var rangeTy = new TyValueArray(commonTy, null);
-      expr.ty(Tys.withCompletion(HirExprs.isDeadEnd(expr.lower(), expr.higher()) ? Ty.DEADEND : rangeTy, rangeTy));
+      expr.ty(Tys.withCompletion(Hirs.isDeadEnd(expr.lower(), expr.higher()) ? Ty.DEADEND : rangeTy, rangeTy));
     }
 
     @Override
@@ -357,7 +373,7 @@ public class HirTyCommonVisitorPass {
     @Override
     public void visitNewByCtor(Hir.NewByCtor expr) {
       HirVisitor.super.visitNewByCtor(expr);
-      final Ty type = Objects.requireNonNullElse(HirExprs.getConstructionTargetLayout(expr.target()), Ty.INFER);
+      final Ty type = Objects.requireNonNullElse(Hirs.getConstructionTargetLayout(expr.target()), Ty.INFER);
       expr.ty(Tys.isDeadend(expr.target().ty()) || (expr.arguments() != null && Tys.isDeadend(expr.arguments().ty()))
         ? Ty.DEADEND : type);
     }
@@ -366,16 +382,16 @@ public class HirTyCommonVisitorPass {
     public void visitNewByBlock(Hir.NewByBlock expr) {
       HirVisitor.super.visitNewByBlock(expr);
 
-      final var type = Objects.requireNonNullElse(HirExprs.getConstructionTargetLayout(expr.target()), Ty.INFER);
-      expr.ty(Tys.isDeadend(expr.target().ty()) || HirExprs.isDeadEnd(expr.fields()) ? Ty.DEADEND : type);
+      final var type = Objects.requireNonNullElse(Hirs.getConstructionTargetLayout(expr.target()), Ty.INFER);
+      expr.ty(Tys.isDeadend(expr.target().ty()) || Hirs.isDeadEnd(expr.fields()) ? Ty.DEADEND : type);
     }
 
     @Override
     public void visitDotAccess(final Hir.DotAccess expr) {
       HirVisitor.super.visitDotAccess(expr);
 
-      final var owner = HirExprs.getMemberReceiverLayout(expr.target());
-      final var field = HirExprs.getField(owner, expr.name());
+      final var owner = Hirs.getMemberReceiverLayout(expr.target());
+      final var field = Hirs.getField(owner, expr.name());
       if (!availableOnly && owner != null && field == null) {
         throw new IllegalArgumentException("Unknown field: %s".formatted(expr.name()));
       }

@@ -46,12 +46,12 @@ class ToStringTreeHirVisitorTest {
     });
     assertEquals("""
       (Convert
-        (ty (number INTEGER width=16 explicit=true signed=true radix=10 flags=[]))
-        (targetTy (number INTEGER width=16 explicit=true signed=true radix=10 flags=[]))
+        (ty (number INTEGER EXPLICIT_16 signed=true radix=10))
+        (targetTy (number INTEGER EXPLICIT_16 signed=true radix=10))
         (expression
           (Literal
             (content "255u8")
-            (ty (number INTEGER width=8 explicit=true signed=false radix=10 flags=[])))))""",
+            (ty (number INTEGER EXPLICIT_8 signed=false radix=10)))))""",
       printer.render(conversions.getFirst()));
   }
 
@@ -183,7 +183,7 @@ class ToStringTreeHirVisitorTest {
   void given__varargs_and_generated_sequence_flags__when__rendered__then__preserved(
     final boolean flag, final TestInfo testInfo, final Snapshot snapshot
   ) {
-    final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), new DynamicTyDefault(Ty.INTEGER), flag, Ty.INTEGER);
+    final var parameter = new Hir.Parameter(new Hir.Lexeme("p"), Hir.BuiltInTy.fromString("int", MachineTarget.T64), flag, Ty.INTEGER);
     final var signature = new Hir.FunctionSignature(new Hir.Parameter[] { parameter }, flag, new DynamicTyDefault());
     final var expressions = new Hir.Expressions(new Hir.Expression[] {
       new Hir.Function(signature, new Hir.Return(new Hir.Identifier(parameter.lexeme().name(), parameter)))
@@ -233,23 +233,23 @@ class ToStringTreeHirVisitorTest {
     return Stream.of(
       Arguments.of(Ty.INTEGER, "(ty INTEGER)"),
       Arguments.of(new TyInfo(Ty.INTEGER, Ty.INTEGER, null), "(ty INTEGER)"),
-      Arguments.of(new TyInfo(new TyValueArray(Ty.INTEGER, 1), new TyValueArray(Ty.INTEGER, 1), null),
-        "(ty (array size=1 INTEGER))"),
+      Arguments.of(
+        new TyInfo(new TyValueArray(Ty.INTEGER, 1), new TyValueArray(Ty.INTEGER, 1), null),
+        "(ty (array size=1 INTEGER))"
+      ),
       Arguments.of(new TyInfo(null, null, null), "(ty null)"),
       Arguments.of(new TyInfo(null, Ty.INTEGER, null), "(ty (completion null structural INTEGER))"),
-      Arguments.of(new TyInfo(Ty.INTEGER, null, null), "(ty (completion INTEGER structural null))"),
+      Arguments.of(new TyInfo(Ty.INTEGER, null, null), "(ty INTEGER)"),
       Arguments.of(new TyInfo(Ty.INTEGER, Ty.LONG, null), "(ty (completion INTEGER structural LONG))"),
-      Arguments.of(Tys.withCompletion(Ty.DEADEND, new TyValueArray(Ty.INTEGER, 1)),
-        "(ty (completion DEADEND structural (array size=1 INTEGER)))"),
+      Arguments.of(
+        Tys.withCompletion(Ty.DEADEND, new TyValueArray(Ty.INTEGER, 1)),
+        "(ty (completion DEADEND structural (array size=1 INTEGER)))"
+      ),
       Arguments.of(Tys.withCompletion(Ty.DEADEND, null), "(ty DEADEND)"),
-      Arguments.of(Tys.typeInfo(Ty.INTEGER, Ty.INTEGER, Ty.INFER),
-        "(ty (completion INTEGER structural INTEGER declaredConstraint INFER))"),
-      Arguments.of(Tys.typeInfo(Ty.VOID, Ty.DEADEND, Ty.INFER),
-        "(ty (completion VOID structural null declaredConstraint INFER))"),
-      Arguments.of(Tys.typeInfo(Ty.VOID, Ty.DEADEND, null),
-        "(ty (completion VOID structural null))"),
-      Arguments.of(Tys.typeInfo(Ty.VOID, null, Ty.BOOLEAN),
-        "(ty (completion VOID structural null declaredConstraint BOOLEAN))")
+      Arguments.of(Tys.typeInfo(Ty.INTEGER, Ty.INTEGER, Ty.INFER), "(ty INTEGER)"),
+      Arguments.of(Tys.typeInfo(Ty.VOID, Ty.DEADEND, Ty.INFER), "(ty VOID)"),
+      Arguments.of(Tys.typeInfo(Ty.VOID, Ty.DEADEND, null), "(ty VOID)"),
+      Arguments.of(Tys.typeInfo(Ty.VOID, null, Ty.BOOLEAN), "(ty VOID)")
     );
   }
 
@@ -308,7 +308,7 @@ class ToStringTreeHirVisitorTest {
 
     final var binding = printer.render(declarations.getFirst());
     final var tuple = printer.render(tuples.getFirst());
-    assertTrue(binding.contains("(ty (completion VOID structural INTEGER declaredConstraint INFER))"));
+    assertTrue(binding.contains("(ty (completion VOID structural INTEGER))"));
     assertTrue(binding.contains("(typeAnnotation\n    (DynamicTy\n      (ty INFER)\n      (expression null)))"));
     assertTrue(tuple.contains("(contextualType (struct (\"value\" CHAR"));
     assertFalse(binding.contains("valueTy"));

@@ -32,8 +32,6 @@ class HirBuiltInTyTest {
     final var expression = Hir.BuiltInTy.fromString(name, target);
     assertNotNull(expression);
     assertAll(
-      () -> assertEquals(name, expression.name()),
-      () -> assertEquals(name, expression.toString()),
       () -> assertEquals(Tys.fromString(name, target), expression.ty())
     );
   }

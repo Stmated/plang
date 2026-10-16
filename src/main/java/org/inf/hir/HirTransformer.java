@@ -222,7 +222,9 @@ public interface HirTransformer {
 
   default Hir.Expression transformParameter(final Hir.Parameter expr) {
     expr.lexeme(transformParameterName(expr.lexeme()));
-    expr.typeAnnotation(transformParameterType(expr.typeAnnotation()));
+    if (expr.typeAnnotation() != null) {
+      expr.typeAnnotation(transformParameterType(expr.typeAnnotation()));
+    }
     return expr;
   }
 
@@ -230,7 +232,7 @@ public interface HirTransformer {
     return expect(expr.transform(this), Hir.Lexeme.class);
   }
 
-  default DynamicTy transformParameterType(final DynamicTy expr) {
+  default Hir.Expression transformParameterType(final Hir.Expression expr) {
     return expr.transform(this);
   }
 

@@ -30,7 +30,7 @@ public class HirTyIdentifierToTyTransformerPass {
     }
 
     @Override
-    public DynamicTy transformParameterType(DynamicTy expr) {
+    public Hir.Expression transformParameterType(Hir.Expression expr) {
       return transformAnnotation(expr);
     }
 
@@ -52,6 +52,15 @@ public class HirTyIdentifierToTyTransformerPass {
           return new DynamicTyRedirector(builtIn);
         }
         return transformed;
+      } finally {
+        typeModeCounter--;
+      }
+    }
+
+    private Hir.Expression transformAnnotation(final Hir.Expression annotation) {
+      try {
+        typeModeCounter++;
+        return annotation.transform(this);
       } finally {
         typeModeCounter--;
       }

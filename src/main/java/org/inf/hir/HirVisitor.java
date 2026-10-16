@@ -189,15 +189,17 @@ public interface HirVisitor {
 
   default void visitParameter(Hir.Parameter expr) {
     visitParameterName(expr.lexeme());
-    visitParameterType(expr.typeAnnotation());
+    if (expr.typeAnnotation() != null) {
+      visitParameterType(expr.typeAnnotation());
+    }
   }
 
   default void visitParameterName(Hir.Lexeme expr) {
     visitChild(expr);
   }
 
-  default void visitParameterType(DynamicTy annotation) {
-    annotation.visit(this);
+  default void visitParameterType(Hir.Expression expr) {
+    visitChild(expr);
   }
 
   default void visitDotAccess(Hir.DotAccess expr) {

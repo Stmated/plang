@@ -7,15 +7,18 @@ import org.inf.hir.Hir;
 import org.inf.hir.HirCallableSignatureVisitor;
 import org.inf.hir.HirIndexingTypeVisitor;
 import org.inf.hir.HirStructLayoutVisitor;
+import org.inf.hir.HirVisitor;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyStruct;
 import org.inf.ty.util.Tys;
 import org.inf.util.ResolvedField;
 
-@UtilityClass
-public class HirExprs {
+import java.util.concurrent.atomic.AtomicBoolean;
 
+/// TODO: Look through all the functions in here and see how they could be simplified/removed, once we've normalized structural/completion/constraint ty.
+@UtilityClass
+public class Hirs {
 
   public static boolean isDeadEnd(Hir.Expression... children) {
     for (final var child : children) {
@@ -162,5 +165,42 @@ public class HirExprs {
       }
     }
     return null;
+  }
+
+  public static Ty structuralTy(Hir.Expression expr) {
+    return expr == null ? null : Tys.structuralTy(expr.ty());
+  }
+
+  public static Ty getDeclaredConstraintTy(Hir.Expression expr) {
+    return expr == null ? null : Tys.declaredConstraintTy(expr.ty());
+  }
+
+  public static Ty ty(Hir.Expression expr) {
+    return expr == null ? null : expr.ty();
+  }
+
+  public static boolean isInferred(Hir.Expression expr) {
+    return expr != null && Tys.isInferred(expr.ty());
+  }
+
+  public static boolean has(Hir.Expression root, Hir.Expression needle) {
+    final var found = new AtomicBoolean(false);
+
+    root.visit(new HirVisitor() {
+
+      @Override
+      public void visitChild(Hir.Expression expr) {
+        if (found.get()) {
+          return;
+        }
+        if (expr == needle) {
+          found.set(true);
+        } else {
+          HirVisitor.super.visitChild(expr);
+        }
+      }
+    });
+
+    return found.get();
   }
 }

@@ -10,7 +10,7 @@ import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirTypeDefinitions;
 import org.inf.hir.HirVisitor;
 import org.inf.hir.typing.HirBodyResultTyping;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyParam;
 import org.inf.ty.TyUnion;
@@ -57,14 +57,20 @@ public class HirUnionValidationPass {
       }
     }
 
+    private void visitAnnotation(final Hir.Expression expr) {
+      if (expr != null) {
+        visitType(expr);
+      }
+    }
+
     @Override
     public void visitDecType(final DynamicTy annotation) {
       visitAnnotation(annotation);
     }
 
     @Override
-    public void visitParameterType(final DynamicTy annotation) {
-      visitAnnotation(annotation);
+    public void visitParameterType(final Hir.Expression expr) {
+      visitAnnotation(expr);
     }
 
     @Override
@@ -126,14 +132,14 @@ public class HirUnionValidationPass {
         visitType(expr.rhs());
       } else {
         HirVisitor.super.visitAssignment(expr);
-        check(expr.rhs().ty(), HirExprs.getBindingStructureTy(expr.lhs()), "assignment");
+        check(expr.rhs().ty(), Hirs.getBindingStructureTy(expr.lhs()), "assignment");
       }
     }
 
     @Override
     public void visitNewByBlockField(final Hir.NewByBlock construction, final Hir.Assignment expr) {
       HirVisitor.super.visitAssignment(expr);
-      final var field = HirExprs.getInitializerField(construction, expr);
+      final var field = Hirs.getInitializerField(construction, expr);
       if (field != null) {
         check(expr.rhs().ty(), field.ty(), "field %s".formatted(expr.lhs()));
       }
@@ -170,7 +176,7 @@ public class HirUnionValidationPass {
     @Override
     public void visitCall(final Hir.Call expr) {
       HirVisitor.super.visitCall(expr);
-      final var function = HirExprs.getCallableSignature(expr.target());
+      final var function = Hirs.getCallableSignature(expr.target());
       if (function == null) {
         return;
       }
@@ -189,7 +195,11 @@ public class HirUnionValidationPass {
         for (var i = 0; i < indices.length; i++) {
           final var index = indices[i];
           if (index >= 0 && index < parameters.length) {
-            check(fields == null ? argument.ty() : fields[i].ty(), parameters[index].ty(), "argument %s".formatted(index));
+            check(
+              fields == null ? argument.ty() : fields[i].ty(),
+              parameters[index].ty(),
+              "argument %s".formatted(index)
+            );
           }
         }
       }

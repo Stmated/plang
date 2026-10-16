@@ -16,15 +16,14 @@ test-method: given__varargs_and_generated_sequence_flags__when__rendered__then__
           (parameters
             (Parameter
               (vararg false)
-              (ty (completion VOID structural INTEGER declaredConstraint INTEGER))
+              (ty (completion VOID structural INTEGER))
               (lexeme
                 (Lexeme
                   (name "p")
                   (ty VOID)))
               (typeAnnotation
-                (DynamicTy
-                  (ty INTEGER)
-                  (expression null)))))
+                (BuiltInTy
+                  (ty (number INTEGER EXPLICIT_32 signed=true radix=10))))))
           (returnType
             (DynamicTy
               (ty INFER)

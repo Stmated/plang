@@ -2,6 +2,7 @@ package org.inf.util;
 
 import lombok.experimental.UtilityClass;
 
+import java.lang.reflect.Array;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -28,6 +29,16 @@ public class ArrayUtils {
 
   public static <T> String[] mapToStrings(final T[] array, final Function<T, String> mapper) {
     final var result = new String[array.length];
+    for (int i = 0; i < array.length; i++) {
+      result[i] = mapper.apply(array[i]);
+    }
+    return result;
+  }
+
+  public static <T, R> R[] map(final T[] array, final Class<R> clazz, final Function<T, R> mapper) {
+
+    @SuppressWarnings("unchecked")
+    final var result = (R[]) Array.newInstance(clazz, array.length);
     for (int i = 0; i < array.length; i++) {
       result[i] = mapper.apply(array[i]);
     }

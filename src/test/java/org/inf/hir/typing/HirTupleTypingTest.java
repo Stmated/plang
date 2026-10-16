@@ -4,7 +4,7 @@ import org.inf.Inf;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
 import org.inf.hir.passes.HirTyCommonVisitorPass;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
 import org.inf.ty.TyStruct;
@@ -201,7 +201,7 @@ class HirTupleTypingTest {
     Assertions.assertAll(
       () -> Assertions.assertEquals(Ty.DEADEND, expression.ty().completionTy()),
       () -> Assertions.assertNull(expression.contextualType()),
-      () -> Assertions.assertNull(HirExprs.getConstructionTargetLayout(expression))
+      () -> Assertions.assertNull(Hirs.getConstructionTargetLayout(expression))
     );
   }
 

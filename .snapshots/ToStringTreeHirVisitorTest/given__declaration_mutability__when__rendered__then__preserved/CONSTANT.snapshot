@@ -6,7 +6,7 @@ test-method: given__declaration_mutability__when__rendered__then__preserved
 
 (Dec
   (mutability CONSTANT)
-  (ty (completion VOID structural null declaredConstraint INTEGER))
+  (ty VOID)
   (lexeme
     (Lexeme
       (name "value")

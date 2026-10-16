@@ -2,25 +2,26 @@ package org.inf.ty.util;
 
 import jakarta.annotation.Nullable;
 import lombok.experimental.UtilityClass;
+import lombok.extern.slf4j.Slf4j;
 import org.inf.ty.*;
 import org.inf.util.ArrayUtils;
 
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
+@Slf4j
 @UtilityClass
 public class Tys {
 
-  public static final Comparator<Ty> TY_COMPARATOR = Comparator.comparing(it -> it.getClass().getSimpleName());
+  public static final Comparator<Ty> TY_COMPARATOR = Comparator.comparing(it -> it == null ? "" : it.getClass().getSimpleName());
 
   private static final Map<Object, Ty> tyInternMap = Collections.synchronizedMap(new HashMap<>());
 
   /// Intern containers without substituting equal but independently owned projection objects.
   private record TypeInfoKey(Ty completion, Ty structural, Ty declaredConstraint) {
     TypeInfoKey(final TyInfo info) {
-      this(info.completion(), info.structural(), info.declaredConstraint());
+      this(info.completionTy(), info.structuralTy(), info.declaredConstraintTy());
     }
 
     @Override
@@ -61,7 +62,7 @@ public class Tys {
   public static Ty typeInfo(@Nullable final Ty completion, @Nullable final Ty structural, @Nullable final Ty declaredConstraint) {
     final var completionType = completionTy(completion);
     final var structuralType = structuralTy(structural);
-    final var constraintType = completionTy(declaredConstraint);
+    final var constraintType = completionTy(declaredConstraint); // TODO: Why would this be resolved as `completionTy`? Makes little sense.
     if (constraintType == null && Objects.equals(structuralTy(completionType), structuralType)) {
       return completionType;
     }
@@ -106,11 +107,22 @@ public class Tys {
 
   public static TyResult<Ty> getCommonDenominator(Ty a, Ty b) {
 
-    a = completionTy(a);
-    b = completionTy(b);
+    // TODO: Consider bringing back these two calls if tests all over starts failing; but better
+    if (a instanceof TyInfo || b instanceof TyInfo) {
+      log.warn("Received TyInfo, finding common denominator will likely fail! {} and {}", a, b);
+    }
+//    a = completionTy(a);
+//    b = completionTy(b);
+
     if (a == b) {
       return new TyResult<>(a);
     }
+
+    if (a == null || b == null) {
+      log.warn("Received null types for common denominator, cannot safely deduce one between {} and {}", a, b);
+      return new TyResult<>(null);
+    }
+
     if (a instanceof TyStruct && b instanceof TyStruct
       && (TupleTypes.containsTuple(a) || TupleTypes.containsTuple(b)) && TypeComparison.same(a, b)) {
       return new TyResult<>(a);
@@ -317,12 +329,10 @@ public class Tys {
   }
 
   public static boolean isUsable(Ty ty) {
-    ty = completionTy(ty);
     return ty != null && ty != Ty.INVALID;
   }
 
   public static boolean isInferred(Ty ty) {
-    ty = completionTy(ty);
     return ty == null || ty == Ty.INFER;
   }
 
@@ -331,10 +341,10 @@ public class Tys {
     return switch (ty) {
       case null -> true;
       case TyInfo info -> {
-        if (info.structural() == null && isDeadend(info.completion())) {
+        if (info.structuralTy() == null && isDeadend(info.completionTy())) {
           yield false;
         }
-        yield containsInferred(info.completion()) || containsInferred(info.structural());
+        yield containsInferred(info.completionTy()) || containsInferred(info.structuralTy());
       }
       case TyFn function -> containsInferred(function.returnTy())
         || ArrayUtils.any(function.parameters(), parameter -> containsInferred(parameter.ty()));
@@ -342,46 +352,8 @@ public class Tys {
       case TyValueArray array -> containsInferred(array.elementType());
       case TyPointer<?> pointer -> containsInferred(pointer.inner());
       case TyUnion union -> ArrayUtils.any(union.types(), Tys::containsInferred);
-      default -> ty == Ty.INFER;
+      default -> Tys.isInferred(ty);
     };
-  }
-
-  public static Ty getIfInferred(Ty original, Supplier<Ty> supplier) {
-
-    if (original == null || original == Ty.INFER) {
-      return supplier.get();
-    } else {
-      return original;
-    }
-  }
-
-  public static Ty simplify(Ty ty) {
-    // TODO: Simplify the kind as much as possible.
-    return ty;
-  }
-
-  public static Ty dereference(Ty ty) {
-    if (ty instanceof TyPointer<?> tp) {
-      return tp.inner();
-    } else {
-      return ty;
-    }
-  }
-
-  public static int getReferenceDepth(Ty ty) {
-    if (ty instanceof TyPointer<?> tp) {
-      return getReferenceDepth(tp.inner()) + 1;
-    } else {
-      return 0;
-    }
-  }
-
-  public static Ty dereferenceRecursively(Ty ty) {
-    if (ty instanceof TyPointer<?> tp) {
-      return dereferenceRecursively(tp.inner());
-    } else {
-      return ty;
-    }
   }
 
   /**
@@ -440,7 +412,15 @@ public class Tys {
         case 32 -> Ty.UINTEGER;
         default -> throw new IllegalArgumentException("Unhandled pointer bit size '" + machineTarget.pointerBitSize() + "'");
       };
+
+      // TODO: Should `?` actually be allowed syntax? Should this not be `$T` or a "discard" `$_` (which cannot be targeted/mentioned.
+      //        One idea of the language is that "generics" are just placeholders which can/need to be narrowed down by some external factor.
+      case "?" -> Ty.INFER;
+
+      // TODO: Should `opaque` actually be an allowed "type"? Or should this be handled some other way?
+      //  Perhaps also using `$_` and knowing it is an "external" dll/lib call.
       case "opaque" -> new TyOpaque();
+
       default -> null;
     };
   }

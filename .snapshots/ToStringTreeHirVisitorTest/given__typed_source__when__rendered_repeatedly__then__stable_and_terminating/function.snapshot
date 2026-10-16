@@ -5,7 +5,7 @@ test-class: org.inf.hir.util.ToStringTreeHirVisitorTest
 test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_terminating
 
 (Program
-  (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+  (ty (number INTEGER EXPLICIT_32 signed=true radix=10))
   (expressions
     (Expressions
       (generated false)
@@ -16,7 +16,7 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
           (lhs
             (Dec
               (mutability IMMUTABLE)
-              (ty (completion VOID structural (function vararg=false (parameters ("x" (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) declaredConstraint INFER))
+              (ty (completion VOID structural (function vararg=false (parameters ("x" (number INTEGER EXPLICIT_32 signed=true radix=10))) (returns (number INTEGER EXPLICIT_32 signed=true radix=10)))))
               (lexeme
                 (Lexeme
                   (name "f")
@@ -30,22 +30,18 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
               (signature
                 (FunctionSignature
                   (vararg false)
-                  (ty (function vararg=false (parameters ("x" (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))) (returns (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))
+                  (ty (function vararg=false (parameters ("x" (number INTEGER EXPLICIT_32 signed=true radix=10))) (returns (number INTEGER EXPLICIT_32 signed=true radix=10))))
                   (parameters
                     (Parameter
                       (vararg false)
-                      (ty (completion VOID structural (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]) declaredConstraint (number INTEGER width=32 explicit=true signed=true radix=10 flags=[])))
+                      (ty (completion VOID structural (number INTEGER EXPLICIT_32 signed=true radix=10)))
                       (lexeme
                         (Lexeme
                           (name "x")
                           (ty VOID)))
                       (typeAnnotation
-                        (DynamicTy
-                          (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
-                          (expression
-                            (BuiltInTy
-                              (name "int")
-                              (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))))))))
+                        (BuiltInTy
+                          (ty (number INTEGER EXPLICIT_32 signed=true radix=10))))))
                   (returnType
                     (DynamicTy
                       (ty INFER)
@@ -56,7 +52,7 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
                   (expression
                     (BinaryOperation
                       (kind ADD)
-                      (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+                      (ty (number INTEGER EXPLICIT_32 signed=true radix=10))
                       (lhs
                         (Identifier
                           (name "x")
@@ -70,7 +66,7 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
           (expression
             (Call
               (partial false)
-              (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+              (ty (number INTEGER EXPLICIT_32 signed=true radix=10))
               (target
                 (Identifier
                   (name "f")
@@ -78,8 +74,8 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
               (arguments
                 (Argument
                   (label null)
-                  (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[]))
+                  (ty (number INTEGER EXPLICIT_32 signed=true radix=10))
                   (value
                     (Literal
                       (content "2")
-                      (ty (number INTEGER width=32 explicit=true signed=true radix=10 flags=[])))))))))))))
+                      (ty (number INTEGER EXPLICIT_32 signed=true radix=10)))))))))))))

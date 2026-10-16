@@ -1,8 +1,8 @@
 package org.inf.ty;
 
 import lombok.Builder;
+import org.inf.ty.util.Tys;
 
-import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -50,5 +50,11 @@ public record TyValueNumberInteger(byte radix, BitWidth width, boolean signed, S
   @Override
   public int hashCode() {
     return Objects.hash(radix, width, signed, flags);
+  }
+
+  /// TODO: Should proboably be made more generic somehow, but TyValueNumber is just an interface without a builder
+  ///       But there should be an easier way to convert any number ty to explicit or non-explicit.
+  public TyValueNumber asExplicit() {
+    return Tys.intern(this.toBuilder().width(Ty.INTEGER.width().toBuilder().explicit(true).build()).build());
   }
 }

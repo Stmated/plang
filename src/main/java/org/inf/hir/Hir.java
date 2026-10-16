@@ -8,10 +8,12 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.typing.HirStructuralConstraintTyResolver;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.*;
 import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
+import org.inf.util.ArrayUtils;
 
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -531,7 +533,7 @@ public class Hir {
   }
 
   @Data
-  @AllArgsConstructor
+  @AllArgsConstructor // TODO: Remove this all-args constructor! We should not allow possibility of having the return+params out-of-sync with ty!
   public static class FunctionSignature implements Expression {
 
     @Nonnull
@@ -541,10 +543,26 @@ public class Hir {
     DynamicTy<? extends DynamicTy<?>> returnTypeAnnotation;
     TyFn ty;
 
+    public FunctionSignature(@Nonnull DynamicTy<? extends DynamicTy<?>> returnTypeAnnotation, @Nonnull Parameter... parameters) {
+      this.parameters = parameters;
+      this.returnTypeAnnotation = returnTypeAnnotation;
+      this.refreshTy();
+    }
+
     public FunctionSignature(@Nonnull Parameter[] parameters, boolean vararg, @Nonnull DynamicTy<? extends DynamicTy<?>> returnTypeAnnotation) {
       this.parameters = parameters;
       this.vararg = vararg;
       this.returnTypeAnnotation = Objects.requireNonNull(returnTypeAnnotation);
+    }
+
+    private void refreshTy() {
+      // TODO: This is likely wrong. We need to call `.resolve(resolver)` -- but DynamicTy is going away eventually anyway
+      this.ty = new TyFn(
+        // TODO: Perhaps it should be `Tys.structuralTy(p.ty())`?
+        ArrayUtils.map(this.parameters(), TyParam.class, p -> new TyParam(p.lexeme().name, p.ty())),
+        this.vararg(),
+        this.returnTypeAnnotation().ty() // TODO: Perhaps also structuralTy?
+      );
     }
 
     @Override
@@ -569,12 +587,14 @@ public class Hir {
   @RequiredArgsConstructor
   public static class Lexeme implements Expression {
 
+    private static final Ty TY = new TyInfo(Ty.VOID, null, null);
+
     @Nonnull
     final String name;
 
     @Override
     public Ty ty() {
-      return Ty.VOID;
+      return TY;
     }
 
     @Override
@@ -597,8 +617,8 @@ public class Hir {
   @AllArgsConstructor(access = AccessLevel.PRIVATE)
   public static final class BuiltInTy implements Expression {
 
-    @Nonnull
-    final String name;
+//    @Nonnull
+//    final String name;
     @Nonnull
     final Ty ty;
 
@@ -606,12 +626,12 @@ public class Hir {
     @Nullable
     public static BuiltInTy fromString(final String name, final MachineTarget machineTarget) {
       final var ty = Tys.fromString(name, machineTarget);
-      return ty == null ? null : new BuiltInTy(name, ty);
+      return ty == null ? null : new BuiltInTy(ty);
     }
 
     @Override
     public String toString() {
-      return name;
+      return this.ty.toString();
     }
 
     @Override
@@ -634,9 +654,10 @@ public class Hir {
     Expression target;
 
     /// TODO: This is likely wrong and untrustworthy -- we need to resolve it all the way using something like HirTypeAnnotationResolver
+    /// TODO: Remove! Make it always return the `target.ty()` or do the work of not requiring expressions to have a `ty()`
     @Override
     public Ty ty() {
-      return (this.target != null) ? HirExprs.getBindingTy(this.target) : null;
+      return (this.target != null) ? Hirs.getBindingTy(this.target) : null;
     }
 
     @Override
@@ -904,27 +925,52 @@ public class Hir {
 
     @Nonnull
     Hir.Lexeme lexeme;
-    @Nonnull
-    DynamicTy<? extends DynamicTy<?>> typeAnnotation;
+    @Nullable
+    Expression typeAnnotation;
     boolean vararg;
     Ty ty;
 
-    public Parameter(final Lexeme lexeme, final DynamicTy typeAnnotation, final boolean vararg, final Ty structuralTy) {
+    public Parameter(final Lexeme lexeme, @Nullable final Expression typeAnnotation, final boolean vararg, final Ty ty) {
       this.lexeme = Objects.requireNonNull(lexeme);
-      this.typeAnnotation = Objects.requireNonNull(typeAnnotation);
+      this.typeAnnotation = typeAnnotation;
       this.vararg = vararg;
-      this.ty = Tys.typeInfo(Ty.VOID, structuralTy, typeAnnotation.ty());
+
+      // TODO: Remove the "typeAnnotation.ty" declaredConstraint, since we can get it from the typeAnnotation.ty()
+      Ty constraint;
+      if (typeAnnotation == null) {
+        constraint = null; // Tys.declaredConstraintTy(ty);
+      } else {
+        constraint = HirStructuralConstraintTyResolver.resolve(typeAnnotation); // Hirs.getStructuralTy(typeAnnotation);
+      }
+
+      this.ty = Tys.typeInfo(Ty.VOID, Tys.structuralTy(ty), constraint);
     }
 
-    public Parameter typeAnnotation(final DynamicTy typeAnnotation) {
+    /// TODO: Delete this after we don't need all this special handling any longer
+    public Parameter typeAnnotation(final Expression typeAnnotation) {
       this.typeAnnotation = Objects.requireNonNull(typeAnnotation);
-      ty(Tys.withDeclaredConstraint(ty, typeAnnotation.ty()));
+      ty(Tys.withDeclaredConstraint(ty, HirStructuralConstraintTyResolver.resolve(typeAnnotation)));
       return this;
     }
 
     @Override
     public String toString() {
-      return "%s:%s".formatted(lexeme, typeAnnotation);
+      if (typeAnnotation != null) {
+        return "%s:%s".formatted(lexeme, typeAnnotation);
+      }
+
+      // TODO: There should be a helper (with correct terminology) for fetching the constraint if one exists, otherwise fallback on structural
+      final var constraint = Tys.declaredConstraintTy(this.ty());
+      if (constraint != null) {
+        return "%s::%s".formatted(lexeme, constraint);
+      }
+
+      final var structural = Tys.structuralTy(this.ty());
+      if (structural != null) {
+        return "%s is %s".formatted(lexeme, structural);
+      }
+
+      return lexeme.toString();
     }
 
     @Override
@@ -953,7 +999,7 @@ public class Hir {
     }
 
     public Ty memberTy() {
-      return HirExprs.getMemberTy(this);
+      return Hirs.getMemberTy(this);
     }
 
     @Override

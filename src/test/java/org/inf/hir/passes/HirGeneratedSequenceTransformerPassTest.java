@@ -2,11 +2,10 @@ package org.inf.hir.passes;
 
 import org.inf.Inf;
 import org.inf.exceptions.InvalidTypeConversionException;
-import org.inf.hir.DynamicTy;
 import org.inf.hir.DynamicTyDefault;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.thir.raising.HirToThirRaising;
 import org.inf.ty.Ty;
 import org.inf.ty.util.MachineTarget;
@@ -53,7 +52,7 @@ class HirGeneratedSequenceTransformerPassTest {
     final var completion = tuple.ty();
     final var layout = tuple.contextualType();
     final var call = calls.getFirst();
-    final var signature = HirExprs.getCallableSignature(call.target());
+    final var signature = Hirs.getCallableSignature(call.target());
     assertAll(
       () -> assertNotNull(binding),
       () -> assertNotNull(layout),
@@ -80,7 +79,7 @@ class HirGeneratedSequenceTransformerPassTest {
       () -> assertSame(layout, tuple.contextualType()),
       () -> assertEquals("b", tuple.children()[0].label().name()),
       () -> assertEquals("a", layout.fields()[0].name()),
-      () -> assertSame(signature, HirExprs.getCallableSignature(call.target())),
+      () -> assertSame(signature, Hirs.getCallableSignature(call.target())),
       () -> assertSame(declaration, assertInstanceOf(Hir.Identifier.class, call.arguments()[0].value()).target())
     );
   }

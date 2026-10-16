@@ -7,7 +7,7 @@ import org.inf.hir.HirCallArguments;
 import org.inf.hir.HirSpreadShape;
 import org.inf.hir.HirTupleMatching;
 import org.inf.hir.HirVisitor;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
 import org.inf.ty.TyFn;
@@ -69,7 +69,7 @@ public class HirTupleContextVisitorPass {
     @Override
     public void visitFunction(final Hir.Function expression) {
       if (expected instanceof final TyFn function) {
-        final var type = HirExprs.getFunctionReturnContextTy(expression.signature(), function.returnTy());
+        final var type = Hirs.getFunctionReturnContextTy(expression.signature(), function.returnTy());
         for (Hir.Expression result : FindResultExpressionsVisitor.findReturns(expression.body())) {
           link(result, type);
         }
@@ -78,7 +78,7 @@ public class HirTupleContextVisitorPass {
   }
 
   private static void linkArguments(final Hir.Call expression) {
-    final var function = HirExprs.getCallableSignature(expression.target());
+    final var function = Hirs.getCallableSignature(expression.target());
     if (function == null
       || ArrayUtils.none(function.parameters(), parameter -> parameter.ty() instanceof TyStruct tuple && tuple.tuple())) {
       return;
@@ -115,14 +115,14 @@ public class HirTupleContextVisitorPass {
     @Override
     public void visitAssignment(final Hir.Assignment expression) {
       if (expression.lhs() instanceof Hir.Identifier || expression.lhs() instanceof Hir.Dec) {
-        link(expression.rhs(), HirExprs.getAssignmentContextTy(expression.lhs()));
+        link(expression.rhs(), Hirs.getAssignmentContextTy(expression.lhs()));
       }
       HirVisitor.super.visitAssignment(expression);
     }
 
     @Override
     public void visitFunction(final Hir.Function expression) {
-      final var type = HirExprs.getFunctionReturnContextTy(expression.signature());
+      final var type = Hirs.getFunctionReturnContextTy(expression.signature());
       for (final var result : FindResultExpressionsVisitor.findReturns(expression.body())) {
         link(result, type);
       }

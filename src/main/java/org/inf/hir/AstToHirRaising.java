@@ -378,17 +378,17 @@ public class AstToHirRaising {
   private Hir.Parameter lower_parameter(final Ast.Expression expr, final AtomicBoolean restVararg) {
 
     return switch (expr) {
-      case final Ast.Spread spread -> new Hir.Parameter(asLexeme(spread.expression()), new DynamicTyDefault(), true, null);
+      case final Ast.Spread spread -> new Hir.Parameter(asLexeme(spread.expression()), null, true, null);
       case Ast.Rest _ -> {
         restVararg.set(true);
         yield null;
       }
       case final Ast.Labeling labeling -> {
         final var labelingLhs = lower_parameter(labeling.lhs(), restVararg);
-        final var labelingRhs = new DynamicTyRedirector(raiseType(labeling.rhs()));
+        final var labelingRhs = raiseType(labeling.rhs());
         yield new Hir.Parameter(labelingLhs.lexeme(), labelingRhs, labelingLhs.vararg(), null);
       }
-      default -> new Hir.Parameter(asLexeme(expr), new DynamicTyDefault(), false, null);
+      default -> new Hir.Parameter(asLexeme(expr), null, false, null);
     };
   }
 
@@ -402,7 +402,7 @@ public class AstToHirRaising {
   private Hir.Dec lower_variable_declaration(final Ast.VariableDeclaration ast) {
 
     final var typeAnnotation = (ast.type() == null)
-      ? new DynamicTyDefault()
+      ? new DynamicTyDefault() // TODO: Make this "null" -- if dev has not specified a type annotation, then we should not set one.
       : new DynamicTyRedirector(raiseType(ast.type()));
 
     return new Hir.Dec(

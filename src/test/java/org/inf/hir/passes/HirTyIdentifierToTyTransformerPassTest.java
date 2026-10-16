@@ -2,8 +2,10 @@ package org.inf.hir.passes;
 
 import org.inf.Inf;
 import org.inf.hir.DynamicTy;
+import org.inf.hir.DynamicTyDefault;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.Hirs;
 import org.inf.thir.raising.HirToThirRaising;
 import org.inf.ty.Ty;
 import org.inf.ty.TyField;
@@ -34,25 +36,9 @@ class HirTyIdentifierToTyTransformerPassTest {
   void given__source_builtin_annotation__when__resolved__then__the_constraint_is_static_and_source_identifier_is_unchanged(
     final String code, final String name
   ) {
-    final var root = Inf.codeToHir(code);
+    final var root = Inf.codeToThir(code).root();
     final var annotation = sourceAnnotation(root);
-    final var source = assertInstanceOf(Hir.Identifier.class, annotation.get().expression());
-    assertAll(
-      () -> assertSame(Ty.INFER, annotation.get().ty()),
-      () -> assertEquals(name, source.name()),
-      () -> assertNull(source.ty())
-    );
-
-    HirTyIdentifierToTyTransformerPass.pass(root, MachineTarget.T64);
-    HirTyCommonVisitorPass.pass(root);
-
-    assertAll(
-      () -> assertEquals(
-        Tys.fromString(name, MachineTarget.T64), annotation.get().ty(), "Should be %s".formatted(name)
-      ),
-      () -> assertEquals(name, source.name(), "Identifier name should be parameterized input"),
-      () -> assertNull(source.target(), "Identifier target should be null")
-    );
+    assertEquals(Tys.fromString(name, MachineTarget.T64), annotation.ty(), "Should be %s".formatted(name));
   }
 
   @ParameterizedTest
@@ -67,7 +53,7 @@ class HirTyIdentifierToTyTransformerPassTest {
   ) {
     final var root = Inf.codeToHir(code);
     final var annotation = sourceAnnotation(root);
-    final var tuple = assertInstanceOf(Hir.Tuple.class, annotation.get().expression());
+    final var tuple = assertInstanceOf(Hir.Tuple.class, annotation);
     final var integer = assertInstanceOf(Hir.Identifier.class, tuple.children()[0].value());
     final var booleanType = assertInstanceOf(Hir.Identifier.class, tuple.children()[1].value());
     final var target = MachineTarget.T64;
@@ -77,9 +63,7 @@ class HirTyIdentifierToTyTransformerPassTest {
     final var resolvedInteger = assertInstanceOf(Hir.BuiltInTy.class, tuple.children()[0].value());
     final var resolvedBoolean = assertInstanceOf(Hir.BuiltInTy.class, tuple.children()[1].value());
     assertAll(
-      () -> assertSame(tuple, annotation.get().expression()),
-      () -> assertEquals("int", resolvedInteger.name()),
-      () -> assertEquals("bool", resolvedBoolean.name()),
+      () -> assertSame(tuple, annotation),
       () -> assertEquals(Tys.fromString("int", target), resolvedInteger.ty()),
       () -> assertSame(Ty.BOOLEAN, resolvedBoolean.ty()),
       () -> assertNull(integer.target()),
@@ -106,12 +90,16 @@ class HirTyIdentifierToTyTransformerPassTest {
     final var root = Inf.codeToHir("val size: usize = 7; size");
     final var annotation = sourceAnnotation(root);
     final var expected = pointerBitSize == 32 ? Ty.UINTEGER : Ty.ULONG;
-    assertSame(Ty.INFER, annotation.get().ty());
+    final var identifier = assertInstanceOf(Hir.Identifier.class, annotation);
+
+    assertEquals("usize", identifier.name());
+    assertEquals(null, annotation.ty());
 
     final var typed = new HirToThirRaising(new MachineTarget(pointerBitSize)).raise(root).root();
 
     assertAll(
-      () -> assertSame(expected, annotation.get().ty()),
+      () -> assertSame(null, annotation.ty()),
+      () -> assertFalse(Hirs.has(typed, identifier), "Identifier should have been replaced by builtin type expr"),
       () -> assertSame(expected, typed.ty())
     );
   }
@@ -145,37 +133,44 @@ class HirTyIdentifierToTyTransformerPassTest {
     );
   }
 
-  private static Supplier<DynamicTy> sourceAnnotation(final Hir.Expression root) {
-    final var found = new ArrayList<Supplier<DynamicTy>>();
+  /// TODO: Remove this ugly method. What's even the point of it? The tests cases are all weird
+  ///         Especially the fact that it deals with suppliers for some odd reason...
+  private static Hir.Expression sourceAnnotation(final Hir.Expression root) {
+    final var found = new ArrayList<Hir.Expression>();
     root.visit(new HirVisitor() {
-      private void add(final Supplier<DynamicTy> annotation) {
-        if (annotation.get().expression() != null) {
-          found.add(annotation);
+      private void add(final DynamicTy<?> annotation) {
+        if (annotation.expression() != null) {
+          found.add(annotation.expression());
+        }
+      }
+      private void addExpr(final Hir.Expression expr) {
+        if (expr != null) {
+          found.add(expr);
         }
       }
 
       @Override
-      public void visitDec(final Hir.Dec declaration) {
-        add(declaration::typeAnnotation);
-        HirVisitor.super.visitDec(declaration);
+      public void visitDecType(DynamicTy annotation) {
+        add(annotation);
+        HirVisitor.super.visitDecType(annotation);
       }
 
       @Override
-      public void visitParameter(final Hir.Parameter parameter) {
-        add(parameter::typeAnnotation);
-        HirVisitor.super.visitParameter(parameter);
+      public void visitParameterType(Hir.Expression expr) {
+        addExpr(expr);
+        HirVisitor.super.visitParameterType(expr);
       }
 
       @Override
-      public void visitFunctionSignature(final Hir.FunctionSignature signature) {
-        add(signature::returnTypeAnnotation);
-        HirVisitor.super.visitFunctionSignature(signature);
+      public void visitFunctionSignatureReturnType(DynamicTy annotation) {
+        add(annotation);
+        HirVisitor.super.visitFunctionSignatureReturnType(annotation);
       }
 
       @Override
-      public void visitArray(final Hir.Array array) {
-        add(array::elementType);
-        HirVisitor.super.visitArray(array);
+      public void visitArrayElementType(DynamicTy annotation) {
+        add(annotation);
+        HirVisitor.super.visitArrayElementType(annotation);
       }
     });
     assertEquals(1, found.size());

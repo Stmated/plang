@@ -7,7 +7,10 @@ public record TyParam(
 
   @Override
   public String toString() {
+    if (ty == null) {
+      return name;
+    }
 
-    return name + ":" + ty.toShortString();
+    return "%s:%s".formatted(name, ty.toShortString());
   }
 }

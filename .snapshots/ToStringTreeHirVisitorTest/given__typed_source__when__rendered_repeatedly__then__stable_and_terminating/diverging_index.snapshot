@@ -16,7 +16,7 @@ test-method: given__typed_source__when__rendered_repeatedly__then__stable_and_te
           (lhs
             (Dec
               (mutability IMMUTABLE)
-              (ty (completion VOID structural (function vararg=false (parameters) (returns BOOLEAN)) declaredConstraint INFER))
+              (ty (completion VOID structural (function vararg=false (parameters) (returns BOOLEAN))))
               (lexeme
                 (Lexeme
                   (name "use")

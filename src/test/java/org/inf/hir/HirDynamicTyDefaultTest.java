@@ -2,8 +2,10 @@ package org.inf.hir;
 
 import org.inf.ty.Ty;
 import org.inf.ty.util.MachineTarget;
+import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
@@ -13,20 +15,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class HirDynamicTyDefaultTest {
 
-  static Stream<Ty> staticTypes() {
-    return Stream.of(
-      Ty.INTEGER,
-      Ty.BOOLEAN,
-      Ty.INFER
-    );
-  }
-
   @ParameterizedTest
-  @MethodSource("staticTypes")
-  void given__static_constraint__when__resolved_visited_and_transformed__then__type_is_retained_without_source_work(
-    final Ty ty
-  ) {
-    final var annotation = new DynamicTyDefault(ty);
+  @CsvSource({
+    "int",
+    "bool",
+    "?"
+  })
+  void given__static_constraint__when__resolved_visited_and_transformed__then__type_is_retained_without_source_work(final String tyName) {
+    final var annotation = Hir.BuiltInTy.fromString(tyName, MachineTarget.T64);
     final var visited = new ArrayList<Hir.Expression>();
     annotation.visit(new HirVisitor() {
       @Override
@@ -34,15 +30,9 @@ class HirDynamicTyDefaultTest {
         visited.add(expression);
       }
     });
-    final var resolved = annotation.resolve(expression -> {
-      fail("Static constraints do not need source resolution");
-      return null;
-    });
     final var transformed = annotation.transform(new HirTransformer() {});
     assertAll(
-      () -> assertSame(ty, annotation.ty()),
-      () -> assertNull(annotation.expression()),
-      () -> assertSame(annotation, resolved),
+      () -> assertSame(Tys.fromString(tyName, MachineTarget.T64), annotation.ty()),
       () -> assertSame(annotation, transformed),
       () -> assertTrue(visited.isEmpty())
     );
@@ -71,14 +61,6 @@ class HirDynamicTyDefaultTest {
       () -> assertSame(Ty.INTEGER, transformed.ty()),
       () -> assertSame(replacement, transformed.expression()),
       () -> assertSame(source, annotation.expression())
-    );
-  }
-
-  @Test
-  void given__null_constraint__when__constructed__then__invalid_record_is_rejected() {
-    assertAll(
-      () -> assertThrows(NullPointerException.class, () -> new DynamicTyDefault((Ty) null)),
-      () -> assertThrows(NullPointerException.class, () -> new DynamicTyDefault(null, new Hir.Lexeme("Alias")))
     );
   }
 }

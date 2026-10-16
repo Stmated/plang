@@ -4,13 +4,12 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import org.inf.hir.DynamicTy;
-import org.inf.hir.DynamicTyDefault;
 import org.inf.hir.DynamicTyRedirector;
 import org.inf.hir.Hir;
 import org.inf.hir.HirTransformer;
 import org.inf.hir.HirTypeDefinitions;
 import org.inf.hir.HirVisitor;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.Ty;
 import org.inf.ty.TyFn;
 import org.inf.ty.TyParam;
@@ -286,10 +285,10 @@ public class HirLambdaLiftingTransformerPass {
         for (var i = 0; i < needsClosure.size(); i++) {
 
           final var id = needsClosure.get(i);
-          final var ty = HirExprs.getBindingStructureTy(id);
-          final var typeAnnotation = new DynamicTyRedirector(id);
+          final var ty = Hirs.getBindingStructureTy(id);
 
-          final var newParam = new Hir.Parameter(new Hir.Lexeme(id.name()), typeAnnotation, false, ty);
+          // TODO: Consider if we should set the typeAnnotation here, or just rely on setting the `ty`.
+          final var newParam = new Hir.Parameter(new Hir.Lexeme(id.name()), null, false, ty);
 
           newParameters[parameters.length + i] = newParam;
           newParametersTy[parameters.length + i] = new TyParam(id.name(), ty);
@@ -319,7 +318,9 @@ public class HirLambdaLiftingTransformerPass {
           transformed.signature().vararg(),
           transformed.signature().ty().returnTy()
         ));
+
         // Captures are supplied values; rebinding can change completion-dependent body types.
+        // TODO: Most likely remove this -- we should not be running new passes inside other passes, it feels weird and antithetical.
         HirTyCommonVisitorPass.pass(transformed);
 
         final var randomBytes = new byte[128];
@@ -404,11 +405,14 @@ public class HirLambdaLiftingTransformerPass {
             creation.arguments().visit(this);
           }
         }
-
       };
+
       function.signature().visit(visitor);
       function.body().visit(visitor);
-      return identifiers.stream().filter(identifier -> !declarations.contains(identifier.target())).toList();
+
+      return identifiers.stream()
+        .filter(id -> !declarations.contains(id.target()))
+        .toList();
     }
   }
 }

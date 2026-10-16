@@ -16,6 +16,8 @@ import java.util.Objects;
 public final class HirTypeAnnotationResolver {
 
   private final HirTypeDefinitions definitions;
+
+  /// TODO: Remove this cache -- it should be pointless by now
   private final Map<Hir.Expression, Ty> resolved = new IdentityHashMap<>();
 
   HirTypeAnnotationResolver() {

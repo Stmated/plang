@@ -199,6 +199,10 @@ For example `TyResolverForResult`, `TyResolverForReturn`, `TyResolverForBreak`, 
     purpose is more explicit, such as a "see that spreading works with lambda lifting" and "see that spreading works with array creation" and "see that
     spreading works with captured lambda lifting" (these are just examples, do not need to implement these specific ones)
 * Look into changing s-expression strings wrapped in ' so that inline test cases do not need to escape 
+* Stupid tests:
+  * given__untyped_lambda_in_a_function_field__when__only_tuple_pass_runs__then__lambda_parameters_are_not_inferred
+    * Since it checks that "if something does not run, then we get the expected result" -- but it always expected to run, so no point having the test
+* Update test cases to use new shorthand `TyFn` constructor
 
 ## Updated passes
 * Go through each pass separately and try to simplify them, then at the end ask the agent to write findings that other agents can make use of for further passes.
@@ -206,12 +210,18 @@ For example `TyResolverForResult`, `TyResolverForReturn`, `TyResolverForBreak`, 
   * IFF there is need for this special lookup, I am sure it can be simplified into some outside visitor that can do things better.
   * It is just too extremely ugly to have all this structure-specific code inside the visitors
 
+## Run all code with coverage, remove unused code
+Run all test cases with code coverage, find areas of the code that are not used and either add a test case for it or remove it
+
 ## Change `allocator` fields to Expression
 The allocator expression should be just Hir.Expression.
 It should be a Hir.Lexeme at first, not Hir.Identifier.
 It is then up to later passes to properly find the proper allocator.
 Allocators themselves are not supported yet, support is deferred.
 So right now they will always stay Hir.Lexeme, and not be validated.
+
+### Not lifting const/immutable?
+Could it be possible to skip lifting immutable things? Like putting them inside some other location in memory and refrencing it directly?
 
 ## Constant array-length folding
 * Fix integer addition in `JavaUtil.add`: `[;int;(1 + 1)]` currently gets length `0`. Keep arithmetic folding separate from annotation representation.
@@ -450,9 +460,13 @@ I am well aware that the feature can make some syntax ambiguous
 
 ## Other
 
+* Consider making almost all `Ty` parameters into `@Nonnull` and instead using `Ty.UNKNOWN` where applicable
+
 * HirTyIdentifierToTyTransformerPass feels wrong. It converts from Identifier to BuiltInTy
   * It should not be "Identifier" at this stage, since it is not actually pointing to something (which means it should have been replaced earlier)
   * We should not keep the "Identifier" anyway, since in essence it will mean an unresolved Identifier in the tree, which should not be allowed
+
+* Consider removing "target" from identifier, since it creates a recursive tree. Instead create a parser context that can be refreshed on demand
 
 * See `// TODO: WRONG "explicit", needs context` comments. The explicitness of built-in types can be wrong (I think)
   * Right now is is not consistent. `1uint8` should be "explicit" for the literal, `uint8` should be explicit, `int` is explicit (default 32), `1` is NOT explicit

@@ -145,7 +145,7 @@ public final class ToStringTreeHirVisitor {
 
     @Override
     public void visitBuiltInTy(final Hir.BuiltInTy expr) {
-      result = node("BuiltInTy", atom("name", quote(expr.name())), type("ty", expr.ty()));
+      result = node("BuiltInTy", type("ty", expr.ty()));
     }
 
     @Override
@@ -290,16 +290,19 @@ public final class ToStringTreeHirVisitor {
     try {
       return switch (ty) {
         case TyInfo info -> {
-          if (info.declaredConstraint() != null) {
-            yield "(completion %s structural %s declaredConstraint %s)".formatted(
-              formatType(info.completionTy(), active), formatType(info.structuralTy(), active),
-              formatType(info.declaredConstraintTy(), active));
-          }
-          if (Objects.equals(info.completionTy(), info.structuralTy())) {
+//          if (info.declaredConstraint() != null) {
+//            yield "(completion %s structural %s)".formatted(
+//              formatType(info.completionTy(), active),
+//              formatType(info.structuralTy(), active)
+//            );
+//          }
+          if (Objects.equals(info.completionTy(), info.structuralTy()) || info.structuralTy() == null) {
             yield formatType(info.completionTy(), active);
           }
           yield "(completion %s structural %s)".formatted(
-            formatType(info.completionTy(), active), formatType(info.structuralTy(), active));
+            formatType(info.completionTy(), active),
+            formatType(info.structuralTy(), active)
+          );
         }
         case Ty.TyNamed named -> "(named %s)".formatted(quote(named.name()));
         case TyValueNumber number -> {
@@ -309,14 +312,26 @@ public final class ToStringTreeHirVisitor {
             case TyValueNumberScaled scaled -> scaled.flags();
             default -> null;
           };
-          final var extra = switch (number) {
+          var extra = switch (number) {
             case TyValueNumberPrecisioned precisioned -> " precision=" + precisioned.precision();
             case TyValueNumberScaled scaled -> " scale=" + scaled.scale();
             default -> "";
           };
-          yield "(number " + number.getValueKind() + " width=" + number.width().value()
-            + " explicit=" + number.width().explicit() + " signed=" + number.signed()
-            + " radix=" + number.radix() + " flags=" + flags + extra + ")";
+
+          if (!flags.isEmpty()) {
+            extra += " flags=%s".formatted(flags);
+          }
+
+          final var namedWidth = TyNamedConstants.constantName(number.width());
+          if (namedWidth != null) {
+            yield "(number %s %s signed=%s radix=%s%s)".formatted(
+              number.getValueKind(), namedWidth, number.signed(), number.radix(), extra
+            );
+          } else {
+            yield "(number %s width=%d explicit=%s signed=%s radix=%s%s)".formatted(
+              number.getValueKind(), number.width().value(), number.width().explicit(), number.signed(), number.radix(), extra
+            );
+          }
         }
         case TyValueBoolean ignored -> "(boolean)";
         case TyValueString ignored -> "(string)";

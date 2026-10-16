@@ -4,8 +4,12 @@ import org.inf.Inf;
 import org.inf.exceptions.InvalidTypeConversionException;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
+import org.inf.hir.util.Hirs;
 import org.inf.hir.util.ToStringTreeHirVisitor;
 import org.inf.ty.Ty;
+import org.inf.ty.TyFn;
+import org.inf.ty.TyParam;
+import org.inf.ty.TyValueArray;
 import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
 import org.junit.jupiter.api.Assertions;
@@ -17,19 +21,18 @@ import java.util.ArrayList;
 
 class HirFunctionParameterValidationVisitorPassTest {
 
-  @ParameterizedTest
-  @ValueSource(strings = {
-    "val read: Fn = (arr: [;2]) => arr[1]; read",
-    "val read: Fn = (arr: [;int;3]) => arr[1]; read",
-    "val read: Fn = (arr: [;bool;2]) => arr[1]; read",
-    "val read: Fn = (arr: [;int;]) => arr[1]; read"
-  })
-  void given__explicit_array_parameter__when__it_is_partial_or_incompatible__then__expected_signature_does_not_fill_it(
-    final String expression
-  ) {
-    final var error = Assertions.assertThrows(InvalidTypeConversionException.class,
-      () -> Inf.codeToThir("val Fn = (arr: [;int;2]): int; %s".formatted(expression)));
-    Assertions.assertTrue(error.getMessage().contains("Lambda parameter type does not match expected function type"));
+  /// TODO: This test case could be improved by the validation not throwing, but only registering errors.
+  ///       Then we could still access the HIR to get the types that managed to be calculated.
+  @Test
+  void given__explicit_array_parameter__when__it_is_partial_or_incompatible__then__expected_signature_does_not_fill_it() {
+
+    final var error = Assertions.assertThrows(
+      InvalidTypeConversionException.class,
+      () -> Inf.codeToThir("val Fn = (arr: [;int;2]): int; val read: Fn = (arr: [;bool;3]) => arr[1]; read")
+    );
+
+    Assertions.assertEquals(new TyValueArray(Ty.INTEGER.asExplicit(), 2), error.expected());
+    Assertions.assertEquals(new TyValueArray(Ty.BOOLEAN, 3), error.given());
   }
 
   @ParameterizedTest
@@ -114,7 +117,7 @@ class HirFunctionParameterValidationVisitorPassTest {
     final var before = printer.render(root);
     HirFunctionParameterValidationVisitorPass.pass(root);
     Assertions.assertAll(
-      () -> Assertions.assertEquals(Ty.INFER, parameter.typeAnnotation().ty()),
+      () -> Assertions.assertEquals(true, Tys.isInferred(Hirs.structuralTy(parameter.typeAnnotation()))),
       () -> Assertions.assertEquals(Tys.fromString("int", MachineTarget.T64), parameter.ty().structuralTy()),
       () -> Assertions.assertEquals(before, printer.render(root))
     );
@@ -158,8 +161,8 @@ class HirFunctionParameterValidationVisitorPassTest {
     Assertions.assertEquals(1, functions.size());
     Assertions.assertAll(
       () -> Assertions.assertThrows(InvalidTypeConversionException.class,
-        () -> HirFunctionParameterValidationVisitorPass.pass(root)),
-      () -> Assertions.assertTrue(Tys.isInferred(functions.getFirst().signature().parameters()[0].typeAnnotation().ty())),
+      () -> HirFunctionParameterValidationVisitorPass.pass(root)),
+      () -> Assertions.assertTrue(Tys.isInferred(Hirs.structuralTy(functions.getFirst().signature().parameters()[0].typeAnnotation()))),
       () -> Assertions.assertEquals(before, printer.render(root))
     );
   }

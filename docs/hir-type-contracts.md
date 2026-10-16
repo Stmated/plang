@@ -393,7 +393,7 @@ Annotation reads select source constraints or inference placeholders, never prev
 
 There are no universal value-type caches or forwarding adapters. Type projections select existing information, not expression contexts: callable signatures, bindings, body results, and available layouts still require their specific queries.
 
-Named context-specific `HirExprs` helpers centralize type selection without performing inference. Production typing, queries, lowering, tree printing, and type assertions do not consume the universal accessor.
+Named context-specific `Hirs` helpers centralize type selection without performing inference. Production typing, queries, lowering, tree printing, and type assertions do not consume the universal accessor.
 
 `HirTransformer.transformAssignment` and lambda-lifted calls retain completion types. Generated bindings and signatures retain their resolved types; callable results and construction layouts derive from those authoritative sources instead of duplicate caches.
 

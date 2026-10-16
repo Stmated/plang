@@ -12,6 +12,11 @@ public record TyFn(
   Ty returnTy
 ) implements Ty {
 
+  /// Short-hand constructor, with a bit of a weird syntax of having the return type first.
+  public TyFn(Ty returnTy, TyParam... parameters) {
+    this(parameters, false, returnTy);
+  }
+
   @Override
   public boolean equals(Object other) {
     return other instanceof TyFn fn

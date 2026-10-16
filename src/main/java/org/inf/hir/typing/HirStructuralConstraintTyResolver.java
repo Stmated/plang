@@ -12,7 +12,7 @@ public class HirStructuralConstraintTyResolver {
 
   public static Ty resolve(Hir.Expression e) {
 
-    return switch (e) {
+    final var ty = switch (e) {
       case Hir.Union union -> Tys.structuralTy(union.unionTy());
       case Hir.Identifier id -> {
         if (id.target() != null) {
@@ -38,10 +38,31 @@ public class HirStructuralConstraintTyResolver {
       case Hir.Assignment a -> {
         // TODO: This can likely be something else... there's complexity here that likely seems more difficult than it actually is.
         final var lhst = resolve(a.lhs());
-        //final var rhst = resolve(a.rhs());
         yield Tys.structuralTy(lhst);
+      }
+      case Hir.Parameter p -> {
+        var constraint = (p.typeAnnotation() != null) ? resolve(p.typeAnnotation()) : null;
+        if (Tys.isInferred(constraint)) {
+          constraint = Tys.declaredConstraintTy(p.ty());
+          if (Tys.isInferred(constraint)) {
+            constraint = Tys.structuralTy(p.ty());
+          }
+        }
+
+        // TODO: Check if this might always be the same as above, just without the field redirection.
+        //        I think it should be, or we should attempt to make it so in the future.
+        //        Or not, and remove the concept of "declaredConstraintTy" from TyInfo and such, since it can be fetched from the type annotation's structuralTy.
+        yield constraint;
       }
       default -> Tys.structuralTy(e.ty());
     };
+
+    if (Tys.isInferred(ty)) {
+
+      // For constraints, `INFERRED` is the same as "none"
+      return null;
+    }
+
+    return ty;
   }
 }

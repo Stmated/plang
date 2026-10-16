@@ -3,7 +3,7 @@ package org.inf.hir.passes;
 import org.inf.Inf;
 import org.inf.hir.Hir;
 import org.inf.hir.HirVisitor;
-import org.inf.hir.util.HirExprs;
+import org.inf.hir.util.Hirs;
 import org.inf.ty.Ty;
 import org.inf.ty.util.MachineTarget;
 import org.inf.ty.util.Tys;
@@ -27,12 +27,12 @@ class HirFieldResolutionTest {
       """).root();
     final var construction = nodes(root, Hir.NewByBlock.class).getFirst();
     final var access = nodes(root, Hir.DotAccess.class).getFirst();
-    final var owner = HirExprs.getConstructionTargetLayout(construction.target());
+    final var owner = Hirs.getConstructionTargetLayout(construction.target());
     final var value = construction.fields()[0];
     final var flag = construction.fields()[1];
-    final var memberField = HirExprs.getMemberField(access);
-    final var valueField = HirExprs.getInitializerField(construction, value);
-    final var flagField = HirExprs.getInitializerField(construction, flag);
+    final var memberField = Hirs.getMemberField(access);
+    final var valueField = Hirs.getInitializerField(construction, value);
+    final var flagField = Hirs.getInitializerField(construction, flag);
     assertAll(
       () -> assertEquals("value", access.name()),
       () -> assertEquals(1, memberField.index()),
@@ -60,8 +60,8 @@ class HirFieldResolutionTest {
       () -> assertSame(Ty.DEADEND, initializer.ty()),
       () -> assertSame(Ty.DEADEND, construction.ty()),
       () -> assertSame(Ty.DEADEND, access.ty()),
-      () -> assertEquals(HirExprs.getInitializerField(construction, initializer).ty(), access.memberTy()),
-      () -> assertNotNull(HirExprs.getMemberField(access)),
+      () -> assertEquals(Hirs.getInitializerField(construction, initializer).ty(), access.memberTy()),
+      () -> assertNotNull(Hirs.getMemberField(access)),
       () -> assertSame(Ty.BOOLEAN, root.ty())
     );
   }
@@ -81,8 +81,8 @@ class HirFieldResolutionTest {
     assertAll(
       () -> assertEquals(uint8, inner.fields()[0].rhs().ty()),
       () -> assertEquals(uint16, outer.fields()[1].rhs().ty()),
-      () -> assertEquals(uint8, HirExprs.getInitializerField(inner, inner.fields()[0]).ty()),
-      () -> assertEquals(uint16, HirExprs.getInitializerField(outer, outer.fields()[1]).ty())
+      () -> assertEquals(uint8, Hirs.getInitializerField(inner, inner.fields()[0]).ty()),
+      () -> assertEquals(uint16, Hirs.getInitializerField(outer, outer.fields()[1]).ty())
     );
   }
 
